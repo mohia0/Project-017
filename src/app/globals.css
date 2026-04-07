@@ -12,11 +12,55 @@
   --color-text-secondary: #666666;
   --color-text-tertiary: #999999;
   
+  /* Extracted SaaS Colors */
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
+  --color-font-sub: var(--font-sub);
+  --color-section-border: var(--section-border);
+  --color-inner-bg: var(--inner-background);
+
   --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
 @layer base {
+  :root {
+    --black: #000;
+    --white: #fff;
+    --font: #000;
+    --font-sub: #605a90;
+    --font-light: #fff;
+    --font-dark: #0d1721;
+    --primary: #3d0ebf;
+    --primary-light: #5217f4;
+    --primary-light-2: #d5d1f9;
+    --primary-dark: #300E8B;
+    --primary-border: #350ca7;
+    --primary-label: #f5f4ff;
+    --primary-label-border: #d4d1ff;
+    --secondary: #171f33;
+    --email-header: #3d0ebf;
+    --page-background: #fff;
+    --page-background-overlay: hsla(0,0%,100%,.91);
+    --page-background-dark: #f1f1f9;
+    --inner-background: #f1f1f9;
+    --inner-background-overlay: rgba(241,241,249,.91);
+    --inner-background-dark: #e2e2ef;
+    --inner-background-light: #f8f8fc;
+    --inner-border: #c4c4dc;
+    --section: #fff;
+    --section-inner: #f1f1f9;
+    --section-inner-dark: #e2e2ef;
+    --section-inner-light: #f8f8fc;
+    --section-border: #d2d2eb;
+    --section-border-dark: #bcbcd7;
+    --main-menu-background: #fff;
+    --main-menu-border: #d2d2eb;
+    --main-menu-text: #242236;
+    --main-menu-active: #f1f1f9;
+  }
+
   html, body {
     @apply h-full w-full overflow-hidden bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] antialiased;
     font-family: 'Inter', system-ui, sans-serif;

@@ -8,6 +8,8 @@ export type Tool = {
 };
 
 interface UIState {
+    isLeftMenuExpanded: boolean;
+    toggleLeftMenu: () => void;
     isToolsMenuExpanded: boolean;
     toggleToolsMenu: () => void;
     tools: Tool[];
@@ -21,6 +23,10 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
+    isLeftMenuExpanded: false,
+    toggleLeftMenu: () =>
+        set((state) => ({ isLeftMenuExpanded: !state.isLeftMenuExpanded })),
+
     isToolsMenuExpanded: false,
     toggleToolsMenu: () =>
         set((state) => ({ isToolsMenuExpanded: !state.isToolsMenuExpanded })),

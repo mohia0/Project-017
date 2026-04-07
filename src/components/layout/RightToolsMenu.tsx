@@ -2,65 +2,69 @@
 
 import React from 'react';
 import { useUIStore } from '@/store/useUIStore';
-import { Plus, Play, Square, DollarSign, Eye, Settings, HelpCircle, Printer, LogOut, Sun, Moon } from 'lucide-react';
+import { Plus, Moon, Sun, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function RightToolsMenu() {
     const { theme, toggleTheme, setCreateModalOpen } = useUIStore();
+    const isDark = theme === 'dark';
 
     return (
-        <nav
-            className={cn(
-                "h-full w-12 flex flex-col justify-between shrink-0 ease-in-out border-l py-4",
-                theme === 'dark' ? "bg-[#18181A] border-[#2A2A2A]" : "bg-[#f5f5f5] border-[#e2e2e2]"
-            )}
-        >
-            {/* Top Stack */}
-            <div className="flex flex-col items-center gap-3">
+        <nav className={cn(
+            "h-full w-[44px] flex flex-col items-center shrink-0 transition-colors duration-300 rounded-2xl z-10",
+            isDark ? "bg-[#1c1c1e]" : "bg-[#fff] border border-[#d2d2eb]"
+        )}>
+            {/* Top: Create button */}
+            <div className={cn(
+                "flex flex-col items-center pt-3 pb-3 w-full",
+                isDark ? "border-b border-white/5" : "border-b border-[#ebebf5]"
+            )}>
                 <button
                     onClick={() => setCreateModalOpen(true)}
-                    className={cn(
-                        "p-1.5 rounded-lg text-[#111] bg-[#4ade80] hover:bg-[#34d399] transition-all",
-                        "shadow-[0_2px_10px_rgba(74,222,128,0.2)] hover:shadow-[0_4px_15px_rgba(74,222,128,0.4)]"
-                    )}
+                    title="Create new"
+                    className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black"
                 >
                     <Plus size={16} strokeWidth={2.5} />
                 </button>
             </div>
 
-            {/* Bottom Stack */}
-            <div className="flex flex-col items-center gap-4">
-                <ToolItem icon={<DollarSign size={15} />} theme={theme} />
-                <ToolItem icon={<Eye size={15} />} theme={theme} />
-                <ToolItem icon={<Settings size={15} />} theme={theme} />
-                <ToolItem icon={<HelpCircle size={15} />} theme={theme} />
-                <ToolItem icon={<Printer size={15} />} theme={theme} />
-                <div className={cn("w-6 h-[1px]", theme === 'dark' ? "bg-[#333]" : "bg-[#ddd]")} />
+            {/* Middle: Tool icons */}
+            <div className="flex flex-col items-center gap-1 py-3 flex-1 w-full px-2">
+                <button
+                    title="Notifications"
+                    className={cn(
+                        "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
+                        isDark ? "text-[#6b6b6b] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-[#111] hover:bg-[#f1f1f9]"
+                    )}
+                >
+                    <Bell size={16} strokeWidth={1.75} />
+                </button>
+            </div>
+
+            {/* Bottom: theme toggle + avatar */}
+            <div className={cn(
+                "flex flex-col items-center gap-2 pt-3 pb-3 w-full px-2",
+                isDark ? "border-t border-white/5" : "border-t border-[#ebebf5]"
+            )}>
                 <button
                     onClick={toggleTheme}
+                    title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
                     className={cn(
-                        "p-2 rounded transition-all",
-                        theme === 'dark' ? "text-amber-500 hover:bg-[#2A2A2A]" : "text-amber-500 hover:bg-[#eaeaea]"
+                        "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
+                        isDark ? "text-[#6b6b6b] hover:text-[#efca00] hover:bg-white/5" : "bg-[#f1f1f9] text-[#fa6e34] hover:text-[#ff804b]"
                     )}
-                    title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                 >
-                    {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
+                    {isDark ? <Moon size={14} strokeWidth={1.75} /> : <Sun size={14} strokeWidth={1.75} />}
                 </button>
-                <ToolItem icon={<LogOut size={15} />} theme={theme} />
+
+                {/* User avatar */}
+                <div className={cn(
+                    "w-8 h-8 rounded-[10px] flex items-center justify-center cursor-pointer transition-colors select-none",
+                    isDark ? "bg-[#2c2c2e] text-white/60 hover:bg-[#333]" : "bg-[#f1f1f9] text-[#666] hover:bg-[#eaeaef]"
+                )}>
+                    <span className="text-[10px] font-semibold">MH</span>
+                </div>
             </div>
         </nav>
-    );
-}
-
-function ToolItem({ icon, theme }: { icon: React.ReactNode, theme: 'light' | 'dark' }) {
-    return (
-        <button
-            className={cn(
-                "p-2 rounded transition-all",
-                theme === 'dark' ? "text-[#888] hover:text-white hover:bg-[#2A2A2A]" : "text-[#777] hover:text-black hover:bg-[#eaeaea]"
-            )}
-        >
-            {icon}
-        </button>
     );
 }

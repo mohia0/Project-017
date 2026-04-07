@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import '@mantine/core/styles.css';
 import AppLayout from '@/components/layout/AppLayout';
+import { Providers } from '@/components/layout/Providers';
 
 export const metadata: Metadata = {
   title: 'Minimal CRM',
@@ -15,8 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AppLayout>{children}</AppLayout>
+        <Providers>
+          <AppLayout>{children}</AppLayout>
+        </Providers>
       </body>
     </html>
   );
 }
+

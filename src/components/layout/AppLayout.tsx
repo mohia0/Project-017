@@ -9,23 +9,25 @@ import { cn } from '@/lib/utils';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { theme } = useUIStore();
+    const isDark = theme === 'dark';
+
     return (
         <div className={cn(
-            "flex h-screen w-full overflow-hidden transition-colors duration-300",
-            theme === 'dark' ? "bg-[#121212] text-white" : "bg-[#fdfdfd] text-[#171717]"
+            "flex h-screen w-full overflow-hidden p-2.5 gap-2.5",
+            isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f1f1f9] text-[#111]"
         )}>
-            {/* 2) LEFT SIDE – SYSTEM MENU BAR */}
+            {/* LEFT — compact icon sidebar */}
             <LeftSystemMenu />
 
-            {/* 3) CENTER – MAIN WORKSPACE */}
+            {/* CENTER — main workspace */}
             <main className={cn(
-                "flex-1 flex flex-col relative overflow-hidden border-x transition-colors duration-300",
-                theme === 'dark' ? "border-[#333] bg-[#0a0a0a]" : "border-[#e2e2e2]/40 bg-white"
+                "flex-1 flex flex-col relative overflow-hidden rounded-2xl shadow-sm transition-colors duration-300",
+                isDark ? "bg-[#141414]" : "bg-white border border-[#d2d2eb]"
             )}>
                 {children}
             </main>
 
-            {/* 1) RIGHT SIDE – TOOLS MENU BAR */}
+            {/* RIGHT — compact tools sidebar */}
             <RightToolsMenu />
 
             {/* Global Modals */}

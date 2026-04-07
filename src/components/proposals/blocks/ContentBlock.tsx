@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Placeholder from '@tiptap/extension-placeholder';
-import { cn } from '@/lib/utils';
-import { BlockProps } from './SectionBlockWrapper';
+import React from 'react';
+import { BlockNoteView } from "@blocknote/mantine";
+import { useCreateBlockNote } from "@blocknote/react";
+import "@blocknote/mantine/style.css";
+import { useUIStore } from '@/store/useUIStore';
 
 export interface ContentBlockProps {
     id: string;
@@ -14,48 +13,54 @@ export interface ContentBlockProps {
 }
 
 export function ContentBlock({ id, data, updateData }: ContentBlockProps) {
-    const [isFocused, setIsFocused] = useState(false);
+    const { theme } = useUIStore();
+    const isDark = theme === 'dark';
 
-    const editor = useEditor({
-        extensions: [
-            StarterKit,
-            Placeholder.configure({
-                placeholder: 'Type \'/\' for commands or start typing...',
-            }),
-        ],
-        content: data.content || '',
-        immediatelyRender: false,
-        onUpdate: ({ editor }) => {
-            updateData(id, { ...data, content: editor.getHTML() });
-        },
-        onFocus: () => setIsFocused(true),
-        onBlur: () => setIsFocused(false),
+    // Initialize editor with initial content
+    // BlockNote can take initialContent as partial blocks
+    const editor = useCreateBlockNote({
+        initialContent: data.blocks || (data.content ? undefined : [
+            {
+                type: "paragraph",
+                content: "Start typing...",
+            }
+        ]),
     });
 
+    // Handle change
+    const onChange = () => {
+        // We can save as blocks for full Notion fidelity, or HTML for compatibility
+        // The store seems to support 'blocks: any[]' so lets use that if available,
+        // otherwise fallback to HTML for 'content'
+        const blocks = editor.document;
+        updateData(id, { 
+            ...data, 
+            blocks: blocks,
+            content: "" // Clear HTML if we are using blocks now
+        });
+    };
+
     return (
-        <div className="w-full max-w-full relative editor-content">
-            <EditorContent
-                editor={editor}
-                className={cn(
-                    "min-h-[24px] outline-none border-none prose prose-p:my-1 prose-headings:my-2 prose-h1:text-3xl prose-h2:text-xl prose-h3:text-lg focus:outline-none transition-colors rounded p-2",
-                    isFocused ? "bg-black/5 dark:bg-white/5" : "bg-transparent"
-                )}
+        <div className="w-full max-w-full relative blocknote-editor">
+            <BlockNoteView 
+                editor={editor} 
+                theme={isDark ? "dark" : "light"}
+                onChange={onChange}
+                className="min-h-[50px]"
             />
 
             <style jsx global>{`
-                .editor-content .ProseMirror {
-                    min-height: 24px;
+                .blocknote-editor .bn-container {
+                    background: transparent !important;
+                    padding: 0 !important;
                 }
-                .editor-content .ProseMirror:focus {
-                    outline: none;
+                .blocknote-editor .bn-editor {
+                    padding-inline: 0 !important;
+                    min-height: 50px;
                 }
-                .editor-content .ProseMirror p.is-editor-empty:first-child::before {
-                    content: attr(data-placeholder);
-                    float: left;
+                .bn-block-content[data-is-empty-and-focused] .bn-inline-content:before {
                     color: #ccc;
-                    pointer-events: none;
-                    height: 0;
-                    font-style: italic;
+                    opacity: 0.5;
                 }
             `}</style>
         </div>

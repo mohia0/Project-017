@@ -3,15 +3,59 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore, ProposalStatus, Proposal } from '@/store/useProposalStore';
-import { DataTable, ColumnDef } from '@/components/ui/DataTable';
 import { cn } from '@/lib/utils';
 import {
-    Search, LayoutGrid, Edit3, Filter, Copy, ArrowDownUp,
-    EyeOff, Plus, ChevronDown, User, FileText, ArrowRightLeft,
-    Circle
+    Search, Table2, Edit3, ChevronDown, Group, ArrowUpDown,
+    Archive, Upload, Download, Plus, User, Filter, Calendar
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+/* ─── Status config ─────────────────────────────────────────────── */
+const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
+    All:       { bg: 'bg-[#5a5a5a]',  text: 'text-white', dot: 'bg-white/60',    label: 'Proposals' },
+    Draft:     { bg: 'bg-[#4285F4]',  text: 'text-white', dot: 'bg-white/70',    label: 'Draft' },
+    Pending:   { bg: 'bg-[#e28a02]',  text: 'text-white', dot: 'bg-white/70',    label: 'Pending' },
+    Accepted:  { bg: 'bg-[#22c55e]',  text: 'text-white', dot: 'bg-white/70',    label: 'Accepted' },
+    Overdue:   { bg: 'bg-[#ef4444]',  text: 'text-white', dot: 'bg-white/70',    label: 'Overdue' },
+    Declined:  { bg: 'bg-[#a16a53]',  text: 'text-white', dot: 'bg-white/70',    label: 'Declined' },
+    Cancelled: { bg: 'bg-[#64748b]',  text: 'text-white', dot: 'bg-white/70',    label: 'Cancelled' },
+};
+
+const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
+    Draft:    { bg: 'bg-[#dbeafe]',  text: 'text-[#1d4ed8]' },
+    Pending:  { bg: 'bg-[#fef3c7]',  text: 'text-[#b45309]' },
+    Accepted: { bg: 'bg-[#dcfce7]',  text: 'text-[#15803d]' },
+    Overdue:  { bg: 'bg-[#fee2e2]',  text: 'text-[#dc2626]' },
+    Declined: { bg: 'bg-[#f3e8e3]',  text: 'text-[#7c4d3a]' },
+    Cancelled:{ bg: 'bg-[#f1f5f9]',  text: 'text-[#475569]' },
+};
+
+function formatCurrency(val: number) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(val);
+}
+
+function formatDate(dateStr: string | undefined | null) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+}
+
+function timeAgo(dateStr: string | undefined | null) {
+    if (!dateStr) return '';
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diffMs = now - then;
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (days === 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 7) return `${days} days ago`;
+    const weeks = Math.floor(days / 7);
+    if (weeks < 5) return `about ${weeks} month${weeks > 1 ? 's' : ''} ago`;
+    const months = Math.floor(days / 30);
+    return `${months} months ago`;
+}
+
+/* ─── Main page ─────────────────────────────────────────────────── */
 export default function ProposalsPage() {
     const router = useRouter();
     const { theme } = useUIStore();
@@ -20,267 +64,392 @@ export default function ProposalsPage() {
     const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'All'>('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [dateRange] = useState('This Year');
 
-    useEffect(() => {
-        fetchProposals();
-    }, [fetchProposals]);
+    const isDark = theme === 'dark';
 
-    // Derived State
-    const filteredProposals = useMemo(() => {
-        let result = proposals;
+    useEffect(() => { fetchProposals(); }, [fetchProposals]);
 
-        if (statusFilter !== 'All') {
-            result = result.filter(p => p.status === statusFilter);
-        }
-
-        if (searchQuery) {
-            result = result.filter(p =>
-                p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (p.client_name && p.client_name.toLowerCase().includes(searchQuery.toLowerCase()))
-            );
-        }
-
-        return result;
-    }, [proposals, searchQuery, statusFilter]);
-
+    /* ── Derived stats ── */
     const stats = useMemo(() => {
-        const s: Record<string, { count: number, amount: number, color: string, textColor: string }> = {
-            All: { count: 0, amount: 0, color: theme === 'dark' ? 'bg-[#333]' : 'bg-[#e2e2e2]', textColor: theme === 'dark' ? 'text-white' : 'text-[#111]' },
-            Draft: { count: 0, amount: 0, color: 'bg-[#4285F4]', textColor: 'text-white' },
-            Pending: { count: 0, amount: 0, color: 'bg-[#E27602]', textColor: 'text-white' },
-            Accepted: { count: 0, amount: 0, color: 'bg-[#4ade80]', textColor: 'text-black' },
-            Overdue: { count: 0, amount: 0, color: 'bg-[#d91f4e]', textColor: 'text-white' },
-            Declined: { count: 0, amount: 0, color: 'bg-[#a76b53]', textColor: 'text-white' },
-            Cancelled: { count: 0, amount: 0, color: 'bg-[#60728c]', textColor: 'text-white' },
+        const s: Record<string, { count: number; amount: number }> = {
+            All: { count: 0, amount: 0 },
+            Draft: { count: 0, amount: 0 },
+            Pending: { count: 0, amount: 0 },
+            Accepted: { count: 0, amount: 0 },
+            Overdue: { count: 0, amount: 0 },
+            Declined: { count: 0, amount: 0 },
+            Cancelled: { count: 0, amount: 0 },
         };
-
         proposals.forEach(p => {
             s.All.count++;
             s.All.amount += Number(p.amount || 0);
-
             if (s[p.status]) {
                 s[p.status].count++;
                 s[p.status].amount += Number(p.amount || 0);
             }
         });
         return s;
-    }, [proposals, theme]);
+    }, [proposals]);
 
-    // Format currency helper
-    const formatCurrency = (val: number) =>
-        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
-
-    // Columns Definition for DataTable
-    const columns: ColumnDef<Proposal>[] = useMemo(() => [
-        {
-            id: 'id',
-            width: 300,
-            minWidth: 150,
-            header: 'Subject',
-            cell: (prop) => (
-                <div className="font-bold tracking-tight">
-                    <span className={theme === 'dark' ? "text-white/90" : "text-black/90"}>
-                        {prop.title || 'Untitled Proposal'}
-                    </span>
-                </div>
-            )
-        },
-        {
-            id: 'status',
-            width: 140,
-            minWidth: 100,
-            header: 'Status',
-            cell: (prop) => {
-                let dotColor = 'bg-[#444]';
-                let textColor = 'text-[#999]';
-                if (prop.status === 'Accepted') { dotColor = 'bg-[#4ade80]'; textColor = theme === 'dark' ? 'text-white' : 'text-black'; }
-                else if (prop.status === 'Pending') { dotColor = 'bg-[#E27602]'; textColor = 'text-[#E27602]'; }
-                else if (prop.status === 'Draft') { dotColor = 'bg-[#4285F4]'; textColor = 'text-[#4285F4]'; }
-                else if (prop.status === 'Overdue') { dotColor = 'bg-[#d91f4e]'; textColor = 'text-[#d91f4e]'; }
-
-                return (
-                    <div className="flex items-center gap-2">
-                        <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
-                        <span className={cn("font-bold text-[10px] uppercase tracking-wider", textColor)}>{prop.status}</span>
-                    </div>
-                );
-            }
-        },
-        {
-            id: 'issueDate',
-            width: 140,
-            minWidth: 100,
-            header: 'Issue',
-            cell: (prop) => (
-                <span className="opacity-40 font-normal">
-                    {prop.issue_date ? new Date(prop.issue_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
-                </span>
-            )
-        },
-        {
-            id: 'expirationDate',
-            width: 140,
-            minWidth: 100,
-            header: 'Due',
-            cell: (prop) => (
-                <span className="opacity-40 font-normal text-red-500/50">
-                    {prop.due_date ? new Date(prop.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
-                </span>
-            )
-        },
-        {
-            id: 'client',
-            width: 250,
-            minWidth: 150,
-            header: 'Client',
-            cell: (prop) => (
-                <div className="flex items-center gap-2 truncate opacity-70">
-                    <span className="truncate">{prop.client_name || '-'}</span>
-                </div>
-            )
-        },
-        {
-            id: 'total',
-            width: 120,
-            minWidth: 100,
-            header: (
-                <div className="text-right w-full opacity-30">Amount</div>
-            ),
-            cell: (prop) => (
-                <div className="font-black text-right w-full tracking-tighter text-[14px]">
-                    {formatCurrency(Number(prop.amount || 0))}
-                </div>
-            )
+    /* ── Filtered data ── */
+    const filtered = useMemo(() => {
+        let result = proposals;
+        if (statusFilter !== 'All') result = result.filter(p => p.status === statusFilter);
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(p =>
+                p.title?.toLowerCase().includes(q) ||
+                p.client_name?.toLowerCase().includes(q)
+            );
         }
-    ], [theme]);
+        return result;
+    }, [proposals, statusFilter, searchQuery]);
 
-    const getRowColor = (prop: Proposal, currentTheme: 'light' | 'dark') => {
-        if (prop.status === 'Accepted') return currentTheme === 'dark' ? 'text-white font-medium' : 'text-[#111] font-medium';
-        if (['Declined', 'Overdue', 'Cancelled'].includes(prop.status)) return currentTheme === 'dark' ? 'text-[#999]' : 'text-[#666]';
-        return currentTheme === 'dark' ? 'text-[#ccc]' : 'text-[#444]'; // Pending or Draft
+    /* ── Selection ── */
+    const toggleAll = () => {
+        if (selectedIds.size === filtered.length && filtered.length > 0) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filtered.map(p => p.id)));
+        }
+    };
+    const toggleRow = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const next = new Set(selectedIds);
+        next.has(id) ? next.delete(id) : next.add(id);
+        setSelectedIds(next);
     };
 
-    const EmptyState = (
-        <div className="flex flex-col items-center justify-center p-16 text-[#666]">
-            <FileText size={48} className="mb-4 opacity-50 stroke-1" />
-            <p className="text-sm shadow-sm">No proposals found.</p>
-            <button
-                onClick={() => router.push('/proposals/new')}
-                className="mt-4 px-4 py-2 text-[12px] font-bold text-white bg-emerald-500 rounded hover:bg-emerald-600 transition-all shadow-[0_4px_15px_rgba(16,185,129,0.3)]"
-            >
-                Create one now
-            </button>
-        </div>
-    );
-
-    const CreateNewRow = (
-        <div
-            onClick={() => router.push('/proposals/new')}
-            className={cn(
-                "flex items-center gap-2 px-10 py-3 text-[12px] font-bold cursor-pointer transition-colors mt-2",
-                theme === 'dark' ? "text-[#ccc] hover:bg-white/5 hover:text-white" : "text-[#666] hover:bg-black/5 hover:text-black"
-            )}>
-            <Plus size={14} className="opacity-75" /> Create proposal
-        </div>
-    );
+    const isAllSelected = filtered.length > 0 && selectedIds.size === filtered.length;
 
     return (
         <div className={cn(
-            "flex flex-col h-full overflow-hidden transition-colors duration-300 font-sans",
-            theme === 'dark' ? "bg-[#252525] text-white" : "bg-[#f5f5f5] text-[#111]"
+            "flex flex-col h-full overflow-hidden font-sans text-[13px]",
+            isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-white text-[#111]"
         )}>
-            <div className="flex flex-col flex-1 p-8 gap-8 max-w-[1600px] w-full mx-auto overflow-hidden">
-                <div className="flex items-center justify-between shrink-0">
-                    <h1 className="text-[26px] font-black tracking-tight">Proposals</h1>
-                    <div className="text-[11px] font-bold opacity-40 uppercase tracking-[0.2em]">
-                        {filteredProposals.length} Proposals found
-                    </div>
+
+            {/* ── Page header ── */}
+            <div className={cn(
+                "flex items-center justify-between px-5 py-3 border-b shrink-0",
+                isDark ? "border-[#252525]" : "border-[#ebebeb]"
+            )}>
+                <h1 className="text-[15px] font-semibold tracking-tight">Proposals</h1>
+                <button
+                    onClick={() => router.push('/proposals/new')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors"
+                >
+                    <Plus size={13} strokeWidth={2.5} /> New Proposal
+                </button>
+            </div>
+
+            {/* ── Toolbar ── */}
+            <div className={cn(
+                "flex items-center gap-0 px-4 py-1.5 border-b shrink-0 flex-wrap",
+                isDark ? "border-[#252525]" : "border-[#ebebeb]"
+            )}>
+                {/* Search */}
+                <div className="relative mr-2">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" size={11} />
+                    <input
+                        type="text"
+                        placeholder="Search"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className={cn(
+                            "pl-6 pr-3 py-1 text-[11px] rounded border focus:outline-none w-28 transition-all focus:w-44",
+                            isDark
+                                ? "bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-white/20"
+                                : "bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]"
+                        )}
+                    />
                 </div>
 
-                {/* Toolbar */}
-                <div className="flex items-center gap-1.5 flex-wrap opacity-40 hover:opacity-100 transition-opacity duration-300">
-                    {/* Search */}
-                    <div className="relative mr-4">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-current opacity-30" size={11} />
-                        <input
-                            type="text"
-                            placeholder="Search"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className={cn(
-                                "pl-8 pr-4 py-1 text-[11px] font-medium rounded-full border focus:outline-none w-40 transition-all focus:w-60 focus:border-emerald-500/50",
-                                theme === 'dark' ? "bg-white/5 border-white/10 text-white placeholder:text-white/20" : "bg-black/5 border-black/10 text-black placeholder:text-black/20"
-                            )}
-                        />
+                <TbBtn label="Table" icon={<Table2 size={11} />} hasArrow isDark={isDark} />
+                <TbBtn label="Edit view" icon={<Edit3 size={11} />} isDark={isDark} />
+
+                {/* Date range pill */}
+                <button className={cn(
+                    "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded mx-1 border transition-all",
+                    isDark
+                        ? "bg-[#252525] border-[#333] text-[#ccc] hover:border-[#444]"
+                        : "bg-white border-[#d0d0d0] text-[#444] hover:border-[#bbb] shadow-xs"
+                )}>
+                    <Calendar size={11} className="opacity-60" />
+                    {dateRange}
+                </button>
+
+                <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
+
+                <TbBtn label="Group" icon={<Group size={11} />} isDark={isDark} />
+                <TbBtn label="Order" icon={<ArrowUpDown size={11} />} isDark={isDark} />
+
+                <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
+
+                <TbBtn label="Archived" icon={<Archive size={11} />} isDark={isDark} />
+                <TbBtn label="Import / Export" icon={<Upload size={11} />} isDark={isDark} />
+
+                {/* Bulk selection banner */}
+                {selectedIds.size > 0 && (
+                    <div className="ml-auto flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded text-[11px] font-medium">
+                        {selectedIds.size} selected
+                        <button className="hover:underline">Delete</button>
                     </div>
+                )}
+            </div>
 
-                    <ToolbarButton icon={<LayoutGrid size={11} />} label="View" hasDropdown theme={theme} />
-                    <ToolbarButton icon={<Filter size={11} />} label="Filter" theme={theme} />
-                    <ToolbarButton icon={<ArrowDownUp size={11} />} label="Sort" theme={theme} />
-
-                    {/* Bulk Selection Actions (Appears contextually) */}
-                    {selectedIds.size > 0 && (
-                        <div className="flex items-center gap-2 ml-4 px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-lg animate-in fade-in zoom-in-95 font-bold text-[12px]">
-                            {selectedIds.size} Selected
-                            <button className="ml-2 px-2 hover:bg-emerald-500/20 rounded py-0.5 transition-colors text-emerald-600 dark:text-emerald-400">
-                                Send All
-                            </button>
-                            <button className="px-2 hover:bg-emerald-500/20 rounded py-0.5 transition-colors text-red-500 border-l border-emerald-500/20">
-                                Archive
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                {/* Stats Bar */}
-                <div className="flex items-stretch text-[10px] font-bold h-7 rounded-lg overflow-hidden shrink-0 shadow-sm border border-transparent dark:border-[#333]">
-                    {Object.entries(stats).map(([key, value]) => (
+            {/* ── Status Bar ── */}
+            <div className="flex items-stretch h-[26px] shrink-0">
+                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+                    const s = stats[key] || { count: 0, amount: 0 };
+                    const isActive = statusFilter === key;
+                    return (
                         <button
                             key={key}
                             onClick={() => setStatusFilter(key as any)}
                             className={cn(
-                                "flex-1 min-w-[100px] px-3 flex items-center justify-center gap-1.5 transition-all hover:brightness-110",
-                                value.color,
-                                value.textColor,
-                                statusFilter === key ? "ring-2 ring-inset ring-white/30 brightness-110 scale-[1.02] z-10" : "opacity-85"
+                                "flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all relative overflow-hidden",
+                                cfg.bg, cfg.text,
+                                isActive ? "brightness-110" : "brightness-90 hover:brightness-100"
                             )}
                         >
-                            <span>{value.count}</span>
-                            <span className="opacity-70 font-medium">{key}</span>
-                            <span className="ml-auto font-black">{formatCurrency(value.amount)}</span>
+                            <span className="font-bold tabular-nums">{s.count}</span>
+                            <span className="opacity-80 font-medium">{cfg.label}</span>
+                            {s.amount > 0 && (
+                                <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">
+                                    {formatCurrency(s.amount)}
+                                </span>
+                            )}
                         </button>
-                    ))}
+                    );
+                })}
+            </div>
+
+            {/* ── Table ── */}
+            <div className="flex-1 overflow-auto">
+                {/* Table header */}
+                <div className={cn(
+                    "grid px-4 py-2 border-b text-[10px] font-semibold uppercase tracking-wider sticky top-0 z-10",
+                    isDark
+                        ? "bg-[#1a1a1a] border-[#252525] text-[#555]"
+                        : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]",
+                )}
+                    style={{ gridTemplateColumns: '28px 40px 200px 160px 200px 180px 1fr' }}
+                >
+                    {/* Select all */}
+                    <div
+                        className="flex items-center cursor-pointer"
+                        onClick={toggleAll}
+                    >
+                        <Checkbox checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                    </div>
+                    <div /> {/* spacer for status dropdown chevron */}
+                    <div>Status</div>
+                    <div>Issue date</div>
+                    <div>Expiration date</div>
+                    <div>Client</div>
+                    <div className="text-right">Total: {formatCurrency(stats[statusFilter]?.amount ?? 0)}</div>
                 </div>
 
-                {/* Reusable Data Table Component */}
-                <DataTable<Proposal>
-                    data={filteredProposals}
-                    columns={columns}
-                    keyExtractor={(prop) => prop.id}
-                    onRowClick={(prop) => router.push(`/proposals/${prop.id}`)}
-                    getRowColor={getRowColor}
-                    theme={theme}
-                    isLoading={isLoading}
-                    emptyState={EmptyState}
-                    bottomAction={(filteredProposals.length > 0 || !searchQuery) ? CreateNewRow : null}
-                    enableSelection={true}
-                    selectedIds={selectedIds}
-                    onSelectionChange={setSelectedIds}
-                />
+                {/* Rows */}
+                {isLoading ? (
+                    <LoadingSkeleton isDark={isDark} />
+                ) : filtered.length === 0 ? (
+                    <EmptyState isDark={isDark} onCreate={() => router.push('/proposals/new')} />
+                ) : (
+                    filtered.map(proposal => {
+                        const isSelected = selectedIds.has(proposal.id);
+                        const badge = STATUS_BADGE[proposal.status] || { bg: 'bg-gray-100', text: 'text-gray-500' };
+
+                        return (
+                            <div
+                                key={proposal.id}
+                                onClick={() => router.push(`/proposals/${proposal.id}`)}
+                                className={cn(
+                                    "grid px-4 py-0 border-b text-[12px] cursor-pointer group transition-colors",
+                                    isDark
+                                        ? "border-[#1f1f1f] hover:bg-white/[0.025]"
+                                        : "border-[#f0f0f0] hover:bg-[#fafafa]",
+                                    isSelected && (isDark ? "bg-blue-900/20" : "bg-blue-50/60")
+                                )}
+                                style={{ gridTemplateColumns: '28px 40px 200px 160px 200px 180px 1fr' }}
+                            >
+                                {/* Select checkbox */}
+                                <div
+                                    className="flex items-center self-stretch"
+                                    onClick={e => toggleRow(proposal.id, e)}
+                                >
+                                    <Checkbox checked={isSelected} isDark={isDark} />
+                                </div>
+
+                                {/* ID / number label */}
+                                <div className={cn(
+                                    "flex items-center font-mono text-[10px]",
+                                    isDark ? "text-[#555]" : "text-[#bbb]"
+                                )}>
+                                    {proposal.id?.slice(-4) ?? '—'}
+                                </div>
+
+                                {/* Status badge with dropdown */}
+                                <div className="flex items-center py-2.5">
+                                    <div className={cn(
+                                        "flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold",
+                                        badge.bg, badge.text
+                                    )}>
+                                        {proposal.status}
+                                        <ChevronDown size={9} className="opacity-50" />
+                                    </div>
+                                </div>
+
+                                {/* Issue date */}
+                                <div className={cn(
+                                    "flex items-center gap-1",
+                                    isDark ? "text-[#777]" : "text-[#888]"
+                                )}>
+                                    <span>{formatDate(proposal.issue_date)}</span>
+                                    <span className="text-[10px] opacity-50">({timeAgo(proposal.issue_date)})</span>
+                                </div>
+
+                                {/* Expiration date */}
+                                <div className={cn(
+                                    "flex items-center gap-1",
+                                    isDark ? "text-[#777]" : "text-[#888]"
+                                )}>
+                                    {proposal.due_date ? (
+                                        <>
+                                            <span className="text-[#3b82f6]">{formatDate(proposal.due_date)}</span>
+                                            <span className="text-[10px] opacity-50">({timeAgo(proposal.due_date)})</span>
+                                        </>
+                                    ) : '—'}
+                                </div>
+
+                                {/* Client */}
+                                <div className={cn(
+                                    "flex items-center gap-1.5 truncate",
+                                    isDark ? "text-[#888]" : "text-[#666]"
+                                )}>
+                                    {proposal.client_name && (
+                                        <User size={11} className="opacity-40 shrink-0" />
+                                    )}
+                                    <span className="truncate">{proposal.client_name || '—'}</span>
+                                </div>
+
+                                {/* Amount */}
+                                <div className={cn(
+                                    "flex items-center justify-end font-semibold tabular-nums",
+                                    isDark ? "text-[#ccc]" : "text-[#333]"
+                                )}>
+                                    {formatCurrency(Number(proposal.amount || 0))}
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+
+                {/* Create proposal row */}
+                {!isLoading && (
+                    <button
+                        onClick={() => router.push('/proposals/new')}
+                        className={cn(
+                            "flex items-center gap-2 px-4 py-2.5 w-full text-left text-[11px] font-medium transition-colors",
+                            isDark
+                                ? "text-[#555] hover:text-[#aaa] hover:bg-white/[0.02]"
+                                : "text-[#aaa] hover:text-[#555] hover:bg-[#fafafa]"
+                        )}
+                    >
+                        <Plus size={12} className="opacity-70" />
+                        Create proposal
+                    </button>
+                )}
             </div>
         </div>
     );
 }
 
-function ToolbarButton({ icon, label, hasDropdown, theme }: { icon: React.ReactNode, label: string, hasDropdown?: boolean, theme: 'light' | 'dark' }) {
+/* ─── Sub-components ────────────────────────────────────────────── */
+
+function TbBtn({
+    label, icon, hasArrow, isDark
+}: {
+    label: string;
+    icon?: React.ReactNode;
+    hasArrow?: boolean;
+    isDark: boolean;
+}) {
     return (
         <button className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold rounded-full hover:bg-black/5 transition-colors shrink-0",
-            theme === 'dark' ? "text-white/60 hover:text-white hover:bg-white/5" : "text-black/60 hover:text-black hover:bg-black/5"
+            "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded transition-colors shrink-0",
+            isDark
+                ? "text-[#777] hover:text-[#ccc] hover:bg-white/5"
+                : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]"
         )}>
             {icon}
             {label}
-            {hasDropdown && <ChevronDown size={10} className="ml-0.5 opacity-30" />}
+            {hasArrow && <ChevronDown size={9} className="opacity-40" />}
         </button>
+    );
+}
+
+function Checkbox({
+    checked,
+    indeterminate,
+    isDark,
+}: {
+    checked: boolean;
+    indeterminate?: boolean;
+    isDark: boolean;
+}) {
+    return (
+        <div className={cn(
+            "w-[13px] h-[13px] rounded-[3px] border flex items-center justify-center transition-all shrink-0",
+            checked
+                ? "bg-[#3b82f6] border-[#3b82f6]"
+                : indeterminate
+                    ? "bg-[#3b82f6]/40 border-[#3b82f6]/60"
+                    : isDark
+                        ? "border-[#3a3a3a] bg-transparent"
+                        : "border-[#d0d0d0] bg-white"
+        )}>
+            {(checked || indeterminate) && (
+                <svg width="7" height="5" viewBox="0 0 8 6" fill="none">
+                    {indeterminate && !checked
+                        ? <line x1="1" y1="3" x2="7" y2="3" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                        : <polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    }
+                </svg>
+            )}
+        </div>
+    );
+}
+
+function LoadingSkeleton({ isDark }: { isDark: boolean }) {
+    return (
+        <div className="flex flex-col">
+            {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                    key={i}
+                    className={cn(
+                        "h-11 border-b animate-pulse",
+                        isDark ? "border-[#1f1f1f] bg-white/[0.01]" : "border-[#f0f0f0] bg-[#fafafa]"
+                    )}
+                />
+            ))}
+        </div>
+    );
+}
+
+function EmptyState({ isDark, onCreate }: { isDark: boolean; onCreate: () => void }) {
+    return (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+            <div className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                No proposals found.
+            </div>
+            <button
+                onClick={onCreate}
+                className="px-4 py-1.5 text-[12px] font-semibold text-white bg-[#22c55e] rounded hover:bg-[#16a34a] transition-colors"
+            >
+                Create proposal
+            </button>
+        </div>
     );
 }
