@@ -13,8 +13,10 @@ export default function RightToolsMenu() {
     return (
         <nav className={cn(
             "h-full w-[44px] flex flex-col items-center shrink-0 transition-colors duration-300 z-10",
-            rightPanel ? "rounded-r-2xl rounded-l-none" : "rounded-2xl",
-            isDark ? "bg-[#141414]" : "bg-[#fff] border border-[#d2d2eb]"
+            rightPanel ? "rounded-r-2xl rounded-l-none border-l" : "rounded-2xl",
+            isDark 
+                ? cn("bg-[#141414]", rightPanel && "border-[#222]") 
+                : cn("bg-[#fff]", rightPanel && "border-[#ebebeb]")
         )}>
             {/* Top: Create button */}
             <div className="flex flex-col items-center pt-1.5 pb-3 w-full">

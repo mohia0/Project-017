@@ -19,12 +19,12 @@ export default function DashboardPage() {
     return (
         <div className={cn(
             "flex flex-col h-full overflow-hidden font-sans text-[13px]",
-            isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-white text-[#111]"
+            isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]"
         )}>
             {/* ── Page header ── */}
             <div className={cn(
-                "flex items-center justify-between px-5 py-3 border-b shrink-0",
-                border
+                "flex items-center justify-between px-5 py-3 shrink-0",
+                isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white"
             )}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Dashboard</h1>
                 <button

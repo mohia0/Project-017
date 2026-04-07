@@ -23,7 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* CENTER — main workspace */}
             <main className={cn(
                 "flex-1 flex flex-col relative overflow-hidden rounded-2xl transition-colors duration-300 min-w-0",
-                isDark ? "bg-[#141414]" : "bg-white border border-[#d2d2eb]"
+                isDark ? "bg-[#141414]" : "bg-white"
             )}>
                 {children}
             </main>

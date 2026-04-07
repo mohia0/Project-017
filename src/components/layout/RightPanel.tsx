@@ -451,8 +451,8 @@ export default function RightPanel() {
                         opacity: { duration: 0.15 }
                     }}
                     className={cn(
-                        "h-full shrink-0 flex flex-col rounded-l-2xl rounded-r-none overflow-hidden transition-colors shadow-2xl",
-                        isDark ? "bg-[#141414]" : "bg-white border-[#d2d2eb]"
+                        "h-full shrink-0 flex flex-col rounded-l-2xl rounded-r-none overflow-hidden transition-colors",
+                        isDark ? "bg-[#141414]" : "bg-white"
                     )}
                 >
                     <div className="w-[280px] h-full flex flex-col overflow-hidden">

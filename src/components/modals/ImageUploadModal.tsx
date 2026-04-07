@@ -21,6 +21,7 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
     const [url, setUrl] = useState('');
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const handleFiles = useCallback(async (files: FileList | File[]) => {
         const file = files[0];
@@ -33,6 +34,7 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
 
         setUploading(true);
         setError(null);
+        setTab('upload'); // Switch to upload tab to show progress
 
         // Simulation of upload – in a real app, this would go to Supabase Storage
         // For this demo, we use FileReader to get a base64 string
@@ -116,7 +118,13 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                 {/* Tabs */}
                 <div className="flex p-1.5 gap-1">
                     <button 
-                        onClick={() => setTab('upload')}
+                        onClick={() => {
+                            if (tab === 'upload') {
+                                fileInputRef.current?.click();
+                            } else {
+                                setTab('upload');
+                            }
+                        }}
                         className={cn(
                             "flex-1 flex items-center justify-center gap-2 py-2 text-[12px] font-medium rounded-xl transition-all",
                             tab === 'upload' 
@@ -153,6 +161,7 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                             )}
                         >
                             <input 
+                                ref={fileInputRef}
                                 type="file" 
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 accept="image/*"
@@ -209,7 +218,10 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                                         value={url}
                                         onChange={(e) => setUrl(e.target.value)}
                                         placeholder="https://example.com/image.jpg"
-                                        className="flex-1 bg-transparent outline-none text-[13px] text-white"
+                                        className={cn(
+                                            "flex-1 bg-transparent outline-none text-[13px]",
+                                            isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-gray-400"
+                                        )}
                                     />
                                     <button 
                                         disabled={!url || uploading}

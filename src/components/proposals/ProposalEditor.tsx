@@ -321,16 +321,23 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     >
                         <ArrowLeft size={16} />
                     </button>
-                    <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                        <div className={cn(
+                            "flex items-center gap-2 text-[13px] font-medium",
+                            isDark ? "text-white/40" : "text-gray-400"
+                        )}>
+                            <span>Proposal</span>
+                            <span className="opacity-30">/</span>
+                        </div>
                         <input
                             type="text"
-                            value={meta.projectName || "New Proposal"}
+                            value={meta.projectName || ""}
                             onChange={(e) => updateMeta({ projectName: e.target.value })}
                             className={cn(
-                                "text-[18px] font-bold bg-transparent outline-none border-b border-transparent focus:border-[var(--primary)] transition-all max-w-[300px]",
-                                isDark ? "text-white" : "text-[#111]"
+                                "text-[13px] font-semibold bg-transparent outline-none transition-all min-w-[150px]",
+                                isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300"
                             )}
-                            placeholder="Proposal Title"
+                            placeholder="Untitled Proposal"
                         />
                     </div>
                     {/* Auto-save Indicator */}

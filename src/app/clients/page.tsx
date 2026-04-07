@@ -128,7 +128,7 @@ export default function ClientsPage() {
     const gridBg     = isDark ? 'bg-[#141414]' : 'bg-[#f7f7f7]';
     const border     = isDark ? 'border-[#252525]' : 'border-[#ebebeb]';
     const cardBg     = isDark ? 'bg-[#1a1a1a]'  : 'bg-white';
-    const cardBorder = isDark ? 'border-[#222]'  : 'border-[#e8e8e8]';
+    const cardBorder = isDark ? 'border-[#222]'  : 'border-transparent';
     const muted      = isDark ? 'text-[#555]'    : 'text-[#aaa]';
     const textPrimary    = isDark ? 'text-[#e5e5e5]' : 'text-[#111]';
     const textSecondary  = isDark ? 'text-[#777]'    : 'text-[#888]';
@@ -140,11 +140,11 @@ export default function ClientsPage() {
     return (
         <div className={cn(
             "flex flex-col h-full overflow-hidden font-sans text-[13px]",
-            isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-white text-[#111]"
+            isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]"
         )}>
 
             {/* ── Page header ── */}
-            <div className={cn("flex items-center justify-between px-5 py-3 border-b shrink-0", pageBg, border)}>
+            <div className={cn("flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Contacts</h1>
                 <button
                     onClick={() => tab === 'companies' ? setIsCompanyModalOpen(true) : setIsContactEditorOpen(true)}
@@ -156,7 +156,7 @@ export default function ClientsPage() {
             </div>
 
             {/* ── Toolbar ── */}
-            <div className={cn("flex items-center gap-0 px-4 py-1.5 border-b shrink-0", pageBg, border)}>
+            <div className={cn("flex items-center gap-0 px-4 py-1.5 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-[#f7f7f7]")}>
                 {(['people', 'companies'] as Tab[]).map(t => (
                     <button
                         key={t}

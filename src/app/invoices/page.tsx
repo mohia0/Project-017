@@ -156,7 +156,7 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
             className={cn(
                 "relative rounded-[8px] border cursor-pointer transition-all duration-150 group flex flex-col",
                 isDark ? "bg-[#1a1a1a] border-[#2e2e2e] hover:border-[#444]"
-                    : "bg-white border-[#e0e0e0] hover:border-[#ccc] hover:shadow-sm"
+                    : "bg-white border-transparent hover:shadow-sm"
             )}
         >
             {/* Header */}
@@ -494,10 +494,10 @@ export default function InvoicesPage() {
 
     return (
         <div className={cn("flex flex-col h-full overflow-hidden font-sans text-[13px]",
-            isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-white text-[#111]")}>
+            isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]")}>
 
             {/* ── Page header ── */}
-            <div className={cn("flex items-center justify-between px-5 py-3 border-b shrink-0", border)}>
+            <div className={cn("flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Invoices</h1>
                 <button onClick={() => setShowCreateModal(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors">
@@ -506,7 +506,7 @@ export default function InvoicesPage() {
             </div>
 
             {/* ── Toolbar ── */}
-            <div className={cn("flex items-center gap-0 px-4 py-1.5 border-b shrink-0", border)}>
+            <div className={cn("flex items-center gap-0 px-4 py-1.5 shrink-0", isDark ? "border-b border-[#252525]" : "")}>
                 {/* Search */}
                 <div className="relative mr-2">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" size={11} />
@@ -622,7 +622,7 @@ export default function InvoicesPage() {
 
             {/* ── Content ── */}
             {view === 'table' ? (
-                <div className="flex-1 overflow-auto border-t" style={{ borderColor: isDark ? '#252525' : '#ebebeb' }}>
+                <div className="flex-1 overflow-auto" style={{ backgroundColor: isDark ? '#141414' : '#f7f7f7' }}>
                     {/* Header */}
                     <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-10",
                         isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
@@ -680,7 +680,7 @@ export default function InvoicesPage() {
                                 return (
                                     <div key={inv.id} onClick={() => router.push(`/invoices/${inv.id}`)}
                                         className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
-                                            isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "border-[#f0f0f0] hover:bg-[#fafafa]",
+                                            isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
                                             isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
                                         style={{ gridTemplateColumns: gridTemplate }}>
                                         
