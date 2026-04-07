@@ -77,10 +77,6 @@
   }
 }
 
-/* Custom reset rules */
-* {
-  border-color: var(--color-border);
-}
 
 button {
   transition: all 0.15s ease-out;

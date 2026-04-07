@@ -10,6 +10,7 @@ export interface ColumnDef<T> {
     cell: (item: T) => ReactNode;
     width?: number;    // default width in px
     minWidth?: number; // min width in px
+    maxWidth?: number; // max width in px
 }
 
 interface DataTableProps<T> {
@@ -88,8 +89,9 @@ export function DataTable<T>({
         const diff = e.clientX - startX.current;
         const colDef = columns.find(c => c.id === resizingCol.current);
         const minW = colDef?.minWidth || 60;
+        const maxW = colDef?.maxWidth || 800; // Adding max limit safely
 
-        const newW = Math.max(minW, startWidth.current + diff);
+        const newW = Math.max(minW, Math.min(maxW, startWidth.current + diff));
         setColWidths(prev => ({ ...prev, [resizingCol.current!]: newW }));
     };
 
@@ -136,51 +138,62 @@ export function DataTable<T>({
 
     return (
         <div className={cn(
-            "flex-1 flex flex-col relative transition-all duration-700",
-            theme === 'dark' ? "bg-transparent" : "bg-transparent"
+            "flex-1 flex flex-col relative transition-all duration-700 container-styled max-w-full overflow-hidden",
+            "border rounded-xl",
+            theme === 'dark' ? "border-[#252525] bg-[#1a1a1a]" : "border-[#ebebeb] bg-[#fbfbfc]"
         )}>
             {/* Header Row */}
             <div
                 className={cn(
-                    "grid items-center px-8 py-4 border-b text-[9px] font-bold uppercase shrink-0 sticky top-0 z-30 transition-colors tracking-[0.25em]",
-                    theme === 'dark' ? "border-white/[0.03] text-white/20 bg-[#252525]" : "border-black/[0.03] text-black/30 bg-[#f5f5f5]",
+                    "grid items-stretch border-b text-[12px] font-semibold sticky top-0 z-30 transition-colors",
+                    theme === 'dark' ? "border-[#252525] text-[#ccc] bg-[#222]" : "border-[#ebebeb] text-[#111] bg-[#f4f5f8]",
                     isResizing && "pointer-events-none"
                 )}
                 style={{ gridTemplateColumns }}
             >
                 {enableSelection && (
-                    <div className="flex justify-start pr-6" onClick={toggleAll}>
+                    <div className={cn(
+                        "flex justify-center items-center py-3",
+                        theme === 'dark' ? "border-r border-[#333]" : "border-r border-[#ebebeb]"
+                    )} onClick={toggleAll}>
                         <div className="cursor-pointer group flex items-center justify-center">
                             {isAllSelected ? (
-                                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.4)]">
-                                    <CheckCircle2 size={8} className="text-black stroke-[4px]" />
+                                <div className="w-[14px] h-[14px] rounded-full bg-[var(--primary)] flex items-center justify-center">
+                                    <CheckCircle2 size={10} className="text-white stroke-[3px]" />
                                 </div>
                             ) : (
-                                <div className={cn("w-3.5 h-3.5 rounded-full border-[1.5px] transition-all group-hover:border-emerald-500/30", theme === 'dark' ? "border-[#2a2a2a]" : "border-[#e0e0e0]")} />
+                                <Circle size={14} className={cn("transition-all opacity-20 group-hover:opacity-60", theme === 'dark' ? "text-white" : "text-[#111]")} />
                             )}
                         </div>
                     </div>
                 )}
                 {columns.map((col, idx) => (
-                    <div key={col.id} className="relative flex items-center pr-6 h-full group/col">
-                        <div className="flex-1 truncate select-none opacity-80 group-hover/col:opacity-100 transition-opacity uppercase">{col.header}</div>
+                    <div key={col.id} className={cn(
+                        "relative flex items-center h-full px-4 group/col",
+                        idx < columns.length - 1 && (theme === 'dark' ? "border-r border-[#333]" : "border-r border-[#ececec]")
+                    )}>
+                        <div className="flex-1 truncate select-none py-3">{col.header}</div>
 
                         {/* Minimalist Resizer */}
                         {idx < columns.length - 1 && (
                             <div
                                 className={cn(
-                                    "absolute -right-3 top-1/2 -translate-y-1/2 w-[1px] h-[8px] rounded-full transition-all cursor-col-resize z-40",
-                                    theme === 'dark' ? "bg-white/10 opacity-0 group-hover/col:opacity-100" : "bg-black/5 opacity-0 group-hover/col:opacity-100"
+                                    "absolute -right-1.5 top-0 bottom-0 w-[12px] flex items-center justify-center cursor-col-resize z-40 group/resizer"
                                 )}
                                 onMouseDown={(e) => handleMouseDown(e, col.id)}
-                            />
+                            >
+                                <div className={cn(
+                                    "w-[2px] h-[40%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity",
+                                    theme === 'dark' ? "bg-white/20" : "bg-black/20"
+                                )} />
+                            </div>
                         )}
                     </div>
                 ))}
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-auto no-scrollbar pb-10 min-w-max">
+            <div className="flex-1 overflow-auto no-scrollbar pb-0 min-w-max">
                 {isLoading ? (
                     loadingState || <div className="p-8 text-center text-sm text-[#999]">Loading...</div>
                 ) : data.length === 0 ? (
@@ -196,30 +209,36 @@ export function DataTable<T>({
                                 key={id}
                                 onClick={() => onRowClick && onRowClick(item)}
                                 className={cn(
-                                    "grid items-center px-8 py-5 border-b text-[13px] group/row transition-all duration-500",
+                                    "grid items-stretch border-b text-[13px] group/row transition-all duration-300",
                                     onRowClick ? "cursor-pointer" : "",
-                                    theme === 'dark' ? "border-white/[0.02] hover:bg-white/[0.01]" : "border-black/[0.01] hover:bg-black/[0.005]",
-                                    isSelected ? (theme === 'dark' ? "bg-white/[0.02]" : "bg-black/[0.01]") : "",
+                                    theme === 'dark' ? "border-[#252525] bg-[#1a1a1a] hover:bg-[#222]" : "border-[#ebebeb] bg-white hover:bg-[#fcfcd0]/10",
+                                    isSelected ? (theme === 'dark' ? "bg-[#2a2a2a]" : "bg-[#f5f7fa]") : "",
                                     rowColor
                                 )}
                                 style={{ gridTemplateColumns }}
                             >
                                 {enableSelection && (
-                                    <div className="flex justify-start pr-6" onClick={(e) => toggleSelection(id, e)}>
+                                    <div className={cn(
+                                        "flex justify-center items-center py-4",
+                                        theme === 'dark' ? "border-r border-[#252525]" : "border-r border-[#f5f5f5]"
+                                    )} onClick={(e) => toggleSelection(id, e)}>
                                         <div className="cursor-pointer transition-all active:scale-90">
                                             {isSelected ? (
-                                                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.3)] animate-in zoom-in-75 duration-300">
-                                                    <CheckCircle2 size={8} className="text-black stroke-[4px]" />
+                                                <div className="w-[14px] h-[14px] rounded-full bg-[var(--primary)] flex items-center justify-center animate-in zoom-in-75 duration-300">
+                                                    <CheckCircle2 size={10} className="text-white stroke-[3px]" />
                                                 </div>
                                             ) : (
-                                                <div className={cn("w-3.5 h-3.5 rounded-full border-[1.5px] transition-all opacity-10 group-hover/row:opacity-40", theme === 'dark' ? "border-white" : "border-black")} />
+                                                <Circle size={14} className={cn("transition-all opacity-10 group-hover/row:opacity-40", theme === 'dark' ? "text-white" : "text-[#111]")} />
                                             )}
                                         </div>
                                     </div>
                                 )}
 
-                                {columns.map((col) => (
-                                    <div key={col.id} className="truncate pr-6 font-medium text-inherit tracking-tight">
+                                {columns.map((col, colIdx) => (
+                                    <div key={col.id} className={cn(
+                                        "truncate px-4 py-4 font-medium text-inherit tracking-tight flex items-center",
+                                        colIdx < columns.length - 1 && (theme === 'dark' ? "border-r border-[#252525]" : "border-r border-[#f5f5f5]")
+                                    )}>
                                         {col.cell(item)}
                                     </div>
                                 ))}
@@ -229,8 +248,16 @@ export function DataTable<T>({
                 )}
 
                 {/* Bottom Action (e.g. Create new row) */}
-                {!isLoading && bottomAction}
+                {!isLoading && bottomAction && (
+                    <div className={cn(
+                        "p-2", 
+                        theme === 'dark' ? "bg-[#1a1a1a]" : "bg-white"
+                    )}>
+                        {bottomAction}
+                    </div>
+                )}
             </div>
         </div>
     );
 }
+

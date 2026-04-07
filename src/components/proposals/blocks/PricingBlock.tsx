@@ -171,7 +171,7 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                         onClick={() => setSettings({ ...settings, viewMode: 'table' })}
                                         className={cn(
                                             "relative group flex flex-col rounded-xl overflow-hidden border-2 transition-all h-[120px]",
-                                            settings.viewMode === 'table' ? "border-white bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
+                                            settings.viewMode === 'table' ? "border-[#4dbf39]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
                                         )}
                                     >
                                         <div className="flex-1 p-4 flex flex-col gap-2">
@@ -187,7 +187,7 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                         onClick={() => setSettings({ ...settings, viewMode: 'cards' })}
                                         className={cn(
                                             "relative group flex flex-col rounded-xl overflow-hidden border-2 transition-all h-[120px]",
-                                            settings.viewMode === 'cards' ? "border-white bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
+                                            settings.viewMode === 'cards' ? "border-[#4dbf39]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
                                         )}
                                     >
                                         <div className="flex-1 p-4 flex gap-2 justify-center items-center">

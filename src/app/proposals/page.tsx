@@ -1,455 +1,810 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore, ProposalStatus, Proposal } from '@/store/useProposalStore';
+import { useClientStore } from '@/store/useClientStore';
 import { cn } from '@/lib/utils';
 import {
-    Search, Table2, Edit3, ChevronDown, Group, ArrowUpDown,
-    Archive, Upload, Download, Plus, User, Filter, Calendar
+    Search, Table2, LayoutGrid, Edit3, ChevronDown,
+    ArrowUpDown, Archive, Upload, Plus, User, Filter,
+    Calendar, Check, X, ArchiveRestore, ChevronsUpDown,
+    Copy, Trash2, CheckCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { CreateProposalModal } from '@/components/modals/CreateProposalModal';
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
-/* ─── Status config ─────────────────────────────────────────────── */
-const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-    All:       { bg: 'bg-[#5a5a5a]',  text: 'text-white', dot: 'bg-white/60',    label: 'Proposals' },
-    Draft:     { bg: 'bg-[#4285F4]',  text: 'text-white', dot: 'bg-white/70',    label: 'Draft' },
-    Pending:   { bg: 'bg-[#e28a02]',  text: 'text-white', dot: 'bg-white/70',    label: 'Pending' },
-    Accepted:  { bg: 'bg-[#22c55e]',  text: 'text-white', dot: 'bg-white/70',    label: 'Accepted' },
-    Overdue:   { bg: 'bg-[#ef4444]',  text: 'text-white', dot: 'bg-white/70',    label: 'Overdue' },
-    Declined:  { bg: 'bg-[#a16a53]',  text: 'text-white', dot: 'bg-white/70',    label: 'Declined' },
-    Cancelled: { bg: 'bg-[#64748b]',  text: 'text-white', dot: 'bg-white/70',    label: 'Cancelled' },
+/* ─── Config ─────────────────────────────────────────────────────── */
+const STATUS_ORDER: ProposalStatus[] = ['Draft', 'Pending', 'Accepted', 'Overdue', 'Declined', 'Cancelled'];
+
+const STATUS_CONFIG: Record<string, { bar: string; badge: string; badgeText: string; label: string }> = {
+    All:       { bar: 'bg-[#5a5a5a]',  badge: 'bg-[#e0e0e0]', badgeText: 'text-[#444]',    label: 'Proposals' },
+    Draft:     { bar: 'bg-[#4285F4]',  badge: 'bg-[#dbeafe]',  badgeText: 'text-[#1d4ed8]', label: 'Draft' },
+    Pending:   { bar: 'bg-[#e28a02]',  badge: 'bg-[#fef3c7]',  badgeText: 'text-[#b45309]', label: 'Pending' },
+    Accepted:  { bar: 'bg-[#22c55e]',  badge: 'bg-[#dcfce7]',  badgeText: 'text-[#15803d]', label: 'Accepted' },
+    Overdue:   { bar: 'bg-[#ef4444]',  badge: 'bg-[#fee2e2]',  badgeText: 'text-[#dc2626]', label: 'Overdue' },
+    Declined:  { bar: 'bg-[#a16a53]',  badge: 'bg-[#f3e8e3]',  badgeText: 'text-[#7c4d3a]', label: 'Declined' },
+    Cancelled: { bar: 'bg-[#64748b]',  badge: 'bg-[#f1f5f9]',  badgeText: 'text-[#475569]', label: 'Cancelled' },
 };
 
-const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
-    Draft:    { bg: 'bg-[#dbeafe]',  text: 'text-[#1d4ed8]' },
-    Pending:  { bg: 'bg-[#fef3c7]',  text: 'text-[#b45309]' },
-    Accepted: { bg: 'bg-[#dcfce7]',  text: 'text-[#15803d]' },
-    Overdue:  { bg: 'bg-[#fee2e2]',  text: 'text-[#dc2626]' },
-    Declined: { bg: 'bg-[#f3e8e3]',  text: 'text-[#7c4d3a]' },
-    Cancelled:{ bg: 'bg-[#f1f5f9]',  text: 'text-[#475569]' },
+/* Light-mode cell and card status colors */
+const STATUS_STRIP: Record<string, { bg: string; text: string; border: string }> = {
+    Draft:     { bg: 'bg-[#dbeafe]', text: 'text-[#1d4ed8]', border: 'border-[#bfdbfe]' },
+    Pending:   { bg: 'bg-[#fef3c7]', text: 'text-[#b45309]', border: 'border-[#fde68a]' },
+    Accepted:  { bg: 'bg-[#dcfce7]', text: 'text-[#15803d]', border: 'border-[#bbf7d0]' },
+    Overdue:   { bg: 'bg-[#fee2e2]', text: 'text-[#dc2626]', border: 'border-[#fecaca]' },
+    Declined:  { bg: 'bg-[#f3e8e3]', text: 'text-[#7c4d3a]', border: 'border-[#eec7b7]' },
+    Cancelled: { bg: 'bg-[#f1f5f9]', text: 'text-[#475569]', border: 'border-[#e2e8f0]' },
 };
 
-function formatCurrency(val: number) {
+function fmt$(val: number) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(val);
 }
-
-function formatDate(dateStr: string | undefined | null) {
-    if (!dateStr) return '—';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+function fmtDate(d: string | null | undefined) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
 }
-
-function timeAgo(dateStr: string | undefined | null) {
-    if (!dateStr) return '';
-    const now = Date.now();
-    const then = new Date(dateStr).getTime();
-    const diffMs = now - then;
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+function timeAgo(d: string | null | undefined) {
+    if (!d) return '';
+    const ms = Date.now() - new Date(d).getTime();
+    const days = Math.floor(ms / 86400000);
     if (days === 0) return 'today';
     if (days === 1) return 'yesterday';
-    if (days < 7) return `${days} days ago`;
-    const weeks = Math.floor(days / 7);
-    if (weeks < 5) return `about ${weeks} month${weeks > 1 ? 's' : ''} ago`;
+    if (days < 30) return `${days} days ago`;
     const months = Math.floor(days / 30);
-    return `${months} months ago`;
+    return `about ${months} month${months > 1 ? 's' : ''} ago`;
 }
 
-/* ─── Main page ─────────────────────────────────────────────────── */
-export default function ProposalsPage() {
-    const router = useRouter();
-    const { theme } = useUIStore();
-    const { proposals, fetchProposals, isLoading } = useProposalStore();
-
-    const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'All'>('All');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [dateRange] = useState('This Year');
-
-    const isDark = theme === 'dark';
-
-    useEffect(() => { fetchProposals(); }, [fetchProposals]);
-
-    /* ── Derived stats ── */
-    const stats = useMemo(() => {
-        const s: Record<string, { count: number; amount: number }> = {
-            All: { count: 0, amount: 0 },
-            Draft: { count: 0, amount: 0 },
-            Pending: { count: 0, amount: 0 },
-            Accepted: { count: 0, amount: 0 },
-            Overdue: { count: 0, amount: 0 },
-            Declined: { count: 0, amount: 0 },
-            Cancelled: { count: 0, amount: 0 },
-        };
-        proposals.forEach(p => {
-            s.All.count++;
-            s.All.amount += Number(p.amount || 0);
-            if (s[p.status]) {
-                s[p.status].count++;
-                s[p.status].amount += Number(p.amount || 0);
-            }
-        });
-        return s;
-    }, [proposals]);
-
-    /* ── Filtered data ── */
-    const filtered = useMemo(() => {
-        let result = proposals;
-        if (statusFilter !== 'All') result = result.filter(p => p.status === statusFilter);
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            result = result.filter(p =>
-                p.title?.toLowerCase().includes(q) ||
-                p.client_name?.toLowerCase().includes(q)
-            );
-        }
-        return result;
-    }, [proposals, statusFilter, searchQuery]);
-
-    /* ── Selection ── */
-    const toggleAll = () => {
-        if (selectedIds.size === filtered.length && filtered.length > 0) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(filtered.map(p => p.id)));
-        }
-    };
-    const toggleRow = (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        const next = new Set(selectedIds);
-        next.has(id) ? next.delete(id) : next.add(id);
-        setSelectedIds(next);
-    };
-
-    const isAllSelected = filtered.length > 0 && selectedIds.size === filtered.length;
-
-    return (
-        <div className={cn(
-            "flex flex-col h-full overflow-hidden font-sans text-[13px]",
-            isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-white text-[#111]"
-        )}>
-
-            {/* ── Page header ── */}
-            <div className={cn(
-                "flex items-center justify-between px-5 py-3 border-b shrink-0",
-                isDark ? "border-[#252525]" : "border-[#ebebeb]"
-            )}>
-                <h1 className="text-[15px] font-semibold tracking-tight">Proposals</h1>
-                <button
-                    onClick={() => router.push('/proposals/new')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors"
-                >
-                    <Plus size={13} strokeWidth={2.5} /> New Proposal
-                </button>
-            </div>
-
-            {/* ── Toolbar ── */}
-            <div className={cn(
-                "flex items-center gap-0 px-4 py-1.5 border-b shrink-0 flex-wrap",
-                isDark ? "border-[#252525]" : "border-[#ebebeb]"
-            )}>
-                {/* Search */}
-                <div className="relative mr-2">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" size={11} />
-                    <input
-                        type="text"
-                        placeholder="Search"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className={cn(
-                            "pl-6 pr-3 py-1 text-[11px] rounded border focus:outline-none w-28 transition-all focus:w-44",
-                            isDark
-                                ? "bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-white/20"
-                                : "bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]"
-                        )}
-                    />
-                </div>
-
-                <TbBtn label="Table" icon={<Table2 size={11} />} hasArrow isDark={isDark} />
-                <TbBtn label="Edit view" icon={<Edit3 size={11} />} isDark={isDark} />
-
-                {/* Date range pill */}
-                <button className={cn(
-                    "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded mx-1 border transition-all",
-                    isDark
-                        ? "bg-[#252525] border-[#333] text-[#ccc] hover:border-[#444]"
-                        : "bg-white border-[#d0d0d0] text-[#444] hover:border-[#bbb] shadow-xs"
-                )}>
-                    <Calendar size={11} className="opacity-60" />
-                    {dateRange}
-                </button>
-
-                <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
-
-                <TbBtn label="Group" icon={<Group size={11} />} isDark={isDark} />
-                <TbBtn label="Order" icon={<ArrowUpDown size={11} />} isDark={isDark} />
-
-                <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
-
-                <TbBtn label="Archived" icon={<Archive size={11} />} isDark={isDark} />
-                <TbBtn label="Import / Export" icon={<Upload size={11} />} isDark={isDark} />
-
-                {/* Bulk selection banner */}
-                {selectedIds.size > 0 && (
-                    <div className="ml-auto flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded text-[11px] font-medium">
-                        {selectedIds.size} selected
-                        <button className="hover:underline">Delete</button>
-                    </div>
-                )}
-            </div>
-
-            {/* ── Status Bar ── */}
-            <div className="flex items-stretch h-[26px] shrink-0">
-                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-                    const s = stats[key] || { count: 0, amount: 0 };
-                    const isActive = statusFilter === key;
-                    return (
-                        <button
-                            key={key}
-                            onClick={() => setStatusFilter(key as any)}
-                            className={cn(
-                                "flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all relative overflow-hidden",
-                                cfg.bg, cfg.text,
-                                isActive ? "brightness-110" : "brightness-90 hover:brightness-100"
-                            )}
-                        >
-                            <span className="font-bold tabular-nums">{s.count}</span>
-                            <span className="opacity-80 font-medium">{cfg.label}</span>
-                            {s.amount > 0 && (
-                                <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">
-                                    {formatCurrency(s.amount)}
-                                </span>
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-
-            {/* ── Table ── */}
-            <div className="flex-1 overflow-auto">
-                {/* Table header */}
-                <div className={cn(
-                    "grid px-4 py-2 border-b text-[10px] font-semibold uppercase tracking-wider sticky top-0 z-10",
-                    isDark
-                        ? "bg-[#1a1a1a] border-[#252525] text-[#555]"
-                        : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]",
-                )}
-                    style={{ gridTemplateColumns: '28px 40px 200px 160px 200px 180px 1fr' }}
-                >
-                    {/* Select all */}
-                    <div
-                        className="flex items-center cursor-pointer"
-                        onClick={toggleAll}
-                    >
-                        <Checkbox checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
-                    </div>
-                    <div /> {/* spacer for status dropdown chevron */}
-                    <div>Status</div>
-                    <div>Issue date</div>
-                    <div>Expiration date</div>
-                    <div>Client</div>
-                    <div className="text-right">Total: {formatCurrency(stats[statusFilter]?.amount ?? 0)}</div>
-                </div>
-
-                {/* Rows */}
-                {isLoading ? (
-                    <LoadingSkeleton isDark={isDark} />
-                ) : filtered.length === 0 ? (
-                    <EmptyState isDark={isDark} onCreate={() => router.push('/proposals/new')} />
-                ) : (
-                    filtered.map(proposal => {
-                        const isSelected = selectedIds.has(proposal.id);
-                        const badge = STATUS_BADGE[proposal.status] || { bg: 'bg-gray-100', text: 'text-gray-500' };
-
-                        return (
-                            <div
-                                key={proposal.id}
-                                onClick={() => router.push(`/proposals/${proposal.id}`)}
-                                className={cn(
-                                    "grid px-4 py-0 border-b text-[12px] cursor-pointer group transition-colors",
-                                    isDark
-                                        ? "border-[#1f1f1f] hover:bg-white/[0.025]"
-                                        : "border-[#f0f0f0] hover:bg-[#fafafa]",
-                                    isSelected && (isDark ? "bg-blue-900/20" : "bg-blue-50/60")
-                                )}
-                                style={{ gridTemplateColumns: '28px 40px 200px 160px 200px 180px 1fr' }}
-                            >
-                                {/* Select checkbox */}
-                                <div
-                                    className="flex items-center self-stretch"
-                                    onClick={e => toggleRow(proposal.id, e)}
-                                >
-                                    <Checkbox checked={isSelected} isDark={isDark} />
-                                </div>
-
-                                {/* ID / number label */}
-                                <div className={cn(
-                                    "flex items-center font-mono text-[10px]",
-                                    isDark ? "text-[#555]" : "text-[#bbb]"
-                                )}>
-                                    {proposal.id?.slice(-4) ?? '—'}
-                                </div>
-
-                                {/* Status badge with dropdown */}
-                                <div className="flex items-center py-2.5">
-                                    <div className={cn(
-                                        "flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold",
-                                        badge.bg, badge.text
-                                    )}>
-                                        {proposal.status}
-                                        <ChevronDown size={9} className="opacity-50" />
-                                    </div>
-                                </div>
-
-                                {/* Issue date */}
-                                <div className={cn(
-                                    "flex items-center gap-1",
-                                    isDark ? "text-[#777]" : "text-[#888]"
-                                )}>
-                                    <span>{formatDate(proposal.issue_date)}</span>
-                                    <span className="text-[10px] opacity-50">({timeAgo(proposal.issue_date)})</span>
-                                </div>
-
-                                {/* Expiration date */}
-                                <div className={cn(
-                                    "flex items-center gap-1",
-                                    isDark ? "text-[#777]" : "text-[#888]"
-                                )}>
-                                    {proposal.due_date ? (
-                                        <>
-                                            <span className="text-[#3b82f6]">{formatDate(proposal.due_date)}</span>
-                                            <span className="text-[10px] opacity-50">({timeAgo(proposal.due_date)})</span>
-                                        </>
-                                    ) : '—'}
-                                </div>
-
-                                {/* Client */}
-                                <div className={cn(
-                                    "flex items-center gap-1.5 truncate",
-                                    isDark ? "text-[#888]" : "text-[#666]"
-                                )}>
-                                    {proposal.client_name && (
-                                        <User size={11} className="opacity-40 shrink-0" />
-                                    )}
-                                    <span className="truncate">{proposal.client_name || '—'}</span>
-                                </div>
-
-                                {/* Amount */}
-                                <div className={cn(
-                                    "flex items-center justify-end font-semibold tabular-nums",
-                                    isDark ? "text-[#ccc]" : "text-[#333]"
-                                )}>
-                                    {formatCurrency(Number(proposal.amount || 0))}
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
-
-                {/* Create proposal row */}
-                {!isLoading && (
-                    <button
-                        onClick={() => router.push('/proposals/new')}
-                        className={cn(
-                            "flex items-center gap-2 px-4 py-2.5 w-full text-left text-[11px] font-medium transition-colors",
-                            isDark
-                                ? "text-[#555] hover:text-[#aaa] hover:bg-white/[0.02]"
-                                : "text-[#aaa] hover:text-[#555] hover:bg-[#fafafa]"
-                        )}
-                    >
-                        <Plus size={12} className="opacity-70" />
-                        Create proposal
-                    </button>
-                )}
-            </div>
-        </div>
-    );
+function isThisMonth(d: string | null | undefined) {
+    if (!d) return false;
+    const now = new Date(); const then = new Date(d);
+    return then.getMonth() === now.getMonth() && then.getFullYear() === now.getFullYear();
+}
+function isThisYear(d: string | null | undefined) {
+    if (!d) return false;
+    return new Date(d).getFullYear() === new Date().getFullYear();
 }
 
-/* ─── Sub-components ────────────────────────────────────────────── */
-
-function TbBtn({
-    label, icon, hasArrow, isDark
-}: {
-    label: string;
-    icon?: React.ReactNode;
-    hasArrow?: boolean;
-    isDark: boolean;
+/* ─── Shared toolbar button ─────────────────────────────────────── */
+function TbBtn({ label, icon, active, hasArrow, onClick, isDark }: {
+    label?: string; icon?: React.ReactNode; active?: boolean;
+    hasArrow?: boolean; onClick?: () => void; isDark: boolean;
 }) {
     return (
-        <button className={cn(
+        <button onClick={onClick} className={cn(
             "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded transition-colors shrink-0",
-            isDark
-                ? "text-[#777] hover:text-[#ccc] hover:bg-white/5"
-                : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]"
+            active
+                ? isDark ? "bg-white/10 text-white" : "bg-[#ebebf5] text-[#111]"
+                : isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]"
         )}>
-            {icon}
-            {label}
-            {hasArrow && <ChevronDown size={9} className="opacity-40" />}
+            {icon}{label}{hasArrow && <ChevronDown size={9} className="opacity-40" />}
         </button>
     );
 }
 
-function Checkbox({
-    checked,
-    indeterminate,
-    isDark,
-}: {
-    checked: boolean;
-    indeterminate?: boolean;
-    isDark: boolean;
-}) {
+/* ─── Checkbox ──────────────────────────────────────────────────── */
+function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
     return (
-        <div className={cn(
-            "w-[13px] h-[13px] rounded-[3px] border flex items-center justify-center transition-all shrink-0",
-            checked
-                ? "bg-[#3b82f6] border-[#3b82f6]"
-                : indeterminate
-                    ? "bg-[#3b82f6]/40 border-[#3b82f6]/60"
-                    : isDark
-                        ? "border-[#3a3a3a] bg-transparent"
-                        : "border-[#d0d0d0] bg-white"
-        )}>
+        <div className={cn("w-[13px] h-[13px] rounded-[3px] border flex items-center justify-center transition-all shrink-0",
+            checked ? "bg-[#4dbf39] border-[#4dbf39]"
+                : indeterminate ? "bg-[#4dbf39]/40 border-[#4dbf39]/60"
+                    : isDark ? "border-[#3a3a3a] bg-transparent" : "border-[#d0d0d0] bg-white")}>
             {(checked || indeterminate) && (
                 <svg width="7" height="5" viewBox="0 0 8 6" fill="none">
                     {indeterminate && !checked
                         ? <line x1="1" y1="3" x2="7" y2="3" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                        : <polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    }
+                        : <polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />}
                 </svg>
             )}
         </div>
     );
 }
 
-function LoadingSkeleton({ isDark }: { isDark: boolean }) {
+/* ─── Dropdown ──────────────────────────────────────────────────── */
+function Dropdown({ open, onClose, isDark, children }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode }) {
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!open) return;
+        const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [open, onClose]);
+    if (!open) return null;
     return (
-        <div className="flex flex-col">
-            {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                    key={i}
-                    className={cn(
-                        "h-11 border-b animate-pulse",
-                        isDark ? "border-[#1f1f1f] bg-white/[0.01]" : "border-[#f0f0f0] bg-[#fafafa]"
-                    )}
-                />
-            ))}
+        <div ref={ref} className={cn("absolute top-full left-0 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
+            isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+            {children}
         </div>
     );
 }
 
-function EmptyState({ isDark, onCreate }: { isDark: boolean; onCreate: () => void }) {
+function DItem({ label, icon, active, onClick, isDark }: { label: string; icon?: React.ReactNode; active?: boolean; onClick: () => void; isDark: boolean }) {
     return (
-        <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <div className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>
-                No proposals found.
+        <button onClick={onClick} className={cn("w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] transition-colors text-left",
+            active
+                ? isDark ? "bg-white/8 text-white font-medium" : "bg-[#f0f0f0] text-[#111] font-medium"
+                : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")}>
+            {icon && <span className="opacity-60">{icon}</span>}
+            <span className="flex-1">{label}</span>
+            {active && <Check size={11} className={isDark ? "text-[#4dbf39]" : "text-[#4dbf39]"} />}
+        </button>
+    );
+}
+
+/* ─── Proposal Card ───────────────────────────────── */
+function CardRow({ label, children, isDark, noBorder }: { label: string; children?: React.ReactNode; isDark: boolean; noBorder?: boolean }) {
+    return (
+        <div className={cn("flex items-center gap-3 py-2", !noBorder && "border-b border-dashed", !noBorder && (isDark ? "border-[#2e2e2e]" : "border-[#e5e5e5]"))}>
+            <div className={cn("w-[90px] text-[11.5px] font-normal shrink-0", isDark ? "text-[#888]" : "text-[#666]")}>{label}</div>
+            <div className={cn("text-[11.5px] flex-1 flex items-center min-w-0 font-medium overflow-visible", isDark ? "text-[#ddd]" : "text-[#222]")}>
+                {children}
             </div>
+        </div>
+    );
+}
+
+function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onClientChange }: {
+    p: Proposal; onOpen: () => void; onArchive: () => void; isDark: boolean;
+    onStatusChange: (s: ProposalStatus) => void; isSelected: boolean; onToggle: () => void;
+    onClientChange: (clientId: string, clientName: string) => void;
+}) {
+    const [statusOpen, setStatusOpen] = useState(false);
+    const cfg = STATUS_CONFIG[p.status] || STATUS_CONFIG.Draft;
+    const cfgStyle = STATUS_STRIP[p.status] || STATUS_STRIP.Draft;
+    return (
+        <div
+            onClick={onOpen}
+            className={cn(
+                "relative rounded-[8px] border cursor-pointer transition-all duration-150 group flex flex-col",
+                isDark ? "bg-[#1a1a1a] border-[#2e2e2e] hover:border-[#444]"
+                    : "bg-white border-[#e0e0e0] hover:border-[#ccc] hover:shadow-sm"
+            )}
+        >
+            {/* Header */}
+            <div className={cn("flex items-center justify-between px-4 py-3 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
+                <div className={cn("font-bold text-[14px] tracking-tight", isDark ? "text-white" : "text-black")}>
+                    {p.id?.slice(-6).toUpperCase() ?? '—'}
+                </div>
+                <div
+                    onClick={(e) => { e.stopPropagation(); onToggle(); }}
+                    className="cursor-pointer"
+                >
+                    <Chk checked={isSelected} isDark={isDark} />
+                </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-4 py-1.5 flex flex-col">
+                <CardRow label="Client" isDark={isDark}>
+                    <ClientCell
+                        currentName={p.client_name}
+                        currentId={p.client_id}
+                        onClientChange={onClientChange}
+                        isDark={isDark}
+                        variant="card"
+                    />
+                </CardRow>
+
+                <CardRow label="Expiration date" isDark={isDark}>
+                    {p.due_date ? <span>{fmtDate(p.due_date)} <span className="opacity-60 font-normal">({timeAgo(p.due_date)})</span></span> : ''}
+                </CardRow>
+
+                <CardRow label="Issue date" isDark={isDark}>
+                    {p.issue_date ? <span>{fmtDate(p.issue_date)} <span className="opacity-60 font-normal">({timeAgo(p.issue_date)})</span></span> : ''}
+                </CardRow>
+
+                <CardRow label="Total" isDark={isDark}>
+                    {fmt$(Number(p.amount || 0))}
+                </CardRow>
+
+                <CardRow label="Status" isDark={isDark}>
+                    <div className="relative flex-1">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setStatusOpen(!statusOpen); }}
+                            className={cn("flex items-center justify-between w-full px-2.5 py-1.5 rounded-[6px] font-semibold border",
+                                isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(cfgStyle.bg, cfgStyle.text, cfgStyle.border))}
+                        >
+                            <span>{cfg.label}</span>
+                            <ChevronsUpDown size={11} className="opacity-70" />
+                        </button>
+                        <Dropdown open={statusOpen} onClose={() => setStatusOpen(false)} isDark={isDark}>
+                            <div className="py-1">
+                                {STATUS_ORDER.map(s => {
+                                    const cCfg = STATUS_CONFIG[s];
+                                    const isActive = s === p.status;
+                                    return (
+                                        <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setStatusOpen(false); }}
+                                            className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
+                                                isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
+                                            )}
+                                        >
+                                            <span className={cn("font-medium", cCfg.badgeText)}>
+                                                {cCfg.label}
+                                            </span>
+                                            {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </Dropdown>
+                    </div>
+                </CardRow>
+
+                <CardRow label="Signed" isDark={isDark} noBorder>
+                    {/* Placeholder */}
+                </CardRow>
+            </div>
+
+            {/* Archive button */}
             <button
-                onClick={onCreate}
-                className="px-4 py-1.5 text-[12px] font-semibold text-white bg-[#22c55e] rounded hover:bg-[#16a34a] transition-colors"
+                onClick={e => { e.stopPropagation(); onArchive(); }}
+                title="Archive"
+                className={cn(
+                    "absolute top-2.5 right-10 w-6 h-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all",
+                    isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]"
+                )}
             >
-                Create proposal
+                <Archive size={11} />
             </button>
+        </div>
+    );
+}
+
+
+function StatusCell({ status, onStatusChange, isDark }: { status: ProposalStatus; onStatusChange: (s: ProposalStatus) => void; isDark: boolean }) {
+    const [open, setOpen] = useState(false);
+    const cfgStyle = STATUS_STRIP[status] || STATUS_STRIP.Draft;
+    return (
+        <div className="relative">
+            <button
+                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+                className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border",
+                    isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(cfgStyle.bg, cfgStyle.text, cfgStyle.border))}
+            >
+                {status}<ChevronDown size={10} className="opacity-50" />
+            </button>
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
+                <div className="py-1">
+                    {STATUS_ORDER.map(s => {
+                        const cCfg = STATUS_CONFIG[s];
+                        const isActive = s === status;
+                        return (
+                            <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setOpen(false); }}
+                                className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
+                                    isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
+                                )}
+                            >
+                                <span className={cn("font-medium", cCfg.badgeText)}>
+                                    {cCfg.label}
+                                </span>
+                                {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
+                            </button>
+                        );
+                    })}
+                </div>
+            </Dropdown>
+        </div>
+    );
+}
+
+function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 'table' }: {
+    currentName: string; currentId?: string | null; onClientChange: (id: string, name: string) => void;
+    isDark: boolean; variant?: 'table' | 'card'
+}) {
+    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const { clients, fetchClients } = useClientStore();
+
+    useEffect(() => {
+        if (open) {
+            if (clients.length === 0) fetchClients();
+            setSearch('');
+        }
+    }, [open, clients.length, fetchClients]);
+
+    const filtered = useMemo(() => {
+        if (!search) return clients;
+        return clients.filter(c => c.company_name.toLowerCase().includes(search.toLowerCase()));
+    }, [clients, search]);
+
+    const display = (
+        <div className={cn("flex items-center gap-1.5",
+            variant === 'card' ? cn("px-2 py-1 rounded-[6px]", isDark ? "bg-white/10" : "bg-[#f5f5f5]") : "truncate")}>
+            <User size={variant === 'card' ? 10 : 11} className={cn("opacity-40 shrink-0", isDark ? "text-[#aaa]" : "text-[#777]")} />
+            <span className="truncate">{currentName || '—'}</span>
+        </div>
+    );
+
+    return (
+        <div className={cn("relative", variant === 'table' && "w-full h-full flex")}>
+            <button
+                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+                className={cn(
+                    "text-left transition-colors",
+                    variant === 'table' ? "w-full h-full px-4 py-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]" : ""
+                )}
+            >
+                {display}
+            </button>
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
+                <div className={cn("p-2 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
+                    <div className="relative">
+                        <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 opacity-30" />
+                        <input
+                            autoFocus
+                            type="text"
+                            placeholder="Search client..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className={cn("w-full pl-6 pr-2 py-1.5 text-[11px] rounded-md outline-none",
+                                isDark ? "bg-white/5 border border-white/10 text-white" : "bg-[#f5f5f5] border border-[#e0e0e0] text-black"
+                            )}
+                        />
+                    </div>
+                </div>
+                <div className="py-1 max-h-[180px] overflow-y-auto">
+                    {filtered.length === 0 ? (
+                        <div className="px-3 py-4 text-center opacity-40 text-[11px]">
+                            {search ? 'No results' : 'No clients found'}
+                        </div>
+                    ) : (
+                        filtered.map(c => (
+                            <button key={c.id} onClick={(e) => { e.stopPropagation(); onClientChange(c.id, c.company_name); setOpen(false); }}
+                                className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
+                                    c.id === currentId ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
+                                )}
+                            >
+                                <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#444]")}>{c.company_name}</span>
+                                {c.id === currentId && <Check size={12} className="opacity-40" />}
+                            </button>
+                        ))
+                    )}
+                </div>
+            </Dropdown>
+        </div>
+    );
+}
+
+/* ─── Main page ─────────────────────────────────────────────────── */
+export default function ProposalsPage() {
+    const router = useRouter();
+    const { theme } = useUIStore();
+    const { proposals, fetchProposals, updateProposal, addProposal, deleteProposal, isLoading } = useProposalStore();
+    const isDark = theme === 'dark';
+    const [view, setView] = useState<'table' | 'cards'>('table');
+    /* ... existing state ... */
+    const [colWidths, setColWidths] = useState({
+        select: 44,
+        id: 80,
+        status: 160,
+        issue: 180,
+        due: 180,
+        client: 180,
+        amount: 300
+    });
+
+    const isResizing = useRef<string | null>(null);
+    const startX = useRef<number>(0);
+    const startWidth = useRef<number>(0);
+
+    const handleResizeStart = (key: keyof typeof colWidths, e: React.MouseEvent) => {
+        e.preventDefault();
+        isResizing.current = key;
+        startX.current = e.clientX;
+        startWidth.current = colWidths[key];
+        document.addEventListener('mousemove', handleResizeMove);
+        document.addEventListener('mouseup', handleResizeEnd);
+    };
+
+    const handleResizeMove = (e: MouseEvent) => {
+        if (!isResizing.current) return;
+        const delta = e.clientX - startX.current;
+        const newWidth = Math.max(30, startWidth.current + delta);
+        setColWidths(prev => ({ ...prev, [isResizing.current as string]: newWidth }));
+    };
+
+    const handleResizeEnd = () => {
+        isResizing.current = null;
+        document.removeEventListener('mousemove', handleResizeMove);
+        document.removeEventListener('mouseup', handleResizeEnd);
+    };
+
+    const gridTemplate = `${colWidths.select}px ${colWidths.id}px ${colWidths.status}px ${colWidths.issue}px ${colWidths.due}px ${colWidths.client}px minmax(${colWidths.amount}px, 1fr)`;
+    const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'All'>('All');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showArchived, setShowArchived] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    /* Dropdowns */
+    const [filterOpen, setFilterOpen] = useState(false);
+    const [orderOpen, setOrderOpen] = useState(false);
+    const [viewOpen, setViewOpen] = useState(false);
+    const [dateFilter, setDateFilter] = useState<'all' | 'month' | 'year'>('year');
+    const [orderBy, setOrderBy] = useState<'created_at' | 'issue_date' | 'amount'>('created_at');
+    /* Local archive state (optimistic) */
+    const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
+
+    useEffect(() => { fetchProposals(); }, [fetchProposals]);
+
+    /* ── Derived data ── */
+    const filtered = useMemo(() => {
+        let r = proposals.filter(p => {
+            if (showArchived) return archivedIds.has(p.id);
+            if (archivedIds.has(p.id)) return false;
+            if (statusFilter !== 'All' && p.status !== statusFilter) return false;
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                if (!p.title?.toLowerCase().includes(q) && !p.client_name?.toLowerCase().includes(q)) return false;
+            }
+            if (dateFilter === 'month' && !isThisMonth(p.issue_date)) return false;
+            if (dateFilter === 'year' && !isThisYear(p.issue_date)) return false;
+            return true;
+        });
+        if (orderBy === 'issue_date') r = [...r].sort((a, b) => new Date(b.issue_date || 0).getTime() - new Date(a.issue_date || 0).getTime());
+        if (orderBy === 'amount') r = [...r].sort((a, b) => Number(b.amount) - Number(a.amount));
+        return r;
+    }, [proposals, statusFilter, searchQuery, dateFilter, orderBy, archivedIds, showArchived]);
+
+    const stats = useMemo(() => {
+        const s: Record<string, { count: number; amount: number }> = {
+            All: { count: 0, amount: 0 }, Draft: { count: 0, amount: 0 }, Pending: { count: 0, amount: 0 },
+            Accepted: { count: 0, amount: 0 }, Overdue: { count: 0, amount: 0 }, Declined: { count: 0, amount: 0 }, Cancelled: { count: 0, amount: 0 },
+        };
+        proposals.filter(p => !archivedIds.has(p.id)).forEach(p => {
+            s.All.count++; s.All.amount += Number(p.amount || 0);
+            if (s[p.status]) { s[p.status].count++; s[p.status].amount += Number(p.amount || 0); }
+        });
+        return s;
+    }, [proposals, archivedIds]);
+
+    const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(p => p.id)));
+    const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
+    const isAllSelected = filtered.length > 0 && selectedIds.size === filtered.length;
+
+    const handleArchive = (id: string) => {
+        const next = new Set(archivedIds);
+        next.has(id) ? next.delete(id) : next.add(id);
+        setArchivedIds(next);
+    };
+    const handleBulkArchive = () => {
+        const next = new Set(archivedIds);
+        selectedIds.forEach(id => next.add(id));
+        setArchivedIds(next);
+        setSelectedIds(new Set());
+    };
+    const handleBulkDelete = async () => {
+        setDeletingId('bulk');
+    };
+    const handleBulkDuplicate = async () => {
+        const ids = Array.from(selectedIds);
+        for (const id of ids) {
+            const original = proposals.find(p => p.id === id);
+            if (original) {
+                const { id: _, created_at: __, ...payload } = original;
+                await addProposal({
+                    ...payload,
+                    title: `${payload.title} (Copy)`,
+                    status: 'Draft'
+                });
+            }
+        }
+        setSelectedIds(new Set());
+    };
+
+    const border = isDark ? "border-[#252525]" : "border-[#ebebeb]";
+    const datePill = dateFilter === 'month' ? 'This Month' : dateFilter === 'year' ? 'This Year' : 'All time';
+
+    return (
+        <div className={cn("flex flex-col h-full overflow-hidden font-sans text-[13px]",
+            isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-white text-[#111]")}>
+
+            {/* ── Page header ── */}
+            <div className={cn("flex items-center justify-between px-5 py-3 border-b shrink-0", border)}>
+                <h1 className="text-[15px] font-semibold tracking-tight">Proposals</h1>
+                <button onClick={() => setShowCreateModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors">
+                    <Plus size={13} strokeWidth={2.5} /> New Proposal
+                </button>
+            </div>
+
+            {/* ── Toolbar ── */}
+            <div className={cn("flex items-center gap-0 px-4 py-1.5 border-b shrink-0", border)}>
+                {/* Search */}
+                <div className="relative mr-2">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" size={11} />
+                    <input type="text" placeholder="Search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                        className={cn("pl-6 pr-3 py-1 text-[11px] rounded border focus:outline-none w-28 transition-all focus:w-44",
+                            isDark ? "bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-white/20"
+                                : "bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]")} />
+                </div>
+
+                {/* View switcher */}
+                <div className="relative mr-1">
+                    <TbBtn label={view === 'table' ? 'Table' : 'Cards'} icon={view === 'table' ? <Table2 size={11} /> : <LayoutGrid size={11} />}
+                        hasArrow onClick={() => setViewOpen(v => !v)} isDark={isDark} />
+                    <Dropdown open={viewOpen} onClose={() => setViewOpen(false)} isDark={isDark}>
+                        <div className="py-1">
+                            <DItem label="Table" icon={<Table2 size={12} />} active={view === 'table'} onClick={() => { setView('table'); setViewOpen(false); }} isDark={isDark} />
+                            <DItem label="Cards" icon={<LayoutGrid size={12} />} active={view === 'cards'} onClick={() => { setView('cards'); setViewOpen(false); }} isDark={isDark} />
+                        </div>
+                    </Dropdown>
+                </div>
+
+                {/* Filter / date */}
+                <div className="relative mx-1">
+                    <button onClick={() => setFilterOpen(v => !v)} className={cn(
+                        "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition-all",
+                        filterOpen
+                            ? isDark ? "bg-[#252525] border-[#444] text-[#ccc]" : "bg-white border-[#aaa] text-[#444] shadow-xs"
+                            : isDark ? "bg-[#252525] border-[#333] text-[#ccc] hover:border-[#444]" : "bg-white border-[#d0d0d0] text-[#444] hover:border-[#bbb] shadow-xs"
+                    )}>
+                        <Calendar size={11} className="opacity-60" />
+                        {datePill}
+                        {dateFilter !== 'all' && (
+                            <span onClick={e => { e.stopPropagation(); setDateFilter('all'); }}
+                                className={cn("ml-0.5 opacity-50 hover:opacity-100 transition-opacity")}>
+                                <X size={9} />
+                            </span>
+                        )}
+                    </button>
+                    <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
+                        <div className={cn("flex items-center gap-2 px-3.5 py-2.5 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
+                            <Plus size={11} className="opacity-40" />
+                            <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
+                        </div>
+                        <div className="py-1">
+                            <DItem label="This Month" active={dateFilter === 'month'} onClick={() => { setDateFilter('month'); setFilterOpen(false); }} isDark={isDark} />
+                            <DItem label="This Year" active={dateFilter === 'year'} onClick={() => { setDateFilter('year'); setFilterOpen(false); }} isDark={isDark} />
+                            <DItem label="All time" active={dateFilter === 'all'} onClick={() => { setDateFilter('all'); setFilterOpen(false); }} isDark={isDark} />
+                        </div>
+                    </Dropdown>
+                </div>
+
+                <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
+
+                {/* Order */}
+                <div className="relative">
+                    <TbBtn label="Order" icon={<ArrowUpDown size={11} />} hasArrow onClick={() => setOrderOpen(v => !v)} isDark={isDark} />
+                    <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
+                        <div className="py-1">
+                            <DItem label="Creation date" active={orderBy === 'created_at'} onClick={() => { setOrderBy('created_at'); setOrderOpen(false); }} isDark={isDark} />
+                            <DItem label="Issue date" active={orderBy === 'issue_date'} onClick={() => { setOrderBy('issue_date'); setOrderOpen(false); }} isDark={isDark} />
+                            <DItem label="Total amount" active={orderBy === 'amount'} onClick={() => { setOrderBy('amount'); setOrderOpen(false); }} isDark={isDark} />
+                        </div>
+                    </Dropdown>
+                </div>
+
+                <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
+
+                {/* Archived toggle */}
+                <TbBtn label="Archived" icon={showArchived ? <ArchiveRestore size={11} /> : <Archive size={11} />}
+                    active={showArchived} onClick={() => { setShowArchived(v => !v); setSelectedIds(new Set()); }} isDark={isDark} />
+
+                <TbBtn label="Import / Export" icon={<Upload size={11} />} isDark={isDark} />
+
+                {/* Bulk banner */}
+                {selectedIds.size > 0 && (
+                    <div className={cn("ml-auto flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border",
+                        isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-[#f8f8f8] border-[#e8e8e8] text-[#666]")}>
+                        <span className="opacity-50">{selectedIds.size} selected</span>
+                        <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
+                        <div className="flex items-center gap-3">
+                            <button onClick={handleBulkDuplicate} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
+                                <Copy size={11} className="opacity-70" />Duplicate
+                            </button>
+                            <button onClick={handleBulkArchive} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
+                                <Archive size={11} className="opacity-70" />Archive
+                            </button>
+                            <button onClick={handleBulkDelete} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
+                                <Trash2 size={11} className="opacity-70" />Delete
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* ── Status bar ── */}
+            <div className="flex items-stretch h-[26px] shrink-0">
+                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+                    const s = stats[key] || { count: 0, amount: 0 };
+                    const isActive = statusFilter === key;
+                    return (
+                        <button key={key} onClick={() => { setStatusFilter(key as any); setShowArchived(false); }}
+                            className={cn("flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all text-white",
+                                cfg.bar, isActive ? "brightness-110" : "brightness-90 hover:brightness-100")}>
+                            <span className="font-bold tabular-nums">{s.count}</span>
+                            <span className="opacity-80 font-medium">{cfg.label}</span>
+                            {s.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">{fmt$(s.amount)}</span>}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* ── Content ── */}
+            {view === 'table' ? (
+                <div className="flex-1 overflow-auto border-t" style={{ borderColor: isDark ? '#252525' : '#ebebeb' }}>
+                    {/* Header */}
+                    <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-10",
+                        isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
+                        style={{ gridTemplateColumns: gridTemplate }}>
+                        
+                        <div className="relative px-0 py-2 flex items-center justify-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                            <div className="cursor-pointer" onClick={toggleAll}>
+                                <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                            </div>
+                            <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+                        </div>
+                        <div className="relative px-4 py-2 flex items-center border-r last:border-r-0" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                            ID
+                            <div onMouseDown={(e) => handleResizeStart('id', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[2px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+                        </div>
+                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                            Status
+                            <div onMouseDown={(e) => handleResizeStart('status', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+                        </div>
+                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                            Issue date
+                            <div onMouseDown={(e) => handleResizeStart('issue', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+                        </div>
+                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                            Expiration date
+                            <div onMouseDown={(e) => handleResizeStart('due', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+                        </div>
+                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                            Client
+                            <div onMouseDown={(e) => handleResizeStart('client', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+                        </div>
+                        <div className="relative px-4 py-2 flex items-center justify-end">
+                            Total: {fmt$(stats[statusFilter]?.amount ?? 0)}
+                        </div>
+                    </div>
+
+                    {isLoading ? (
+                        <div className="flex flex-col">{Array.from({ length: 5 }).map((_, i) => (
+                            <div key={i} className={cn("h-12 border-b animate-pulse", isDark ? "border-[#1f1f1f] bg-white/[0.01]" : "border-[#f0f0f0] bg-[#fafafa]")} />
+                        ))}</div>
+                    ) : filtered.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-24 gap-3">
+                            {showArchived
+                                ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p>
+                                : <>
+                                    <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
+                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-black bg-[#4dbf39] rounded-lg hover:bg-[#59d044] transition-colors">+ New Proposal</button>
+                                </>}
+                        </div>
+                    ) : (
+                        <>
+                            {filtered.map(p => {
+                                const isSelected = selectedIds.has(p.id);
+                                return (
+                                    <div key={p.id} onClick={() => router.push(`/proposals/${p.id}`)}
+                                        className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
+                                            isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "border-[#f0f0f0] hover:bg-[#fafafa]",
+                                            isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
+                                        style={{ gridTemplateColumns: gridTemplate }}>
+                                        
+                                        <div className="flex items-center justify-center px-0 py-3 self-stretch" onClick={e => toggleRow(p.id, e)}>
+                                            <Chk checked={isSelected} isDark={isDark} />
+                                        </div>
+                                        <div className={cn("flex items-center px-4 py-3 font-bold", isDark ? "text-white" : "text-black")}>
+                                            {p.id?.slice(-6).toUpperCase() ?? '—'}
+                                        </div>
+                                        <div className="flex items-center px-4 py-3">
+                                            <StatusCell status={p.status} onStatusChange={(s) => updateProposal(p.id, { status: s })} isDark={isDark} />
+                                        </div>
+                                        <div className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
+                                            <span>{fmtDate(p.issue_date)}</span>
+                                            <span className="text-[10px] opacity-50">({timeAgo(p.issue_date)})</span>
+                                        </div>
+                                        <div className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
+                                            {p.due_date ? <span>{fmtDate(p.due_date)} <span className="text-[10px] opacity-50">({timeAgo(p.due_date)})</span></span> : '—'}
+                                        </div>
+                                        <div className={cn("flex items-stretch", isDark ? "text-[#888]" : "text-[#666]")}>
+                                            <ClientCell
+                                                currentName={p.client_name}
+                                                currentId={p.client_id}
+                                                onClientChange={(id, name) => updateProposal(p.id, { client_id: id, client_name: name })}
+                                                isDark={isDark}
+                                                variant="table"
+                                            />
+                                        </div>
+                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5", isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                            {fmt$(Number(p.amount || 0))}
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                <button onClick={e => { e.stopPropagation(); handleArchive(p.id); }} title={archivedIds.has(p.id) ? 'Unarchive' : 'Archive'}
+                                                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
+                                                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
+                                                    {archivedIds.has(p.id) ? <ArchiveRestore size={11} /> : <Archive size={11} />}
+                                                </button>
+                                                <button onClick={e => { e.stopPropagation(); setDeletingId(p.id); }} title="Delete"
+                                                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
+                                                        isDark ? "text-[#555] hover:text-red-400 hover:bg-red-500/10" : "text-[#bbb] hover:text-red-500 hover:bg-red-50")}>
+                                                    <Trash2 size={11} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            
+                            {!isLoading && !showArchived && (
+                                <button onClick={() => setShowCreateModal(true)}
+                                    className={cn("flex items-center gap-1 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors border-b",
+                                        isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
+                                    <div className={cn("w-4 h-4 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
+                                        <Plus size={10} />
+                                    </div>
+                                    <span>Create proposal</span>
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
+            ) : (
+                /* ── Cards view (Grid) ── */
+                <div className={cn("flex-1 overflow-y-auto p-4", isDark ? "bg-[#0f0f0f]" : "bg-[#f1f1f9]")}>
+                    {isLoading ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                                <div key={i} className={cn("h-[140px] rounded-xl border animate-pulse", isDark ? "border-[#1f1f1f] bg-white/[0.01]" : "border-[#f0f0f0] bg-[#fafafa]")} />
+                            ))}
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-24 gap-3">
+                            {showArchived
+                                ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p>
+                                : <>
+                                    <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
+                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-black bg-[#4dbf39] rounded-lg hover:bg-[#59d044] transition-colors">+ New Proposal</button>
+                                </>}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+                            {filtered.map(p => (
+                                <ProposalCard key={p.id} p={p}
+                                    onOpen={() => router.push(`/proposals/${p.id}`)}
+                                    onArchive={() => handleArchive(p.id)}
+                                    onStatusChange={(s) => updateProposal(p.id, { status: s })}
+                                    onClientChange={(id, name) => updateProposal(p.id, { client_id: id, client_name: name })}
+                                    isSelected={selectedIds.has(p.id)}
+                                    onToggle={() => {
+                                        const n = new Set(selectedIds);
+                                        n.has(p.id) ? n.delete(p.id) : n.add(p.id);
+                                        setSelectedIds(n);
+                                    }}
+                                    isDark={isDark} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            <CreateProposalModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
+            <DeleteConfirmModal
+                open={!!deletingId}
+                isDark={isDark}
+                title={deletingId === 'bulk' ? `Delete ${selectedIds.size} items` : "Delete item"}
+                description={deletingId === 'bulk' 
+                    ? `Are you sure you want to permanently delete these ${selectedIds.size} items? This action cannot be undone.`
+                    : "This action cannot be undone. This will permanently delete the item and all associated data."
+                }
+                onClose={() => setDeletingId(null)}
+                onConfirm={async () => {
+                    if (deletingId === 'bulk') {
+                        const ids = Array.from(selectedIds);
+                        for (const id of ids) {
+                            await deleteProposal(id);
+                        }
+                        setSelectedIds(new Set());
+                    } else if (deletingId) {
+                        deleteProposal(deletingId);
+                    }
+                    setDeletingId(null);
+                }}
+            />
         </div>
     );
 }

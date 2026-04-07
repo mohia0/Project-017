@@ -5,6 +5,7 @@ export type ProposalStatus = 'Draft' | 'Pending' | 'Accepted' | 'Overdue' | 'Dec
 
 export interface Proposal {
     id: string;
+    client_id?: string | null;
     client_name: string; // Since we don't have full client DB mapped yet, we use client_name for now
     title: string;
     status: ProposalStatus;
@@ -21,7 +22,7 @@ interface ProposalState {
     isLoading: boolean;
     error: string | null;
     fetchProposals: () => Promise<void>;
-    addProposal: (proposal: Omit<Proposal, 'id' | 'created_at'>) => Promise<void>;
+    addProposal: (proposal: Omit<Proposal, 'id' | 'created_at'>) => Promise<Proposal | null>;
     updateProposal: (id: string, updates: Partial<Proposal>) => Promise<void>;
     deleteProposal: (id: string) => Promise<void>;
 }
@@ -42,17 +43,39 @@ export const useProposalStore = create<ProposalState>((set) => ({
     },
 
     addProposal: async (proposal) => {
-        const { data, error } = await supabase.from('proposals').insert(proposal).select().single();
-        if (error) {
-            set({ error: error.message });
-        } else if (data) {
-            set((state) => ({ proposals: [data, ...state.proposals] }));
+        try {
+            const payload = {
+                ...proposal,
+                client_id: proposal.client_id || null,
+                due_date: proposal.due_date || null,
+                issue_date: proposal.issue_date || null
+            };
+            const { data, error } = await supabase.from('proposals').insert(payload).select().single();
+            if (error) {
+                const errStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
+                console.error("Supabase insert error details:", error);
+                set({ error: error.message || errStr });
+                return null;
+            } else if (data) {
+                set((state) => ({ proposals: [data, ...state.proposals] }));
+                return data;
+            }
+            return null;
+        } catch (err: any) {
+            console.error("Store error inserting proposal:", err);
+            set({ error: err.message });
+            return null;
         }
     },
 
     updateProposal: async (id, updates) => {
-        const { data, error } = await supabase.from('proposals').update(updates).eq('id', id).select().single();
+        const payload: any = { ...updates };
+        if (payload.due_date === '') payload.due_date = null;
+        if (payload.issue_date === '') payload.issue_date = null;
+
+        const { data, error } = await supabase.from('proposals').update(payload).eq('id', id).select().single();
         if (error) {
+            console.error("Store error updating proposal:", error);
             set({ error: error.message });
         } else if (data) {
             set((state) => ({

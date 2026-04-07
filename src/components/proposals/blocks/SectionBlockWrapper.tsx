@@ -52,66 +52,70 @@ export function SectionBlockWrapper({
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* Floating action bar — only when hovered, no border on block */}
+            {/* Floating action bar — only when hovered, minimal and smart */}
             {hovered && (
                 <div className={cn(
-                    "absolute -top-3 right-0 flex items-center gap-0.5 z-30",
-                    "rounded-lg border shadow-lg px-1.5 py-1 transition-all",
+                    "absolute -top-4 right-2 flex items-center gap-0.5 z-30",
+                    "rounded-xl border px-2 py-1 transition-all shadow-2xl shadow-black/50",
                     isDark
-                        ? "bg-[#1f1f1f] border-[#333] text-[#999]"
+                        ? "bg-[#1f1f1f] border-white/[0.05] text-[#999]"
                         : "bg-white border-[#e2e2e2] text-[#888]"
                 )}>
                     {/* Drag handle */}
                     <div
                         {...attributes}
                         {...listeners}
-                        className="p-1 rounded cursor-grab active:cursor-grabbing hover:text-[#444] hover:bg-black/5"
+                        className="p-1.5 rounded-lg cursor-grab active:cursor-grabbing hover:text-white hover:bg-white/5 transition-colors"
                         title="Drag to reorder"
                     >
-                        <GripVertical size={13} />
+                        <GripVertical size={13} strokeWidth={2.5} />
                     </div>
 
-                    <span className="w-px h-3 bg-current opacity-15 mx-0.5" />
+                    <span className="w-px h-3 bg-white/10 mx-1" />
 
                     <button
                         onClick={() => onMoveUp?.()}
-                        className="p-1 rounded hover:bg-black/5 hover:text-[#444]"
+                        className="p-1.5 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
                         title="Move Up"
                     >
-                        <ChevronUp size={13} />
+                        <ChevronUp size={13} strokeWidth={2.5} />
                     </button>
                     <button
                         onClick={() => onMoveDown?.()}
-                        className="p-1 rounded hover:bg-black/5 hover:text-[#444]"
+                        className="p-1.5 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
                         title="Move Down"
                     >
-                        <ChevronDown size={13} />
+                        <ChevronDown size={13} strokeWidth={2.5} />
                     </button>
 
-                    <span className="w-px h-3 bg-current opacity-15 mx-0.5" />
+                    <span className="w-px h-3 bg-white/10 mx-1" />
 
                     <button
                         onClick={() => onDuplicate?.(id)}
-                        className="p-1 rounded hover:bg-black/5 hover:text-[#444]"
+                        className="p-1.5 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
                         title="Duplicate"
                     >
-                        <Copy size={13} />
+                        <Copy size={13} strokeWidth={2.5} />
                     </button>
                     <button
                         onClick={() => onDelete(id)}
-                        className="p-1 rounded hover:bg-red-500/10 hover:text-red-500"
+                        className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors"
                         title="Delete"
                     >
-                        <Trash2 size={13} />
+                        <Trash2 size={13} strokeWidth={2.5} />
                     </button>
                 </div>
             )}
 
-            {/* Content — no borders, no background */}
+            {/* Content — dashed border ONLY on hover */}
             <div className={cn(
-                "transition-colors duration-150 rounded-sm",
-                hovered && !isDark && "bg-[#fafafa]",
-                hovered && isDark && "bg-white/[0.02]",
+                "transition-all duration-300 -mx-[60px] px-[60px]",
+                hovered && !isPreview
+                    ? isDark 
+                        ? "border-t border-b border-white/[0.08] border-dashed" 
+                        : "border-t border-b border-black/[0.08] border-dashed"
+                    : "border-t border-b border-transparent",
+                isPreview && "-mx-0 px-0"
             )}>
                 {children}
             </div>

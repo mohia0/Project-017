@@ -16,23 +16,30 @@ import {
     Share2, Eye, EyeOff, Plus, GripVertical, Trash2,
     User, Calendar, DollarSign, Tag, AlignLeft,
     Table, PenLine, Zap, Palette, Info,
-    Check, MoreHorizontal, FileText, Image, SeparatorHorizontal,
-    Settings, ChevronRight, RotateCcw, Monitor, Smartphone
+    Check, MoreHorizontal, FileText, Image as ImageIcon, SeparatorHorizontal,
+    Settings, ChevronRight, RotateCcw, Monitor, Smartphone, PanelTop,
+    X, Upload
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore } from '@/store/useProposalStore';
+import { useClientStore } from '@/store/useClientStore';
+import { useDebounce } from '@/hooks/useDebounce';
 import { ContentBlock } from './blocks/ContentBlock';
 import { SectionBlockWrapper } from './blocks/SectionBlockWrapper';
+import { ClientActionBar } from '@/components/ui/ClientActionBar';
+import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
+import ImageUploadModal from '../modals/ImageUploadModal';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
 ═══════════════════════════════════════════════════════ */
-type BlockType = 'heading' | 'text' | 'pricing' | 'signature' | 'divider' | 'image';
+type BlockType = 'heading' | 'text' | 'pricing' | 'signature' | 'divider' | 'image' | 'header';
 
 interface PricingRow {
     id: string;
+    title?: string;
     description: string;
     qty: number;
     rate: number;
@@ -44,6 +51,8 @@ interface BlockData {
     // heading / text
     content?: string;
     level?: 1 | 2 | 3;
+    // image
+    url?: string;
     // pricing
     rows?: PricingRow[];
     taxRate?: number;
@@ -51,6 +60,7 @@ interface BlockData {
     showTax?: boolean;
     showDiscount?: boolean;
     note?: string;
+    hideQty?: boolean;
     // signature
     signerName?: string;
     signerRole?: string;
@@ -59,13 +69,18 @@ interface BlockData {
 
 interface ProposalMeta {
     clientName: string;
+    clientEmail?: string;
+    clientPhone?: string;
+    clientAddress?: string;
     projectName: string;
     issueDate: string;
     expirationDate: string;
     currency: string;
     discountCalc: 'before_tax' | 'after_tax';
     proposalNumber: string;
-    status: 'Draft' | 'Sent' | 'Accepted' | 'Declined' | 'Overdue';
+    status: 'Draft' | 'Pending' | 'Accepted' | 'Declined' | 'Overdue';
+    logoUrl?: string;
+    documentTitle?: string;
 }
 
 type RightPanelTab = 'details' | 'appearance' | 'automation';
@@ -74,11 +89,11 @@ type RightPanelTab = 'details' | 'appearance' | 'automation';
    HELPERS
 ═══════════════════════════════════════════════════════ */
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-    Draft:    { bg: 'bg-[#eff6ff] border border-[#bfdbfe]', text: 'text-[#1d4ed8]' },
-    Sent:     { bg: 'bg-[#fef3c7] border border-[#fde68a]', text: 'text-[#b45309]' },
+    Draft:    { bg: 'bg-[#dbeafe] border border-[#bfdbfe]', text: 'text-[#1d4ed8]' },
+    Pending:  { bg: 'bg-[#fef3c7] border border-[#fde68a]', text: 'text-[#b45309]' },
     Accepted: { bg: 'bg-[#dcfce7] border border-[#bbf7d0]', text: 'text-[#15803d]' },
-    Declined: { bg: 'bg-[#fee2e2] border border-[#fecaca]', text: 'text-[#dc2626]' },
-    Overdue:  { bg: 'bg-[#fff7ed] border border-[#fed7aa]', text: 'text-[#c2410c]' },
+    Overdue:  { bg: 'bg-[#fee2e2] border border-[#fecaca]', text: 'text-[#dc2626]' },
+    Declined: { bg: 'bg-[#f3e8e3] border border-[#eec7b7]', text: 'text-[#7c4d3a]' },
 };
 
 function fmt(n: number, currency = 'USD') {
@@ -86,21 +101,30 @@ function fmt(n: number, currency = 'USD') {
 }
 
 const BLOCK_MENU = [
-    { type: 'heading'   as BlockType, label: 'Heading',       icon: AlignLeft,          tag: 'Text' },
-    { type: 'text'      as BlockType, label: 'Paragraph',     icon: FileText,            tag: 'Text' },
+    { type: 'header'    as BlockType, label: 'Header & Meta', icon: PanelTop,            tag: 'Layout' },
+    { type: 'text'      as BlockType, label: 'Content',       icon: FileText,            tag: 'Text' },
     { type: 'pricing'   as BlockType, label: 'Pricing Table', icon: Table,               tag: 'Finance' },
     { type: 'signature' as BlockType, label: 'Signature',     icon: PenLine,             tag: 'Legal' },
     { type: 'divider'   as BlockType, label: 'Divider',       icon: SeparatorHorizontal, tag: 'Layout' },
-    { type: 'image'     as BlockType, label: 'Image',         icon: Image,               tag: 'Media' },
+    { type: 'image'     as BlockType, label: 'Image',         icon: ImageIcon,               tag: 'Media' },
 ];
 
 /* ═══════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════ */
-export default function ProposalEditor() {
+export default function ProposalEditor({ id }: { id?: string }) {
     const router = useRouter();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
+    const { clients, fetchClients } = useClientStore();
+    const { updateProposal, fetchProposals, proposals } = useProposalStore();
+
+
+    React.useEffect(() => {
+        fetchClients();
+    }, [fetchClients]);
+
+    const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
 
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -112,6 +136,9 @@ export default function ProposalEditor() {
     // insertAfterIdx: -1 = before first block, 0..n-1 = after block at that index, null = no active insert zone
     const [insertAfterIdx, setInsertAfterIdx] = useState<number | null>(null);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null); // same index scheme
+    const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+    const [imageUploadOpen, setImageUploadOpen] = useState(false);
+    const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block', blockId?: string } | null>(null);
 
     const isMobilePreview = isPreview && previewMode === 'mobile';
 
@@ -124,12 +151,12 @@ export default function ProposalEditor() {
         discountCalc: 'before_tax',
         proposalNumber: '0170371',
         status: 'Draft',
+        logoUrl: '',
+        documentTitle: 'PROPOSAL &\nAGREEMENT',
     });
 
     const [blocks, setBlocks] = useState<BlockData[]>([
-        {
-            id: 'b1', type: 'heading', content: 'Thank you for choosing us', level: 1
-        },
+        { id: 'b1', type: 'header' },
         {
             id: 'b2', type: 'text',
             content: "We're focused on understanding your needs and creating solutions that align with your goals.\nHere's the proposal — we're happy to discuss any details."
@@ -137,9 +164,9 @@ export default function ProposalEditor() {
         {
             id: 'b3', type: 'pricing',
             rows: [
-                { id: 'r1', description: 'Brand Strategy & Identity', qty: 1, rate: 2500 },
-                { id: 'r2', description: 'Website Design',            qty: 1, rate: 1800 },
-                { id: 'r3', description: 'Content Creation',          qty: 3, rate: 400  },
+                { id: 'r1', title: 'Brand Strategy & Identity', description: '', qty: 1, rate: 2500 },
+                { id: 'r2', title: 'Website Design',            description: '', qty: 1, rate: 1800 },
+                { id: 'r3', title: 'Content Creation',          description: '', qty: 3, rate: 400  },
             ],
             taxRate: 15, discountRate: 0, showTax: true, showDiscount: false,
             note: ''
@@ -149,21 +176,74 @@ export default function ProposalEditor() {
             signerName: '', signerRole: 'Client', signed: false
         }
     ]);
+    
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const debouncedMeta = useDebounce(meta, 1000);
+    const debouncedBlocks = useDebounce(blocks, 1000);
 
-    /* ── DnD ── */
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
-
-    const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id) {
-            const from = blocks.findIndex(b => b.id === active.id);
-            const to   = blocks.findIndex(b => b.id === over.id);
-            setBlocks(arrayMove(blocks, from, to));
+    // Initial load effect
+    React.useEffect(() => {
+        if (!id) {
+            setIsLoaded(true);
+            return;
         }
-    };
+        fetchProposals();
+    }, [id, fetchProposals]);
+
+    React.useEffect(() => {
+        if (!id) return;
+        const proposal = proposals.find(p => p.id === id);
+        if (proposal && !isLoaded) {
+            setMeta(prev => ({
+                ...prev,
+                clientName: proposal.client_name || '',
+                projectName: proposal.title || '',
+                issueDate: proposal.issue_date ? proposal.issue_date.split('T')[0] : prev.issueDate,
+                expirationDate: proposal.due_date ? proposal.due_date.split('T')[0] : prev.expirationDate,
+                status: proposal.status as any,
+                proposalNumber: proposal.id.slice(0, 8).toUpperCase()
+            }));
+            if (proposal.blocks && Array.isArray(proposal.blocks) && proposal.blocks.length > 0) {
+                setBlocks(proposal.blocks);
+            }
+            setIsLoaded(true);
+        }
+    }, [id, proposals, isLoaded]);
+
+    // Auto-save effect
+    const isFirstRender = useRef(true);
+    React.useEffect(() => {
+        if (isFirstRender.current || !isLoaded || !id) {
+            if (isLoaded) isFirstRender.current = false;
+            return;
+        }
+
+        const totalAmount = debouncedBlocks.reduce((acc, block) => {
+            if (block.type === 'pricing' && block.rows) {
+                const sub = block.rows.reduce((sum: number, r: any) => sum + (r.qty * r.rate), 0);
+                const discount = block.discountRate ? (sub * block.discountRate / 100) : 0;
+                const afterDiscount = sub - discount;
+                const tax = block.taxRate ? (afterDiscount * block.taxRate / 100) : 0;
+                return acc + afterDiscount + tax;
+            }
+            return acc;
+        }, 0);
+
+        setSaveStatus('saving');
+        updateProposal(id, {
+            title: debouncedMeta.projectName || 'New Proposal',
+            client_name: debouncedMeta.clientName,
+            status: debouncedMeta.status,
+            issue_date: debouncedMeta.issueDate,
+            due_date: debouncedMeta.expirationDate,
+            amount: totalAmount,
+            blocks: debouncedBlocks,
+        }).then(() => {
+            setSaveStatus('saved');
+            setTimeout(() => setSaveStatus('idle'), 2500);
+        });
+    }, [debouncedMeta, debouncedBlocks, id, isLoaded, updateProposal]);
 
     /* ── Block mutations ── */
     const addBlock = (type: BlockType, afterId?: string) => {
@@ -241,7 +321,6 @@ export default function ProposalEditor() {
                     >
                         <ArrowLeft size={16} />
                     </button>
-
                     <div className="flex flex-col">
                         <input
                             type="text"
@@ -254,13 +333,21 @@ export default function ProposalEditor() {
                             placeholder="Proposal Title"
                         />
                     </div>
+                    {/* Auto-save Indicator */}
+                    <div className="flex items-center ml-2 pt-1">
+                        {saveStatus === 'saving' && <span className={cn("text-[11px] font-medium animate-pulse", isDark ? "text-[#888]" : "text-[#aaa]")}>Saving...</span>}
+                        {saveStatus === 'saved' && <span className="text-[11px] font-medium text-[#4dbf39]">Saved</span>}
+                    </div>
+                </div>
 
-                    {/* Status badge (StatusIndicator equivalent) */}
-                    <div className="relative ml-2">
+                {/* Right: Actions (CopyLink, SendEmail, DropDown) */}
+                <div className="flex items-center gap-2">
+                    {/* Status badge */}
+                    <div className="relative flex items-center">
                         <button
                             onClick={() => setShowStatusMenu(s => !s)}
                             className={cn(
-                                "flex items-center gap-1.5 px-3 py-1 rounded-[6px] text-[12px] font-semibold transition-all border",
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all",
                                 sc.bg, sc.text
                             )}
                         >
@@ -270,8 +357,8 @@ export default function ProposalEditor() {
                         </button>
                         {showStatusMenu && (
                             <div className={cn(
-                                "absolute left-0 top-full mt-1.5 w-40 rounded-[10px] border shadow-xl py-1 z-50",
-                                isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#d2d2eb]"
+                                "absolute right-0 top-full mt-1.5 w-40 rounded-[10px] shadow-xl py-1 z-50",
+                                isDark ? "bg-[#0c0c0c]" : "bg-white border-[#d2d2eb]"
                             )}>
                                 {Object.keys(STATUS_STYLE).map(s => (
                                     <button
@@ -290,10 +377,9 @@ export default function ProposalEditor() {
                             </div>
                         )}
                     </div>
-                </div>
 
-                {/* Right: Actions (CopyLink, SendEmail, DropDown) */}
-                <div className="flex items-center gap-2">
+                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-1" />
+
                     <button
                         onClick={() => {
                             if (isPreview) {
@@ -305,11 +391,11 @@ export default function ProposalEditor() {
                         }}
                         title={isPreview ? "Exit preview" : "Preview"}
                         className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all",
+                            "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
                             isPreview
-                                ? "bg-[var(--primary)] text-white hover:bg-[var(--primary-light)]"
+                                ? "bg-[#4dbf39] text-black hover:bg-[#59d044]"
                                 : isDark 
-                                    ? "bg-[#222] text-[#ccc] hover:bg-[#333]" 
+                                    ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" 
                                     : "bg-[#f1f1f9] text-[#555] hover:bg-[#e2e2ef] hover:text-[#111]"
                         )}
                     >
@@ -320,32 +406,32 @@ export default function ProposalEditor() {
                     {/* Desktop / Mobile toggle — only in preview mode */}
                     {isPreview && (
                         <div className={cn(
-                            "flex items-center rounded-[8px] border overflow-hidden",
-                            isDark ? "border-[#333] bg-[#1c1c1c]" : "border-[#e0e0e0] bg-[#f5f5f5]"
+                            "flex items-center rounded-[8px] h-[32px] p-[3px]",
+                            isDark ? "bg-white/[0.03]" : "border-[#e0e0e0] bg-[#f5f5f5]"
                         )}>
                             <button
                                 onClick={() => setPreviewMode('desktop')}
                                 title="Desktop preview"
                                 className={cn(
-                                    "flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium transition-all",
+                                    "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
                                     previewMode === 'desktop'
-                                        ? isDark ? "bg-[#333] text-white" : "bg-white text-[#111] shadow-sm"
-                                        : isDark ? "text-[#666] hover:text-[#aaa]" : "text-[#aaa] hover:text-[#555]"
+                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                        : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
                                 )}
                             >
-                                <Monitor size={13} />
+                                <Monitor size={14} />
                             </button>
                             <button
                                 onClick={() => setPreviewMode('mobile')}
                                 title="Mobile preview"
                                 className={cn(
-                                    "flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-medium transition-all",
+                                    "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
                                     previewMode === 'mobile'
-                                        ? isDark ? "bg-[#333] text-white" : "bg-white text-[#111] shadow-sm"
-                                        : isDark ? "text-[#666] hover:text-[#aaa]" : "text-[#aaa] hover:text-[#555]"
+                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                        : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
                                 )}
                             >
-                                <Smartphone size={13} />
+                                <Smartphone size={14} />
                             </button>
                         </div>
                     )}
@@ -355,16 +441,16 @@ export default function ProposalEditor() {
                         title={copied ? "Copied!" : "Copy link"}
                         className={cn(
                             "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
-                            isDark ? "bg-[#222] text-[#ccc] hover:bg-[#333]" : "bg-[#f1f1f9] text-[#555] hover:bg-[#e2e2ef] hover:text-[#111]"
+                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f1f1f9] text-[#555] hover:bg-[#e2e2ef] hover:text-[#111]"
                         )}
                     >
-                        {copied ? <Check size={14} className="text-emerald-500" /> : <Link2 size={14} />}
+                        {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
                     </button>
 
                     {/* Send Email equivalent */}
                     <button
                         title="Send via Email"
-                        className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-[var(--primary)] hover:bg-[var(--primary-light)] text-white shadow-sm"
+                        className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
                     >
                         <Send size={14} />
                     </button>
@@ -375,15 +461,15 @@ export default function ProposalEditor() {
                             onClick={() => setShowActionsMenu(s => !s)}
                             className={cn(
                                 "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
-                                isDark ? "bg-[#222] text-[#ccc] hover:bg-[#333]" : "bg-[#f1f1f9] text-[#555] hover:bg-[#e2e2ef] hover:text-[#111]"
+                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f1f1f9] text-[#555] hover:bg-[#e2e2ef] hover:text-[#111]"
                             )}
                         >
-                            <MoreHorizontal size={16} />
+                            <MoreHorizontal size={14} />
                         </button>
                         {showActionsMenu && (
                             <div className={cn(
-                                "absolute right-0 top-full mt-1.5 w-48 rounded-[10px] border shadow-xl py-1 z-50",
-                                isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#d2d2eb]"
+                                "absolute right-0 top-full mt-1.5 w-48 rounded-[10px] shadow-xl py-1 z-50",
+                                isDark ? "bg-[#0c0c0c]" : "bg-white border-[#d2d2eb]"
                             )}>
                                 {[
                                     { icon: Download, label: 'Download PDF' },
@@ -408,44 +494,66 @@ export default function ProposalEditor() {
                         )}
                     </div>
                 </div>
+            </div>
 
+            <div className="flex-1 flex overflow-hidden relative">
                 {/* ── LEFT: CANVAS ── */}
                 <div className={cn(
-                    "flex-1 overflow-auto relative",
-                    isDark ? "bg-[#111]" : "bg-[#f2f2f2]"
+                    "flex-1 overflow-auto relative w-full",
+                    isDark ? "bg-[#080808]" : "bg-[#f2f2f2]"
                 )}>
                     <div className={cn(
-                        "flex justify-center min-h-full",
+                        "flex flex-col items-center min-h-full",
                         isMobilePreview ? "py-8 px-4" : "py-10 px-6"
                     )}>
+                        {isPreview && !isMobilePreview && (
+                            <ClientActionBar
+                                type="proposal"
+                                status={meta.status as any}
+                                inline={true}
+                                onAccept={() => setIsSignModalOpen(true)}
+                                onDecline={() => updateMeta({ status: 'Declined' as any })}
+                                onDownloadPDF={() => console.log('Download PDF pressed')}
+                                onPrint={() => window.print()}
+                            />
+                        )}
                         {/* Mobile phone frame wrapper */}
                         {isMobilePreview ? (
                             <div className="flex flex-col items-center">
                                 {/* Phone shell */}
                                 <div className={cn(
-                                    "relative rounded-[44px] border-[8px] shadow-2xl overflow-hidden shrink-0",
+                                    "relative rounded-[44px] border overflow-hidden shrink-0",
                                     "w-[390px] h-[844px]",
-                                    isDark ? "border-[#2a2a2a] bg-[#1c1c1c]" : "border-[#c8c8c8] bg-white"
-                                )} style={{ boxShadow: '0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.1)' }}>
-                                    {/* Phone notch */}
+                                    isDark ? "border-[#333] bg-black shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)]" : "border-black/[0.05] bg-white shadow-xl"
+                                )}>
+                                    {/* Minimalist Notch */}
                                     <div className={cn(
-                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[34px] rounded-b-[20px] z-10",
-                                        isDark ? "bg-[#1a1a1a]" : "bg-[#b8b8b8]"
+                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10",
+                                        isDark ? "bg-white/[0.03]" : "bg-black/[0.03]"
                                     )} />
-                                    {/* Status bar */}
                                     <div className={cn(
-                                        "flex items-center justify-between px-6 pt-[14px] pb-2 text-[10px] font-semibold",
-                                        isDark ? "text-[#ccc]" : "text-[#333]"
+                                        "flex items-center justify-between px-8 pt-4 pb-2 text-[11px] font-medium z-10 relative opacity-40",
+                                        isDark ? "text-white" : "text-black"
                                     )}>
                                         <span>9:41</span>
-                                        <div className="flex items-center gap-1 text-[8px]">
-                                            <span>●●●●</span>
-                                            <span>WiFi</span>
-                                            <span>🔋</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-4 h-2.5 rounded-[2px] border border-current opacity-50" />
                                         </div>
                                     </div>
+
                                     {/* Scrollable content */}
-                                    <div className="absolute inset-0 top-[52px] overflow-y-auto overflow-x-hidden scrollbar-none">
+                                    <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0">
+                                        <ClientActionBar
+                                            type="proposal"
+                                            status={meta.status as any}
+                                            isMobile={true}
+                                            inline={true}
+                                            onAccept={() => setIsSignModalOpen(true)}
+                                            onDecline={() => updateMeta({ status: 'Declined' as any })}
+                                            onDownloadPDF={() => console.log('Download PDF pressed')}
+                                            onPrint={() => window.print()}
+                                            className="pt-4"
+                                        />
                                         <ProposalDocument
                                             meta={meta}
                                             blocks={blocks}
@@ -458,14 +566,17 @@ export default function ProposalEditor() {
                                             addBlock={addBlock}
                                             openInsertMenu={null}
                                             setOpenInsertMenu={() => {}}
+                                            updateMeta={updateMeta}
                                             setBlocks={setBlocks}
                                             currency={meta.currency}
+                                            setImageUploadOpen={setImageUploadOpen}
+                                            setUploadTarget={setUploadTarget}
                                         />
                                     </div>
                                     {/* Home bar */}
                                     <div className={cn(
-                                        "absolute bottom-[8px] left-1/2 -translate-x-1/2 w-[120px] h-[5px] rounded-full",
-                                        isDark ? "bg-[#444]" : "bg-[#bbb]"
+                                        "absolute bottom-[8px] left-1/2 -translate-x-1/2 w-[100px] h-[4px] rounded-full z-10",
+                                        isDark ? "bg-white/[0.05]" : "bg-black/[0.05]"
                                     )} />
                                 </div>
                             </div>
@@ -483,8 +594,11 @@ export default function ProposalEditor() {
                                 addBlock={addBlock}
                                 openInsertMenu={openInsertMenu}
                                 setOpenInsertMenu={setOpenInsertMenu}
+                                updateMeta={updateMeta}
                                 setBlocks={setBlocks}
                                 currency={meta.currency}
+                                setImageUploadOpen={setImageUploadOpen}
+                                setUploadTarget={setUploadTarget}
                             />
                         )}
                     </div>
@@ -493,28 +607,24 @@ export default function ProposalEditor() {
                 {/* ── RIGHT: METADATA PANEL ── */}
                 {!isPreview && (
                     <div className={cn(
-                        "w-[240px] shrink-0 flex flex-col border-l overflow-hidden",
-                        isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]"
+                        "w-[240px] shrink-0 flex flex-col overflow-hidden",
+                        isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]"
                     )}>
-                        {/* Tab bar */}
-                        <div className={cn(
-                            "flex items-center border-b shrink-0",
-                            isDark ? "border-[#252525]" : "border-[#ebebeb]"
-                        )}>
-                            {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'], ['automation', Zap, 'Auto'] ] as const).map(([tab, Icon, label]) => (
+                        <div className="flex items-center shrink-0 py-1">
+                            {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => (
                                 <button
                                     key={tab}
                                     onClick={() => setRightTab(tab)}
                                     title={label}
                                     className={cn(
-                                        "flex-1 flex items-center justify-center py-2.5 text-[11px] font-medium transition-all border-b-2",
+                                        "flex-1 flex items-center justify-center py-2.5 text-[11px] font-medium transition-all rounded-lg mx-1",
                                         rightTab === tab
                                             ? isDark
-                                                ? "border-white text-white"
-                                                : "border-[#111] text-[#111]"
+                                                ? "bg-white/5 text-white"
+                                                : "bg-[#111]/5 text-[#111]"
                                             : isDark
-                                                ? "border-transparent text-[#555] hover:text-[#aaa]"
-                                                : "border-transparent text-[#bbb] hover:text-[#666]"
+                                                ? "text-[#555] hover:bg-white/[0.02] hover:text-[#aaa]"
+                                                : "text-[#bbb] hover:bg-black/[0.02] hover:text-[#666]"
                                     )}
                                 >
                                     <Icon size={13} />
@@ -532,15 +642,57 @@ export default function ProposalEditor() {
                                         isDark={isDark}
                                         icon={<User size={11} className="opacity-50" />}
                                     >
-                                        <input
-                                            value={meta.clientName}
-                                            onChange={e => updateMeta({ clientName: e.target.value })}
-                                            placeholder="Select client..."
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium",
-                                                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                        <div className="relative">
+                                            <input
+                                                value={meta.clientName}
+                                                onChange={e => updateMeta({ clientName: e.target.value })}
+                                                onFocus={() => setClientDropdownOpen(true)}
+                                                onBlur={() => setTimeout(() => setClientDropdownOpen(false), 200)}
+                                                placeholder="Select client..."
+                                                className={cn(
+                                                    "w-full text-[12px] bg-transparent outline-none font-medium",
+                                                    isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                                )}
+                                            />
+                                            {clientDropdownOpen && clients.filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase())).length > 0 && (
+                                                <div className={cn(
+                                                    "absolute top-full left-0 w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-b-lg border border-t-0 shadow-xl overflow-hidden z-50 max-h-[220px] overflow-y-auto",
+                                                    isDark ? "bg-[#1f1f1f] border-[#252525]" : "bg-white border-[#ebebeb]"
+                                                )}>
+                                                    {clients
+                                                        .filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()))
+                                                        .map(c => (
+                                                            <button
+                                                                key={c.id}
+                                                                onMouseDown={(e) => {
+                                                                    e.preventDefault();
+                                                                    updateMeta({ 
+                                                                        clientName: c.company_name || c.contact_person,
+                                                                        clientEmail: c.email || '',
+                                                                        clientPhone: c.phone || '',
+                                                                        clientAddress: c.address || ''
+                                                                    });
+                                                                    setClientDropdownOpen(false);
+                                                                }}
+                                                                className={cn(
+                                                                    "w-full text-left px-3 py-2 text-[12px] transition-colors border-b last:border-0",
+                                                                    isDark ? "hover:bg-[#2a2a2a] border-[#252525]" : "hover:bg-[#f5f5f5] border-[#f0f0f0]"
+                                                                )}
+                                                            >
+                                                                <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                                                    {c.company_name}
+                                                                </div>
+                                                                {c.contact_person && (
+                                                                    <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")}>
+                                                                        {c.contact_person}
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        ))
+                                                    }
+                                                </div>
                                             )}
-                                        />
+                                        </div>
                                     </MetaField>
 
                                     <MetaField
@@ -632,27 +784,6 @@ export default function ProposalEditor() {
                                             <option value="after_tax">After tax</option>
                                         </select>
                                     </MetaField>
-
-                                    <MetaField
-                                        label="Proposal number (ID)"
-                                        isDark={isDark}
-                                        icon={<Tag size={11} className="opacity-50" />}
-                                        hasInfo
-                                    >
-                                        <input
-                                            value={meta.proposalNumber}
-                                            onChange={e => updateMeta({ proposalNumber: e.target.value })}
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium font-mono",
-                                                isDark ? "text-[#ccc]" : "text-[#333]"
-                                            )}
-                                        />
-                                    </MetaField>
-
-                                    {/* Collapsible sections */}
-                                    {['Automation', 'Custom fields', 'Localisation'].map(section => (
-                                        <CollapsibleSection key={section} label={section} isDark={isDark} />
-                                    ))}
                                 </>
                             )}
 
@@ -673,7 +804,50 @@ export default function ProposalEditor() {
                                         </button>
                                     ))}
                                     <div className={cn("text-[10px] uppercase tracking-widest font-bold pt-2", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                        Accent Color
+                                        Branding
+                                    </div>
+                                    <MetaField label="Logo" isDark={isDark}>
+                                        <div className="flex flex-col gap-2">
+                                            {meta.logoUrl && (
+                                                <div className="relative group/logo w-fit">
+                                                    <img src={meta.logoUrl} alt="Logo" className="h-12 w-auto rounded border border-white/5 bg-white/5 p-1" />
+                                                    <button 
+                                                        onClick={() => updateMeta({ logoUrl: '' })}
+                                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/logo:opacity-100 transition-opacity"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <button 
+                                                onClick={() => {
+                                                    setUploadTarget({ type: 'logo' });
+                                                    setImageUploadOpen(true);
+                                                }}
+                                                className={cn(
+                                                    "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed transition-all",
+                                                    isDark ? "border-white/5 hover:border-[#4dbf39]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[#4dbf39]/30 hover:bg-gray-50 text-gray-500"
+                                                )}
+                                            >
+                                                <Upload size={14} />
+                                                <span className="text-[12px] font-medium">
+                                                    {meta.logoUrl ? "Change Logo" : "Upload Logo"}
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </MetaField>
+                                    <MetaField label="Document Title" isDark={isDark}>
+                                        <textarea 
+                                            value={meta.documentTitle || ''} 
+                                            onChange={e => updateMeta({ documentTitle: e.target.value })} 
+                                            placeholder="PROPOSAL & AGREEMENT" 
+                                            rows={2}
+                                            className={cn("w-full text-[12px] bg-transparent outline-none resize-none", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                        />
+                                    </MetaField>
+
+                                    <div className={cn("text-[10px] uppercase tracking-widest font-bold pt-4", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                                        Typography
                                     </div>
                                     <div className="flex gap-2 flex-wrap">
                                         {['#111111', '#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c'].map(color => (
@@ -681,52 +855,171 @@ export default function ProposalEditor() {
                                                 key={color}
                                                 title={color}
                                                 style={{ background: color }}
-                                                className="w-7 h-7 rounded-full border-2 border-white/30 hover:scale-110 transition-transform shadow-sm"
+                                                className="w-7 h-7 rounded-full border-2 border-[#4dbf39]/30 hover:scale-110 transition-transform shadow-sm"
                                             />
                                         ))}
                                     </div>
                                 </div>
                             )}
 
-                            {rightTab === 'automation' && (
-                                <div className={cn("text-[12px] py-4 text-center", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                    Automation rules coming soon
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer totals */}
-                        <div className={cn(
-                            "border-t px-3 py-3 space-y-1 shrink-0 text-[11px]",
-                            isDark ? "border-[#252525]" : "border-[#ebebeb]"
-                        )}>
-                            <div className={cn("flex justify-between", isDark ? "text-[#666]" : "text-[#aaa]")}>
-                                <span>Subtotal</span>
-                                <span className="font-medium">{fmt(totals.subtotal, meta.currency)}</span>
-                            </div>
-                            {totals.discAmt > 0 && (
-                                <div className={cn("flex justify-between", isDark ? "text-[#666]" : "text-[#aaa]")}>
-                                    <span>Discount</span>
-                                    <span className="font-medium text-red-500">−{fmt(totals.discAmt, meta.currency)}</span>
-                                </div>
-                            )}
-                            {totals.taxAmt > 0 && (
-                                <div className={cn("flex justify-between", isDark ? "text-[#666]" : "text-[#aaa]")}>
-                                    <span>Tax</span>
-                                    <span className="font-medium">{fmt(totals.taxAmt, meta.currency)}</span>
-                                </div>
-                            )}
-                            <div className={cn(
-                                "flex justify-between font-bold text-[13px] pt-1 border-t",
-                                isDark ? "border-[#2a2a2a] text-white" : "border-[#ebebeb] text-[#111]"
-                            )}>
-                                <span>Total</span>
-                                <span>{fmt(totals.total, meta.currency)}</span>
-                            </div>
                         </div>
                     </div>
                 )}
             </div>
+
+            <AcceptSignModal
+                isOpen={isSignModalOpen}
+                onClose={() => setIsSignModalOpen(false)}
+                onAccept={(signature: any) => {
+                    console.log('Document signed:', signature);
+                    updateMeta({ status: 'Accepted' as any });
+                    
+                    // Update signature blocks if any
+                    blocks.forEach((b: any) => {
+                        if (b.type === 'signature') {
+                            updateBlock(b.id, { 
+                                signerName: signature.name, 
+                                signed: true 
+                            });
+                        }
+                    });
+                }}
+                documentType="proposal"
+            />
+            <ImageUploadModal 
+                isOpen={imageUploadOpen}
+                onClose={() => setImageUploadOpen(false)}
+                onUpload={(url: string) => {
+                    if (uploadTarget?.type === 'logo') {
+                        updateMeta({ logoUrl: url });
+                    } else if (uploadTarget?.type === 'block' && uploadTarget.blockId) {
+                        updateBlock(uploadTarget.blockId, { url });
+                    }
+                }}
+                title={uploadTarget?.type === 'logo' ? "Upload Logo" : "Upload Image"}
+            />
+        </div>
+    );
+}
+
+/* ═══════════════════════════════════════════════════════
+   PROPOSAL DOCUMENT — The Paper / Content Area
+═══════════════════════════════════════════════════════ */
+function ProposalDocument({
+    meta, blocks, totals, isDark, isPreview, isMobile,
+    updateBlock, removeBlock, addBlock, openInsertMenu, setOpenInsertMenu,
+    updateMeta, setBlocks, currency, setImageUploadOpen, setUploadTarget
+}: any) {
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const from = blocks.findIndex((b: any) => b.id === active.id);
+            const to   = blocks.findIndex((b: any) => b.id === over.id);
+            setBlocks(arrayMove(blocks, from, to));
+        }
+    };
+
+    return (
+        <div className={cn(
+            "w-full transition-all duration-300",
+            isMobile ? "max-w-full px-4" : "max-w-[850px] shadow-sm",
+            isDark ? "bg-[#1c1c1c] text-white" : "bg-white text-[#111]",
+            !isMobile && "min-h-[1100px] py-10 px-12 rounded-[4px]"
+        )}>
+            {/* Blocks */}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={blocks.map((b: any) => b.id)} strategy={verticalListSortingStrategy}>
+                    {!isPreview && (
+                        <InsertZone
+                            idx={-1}
+                            isDark={isDark}
+                            isOpen={openInsertMenu === -1}
+                            onOpen={() => setOpenInsertMenu(-1)}
+                            onClose={() => setOpenInsertMenu(null)}
+                            onAdd={(type) => addBlock(type)}
+                            hasHeader={blocks.some((b: any) => b.type === 'header')}
+                        />
+                    )}
+
+                    <div className="space-y-1">
+                        {blocks.map((block: any, idx: number) => (
+                            <React.Fragment key={block.id}>
+                                <SortableBlock
+                                    block={block}
+                                    isDark={isDark}
+                                    isPreview={isPreview}
+                                    updateBlock={updateBlock}
+                                    removeBlock={removeBlock}
+                                    addBlock={addBlock}
+                                    currency={currency}
+                                    meta={meta}
+                                    updateMeta={updateMeta}
+                                    setImageUploadOpen={setImageUploadOpen}
+                                    setUploadTarget={setUploadTarget}
+                                    onDuplicate={() => {
+                                        const nb = { ...block, id: uuidv4() };
+                                        const nbx = [...blocks];
+                                        nbx.splice(idx + 1, 0, nb);
+                                        setBlocks(nbx);
+                                    }}
+                                    onMoveUp={() => {
+                                        if (idx === 0) return;
+                                        setBlocks(arrayMove(blocks, idx, idx - 1));
+                                    }}
+                                    onMoveDown={() => {
+                                        if (idx === blocks.length - 1) return;
+                                        setBlocks(arrayMove(blocks, idx, idx + 1));
+                                    }}
+                                />
+                                {!isPreview && (
+                                    <InsertZone
+                                        idx={idx}
+                                        isDark={isDark}
+                                        isOpen={openInsertMenu === idx}
+                                        onOpen={() => setOpenInsertMenu(idx)}
+                                        onClose={() => setOpenInsertMenu(null)}
+                                        onAdd={(type) => addBlock(type, block.id)}
+                                        hasHeader={blocks.some((b: any) => b.type === 'header')}
+                                    />
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                </SortableContext>
+            </DndContext>
+
+            {/* Total Summary for Preview or when Document is locked */}
+            {isPreview && (
+                <div className="mt-16 pt-8 border-t border-dashed border-opacity-20 flex justify-end">
+                    <div className="w-64 space-y-2">
+                        <div className="flex justify-between text-[13px]">
+                            <span className="opacity-50">Subtotal</span>
+                            <span>{fmt(totals.subtotal, currency)}</span>
+                        </div>
+                        {totals.discAmt > 0 && (
+                            <div className="flex justify-between text-[13px]">
+                                <span className="opacity-50">Discount</span>
+                                <span className="text-red-500">−{fmt(totals.discAmt, currency)}</span>
+                            </div>
+                        )}
+                        {totals.taxAmt > 0 && (
+                            <div className="flex justify-between text-[13px]">
+                                <span className="opacity-50">Tax</span>
+                                <span>{fmt(totals.taxAmt, currency)}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between text-lg font-bold border-t border-opacity-10 pt-2 mt-2">
+                            <span>Total</span>
+                            <span>{fmt(totals.total, currency)}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -735,7 +1028,8 @@ export default function ProposalEditor() {
    SORTABLE BLOCK WRAPPER
 ═══════════════════════════════════════════════════════ */
 function SortableBlock({
-    block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, onMoveUp, onMoveDown, onDuplicate
+    block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, onMoveUp, onMoveDown, onDuplicate, meta, updateMeta,
+    setImageUploadOpen, setUploadTarget
 }: {
     block: BlockData;
     isDark: boolean;
@@ -747,6 +1041,10 @@ function SortableBlock({
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     onDuplicate?: () => void;
+    meta?: any;
+    updateMeta?: (patch: any) => void;
+    setImageUploadOpen: (open: boolean) => void;
+    setUploadTarget: (target: any) => void;
 }) {
     const {
         attributes, listeners, setNodeRef,
@@ -769,6 +1067,10 @@ function SortableBlock({
                 isPreview={isPreview}
                 updateBlock={updateBlock}
                 currency={currency}
+                meta={meta}
+                updateMeta={updateMeta}
+                setImageUploadOpen={setImageUploadOpen}
+                setUploadTarget={setUploadTarget}
             />
         </SectionBlockWrapper>
     );
@@ -778,15 +1080,22 @@ function SortableBlock({
    BLOCK RENDERER
 ═══════════════════════════════════════════════════════ */
 function BlockRenderer({
-    block, isDark, isPreview, updateBlock, currency
+    block, isDark, isPreview, updateBlock, currency, meta, updateMeta,
+    setImageUploadOpen, setUploadTarget
 }: {
     block: BlockData;
     isDark: boolean;
     isPreview: boolean;
     updateBlock: (id: string, patch: Partial<BlockData>) => void;
     currency: string;
+    meta?: any;
+    updateMeta?: (patch: any) => void;
+    setImageUploadOpen: (open: boolean) => void;
+    setUploadTarget: (target: any) => void;
 }) {
     switch (block.type) {
+        case 'header':
+            return <HeaderBlock meta={meta} isDark={isDark} isPreview={isPreview} updateMeta={updateMeta} />;
         case 'heading':
             return <HeadingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} />;
         case 'text':
@@ -799,17 +1108,153 @@ function BlockRenderer({
             return <div className={cn("my-4 border-t", isDark ? "border-[#2a2a2a]" : "border-[#f0f0f0]")} />;
         case 'image':
             return (
-                <div className={cn(
-                    "flex items-center justify-center h-32 rounded-lg border-2 border-dashed text-[12px] my-2",
-                    isDark ? "border-[#333] text-[#555]" : "border-[#e0e0e0] text-[#ccc]"
-                )}>
-                    <Image size={20} className="mr-2 opacity-40" />
-                    Click to add image
+                <div className="my-2">
+                    {block.url ? (
+                        <div className="relative group/img-block overflow-hidden rounded-xl border border-white/10 bg-white/5 p-1 w-fit mx-auto">
+                            <img src={block.url} alt="Block" className="max-h-[400px] w-auto rounded-lg" />
+                            {!isPreview && (
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img-block:opacity-100 transition-all flex items-center justify-center gap-2">
+                                    <button 
+                                        onClick={() => {
+                                            setUploadTarget({ type: 'block', blockId: block.id });
+                                            setImageUploadOpen(true);
+                                        }}
+                                        className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/40 text-white flex items-center justify-center backdrop-blur-sm transition-colors"
+                                    >
+                                        <Upload size={14} />
+                                    </button>
+                                    <button 
+                                        onClick={() => updateBlock(block.id, { url: '' })}
+                                        className="w-8 h-8 rounded-lg bg-red-500 text-white flex items-center justify-center transition-colors"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => {
+                                setUploadTarget({ type: 'block', blockId: block.id });
+                                setImageUploadOpen(true);
+                            }}
+                            className={cn(
+                                "flex flex-col items-center justify-center w-full min-h-32 rounded-xl border-2 border-dashed transition-all p-8 gap-3",
+                                isDark ? "border-white/5 hover:border-[#4dbf39]/30 hover:bg-white/5 text-white/30 hover:text-[#4dbf39]" : "border-gray-200 hover:border-[#4dbf39]/30 hover:bg-gray-50 text-[#999] hover:text-[#4dbf39]"
+                            )}
+                        >
+                            <ImageIcon size={24} className="opacity-50" />
+                            <div className="text-center">
+                                <span className="text-[13px] font-bold block mb-1">Click to upload image</span>
+                                <span className="text-[11px] opacity-60">Supports Drag & Drop and Paste</span>
+                            </div>
+                        </button>
+                    )}
                 </div>
             );
         default:
             return null;
     }
+}
+
+/* ─── Header Block ─── */
+function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
+    return (
+        <div className="mb-4">
+            <div className="flex justify-between items-start mb-10">
+                <div className="space-y-4">
+                    {/* Branding Logo */}
+                    {meta.logoUrl ? (
+                        <img src={meta.logoUrl} alt="Logo" className="max-h-16 w-auto" />
+                    ) : (
+                        <div className={cn(
+                            "font-black text-4xl leading-[0.85] tracking-tighter",
+                            isDark ? "text-white" : "text-[#4a4a4a]"
+                        )}>
+                            MOHI<sup className="text-[14px]">®</sup><br/>
+                            HASSAN
+                        </div>
+                    )}
+                </div>
+                <div className="text-right">
+                    <div 
+                        contentEditable={!isPreview}
+                        suppressContentEditableWarning
+                        onBlur={e => updateMeta({ documentTitle: e.currentTarget.textContent || '' })}
+                        className={cn(
+                            "text-3xl font-black tracking-tighter leading-[0.9] whitespace-pre-line outline-none",
+                            isDark ? "text-[#ccc]" : "text-[#2a2a2a]",
+                            !isPreview && "hover:bg-black/5 dark:hover:bg-white/5 rounded px-1 -mx-1"
+                        )}
+                    >
+                        {meta.documentTitle || 'PROPOSAL &\nAGREEMENT'}
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-between items-end pt-8">
+                <div>
+                    <div 
+                        contentEditable={!isPreview}
+                        suppressContentEditableWarning
+                        onBlur={e => updateMeta({ clientName: e.currentTarget.textContent || '' })}
+                        className="text-[15px] font-bold mb-4 outline-none empty:before:content-['Client_Name'] empty:before:opacity-30"
+                    >
+                        To {meta.clientName}
+                    </div>
+                    <div className={cn("text-[11px] space-y-1", isDark ? "text-[#aaa]" : "text-[#555]")}>
+                        <div className="flex items-center gap-1">
+                            <span className="font-bold">Email:</span> 
+                            <span
+                                contentEditable={!isPreview}
+                                suppressContentEditableWarning
+                                onBlur={e => updateMeta({ clientEmail: e.currentTarget.textContent || '' })}
+                                className="outline-none min-w-[50px]"
+                            >
+                                {meta.clientEmail}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <span className="font-bold">Phone:</span> 
+                            <span
+                                contentEditable={!isPreview}
+                                suppressContentEditableWarning
+                                onBlur={e => updateMeta({ clientPhone: e.currentTarget.textContent || '' })}
+                                className="outline-none min-w-[50px]"
+                            >
+                                {meta.clientPhone}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <span className="font-bold">Address:</span> 
+                            <span
+                                contentEditable={!isPreview}
+                                suppressContentEditableWarning
+                                onBlur={e => updateMeta({ clientAddress: e.currentTarget.textContent || '' })}
+                                className="outline-none min-w-[50px]"
+                            >
+                                {meta.clientAddress}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex gap-8 text-right">
+                    <div>
+                        <div className={cn("text-[10px] font-bold mb-1", isDark ? "text-white" : "text-[#111]")}>Proposal Number:</div>
+                        <div className={cn("text-[11px] font-mono", isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.proposalNumber || '---'}</div>
+                    </div>
+                    <div>
+                        <div className={cn("text-[10px] font-bold mb-1", isDark ? "text-white" : "text-[#111]")}>Issue Date:</div>
+                        <div className={cn("text-[11px] font-mono", isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.issueDate || '---'}</div>
+                    </div>
+                    <div>
+                        <div className={cn("text-[10px] font-bold mb-1", isDark ? "text-white" : "text-[#111]")}>Due Date:</div>
+                        <div className={cn("text-[11px] font-mono", isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.expirationDate || '---'}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 /* ─── Heading Block ─── */
@@ -851,6 +1296,9 @@ function HeadingBlock({ block, isDark, isPreview, updateBlock }: any) {
 
 /* ─── Text Block ─── */
 function TextBlock({ block, isDark, isPreview, updateBlock }: any) {
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => { setMounted(true); }, []);
+
     if (isPreview) {
         return (
             <div
@@ -863,6 +1311,8 @@ function TextBlock({ block, isDark, isPreview, updateBlock }: any) {
         );
     }
     
+    if (!mounted) return <div className="py-2 min-h-[50px]" />;
+
     return (
         <div className="py-2">
             <ContentBlock
@@ -877,7 +1327,8 @@ function TextBlock({ block, isDark, isPreview, updateBlock }: any) {
 /* ─── Pricing Block ─── */
 function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) {
     const rows: PricingRow[] = block.rows || [];
-    const subtotal = rows.reduce((s: number, r: PricingRow) => s + r.qty * r.rate, 0);
+    const hideQty = block.hideQty || false;
+    const subtotal = rows.reduce((s: number, r: PricingRow) => s + (hideQty ? 1 : r.qty) * r.rate, 0);
     const discAmt  = subtotal * ((block.discountRate || 0) / 100);
     const taxBase  = subtotal - discAmt;
     const taxAmt   = taxBase * ((block.taxRate || 0) / 100);
@@ -890,7 +1341,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
     };
     const addRow = () => {
         updateBlock(block.id, {
-            rows: [...rows, { id: uuidv4(), description: '', qty: 1, rate: 0 }]
+            rows: [...rows, { id: uuidv4(), title: '', description: '', qty: 1, rate: 0 }]
         });
     };
     const removeRow = (rowId: string) => {
@@ -908,10 +1359,10 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
             <table className="w-full">
                 <thead className={cn("border-b", isDark ? "border-[#2a2a2a] bg-[#1f1f1f]" : "border-[#f0f0f0] bg-[#fafafa]")}>
                     <tr>
-                        <th className={cn(th, "px-4 py-2 w-full")}>Description</th>
-                        <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>
-                        <th className={cn(th, "px-3 py-2 text-right w-24")}>Rate</th>
-                        <th className={cn(th, "px-4 py-2 text-right w-24")}>Total</th>
+                        <th className={cn(th, "px-4 py-2 w-full")}>Item</th>
+                        {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
+                        <th className={cn(th, "px-3 py-2 text-right w-24")}>Amount</th>
+                        {!hideQty && <th className={cn(th, "px-4 py-2 text-right w-24")}>Total</th>}
                         {!isPreview && <th className="w-8" />}
                     </tr>
                 </thead>
@@ -920,27 +1371,44 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
                         <tr key={row.id} className={cn("border-b group/row", isDark ? "border-[#1f1f1f]" : "border-[#f8f8f8]")}>
                             <td className={cn(td, "px-4")}>
                                 {isPreview
-                                    ? row.description || '—'
-                                    : <input
-                                        value={row.description}
-                                        onChange={e => updateRow(row.id, { description: e.target.value })}
-                                        placeholder="Item description..."
-                                        className={cn("w-full bg-transparent outline-none text-[12px]", isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]")}
-                                    />
+                                    ? (
+                                        <div className="flex flex-col">
+                                            <div className="font-bold text-[15px]">{row.title || row.description || 'Item'}</div>
+                                            {(row.title && row.description) && <div className={cn("text-[10.5px] mt-0.5", isDark ? "text-[#888]" : "text-[#666]")}>{row.description}</div>}
+                                        </div>
+                                    )
+                                    : (
+                                        <div className="flex flex-col gap-1 py-1">
+                                            <input
+                                                value={row.title || ''}
+                                                onChange={e => updateRow(row.id, { title: e.target.value })}
+                                                placeholder={row.description || "Item title..."}
+                                                className={cn("w-full bg-transparent outline-none font-bold text-[15px]", isDark ? "text-white placeholder:text-[#555]" : "text-[#111] placeholder:text-[#ccc]")}
+                                            />
+                                            <input
+                                                value={row.description}
+                                                onChange={e => updateRow(row.id, { description: e.target.value })}
+                                                placeholder="Description (optional)..."
+                                                className={cn("w-full bg-transparent outline-none text-[10.5px]", isDark ? "text-[#888] placeholder:text-[#444]" : "text-[#666] placeholder:text-[#ddd]")}
+                                            />
+                                        </div>
+                                    )
                                 }
                             </td>
-                            <td className={cn(td, "px-3 text-right")}>
-                                {isPreview
-                                    ? row.qty
-                                    : <input
-                                        type="number"
-                                        value={row.qty}
-                                        onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
-                                        className={cn("w-12 text-right bg-transparent outline-none text-[12px]", isDark ? "text-[#ccc]" : "text-[#333]")}
-                                    />
-                                }
-                            </td>
-                            <td className={cn(td, "px-3 text-right")}>
+                            {!hideQty && (
+                                <td className={cn(td, "px-3 text-right align-top pt-3")}>
+                                    {isPreview
+                                        ? row.qty
+                                        : <input
+                                            type="number"
+                                            value={row.qty}
+                                            onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
+                                            className={cn("w-12 text-right bg-transparent outline-none text-[12px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                        />
+                                    }
+                                </td>
+                            )}
+                            <td className={cn(td, "px-3 text-right align-top pt-3")}>
                                 {isPreview
                                     ? fmt(row.rate, currency)
                                     : <input
@@ -951,9 +1419,9 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
                                     />
                                 }
                             </td>
-                            <td className={cn(td, "px-4 text-right font-semibold")}>{fmt(row.qty * row.rate, currency)}</td>
+                            {!hideQty && <td className={cn(td, "px-4 text-right font-semibold align-top pt-3")}>{fmt(row.qty * row.rate, currency)}</td>}
                             {!isPreview && (
-                                <td className="pr-2">
+                                <td className="pr-2 align-top pt-3">
                                     <button
                                         onClick={() => removeRow(row.id)}
                                         className={cn("opacity-0 group-hover/row:opacity-100 p-1 rounded transition-all", isDark ? "text-[#555] hover:text-red-400" : "text-[#ddd] hover:text-red-400")}
@@ -970,49 +1438,65 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
             {/* Totals */}
             <div className={cn("px-4 py-3 space-y-1 border-t", isDark ? "border-[#2a2a2a] bg-[#1a1a1a]" : "border-[#f0f0f0] bg-[#fafafa]")}>
                 {!isPreview && (
-                    <button
-                        onClick={addRow}
-                        className={cn("flex items-center gap-1.5 text-[11px] font-medium mb-2 transition-colors", isDark ? "text-[#555] hover:text-[#888]" : "text-[#bbb] hover:text-[#888]")}
-                    >
-                        <Plus size={11} /> Add line
-                    </button>
+                    <div className="flex justify-between items-center mb-2">
+                        <button
+                            onClick={addRow}
+                            className={cn("flex items-center gap-1.5 text-[11px] font-medium transition-colors", isDark ? "text-[#555] hover:text-[#888]" : "text-[#bbb] hover:text-[#888]")}
+                        >
+                            <Plus size={11} /> Add line
+                        </button>
+                        <label className={cn("flex items-center gap-2 text-[11px] cursor-pointer", isDark ? "text-[#888] hover:text-[#ccc]" : "text-[#666] hover:text-[#111]")}>
+                            <input 
+                                type="checkbox" 
+                                checked={hideQty} 
+                                onChange={e => updateBlock(block.id, { hideQty: e.target.checked })} 
+                                className="rounded accent-current" 
+                            />
+                            Hide Qty
+                        </label>
+                    </div>
                 )}
                 <div className={cn("flex justify-between text-[11px]", isDark ? "text-[#666]" : "text-[#aaa]")}>
                     <span>Subtotal</span>
                     <span>{fmt(subtotal, currency)}</span>
                 </div>
-                {/* Discount row */}
-                <div className={cn("flex justify-between items-center text-[11px]", isDark ? "text-[#666]" : "text-[#aaa]")}>
-                    <div className="flex items-center gap-2">
-                        <span>Discount</span>
-                        {!isPreview && (
-                            <input
-                                type="number"
-                                value={block.discountRate || 0}
-                                onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
-                                className={cn("w-10 text-[11px] bg-transparent outline-none border-b", isDark ? "border-[#333] text-[#888]" : "border-[#e0e0e0] text-[#888]")}
-                            />
-                        )}
-                        <span>%</span>
+                {/* Discount row - Hide in preview if 0 */}
+                {(!isPreview || (block.discountRate || 0) > 0) && (
+                    <div className={cn("flex justify-between items-center text-[11px]", isDark ? "text-[#666]" : "text-[#aaa]")}>
+                        <div className="flex items-center gap-2">
+                            <span>Discount</span>
+                            {!isPreview && (
+                                <input
+                                    type="number"
+                                    value={block.discountRate || 0}
+                                    onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
+                                    className={cn("w-10 text-[11px] bg-transparent outline-none border-b", isDark ? "border-[#333] text-[#888]" : "border-[#e0e0e0] text-[#888]")}
+                                />
+                            )}
+                            {(!isPreview || (block.discountRate || 0) > 0) && <span>%</span>}
+                        </div>
+                        <span>−{fmt(discAmt, currency)}</span>
                     </div>
-                    <span>−{fmt(discAmt, currency)}</span>
-                </div>
-                {/* Tax row */}
-                <div className={cn("flex justify-between items-center text-[11px]", isDark ? "text-[#666]" : "text-[#aaa]")}>
-                    <div className="flex items-center gap-2">
-                        <span>Tax</span>
-                        {!isPreview && (
-                            <input
-                                type="number"
-                                value={block.taxRate || 0}
-                                onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
-                                className={cn("w-10 text-[11px] bg-transparent outline-none border-b", isDark ? "border-[#333] text-[#888]" : "border-[#e0e0e0] text-[#888]")}
-                            />
-                        )}
-                        <span>%</span>
+                )}
+
+                {/* Tax row - Hide in preview if 0 */}
+                {(!isPreview || (block.taxRate || 0) > 0) && (
+                    <div className={cn("flex justify-between items-center text-[11px]", isDark ? "text-[#666]" : "text-[#aaa]")}>
+                        <div className="flex items-center gap-2">
+                            <span>Tax</span>
+                            {!isPreview && (
+                                <input
+                                    type="number"
+                                    value={block.taxRate || 0}
+                                    onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
+                                    className={cn("w-10 text-[11px] bg-transparent outline-none border-b", isDark ? "border-[#333] text-[#888]" : "border-[#e0e0e0] text-[#888]")}
+                                />
+                            )}
+                            {(!isPreview || (block.taxRate || 0) > 0) && <span>%</span>}
+                        </div>
+                        <span>{fmt(taxAmt, currency)}</span>
                     </div>
-                    <span>{fmt(taxAmt, currency)}</span>
-                </div>
+                )}
                 <div className={cn("flex justify-between font-bold text-[13px] pt-1.5 border-t", isDark ? "border-[#2a2a2a] text-white" : "border-[#e8e8e8] text-[#111]")}>
                     <span>Total</span>
                     <span>{fmt(total, currency)}</span>
@@ -1139,7 +1623,7 @@ function CollapsibleSection({ label, isDark }: { label: string; isDark: boolean 
    INSERT ZONE — smart dashed line between blocks
 ═══════════════════════════════════════════════════════ */
 function InsertZone({
-    idx, isDark, isOpen, onOpen, onClose, onAdd
+    idx, isDark, isOpen, onOpen, onClose, onAdd, hasHeader
 }: {
     idx: number;
     isDark: boolean;
@@ -1147,21 +1631,21 @@ function InsertZone({
     onOpen: () => void;
     onClose: () => void;
     onAdd: (type: BlockType) => void;
+    hasHeader?: boolean;
 }) {
     const [hovered, setHovered] = useState(false);
     const visible = hovered || isOpen;
 
     return (
         <div
-            className="relative flex items-center group/insert"
-            style={{ height: visible ? 28 : 8, transition: 'height 0.15s ease' }}
+            className="relative flex items-center group/insert h-[24px]"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => { if (!isOpen) setHovered(false); }}
         >
             {/* Dashed line */}
             <div className={cn(
-                "absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center transition-opacity duration-150",
-                visible ? "opacity-100" : "opacity-0"
+                "absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-150",
+                visible ? "opacity-100 translate-y-[-50%]" : "opacity-0 translate-y-[20%] pointer-events-none"
             )}>
                 <div className={cn(
                     "flex-1 border-t border-dashed",
@@ -1170,14 +1654,14 @@ function InsertZone({
                 <button
                     onClick={(e) => { e.stopPropagation(); onOpen(); }}
                     className={cn(
-                        "mx-2 w-5 h-5 flex items-center justify-center rounded-full border transition-all text-[11px] font-bold shrink-0 shadow-sm",
+                        "mx-2 w-5 h-5 flex items-center justify-center rounded-full border transition-all shrink-0 shadow-sm",
                         isOpen
                             ? isDark ? "bg-[var(--primary)] border-[var(--primary)] text-white" : "bg-[var(--primary)] border-[var(--primary)] text-white"
                             : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary)] hover:text-[var(--primary)]"
                                      : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary)] hover:text-[var(--primary)]"
                     )}
                 >
-                    +
+                    <Plus size={12} strokeWidth={2.5} />
                 </button>
                 <div className={cn(
                     "flex-1 border-t border-dashed",
@@ -1200,7 +1684,7 @@ function InsertZone({
                     )}>
                         Insert block
                     </div>
-                    {BLOCK_MENU.map(({ type, label, icon: Icon, tag }) => (
+                    {BLOCK_MENU.filter(b => !(b.type === 'header' && hasHeader)).map(({ type, label, icon: Icon, tag }) => (
                         <button
                             key={type}
                             onClick={() => { onAdd(type); onClose(); setHovered(false); }}
