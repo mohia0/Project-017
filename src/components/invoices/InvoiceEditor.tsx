@@ -1326,17 +1326,24 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
             );
         }
         case 'text':
+            if (isPreview) {
+                return (
+                    <div
+                        className={cn(
+                            "py-1 text-[13px] leading-relaxed prose prose-p:my-1 prose-headings:my-2 max-w-none",
+                            isDark ? "text-[#aaa] prose-invert" : "text-[#555]"
+                        )}
+                        dangerouslySetInnerHTML={{ __html: block.content || '' }}
+                    />
+                );
+            }
             return (
-                <div 
-                    contentEditable={!isPreview}
-                    suppressContentEditableWarning
-                    onBlur={e => updateBlock(block.id, { content: e.currentTarget.textContent || '' })}
-                    className={cn(
-                        "text-[13px] opacity-70 leading-relaxed outline-none min-h-[20px]",
-                        !block.content && !isPreview ? "before:content-['Enter_content...'] before:opacity-30" : ""
-                    )}
-                >
-                    {block.content}
+                <div className="py-2">
+                    <ContentBlock
+                        id={block.id}
+                        data={block}
+                        updateData={updateBlock}
+                    />
                 </div>
             );
         case 'divider':

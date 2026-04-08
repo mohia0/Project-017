@@ -4,24 +4,24 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsField, SettingsInput } from '@/components/settings/SettingsField';
-import { useWorkspaceStore, Workspace } from '@/store/useWorkspaceStore';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
-import { ChevronDown, ChevronRight, Plus, Trash2, X, Copy } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
 function AccordionSection({ title, children, defaultOpen = false }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-
     return (
         <div className={cn(
             "w-full rounded-xl overflow-hidden mb-4 border transition-colors",
             isDark ? "bg-[#111] border-white/10" : "bg-white border-black/10"
         )}>
-            <button 
+            <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
                     "w-full flex items-center justify-between p-5 text-sm font-bold transition-colors hover:bg-black/5 dark:hover:bg-white/5",
@@ -31,19 +31,16 @@ function AccordionSection({ title, children, defaultOpen = false }: { title: str
                 {title}
                 {isOpen ? <ChevronDown size={18} className="opacity-50" /> : <ChevronRight size={18} className="opacity-50" />}
             </button>
-            {isOpen && (
-                <div className="p-5">
-                    {children}
-                </div>
-            )}
+            {isOpen && <div className="p-5">{children}</div>}
         </div>
     );
 }
 
+
 export default function WorkspaceSettingsPage() {
     const router = useRouter();
     const { workspaces, updateWorkspace, deleteWorkspace, isLoading } = useWorkspaceStore();
-    const { domains, fetchDomains, addDomain, deleteDomain } = useSettingsStore();
+    const { domains, fetchDomains } = useSettingsStore();
     const { activeWorkspaceId } = useUIStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
@@ -61,11 +58,12 @@ export default function WorkspaceSettingsPage() {
     
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        if (activeWorkspaceId) {
-            fetchDomains(activeWorkspaceId);
-        }
+        if (activeWorkspaceId) fetchDomains(activeWorkspaceId);
+        const t = setTimeout(() => setMounted(true), 80);
+        return () => clearTimeout(t);
     }, [activeWorkspaceId, fetchDomains]);
 
     useEffect(() => {
@@ -136,12 +134,18 @@ export default function WorkspaceSettingsPage() {
         }
     };
 
-    if (isLoading) {
-        return <div className="animate-pulse">Loading workspace...</div>;
+    if (isLoading || !mounted) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto py-8 animate-pulse">
+                <div className={cn("h-48 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
+                <div className={cn("h-32 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
+                <div className={cn("h-32 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
+            </div>
+        );
     }
 
     if (!activeWorkspace) {
-        return <div>No active workspace selected.</div>;
+        return <div className="opacity-50 text-sm py-8">No active workspace selected.</div>;
     }
 
     return (
@@ -227,139 +231,7 @@ export default function WorkspaceSettingsPage() {
                 </div>
             </SettingsCard>
 
-            <AccordionSection title="Custom domains" defaultOpen={true}>
-                <div className="flex flex-col gap-5">
-                    <div className="text-[13px] opacity-60 leading-relaxed max-w-xl">
-                        Connect your own domain to provide a white-labeled experience. 
-                        Configuring your DNS is required to verify ownership and enable SSL.
-                    </div>
 
-                    <div className="flex flex-col gap-4">
-                        {domains.map((domain) => (
-                            <div key={domain.id} className={cn(
-                                "flex flex-col overflow-hidden rounded-2xl border transition-all",
-                                isDark ? "bg-[#161616] border-white/5" : "bg-white border-black/5 shadow-sm"
-                            )}>
-                                {/* Header */}
-                                <div className="flex items-center justify-between p-4 px-5">
-                                    <div className="flex items-center gap-3">
-                                        <div className={cn(
-                                            "w-9 h-9 rounded-xl flex items-center justify-center border",
-                                            isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
-                                        )}>
-                                            <span className="text-xs font-bold opacity-40 uppercase">
-                                                {domain.domain.slice(0, 2)}
-                                            </span>
-                                        </div>
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-sm font-mono font-medium">{domain.domain}</span>
-                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                                <div className={cn(
-                                                    "w-1 h-1 rounded-full",
-                                                    domain.status === 'active' ? "bg-[#4dbf39]" : "bg-orange-500"
-                                                )} />
-                                                <span className={cn(
-                                                    "text-[10px] font-bold uppercase tracking-wider",
-                                                    domain.status === 'active' ? "text-[#4dbf39]" : "text-orange-500 opacity-80"
-                                                )}>
-                                                    {domain.status === 'active' ? 'Verified' : 'Pending DNS'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        {domain.status !== 'active' && (
-                                            <button className={cn(
-                                                "px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border",
-                                                isDark ? "bg-white/5 border-white/10 text-white hover:bg-white/10" : "bg-black/5 border-black/10 text-black hover:bg-black/10"
-                                            )}>
-                                                Verify DNS
-                                            </button>
-                                        )}
-                                        <button 
-                                            onClick={() => deleteDomain(domain.id)}
-                                            className="p-2 rounded-lg hover:bg-red-500/10 text-[#6b6b6b] hover:text-red-500 transition-all"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* DNS Record Card (Only for pending) */}
-                                {domain.status !== 'active' && (
-                                    <div className={cn(
-                                        "m-2 mt-0 p-4 rounded-xl flex flex-col gap-3",
-                                        isDark ? "bg-[#111] border border-white/5" : "bg-[#f5f5f5] border border-black/5"
-                                    )}>
-                                        <div className="text-[12px] opacity-50 font-medium">
-                                            Add this CNAME record to your DNS provider to verify ownership:
-                                        </div>
-                                        
-                                        <div className={cn(
-                                            "flex items-center rounded-lg p-3 px-4",
-                                            isDark ? "bg-[#1a1a1c]" : "bg-[#efefef]"
-                                        )}>
-                                            <div className="flex flex-wrap items-center gap-x-10 gap-y-3 text-[13px]">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Type:</span>
-                                                    <span className="font-mono font-bold">CNAME</span>
-                                                    <button onClick={() => navigator.clipboard.writeText('CNAME')} className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors" title="Copy Type">
-                                                        <Copy size={12}/>
-                                                    </button>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Name:</span>
-                                                    <span className="font-mono font-bold">{domain.domain.split('.')[0]}</span>
-                                                    <button onClick={() => navigator.clipboard.writeText(domain.domain.split('.')[0])} className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors" title="Copy Name">
-                                                        <Copy size={12}/>
-                                                    </button>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Target:</span>
-                                                    <span className="font-mono font-bold">cname.vercel-dns.com</span>
-                                                    <button onClick={() => navigator.clipboard.writeText('cname.vercel-dns.com')} className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors" title="Copy Target">
-                                                        <Copy size={12} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-
-                        <div className="flex gap-2">
-                            <SettingsInput 
-                                id="new-domain-input"
-                                placeholder="e.g. app.mohihassan.com"
-                                className="flex-1 font-mono"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        const input = e.currentTarget as HTMLInputElement;
-                                        if (input.value) {
-                                            addDomain(activeWorkspaceId!, input.value);
-                                            input.value = '';
-                                        }
-                                    }
-                                }}
-                            />
-                            <button 
-                                onClick={() => {
-                                    const input = document.getElementById('new-domain-input') as HTMLInputElement;
-                                    if (input.value) {
-                                        addDomain(activeWorkspaceId!, input.value);
-                                        input.value = '';
-                                    }
-                                }}
-                                className="px-5 h-10 rounded-xl bg-black text-white dark:bg-white dark:text-black text-xs font-bold hover:opacity-90 active:scale-95 transition-all"
-                            >
-                                Add Domain
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </AccordionSection>
 
             <ImageUploadModal 
                 isOpen={isUploadModalOpen}
@@ -367,6 +239,8 @@ export default function WorkspaceSettingsPage() {
                 onUpload={(url) => setLogoUrl(url)}
                 title="Upload Workspace Logo"
             />
+
+
 
             <AccordionSection title="Contact details" defaultOpen={true}>
                 <div className="flex flex-col gap-6">

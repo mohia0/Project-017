@@ -91,8 +91,7 @@ export default function LoginPage() {
             <div className="flex-1 flex flex-col items-center justify-center p-6 z-10">
                 <div className="w-full max-w-[360px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700">
                     
-                    {/* Logo/Icon */}
-                    {/* Logo/Icon */}
+                    {/* Logo */}
                     <div className="mb-10 flex items-start">
                         <img src="/logo.svg" alt="CRM 17" className="h-12 w-auto object-contain" />
                     </div>
