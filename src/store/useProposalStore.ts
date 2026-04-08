@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { useUIStore } from './useUIStore';
 
 export type ProposalStatus = 'Draft' | 'Pending' | 'Accepted' | 'Overdue' | 'Declined' | 'Cancelled';
 
@@ -34,8 +35,19 @@ export const useProposalStore = create<ProposalState>((set) => ({
     error: null,
 
     fetchProposals: async () => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) {
+            set({ proposals: [], isLoading: false });
+            return;
+        }
+
         set({ isLoading: true, error: null });
-        const { data, error } = await supabase.from('proposals').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase
+            .from('proposals')
+            .select('*')
+            .eq('workspace_id', workspaceId)
+            .order('created_at', { ascending: false });
+            
         if (error) {
             set({ error: error.message, isLoading: false });
         } else {
@@ -44,12 +56,16 @@ export const useProposalStore = create<ProposalState>((set) => ({
     },
 
     addProposal: async (proposal) => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) return null;
+
         try {
             const payload = {
                 ...proposal,
                 client_id: proposal.client_id || null,
                 due_date: proposal.due_date || null,
-                issue_date: proposal.issue_date || null
+                issue_date: proposal.issue_date || null,
+                workspace_id: workspaceId
             };
             const { data, error } = await supabase.from('proposals').insert(payload).select().single();
             if (error) {

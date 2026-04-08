@@ -155,6 +155,7 @@ export default function DomainsSettingsPage() {
         let cleanDomain = newDomain.toLowerCase().trim();
         cleanDomain = cleanDomain.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
         
+        // 1. Save to database
         const { error } = await supabase.from('workspace_domains').insert({
             workspace_id: activeWorkspaceId,
             domain: cleanDomain,
@@ -162,12 +163,24 @@ export default function DomainsSettingsPage() {
             is_primary: domains.length === 0,
         });
         
-        setIsAdding(false);
         if (!error) {
+            // 2. Automatically register with Vercel
+            try {
+                await supabase.functions.invoke('add-vercel-domain', {
+                    body: { domain: cleanDomain }
+                });
+            } catch (fnErr) {
+                // Non-fatal — domain is saved, user can retry DNS setup
+                console.warn('Vercel domain registration failed:', fnErr);
+            }
+
             setNewDomain('');
             fetchDomains(activeWorkspaceId);
         }
+
+        setIsAdding(false);
     };
+
 
     const handleRemoveDomain = async (id: string) => {
         await supabase.from('workspace_domains').delete().eq('id', id);
