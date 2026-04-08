@@ -114,6 +114,7 @@ export default function DomainsSettingsPage() {
     const [domainToDelete, setDomainToDelete] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
     const [verifyingId, setVerifyingId] = useState<string | null>(null);
+    const [verifyMessages, setVerifyMessages] = useState<Record<string, { type: 'error' | 'success', text: string }>>({});
 
     useEffect(() => {
         if (activeWorkspaceId) {
@@ -165,16 +166,6 @@ export default function DomainsSettingsPage() {
         });
         
         if (!error) {
-            // 2. Automatically register with Vercel
-            try {
-                await supabase.functions.invoke('add-vercel-domain', {
-                    body: { domain: cleanDomain }
-                });
-            } catch (fnErr) {
-                // Non-fatal — domain is saved, user can retry DNS setup
-                console.warn('Vercel domain registration failed:', fnErr);
-            }
-
             setNewDomain('');
             fetchDomains(activeWorkspaceId);
         }
@@ -197,13 +188,30 @@ export default function DomainsSettingsPage() {
 
     const handleVerifyDomain = async (domainId: string, domainName: string) => {
         setVerifyingId(domainId);
+        setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'success', text: 'Checking...' } }));
         try {
-            await supabase.functions.invoke('verify-domain', {
-                body: { domainId, domain: domainName }
+            const res = await fetch('/api/domains/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domainId, domain: domainName })
             });
+            const data = await res.json();
+            
+            if (!res.ok) {
+                setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'error', text: data.error || 'Server error' } }));
+            } else if (data.verified === false) {
+                setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'error', text: data.error || 'DNS not propagated yet.' } }));
+            } else {
+                setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'success', text: 'Domain connected successfully!' } }));
+            }
+            
+            // Update Supabase manually here to reflect the latest status!
+            const newStatus = data.verified ? 'active' : 'pending';
+            await supabase.from('workspace_domains').update({ status: newStatus }).eq('id', domainId);
             if (activeWorkspaceId) fetchDomains(activeWorkspaceId);
-        } catch (err) {
-            console.error('Verify failed:', err);
+
+        } catch (err: any) {
+            setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'error', text: 'Network connection failed.' } }));
         }
         setVerifyingId(null);
     };
@@ -305,6 +313,16 @@ export default function DomainsSettingsPage() {
                                         </button>
                                     </div>
                                 </div>
+
+                                {verifyMessages[domain.id] && (
+                                    <div className={cn(
+                                        "mx-4 mt-1 px-3 py-2 text-[11px] font-medium rounded-lg border",
+                                        verifyMessages[domain.id].type === 'error' ? (isDark ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-red-50 text-red-600 border-red-100") :
+                                        (isDark ? "bg-[#4dbf39]/10 text-[#4dbf39] border-[#4dbf39]/20" : "bg-green-50 text-green-600 border-green-100")
+                                    )}>
+                                        {verifyMessages[domain.id].text}
+                                    </div>
+                                )}
 
                                 <DNSRecordCard domain={domain} />
                             </div>
