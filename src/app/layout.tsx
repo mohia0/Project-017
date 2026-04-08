@@ -3,6 +3,7 @@ import './globals.css';
 import '@mantine/core/styles.css';
 import AppLayout from '@/components/layout/AppLayout';
 import { Providers } from '@/components/layout/Providers';
+import { BrandingProvider } from '@/components/settings/BrandingProvider';
 
 export const metadata: Metadata = {
   title: 'Minimal CRM',
@@ -18,7 +19,9 @@ export default function RootLayout({
     <html lang="en">
       <body suppressHydrationWarning>
         <Providers>
-          <AppLayout>{children}</AppLayout>
+          <BrandingProvider>
+            <AppLayout>{children}</AppLayout>
+          </BrandingProvider>
         </Providers>
       </body>
     </html>

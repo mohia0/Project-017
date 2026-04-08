@@ -591,18 +591,16 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             <div className="flex flex-col items-center">
                                 {/* Phone shell */}
                                 <div className={cn(
-                                    "relative rounded-[44px] border-[4px] overflow-hidden shrink-0 transition-all duration-300",
+                                    "relative rounded-[44px] border-[4px] overflow-hidden shrink-0 transition-all duration-300 bg-[#000]",
                                     "w-[390px] h-[844px]",
-                                    isDark ? "border-[#1a1a1a] bg-black shadow-2xl" : "border-[#000] bg-white shadow-2xl"
+                                    isDark ? "border-[#1a1a1a] shadow-2xl" : "border-[#000] shadow-2xl"
                                 )}>
                                     {/* Minimalist Notch */}
                                     <div className={cn(
-                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10",
-                                        isDark ? "bg-white/[0.03]" : "bg-black/[0.03]"
+                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10 bg-white/[0.05]"
                                     )} />
                                     <div className={cn(
-                                        "flex items-center justify-between px-8 pt-4 pb-2 text-[11px] font-medium z-10 relative opacity-40",
-                                        isDark ? "text-white" : "text-black"
+                                        "flex items-center justify-between px-8 pt-4 pb-2 text-[11px] font-medium z-10 relative opacity-40 text-white"
                                     )}>
                                         <span>9:41</span>
                                         <div className="flex items-center gap-1.5">

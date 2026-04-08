@@ -317,13 +317,12 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                         {(isPreview && previewMode === 'mobile') ? (
                             <div className="flex flex-col items-center">
                                 <div className={cn(
-                                    "relative rounded-[44px] border overflow-hidden shrink-0",
+                                    "relative rounded-[44px] border-[4px] shadow-2xl overflow-hidden shrink-0 transition-all duration-300 bg-black",
                                     "w-[390px] h-[844px]",
-                                    isDark ? "border-[#333] bg-black shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)]" : "border-black/[0.05] bg-white shadow-xl"
+                                    isDark ? "border-[#1a1a1a]" : "border-[#000]"
                                 )}>
                                     <div className={cn(
-                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10",
-                                        isDark ? "bg-white/[0.03]" : "bg-black/[0.03]"
+                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10 bg-white/[0.05]"
                                     )} />
                                     <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0"
                                          style={{ 

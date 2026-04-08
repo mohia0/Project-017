@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type Tool = {
     id: string;
@@ -14,6 +15,8 @@ export type RightPanelState =
     | { type: 'company'; id: string };
 
 interface UIState {
+    activeWorkspaceId: string | null;
+    setActiveWorkspaceId: (id: string | null) => void;
     isLeftMenuExpanded: boolean;
     toggleLeftMenu: () => void;
     isToolsMenuExpanded: boolean;
@@ -33,40 +36,56 @@ interface UIState {
     setCreateModalOpen: (isOpen: boolean) => void;
 }
 
-export const useUIStore = create<UIState>((set, get) => ({
-    isLeftMenuExpanded: false,
-    toggleLeftMenu: () =>
-        set((state) => ({ isLeftMenuExpanded: !state.isLeftMenuExpanded })),
+export const useUIStore = create<UIState>()(
+    persist(
+        (set, get) => ({
+            activeWorkspaceId: null,
+            setActiveWorkspaceId: (id) => set({ activeWorkspaceId: id }),
 
-    isToolsMenuExpanded: false,
-    toggleToolsMenu: () =>
-        set((state) => ({ isToolsMenuExpanded: !state.isToolsMenuExpanded })),
+            isLeftMenuExpanded: false,
+            toggleLeftMenu: () =>
+                set((state) => ({ isLeftMenuExpanded: !state.isLeftMenuExpanded })),
 
-    tools: [
-        { id: 'proposals', label: 'Proposals', icon: 'FileText', path: '/proposals' },
-        { id: 'clients', label: 'Clients', icon: 'Users', path: '/clients' },
-    ],
-    reorderTools: (newTools) => set({ tools: newTools }),
+            isToolsMenuExpanded: false,
+            toggleToolsMenu: () =>
+                set((state) => ({ isToolsMenuExpanded: !state.isToolsMenuExpanded })),
 
-    /* Right panel */
-    rightPanel: null,
-    openRightPanel: (panel) => set({ rightPanel: panel, isNotificationsOpen: panel?.type === 'notifications' }),
-    closeRightPanel: () => set({ rightPanel: null, isNotificationsOpen: false }),
-    toggleNotifications: () => {
-        const current = get().rightPanel;
-        if (current?.type === 'notifications') {
-            set({ rightPanel: null, isNotificationsOpen: false });
-        } else {
-            set({ rightPanel: { type: 'notifications' }, isNotificationsOpen: true });
+            tools: [
+                { id: 'proposals', label: 'Proposals', icon: 'FileText', path: '/proposals' },
+                { id: 'clients', label: 'Clients', icon: 'Users', path: '/clients' },
+            ],
+            reorderTools: (newTools) => set({ tools: newTools }),
+
+            /* Right panel */
+            rightPanel: null,
+            openRightPanel: (panel) => set({ rightPanel: panel, isNotificationsOpen: panel?.type === 'notifications' }),
+            closeRightPanel: () => set({ rightPanel: null, isNotificationsOpen: false }),
+            toggleNotifications: () => {
+                const current = get().rightPanel;
+                if (current?.type === 'notifications') {
+                    set({ rightPanel: null, isNotificationsOpen: false });
+                } else {
+                    set({ rightPanel: { type: 'notifications' }, isNotificationsOpen: true });
+                }
+            },
+
+            /* Legacy */
+            isNotificationsOpen: false,
+
+            theme: 'light',
+            toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+
+            isCreateModalOpen: false,
+            setCreateModalOpen: (isOpen) => set({ isCreateModalOpen: isOpen }),
+        }),
+        {
+            name: 'ui-storage',
+            partialize: (state) => ({ 
+                activeWorkspaceId: state.activeWorkspaceId,
+                theme: state.theme,
+                isLeftMenuExpanded: state.isLeftMenuExpanded,
+                isToolsMenuExpanded: state.isToolsMenuExpanded
+            }),
         }
-    },
-
-    /* Legacy */
-    isNotificationsOpen: false,
-
-    theme: 'light',
-    toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
-
-    isCreateModalOpen: false,
-    setCreateModalOpen: (isOpen) => set({ isCreateModalOpen: isOpen }),
-}));
+    )
+);

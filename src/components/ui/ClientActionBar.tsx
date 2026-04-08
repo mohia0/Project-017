@@ -72,6 +72,56 @@ export function ClientActionBar({
     const innerRadiusStyle = isFullRadius ? { borderRadius: '9999px' } : { borderRadius: `${Math.max(0, radius - 4)}px` };
     const buttonRadiusStyle = isFullRadius ? { borderRadius: '9999px' } : { borderRadius: `${Math.max(0, radius - 6)}px` };
 
+    if (status === 'Draft') {
+        return (
+            <div 
+                className={cn(
+                    "relative w-full max-w-[850px] mx-auto z-10 flex transition-all",
+                    inline 
+                        ? (isMobile ? "flex-row justify-between px-6 items-center" : "justify-between")
+                        : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
+                           isMobile ? "top-14 flex-col items-center gap-2 px-6" : "top-6 max-w-[850px] mx-auto justify-between px-4"),
+                    className
+                )}
+                style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
+            >
+                {/* Left Status Pill */}
+                <div 
+                    className={cn(
+                        "flex items-center gap-2 shadow-sm border backdrop-blur-md",
+                        isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
+                        !inline && "pointer-events-auto",
+                        isDark ? "bg-[#111]/80 border-[#333] text-white" : "bg-white/80 border-[#eaeaea] text-[#111]"
+                    )}
+                    style={parentRadiusStyle}
+                >
+                    <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className={isDark ? "text-white" : "text-[#111]"} />
+                    <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
+                        This is a draft {type} and can't be {isInvoice ? 'paid' : 'accepted'} yet
+                    </span>
+                </div>
+
+                {/* Right Action Icons Pill */}
+                <div 
+                    className={cn(
+                        "flex items-center shadow-sm border backdrop-blur-md",
+                        isMobile ? "gap-1 px-2 py-1" : "gap-1.5 px-3 py-2",
+                        !inline && "pointer-events-auto",
+                        isDark ? "bg-[#111]/80 border-[#333] text-[#ccc]" : "bg-white/80 border-[#eaeaea] text-[#555]"
+                    )}
+                    style={parentRadiusStyle}
+                >
+                    <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                        <ArrowDownToLine size={isMobile ? 13 : 15} />
+                    </button>
+                    <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                        <Printer size={isMobile ? 13 : 15} />
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     if (isInvoice) {
         return (
             <div 

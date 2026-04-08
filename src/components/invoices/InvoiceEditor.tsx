@@ -538,12 +538,11 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         {isMobilePreview ? (
                             <div className="flex flex-col items-center">
                                 <div className={cn(
-                                    "relative rounded-[44px] border-[4px] shadow-2xl overflow-hidden shrink-0 w-[390px] h-[844px] transition-all duration-300",
-                                    isDark ? "border-[#1a1a1a] bg-[#1c1c1c]" : "border-[#000] bg-white"
+                                    "relative rounded-[44px] border-[4px] shadow-2xl overflow-hidden shrink-0 w-[390px] h-[844px] transition-all duration-300 bg-black",
+                                    isDark ? "border-[#1a1a1a]" : "border-[#000]"
                                 )}>
                                     <div className={cn(
-                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10",
-                                        isDark ? "bg-white/[0.03]" : "bg-black/[0.03]"
+                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10 bg-white/[0.05]"
                                     )} />
                                     <div className="absolute inset-x-0 top-[52px] bottom-0 overflow-y-auto scrollbar-none"
                                          style={{ 

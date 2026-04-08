@@ -2,10 +2,12 @@
 
 import React from 'react';
 import { useUIStore } from '@/store/useUIStore';
-import { Plus, Moon, Sun, Bell, LayoutTemplate } from 'lucide-react';
+import { Plus, Moon, Sun, Bell, LayoutTemplate, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter, usePathname } from 'next/navigation';
 import { Tooltip } from '@/components/ui/Tooltip';
+
+import UserMenu from '@/components/auth/UserMenu';
 
 export default function RightToolsMenu() {
     const router = useRouter();
@@ -21,65 +23,72 @@ export default function RightToolsMenu() {
             rightPanel && (isDark ? "border-l border-[#222]" : "border-l border-[#e4e4e4]")
         )}>
             {/* Top: Create button */}
-            <div className="flex flex-col items-center pt-1.5 pb-3 w-full">
+            <div className="flex flex-col items-center pt-1.5 pb-3 w-full px-1">
                 <button
                     onClick={() => setCreateModalOpen(true)}
-                    className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black"
+                    className="w-9 h-9 rounded-[12px] flex items-center justify-center transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black group"
                 >
-                    <Plus size={16} strokeWidth={2.5} />
+                    <Plus size={16} strokeWidth={2.5} className="transition-transform duration-300 group-hover:scale-125" />
                 </button>
             </div>
 
             {/* Middle: Tool icons */}
-            <div className="flex flex-col items-center gap-1 py-3 flex-1 w-full px-2">
+            <div className="flex flex-col items-center gap-1 py-3 flex-1 w-full px-1">
                 <button
                     onClick={toggleNotifications}
                     className={cn(
-                        "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
-                        notificationsOpen
-                            ? isDark
-                                ? "bg-white/10 text-white"
-                                : "bg-[#f0f0f0] text-[#111]"
-                            : isDark
-                                ? "text-[#6b6b6b] hover:text-white hover:bg-white/5"
-                                : "text-[#888] hover:text-[#111] hover:bg-[#f0f0f0]"
+                        "w-9 h-9 rounded-[12px] flex items-center justify-center transition-all group",
+                        isDark 
+                            ? (notificationsOpen ? "bg-white/10 text-white" : "bg-white/5 text-[#6b6b6b] hover:bg-white/10")
+                            : (notificationsOpen ? "bg-[#e4e4e4] text-[#111]" : "bg-[#f0f0f0] text-[#888] hover:bg-[#e8e8e8]")
                     )}
                 >
-                    <Bell size={16} strokeWidth={1.75} />
+                    <Bell size={16} strokeWidth={1.75} className="transition-transform duration-300 group-hover:scale-110 group-hover:text-current" />
                 </button>
             </div>
 
             {/* Bottom: templates + theme toggle + avatar */}
-            <div className="flex flex-col items-center gap-2 pt-3 pb-1.5 w-full px-2">
+            <div className="flex flex-col items-center gap-2 pt-3 pb-1.5 w-full px-1">
                 <button
                     onClick={() => router.push('/templates')}
                     className={cn(
-                        "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
-                        isTemplatesMode
-                            ? isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#111]"
-                            : isDark ? "text-[#6b6b6b] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-[#111] hover:bg-[#f0f0f0]"
+                        "w-9 h-9 rounded-[12px] flex items-center justify-center transition-all group",
+                        isDark 
+                            ? (isTemplatesMode ? "bg-white/10 text-white" : "bg-white/5 text-[#6b6b6b] hover:bg-white/10")
+                            : (isTemplatesMode ? "bg-[#e4e4e4] text-[#111]" : "bg-[#f0f0f0] text-[#888] hover:bg-[#e8e8e8]")
                     )}
                 >
-                    <LayoutTemplate size={14} strokeWidth={2} />
+                    <LayoutTemplate size={14} strokeWidth={2} className="transition-transform duration-300 group-hover:scale-110" />
                 </button>
 
                 <button
                     onClick={toggleTheme}
                     className={cn(
-                        "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
-                        isDark ? "text-[#6b6b6b] hover:text-[#efca00] hover:bg-white/5" : "bg-[#f0f0f0] text-[#fa6e34] hover:text-[#ff804b]"
+                        "w-9 h-9 rounded-[12px] flex items-center justify-center transition-all group",
+                        isDark 
+                            ? "bg-white/5 text-[#6b6b6b] hover:bg-white/10" 
+                            : "bg-[#f0f0f0] text-[#fa6e34] hover:bg-[#e8e8e8]"
                     )}
                 >
-                    {isDark ? <Moon size={14} strokeWidth={1.75} /> : <Sun size={14} strokeWidth={1.75} />}
+                    {isDark 
+                        ? <Moon size={14} strokeWidth={1.75} className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 group-hover:text-[#efca00]" /> 
+                        : <Sun size={14} strokeWidth={1.75} className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-45 group-hover:text-[#ff804b]" />
+                    }
                 </button>
 
-                {/* User avatar */}
-                <div className={cn(
-                    "w-8 h-8 rounded-[10px] flex items-center justify-center cursor-pointer transition-colors select-none",
-                    isDark ? "bg-[#2a2a2a] text-white/60 hover:bg-[#333]" : "bg-[#f0f0f0] text-[#666] hover:bg-[#e8e8e8]"
-                )}>
-                    <span className="text-[10px] font-semibold">MH</span>
-                </div>
+                <button
+                    onClick={() => router.push('/settings')}
+                    className={cn(
+                        "w-9 h-9 rounded-[12px] flex items-center justify-center transition-all group",
+                        isDark 
+                            ? (pathname.startsWith('/settings') ? "bg-white/10 text-white" : "bg-white/5 text-[#6b6b6b] hover:bg-white/10")
+                            : (pathname.startsWith('/settings') ? "bg-[#e4e4e4] text-[#111]" : "bg-[#f0f0f0] text-[#888] hover:bg-[#e8e8e8]")
+                    )}
+                >
+                    <Settings size={14} strokeWidth={2} className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-90" />
+                </button>
+
+                <UserMenu />
             </div>
         </nav>
     );

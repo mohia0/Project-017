@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useUIStore } from '@/store/useUIStore';
 import { useMenuStore, ICON_MAP, NavItem } from '@/store/useMenuStore';
+import WorkspaceSwitcher from '@/components/settings/WorkspaceSwitcher';
 import {
     DndContext, 
     closestCenter,
@@ -162,11 +163,9 @@ export default function LeftSystemMenu() {
             isLeftMenuExpanded ? "w-[160px] px-2 shadow-xl shadow-black/10" : "w-[44px]"
         )}>
 
-            {/* Workspace logo */}
-            <div className="flex items-center justify-center pt-1.5 pb-2 w-full shrink-0">
-                <div className="w-8 h-8 rounded-[10px] bg-[#2a2a2a] flex items-center justify-center shrink-0 border border-black/20">
-                    <span className="text-[12px] font-semibold text-white/70 select-none">M</span>
-                </div>
+            {/* Workspace logo & Switcher */}
+            <div className="flex w-full shrink-0">
+                <WorkspaceSwitcher />
             </div>
 
             {/* Nav icons */}
@@ -232,6 +231,7 @@ export default function LeftSystemMenu() {
                                 if (!isLeftMenuExpanded) toggleLeftMenu();
                             }}
                             className="w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-white/30 hover:text-white hover:bg-white/[0.03]"
+                            title="Edit Navigation"
                         >
                             <Settings size={14} strokeWidth={2} />
                         </button>

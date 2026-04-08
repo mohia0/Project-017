@@ -1,16 +1,51 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import LeftSystemMenu from './LeftSystemMenu';
 import RightToolsMenu from './RightToolsMenu';
 import RightPanel from './RightPanel';
 import CreateEntryModal from '@/components/modals/CreateEntryModal';
 import { useUIStore } from '@/store/useUIStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { theme } = useUIStore();
+    const { user, isLoading } = useAuthStore();
     const isDark = theme === 'dark';
+    const pathname = usePathname();
+    const router = useRouter();
+    const isAuthRoute = pathname === '/login';
+
+    useEffect(() => {
+        if (!isLoading && !user && !isAuthRoute) {
+            router.push('/login');
+        }
+    }, [user, isLoading, isAuthRoute, router]);
+
+    // Don't render until we know auth state, unless we are already on auth route
+    if (isLoading && !isAuthRoute) {
+        return (
+            <div className={cn(
+                "flex h-screen w-full items-center justify-center",
+                isDark ? "bg-[#0a0a0a]" : "bg-[#f0f0f0]"
+            )}>
+                <div className="w-8 h-8 rounded-full border-2 border-[#4dbf39] border-t-transparent animate-spin" />
+            </div>
+        );
+    }
+
+    if (isAuthRoute) {
+        return (
+            <div className={cn(
+                "flex h-screen w-full overflow-hidden",
+                isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f0f0f0] text-[#111]"
+            )}>
+                {children}
+            </div>
+        );
+    }
 
     return (
         <div className={cn(

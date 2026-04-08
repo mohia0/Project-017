@@ -1,0 +1,43 @@
+"use client";
+
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { ChevronLeft } from 'lucide-react';
+import SettingsSidebar from '@/components/settings/SettingsSidebar';
+import { useUIStore } from '@/store/useUIStore';
+
+export default function SettingsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const { theme } = useUIStore();
+  const isDark = theme === 'dark';
+
+  return (
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      {/* Settings Header */}
+      <div className="h-[60px] border-b shrink-0 flex items-center px-6 gap-3" 
+           style={{ borderColor: isDark ? '#222' : '#e4e4e4' }}>
+        <button
+          onClick={() => router.push('/')}
+          className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors text-current opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10"
+        >
+          <ChevronLeft size={18} strokeWidth={2.5} />
+        </button>
+        <h1 className="text-xl font-bold tracking-tight">Settings</h1>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        <SettingsSidebar />
+        
+        <main className="flex-1 overflow-y-auto p-6 md:p-10">
+            <div className="max-w-[720px] mx-auto pb-24">
+                {children}
+            </div>
+        </main>
+      </div>
+    </div>
+  );
+}
