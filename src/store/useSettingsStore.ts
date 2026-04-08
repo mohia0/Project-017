@@ -56,6 +56,14 @@ export interface WorkspaceEmailConfig {
   from_address: string | null;
 }
 
+export interface EmailTemplate {
+  id: string;
+  workspace_id: string;
+  template_key: string;
+  subject: string;
+  body: string;
+}
+
 interface SettingsState {
   isLoading: boolean;
   error: string | null;
@@ -84,6 +92,11 @@ interface SettingsState {
   // Email Config
   emailConfig: WorkspaceEmailConfig | null;
   fetchEmailConfig: (workspaceId: string) => Promise<void>;
+
+  // Email Templates
+  emailTemplates: EmailTemplate[];
+  fetchEmailTemplates: (workspaceId: string) => Promise<void>;
+  updateEmailTemplate: (workspaceId: string, templateKey: string, data: Partial<EmailTemplate>) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -95,6 +108,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   payments: null,
   domains: [],
   emailConfig: null,
+  emailTemplates: [],
 
   fetchProfile: async () => {
     set({ isLoading: true });
@@ -259,6 +273,45 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set({ emailConfig: data || null });
     }
     set({ isLoading: false });
+  },
+
+  fetchEmailTemplates: async (workspaceId) => {
+    set({ isLoading: true });
+    const { data, error } = await supabase
+      .from('email_templates')
+      .select('*')
+      .eq('workspace_id', workspaceId);
+
+    if (error) {
+      set({ error: error.message });
+    } else {
+      set({ emailTemplates: data || [] });
+    }
+    set({ isLoading: false });
+  },
+
+  updateEmailTemplate: async (workspaceId, templateKey, updates) => {
+    const { data, error } = await supabase
+      .from('email_templates')
+      .upsert({ 
+        workspace_id: workspaceId, 
+        template_key: templateKey, 
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      set({ error: error.message });
+      throw error;
+    } else {
+      set((state) => ({
+        emailTemplates: state.emailTemplates.find(t => t.template_key === templateKey)
+          ? state.emailTemplates.map(t => t.template_key === templateKey ? data : t)
+          : [...state.emailTemplates, data]
+      }));
+    }
   }
 
 }));
