@@ -7,8 +7,27 @@ import RightPanel from './RightPanel';
 import CreateEntryModal from '@/components/modals/CreateEntryModal';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useProposalStore } from '@/store/useProposalStore';
+import { useInvoiceStore } from '@/store/useInvoiceStore';
+import { useClientStore } from '@/store/useClientStore';
+import { useTemplateStore } from '@/store/useTemplateStore';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
+
+function WorkspaceDataSync() {
+    const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
+    
+    useEffect(() => {
+        if (activeWorkspaceId) {
+            useProposalStore.getState().fetchProposals();
+            useInvoiceStore.getState().fetchInvoices();
+            useClientStore.getState().fetchClients();
+            useTemplateStore.getState().fetchTemplates();
+        }
+    }, [activeWorkspaceId]);
+
+    return null;
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { theme } = useUIStore();
@@ -60,6 +79,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 "flex-1 flex flex-col relative overflow-hidden rounded-2xl transition-colors duration-300 min-w-0",
                 isDark ? "bg-[#141414]" : "bg-white"
             )}>
+                <WorkspaceDataSync />
                 {children}
             </main>
 
