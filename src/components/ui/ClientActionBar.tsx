@@ -158,9 +158,6 @@ export function ClientActionBar({
                             <span className={cn("font-bold leading-none", isDark ? "text-white" : "text-[#111]", isMobile ? "text-[14px]" : "text-[16px]")}>
                                 {amountDue || (isDark ? '—' : '0.00')}
                             </span>
-                            {status === 'Draft' && !isMobile && (
-                                <span className={cn("text-[9px] opacity-40 font-medium whitespace-nowrap ml-2 py-0.5 px-1.5 rounded-md border", isDark ? "border-white/10 bg-white/5" : "border-black/5 bg-black/5")}>Draft</span>
-                            )}
                         </div>
                     )}
                 </div>

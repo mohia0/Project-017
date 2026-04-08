@@ -297,29 +297,29 @@ export default function WorkspaceSettingsPage() {
                                         </div>
                                         
                                         <div className={cn(
-                                            "flex flex-wrap items-center justify-between gap-4 rounded-lg p-3 px-4",
-                                            isDark ? "bg-[#1a1a1c]" : "bg-[#e4e4e4]/50"
+                                            "flex items-center rounded-lg p-3 px-4",
+                                            isDark ? "bg-[#1a1a1c]" : "bg-[#efefef]"
                                         )}>
-                                            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-[13px]">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="opacity-50">Type:</span>
-                                                    <span className="font-mono font-semibold">CNAME</span>
-                                                    <button onClick={() => navigator.clipboard.writeText('CNAME')} className="opacity-0 group-hover/cname:opacity-100 hover:text-white transition-opacity ml-1 group/cname flex items-center justify-center relative">
-                                                        <span className="opacity-50 group-hover/cname:opacity-100"><Copy size={12}/></span>
+                                            <div className="flex flex-wrap items-center gap-x-10 gap-y-3 text-[13px]">
+                                                <div className="flex items-center gap-2 group/cname">
+                                                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Type:</span>
+                                                    <span className="font-mono font-bold">CNAME</span>
+                                                    <button onClick={() => navigator.clipboard.writeText('CNAME')} className="opacity-0 group-hover/cname:opacity-100 text-[#4dbf39] transition-opacity flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md">
+                                                        <Copy size={12}/>
                                                     </button>
                                                 </div>
                                                 <div className="flex items-center gap-2 group/name">
-                                                    <span className="opacity-50">Name:</span>
-                                                    <span className="font-mono font-semibold">{domain.domain.split('.')[0]}</span>
-                                                    <button onClick={() => navigator.clipboard.writeText(domain.domain.split('.')[0])} className="opacity-0 group-hover/name:opacity-100 hover:text-white transition-opacity ml-1 flex items-center justify-center">
-                                                        <span className="opacity-50 hover:opacity-100"><Copy size={12}/></span>
+                                                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Name:</span>
+                                                    <span className="font-mono font-bold">{domain.domain.split('.')[0]}</span>
+                                                    <button onClick={() => navigator.clipboard.writeText(domain.domain.split('.')[0])} className="opacity-0 group-hover/name:opacity-100 text-[#4dbf39] transition-opacity flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md">
+                                                        <Copy size={12}/>
                                                     </button>
                                                 </div>
                                                 <div className="flex items-center gap-2 group/target">
-                                                    <span className="opacity-50">Target:</span>
-                                                    <span className="font-mono font-semibold">proxy.minimal-crm.app</span>
-                                                    <button onClick={() => navigator.clipboard.writeText('proxy.minimal-crm.app')} className="opacity-0 group-hover/target:opacity-100 hover:text-white transition-opacity ml-1 flex items-center justify-center">
-                                                        <span className="opacity-50 hover:opacity-100"><Copy size={12}/></span>
+                                                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Target:</span>
+                                                    <span className="font-mono font-bold">proxy.minimal-crm.app</span>
+                                                    <button onClick={() => navigator.clipboard.writeText('proxy.minimal-crm.app')} className="opacity-0 group-hover/target:opacity-100 text-[#4dbf39] transition-opacity flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md">
+                                                        <Copy size={12} />
                                                     </button>
                                                 </div>
                                             </div>
