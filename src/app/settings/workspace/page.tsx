@@ -301,24 +301,24 @@ export default function WorkspaceSettingsPage() {
                                             isDark ? "bg-[#1a1a1c]" : "bg-[#efefef]"
                                         )}>
                                             <div className="flex flex-wrap items-center gap-x-10 gap-y-3 text-[13px]">
-                                                <div className="flex items-center gap-2 group/cname">
+                                                <div className="flex items-center gap-2">
                                                     <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Type:</span>
                                                     <span className="font-mono font-bold">CNAME</span>
-                                                    <button onClick={() => navigator.clipboard.writeText('CNAME')} className="opacity-0 group-hover/cname:opacity-100 text-[#4dbf39] transition-opacity flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md">
+                                                    <button onClick={() => navigator.clipboard.writeText('CNAME')} className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors" title="Copy Type">
                                                         <Copy size={12}/>
                                                     </button>
                                                 </div>
-                                                <div className="flex items-center gap-2 group/name">
+                                                <div className="flex items-center gap-2">
                                                     <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Name:</span>
                                                     <span className="font-mono font-bold">{domain.domain.split('.')[0]}</span>
-                                                    <button onClick={() => navigator.clipboard.writeText(domain.domain.split('.')[0])} className="opacity-0 group-hover/name:opacity-100 text-[#4dbf39] transition-opacity flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md">
+                                                    <button onClick={() => navigator.clipboard.writeText(domain.domain.split('.')[0])} className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors" title="Copy Name">
                                                         <Copy size={12}/>
                                                     </button>
                                                 </div>
-                                                <div className="flex items-center gap-2 group/target">
+                                                <div className="flex items-center gap-2">
                                                     <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Target:</span>
-                                                    <span className="font-mono font-bold">proxy.minimal-crm.app</span>
-                                                    <button onClick={() => navigator.clipboard.writeText('proxy.minimal-crm.app')} className="opacity-0 group-hover/target:opacity-100 text-[#4dbf39] transition-opacity flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md">
+                                                    <span className="font-mono font-bold">cname.vercel-dns.com</span>
+                                                    <button onClick={() => navigator.clipboard.writeText('cname.vercel-dns.com')} className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors" title="Copy Target">
                                                         <Copy size={12} />
                                                     </button>
                                                 </div>
