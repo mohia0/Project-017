@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import {
-    X, CheckCircle, Folder, FileText, CreditCard, RefreshCw, PenTool,
-    User, Building, Calendar, CalendarClock, MessageSquare, Clock,
-    AlignLeft, Zap, Plus, Mail, Phone, Hash, ChevronDown, Check
+    X, ChevronRight, User, PenTool, FileText,
+    Mail, Phone, Building2, Calendar, Plus, Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useClientStore } from '@/store/useClientStore';
@@ -13,86 +12,224 @@ import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useRouter } from 'next/navigation';
 
-type EntityType = 'Project' | 'Scheduler' | 'Form' | 'Conversation' | 'Invoice' | 'File' | 'Proposal' | 'Client';
+type EntityType = 'Client' | 'Proposal' | 'Invoice';
 
-const ENTITIES: { id: EntityType; icon: React.ReactNode; label: string }[] = [
-    { id: 'Client', icon: <User size={14} />, label: 'Contact' },
-    { id: 'Proposal', icon: <PenTool size={14} />, label: 'Proposal' },
-    { id: 'Invoice', icon: <FileText size={14} />, label: 'Invoice' },
+function generateProposalId() { return `P${Math.floor(Math.random() * 9000000 + 1000000)}`; }
+function generateInvoiceId() { return `INV-${Math.floor(Math.random() * 9000000 + 1000000)}`; }
+function addDays(date: Date, days: number) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
+}
+
+const TABS: { id: EntityType; icon: React.ReactNode; label: string }[] = [
+    { id: 'Client',   icon: <User size={14} />,     label: 'Contact'  },
+    { id: 'Proposal', icon: <PenTool size={14} />,  label: 'Proposal' },
+    { id: 'Invoice',  icon: <FileText size={14} />, label: 'Invoice'  },
 ];
 
+// ─── Shared Field ────────────────────────────────────────────────────────────
+function Field({ label, icon, children, isDark }: {
+    label: string; icon: React.ReactNode; children: React.ReactNode; isDark: boolean;
+}) {
+    return (
+        <div className={cn(
+            "w-full rounded-xl border px-4 py-3 text-[13px] transition-all focus-within:ring-2",
+            isDark
+                ? "bg-[#1c1c1c] border-[#2e2e2e] focus-within:ring-[#333] focus-within:border-[#444]"
+                : "bg-white border-[#e0e0e0] focus-within:ring-[#e8e8e8] focus-within:border-[#ccc]"
+        )}>
+            <div className="flex items-center gap-1.5 mb-0.5">
+                <span className={cn("opacity-40", isDark ? "text-white" : "text-[#333]")}>{icon}</span>
+                <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>{label}</span>
+            </div>
+            {children}
+        </div>
+    );
+}
+
+function TextInput({ value, onChange, placeholder, type = 'text', isDark, autoFocus }: {
+    value: string; onChange: (v: string) => void; placeholder?: string; type?: string; isDark: boolean; autoFocus?: boolean;
+}) {
+    return (
+        <input
+            type={type}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            autoFocus={autoFocus}
+            className={cn(
+                "bg-transparent outline-none text-[13px] w-full",
+                isDark ? "text-white placeholder:text-[#555]" : "text-[#111] placeholder:text-[#bbb]"
+            )}
+        />
+    );
+}
+
+// ─── Client Search Dropdown ───────────────────────────────────────────────────
+function ClientPicker({ isDark, selectedClient, selectedClientId, onSelect }: {
+    isDark: boolean;
+    selectedClient: string;
+    selectedClientId: string | null;
+    onSelect: (name: string, id: string) => void;
+}) {
+    const { clients } = useClientStore();
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const filtered = clients.filter(c =>
+        (c.contact_person + ' ' + c.company_name).toLowerCase().includes(query.toLowerCase())
+    );
+
+    return (
+        <div className="relative" ref={ref}>
+            <Field label="Client" icon={<User size={11} />} isDark={isDark}>
+                <button
+                    type="button"
+                    onClick={() => setOpen(v => !v)}
+                    className={cn(
+                        "w-full text-left text-[13px]",
+                        selectedClient
+                            ? isDark ? "text-white" : "text-[#111]"
+                            : isDark ? "text-[#555]" : "text-[#bbb]"
+                    )}
+                >
+                    {selectedClient || "Choose from contacts..."}
+                </button>
+            </Field>
+
+            {open && (
+                <div className={cn(
+                    "absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden",
+                    isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                )}>
+                    <div className="p-2 border-b border-inherit">
+                        <input
+                            autoFocus
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                            placeholder="Search contacts..."
+                            className={cn(
+                                "w-full text-[12px] px-3 py-1.5 rounded-lg outline-none",
+                                isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]"
+                            )}
+                        />
+                    </div>
+                    <div className="max-h-44 overflow-auto">
+                        {filtered.length === 0 ? (
+                            <div className={cn("px-4 py-3 text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No contacts found</div>
+                        ) : filtered.map(c => (
+                            <button
+                                key={c.id}
+                                onClick={() => { onSelect(c.contact_person || c.company_name, c.id); setQuery(''); setOpen(false); }}
+                                className={cn(
+                                    "w-full text-left px-4 py-2.5 text-[13px] transition-colors",
+                                    isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                )}
+                            >
+                                <span className="font-medium">{c.contact_person}</span>
+                                {c.company_name && <span className={cn("ml-2 text-[11px]", isDark ? "text-[#555]" : "text-[#aaa]")}>{c.company_name}</span>}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Main Modal ───────────────────────────────────────────────────────────────
 export default function CreateEntryModal() {
     const { isCreateModalOpen, setCreateModalOpen, theme } = useUIStore();
     const isDark = theme === 'dark';
-    const [selectedEntity, setSelectedEntity] = useState<EntityType>('Proposal');
-    const [loading, setLoading] = useState(false);
     const router = useRouter();
 
-    // Stores
-    const { addClient } = useClientStore();
+    const [tab, setTab] = useState<EntityType>('Proposal');
+    const [tabSearch, setTabSearch] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    // Contact state
+    const [cName, setCName] = useState('');
+    const [cEmail, setCEmail] = useState('');
+    const [cPhone, setCPhone] = useState('');
+    const [cCompany, setCCompany] = useState('');
+
+    // Proposal state
+    const [pTitle, setPTitle] = useState(generateProposalId);
+    const [pClient, setPClient] = useState('');
+    const [pClientId, setPClientId] = useState<string | null>(null);
+    const [pIssueDate, setPIssueDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [pExpiry, setPExpiry] = useState('');
+
+    // Invoice state
+    const [iTitle, setITitle] = useState(generateInvoiceId);
+    const [iClient, setIClient] = useState('');
+    const [iClientId, setIClientId] = useState<string | null>(null);
+    const [iIssueDate, setIIssueDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [iDueDate, setIDueDate] = useState(() => addDays(new Date(), 7));
+
+    const { addClient, fetchClients } = useClientStore();
     const { addProposal } = useProposalStore();
     const { addInvoice } = useInvoiceStore();
 
-    // Common State for forms
-    const [formStates, setFormStates] = useState<any>({
-        Client: { name: '', email: '', phone: '', company: '' },
-        Proposal: { title: `P${Math.floor(Math.random() * 900000 + 100000)}`, clientId: null, clientName: '', date: new Date().toISOString().split('T')[0] },
-        Invoice: { title: `INV-${Math.floor(Math.random() * 900000 + 100000)}`, clientId: null, clientName: '', date: new Date().toISOString().split('T')[0] },
-    });
+    useEffect(() => { fetchClients(); }, [fetchClients]);
 
     if (!isCreateModalOpen) return null;
 
-    const handleUpdateField = (entity: EntityType, field: string, value: any) => {
-        setFormStates((prev: any) => ({
-            ...prev,
-            [entity]: { ...prev[entity], [field]: value }
-        }));
-    };
+    const filteredTabs = TABS.filter(t => t.label.toLowerCase().includes(tabSearch.toLowerCase()));
+
+    const ctaLabel = tab === 'Client' ? 'Create contact' : tab === 'Proposal' ? 'Create proposal' : 'Create invoice';
 
     const handleCreate = async () => {
         setLoading(true);
         try {
-            if (selectedEntity === 'Client') {
-                const data = formStates.Client;
+            if (tab === 'Client') {
                 await addClient({
-                    contact_person: data.name,
-                    email: data.email,
-                    phone: data.phone,
-                    company_name: data.company,
-                    address: '',
-                    tax_number: '',
-                    notes: ''
+                    contact_person: cName,
+                    email: cEmail,
+                    phone: cPhone,
+                    company_name: cCompany,
+                    address: '', tax_number: '', notes: ''
                 });
-            } else if (selectedEntity === 'Proposal') {
-                const data = formStates.Proposal;
+                setCreateModalOpen(false);
+            } else if (tab === 'Proposal') {
                 const p = await addProposal({
-                    title: data.title,
-                    client_id: data.clientId,
-                    client_name: data.clientName,
-                    amount: 0,
+                    title: pTitle,
+                    client_id: pClientId,
+                    client_name: pClient,
                     status: 'Draft',
-                    issue_date: data.date,
-                    due_date: '',
+                    amount: 0,
+                    issue_date: pIssueDate,
+                    due_date: pExpiry,
                     notes: '',
                     blocks: []
                 });
+                setCreateModalOpen(false);
                 if (p) router.push(`/proposals/${p.id}`);
-            } else if (selectedEntity === 'Invoice') {
-                const data = formStates.Invoice;
+            } else {
                 const inv = await addInvoice({
-                    title: data.title,
-                    client_id: data.clientId,
-                    client_name: data.clientName,
-                    amount: 0,
+                    title: iTitle,
+                    client_id: iClientId,
+                    client_name: iClient,
                     status: 'Draft',
-                    issue_date: data.date,
-                    due_date: data.date,
+                    amount: 0,
+                    issue_date: iIssueDate,
+                    due_date: iDueDate,
                     notes: '',
                     blocks: []
                 });
+                setCreateModalOpen(false);
                 if (inv) router.push(`/invoices/${inv.id}`);
             }
-            setCreateModalOpen(false);
         } catch (err) {
             console.error(err);
         } finally {
@@ -101,112 +238,174 @@ export default function CreateEntryModal() {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-            {/* Modal Container */}
+        <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+            onClick={e => { if (e.target === e.currentTarget) setCreateModalOpen(false); }}
+        >
             <div className={cn(
-                "w-full max-w-[580px] h-auto max-h-[90vh] rounded-[16px] overflow-hidden flex flex-col font-sans transition-all duration-300",
-                isDark 
-                    ? "bg-[#161616] border border-[#222] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)]" 
-                    : "bg-white border border-[#d2d2eb] shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] text-[#111]"
+                "w-full max-w-[580px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200",
+                isDark ? "bg-[#161616] border border-[#252525]" : "bg-[#f7f7f7] border border-[#e0e0e0]"
             )}>
 
                 {/* Header */}
                 <div className={cn(
-                    "flex items-center justify-between px-5 py-4 border-b",
-                    isDark ? "border-[#222] bg-[#161616]" : "border-[#eaeaef] bg-[#f9f9fb]"
+                    "flex items-center justify-between px-5 pt-5 pb-4 border-b",
+                    isDark ? "border-[#252525]" : "border-[#eaeaef]"
                 )}>
                     <div className="flex items-center gap-2.5">
-                        <div className={cn(
-                            "w-6 h-6 rounded-lg flex items-center justify-center",
-                            isDark ? "bg-[#4dbf39]/10" : "bg-[#4dbf39]/10"
-                        )}>
+                        <div className="w-6 h-6 rounded-lg bg-[#4dbf39]/10 flex items-center justify-center">
                             <Plus size={14} className="text-[#4dbf39]" strokeWidth={3} />
                         </div>
-                        <h2 className={cn("text-[14px] font-bold tracking-tight", isDark ? "text-white" : "text-[#111]")}>Create New</h2>
+                        <h2 className={cn("text-[15px] font-bold tracking-tight", isDark ? "text-white" : "text-[#111]")}>
+                            Create New
+                        </h2>
                     </div>
                     <button
                         onClick={() => setCreateModalOpen(false)}
                         className={cn(
-                            "transition-all p-1.5 rounded-full",
-                            isDark ? "text-[#444] hover:text-white hover:bg-white/5" : "text-[#999] hover:text-[#111] hover:bg-[#f1f1f9]"
+                            "w-7 h-7 rounded-full flex items-center justify-center transition-colors",
+                            isDark ? "bg-[#252525] text-[#666] hover:text-[#ccc]" : "bg-[#e8e8e8] text-[#888] hover:text-[#333]"
                         )}
                     >
-                        <X size={14} />
+                        <X size={14} strokeWidth={2.5} />
                     </button>
                 </div>
 
-                {/* Body Content */}
-                <div className="flex flex-1 overflow-hidden h-[420px]">
-
-                    {/* Left Sidebar - Entities List */}
+                <div className="flex flex-1 overflow-hidden min-h-[440px]">
+                    {/* Sidebar Tabs */}
                     <div className={cn(
-                        "w-[160px] border-r overflow-y-auto no-scrollbar p-2 flex flex-col gap-0.5",
-                        isDark ? "border-[#222] bg-[#0f0f0f]" : "border-[#eaeaef] bg-[#f9f9fb]"
+                        "w-[170px] flex flex-col p-2 border-r",
+                        isDark ? "bg-[#111] border-[#252525]" : "bg-[#f9f9fb] border-[#eaeaef]"
                     )}>
-                        {ENTITIES.map((entity) => (
-                            <button
-                                key={entity.id}
-                                onClick={() => setSelectedEntity(entity.id)}
-                                className={cn(
-                                    "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-[12px] font-bold",
-                                    selectedEntity === entity.id
-                                        ? isDark 
-                                            ? "bg-white/[0.03] text-white" 
-                                            : "bg-white border border-[#d2d2eb] text-[#4dbf39]"
-                                        : isDark 
-                                            ? "text-[#444] hover:text-white" 
-                                            : "text-[#888] hover:text-[#111]"
-                                )}
-                            >
-                                <span className={cn(
-                                    "transition-colors",
-                                    selectedEntity === entity.id 
-                                        ? "text-[#4dbf39]"
-                                        : "opacity-30"
-                                )}>
-                                    {entity.icon}
-                                </span>
-                                {entity.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Right Side - Form Area */}
-                    <div className="flex-1 flex flex-col relative overflow-hidden">
-                        <div className="flex-1 overflow-y-auto px-6 py-5">
-                            {selectedEntity === 'Client' && (
-                                <ContactForm 
-                                    isDark={isDark} 
-                                    data={formStates.Client} 
-                                    onChange={(f: string, v: string) => handleUpdateField('Client', f, v)} 
-                                />
-                            )}
-                            {selectedEntity === 'Proposal' && (
-                                <ProposalForm 
-                                    isDark={isDark} 
-                                    data={formStates.Proposal} 
-                                    onChange={(f: string, v: string) => handleUpdateField('Proposal', f, v)} 
-                                />
-                            )}
-                            {selectedEntity === 'Invoice' && (
-                                <InvoiceForm 
-                                    isDark={isDark} 
-                                    data={formStates.Invoice} 
-                                    onChange={(f: string, v: string) => handleUpdateField('Invoice', f, v)} 
-                                />
-                            )}
+                        {/* Tab Search Placeholder for future usage */}
+                        <div className={cn(
+                            "flex items-center gap-2 px-2.5 py-1.5 rounded-lg mb-2",
+                            isDark ? "bg-white/[0.03]" : "bg-white border border-[#eaeaef]"
+                        )}>
+                            <Search size={12} className="opacity-20" />
+                            <input 
+                                value={tabSearch}
+                                onChange={e => setTabSearch(e.target.value)}
+                                placeholder="Search tools..."
+                                className="bg-transparent border-none outline-none text-[11px] w-full font-medium"
+                            />
                         </div>
 
-                        {/* Footer Buttons */}
+                        <div className="flex-1 flex flex-col gap-1 overflow-y-auto no-scrollbar">
+                            {filteredTabs.map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => setTab(t.id)}
+                                    className={cn(
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[12px] font-bold transition-all group shrink-0",
+                                        tab === t.id
+                                            ? isDark
+                                                ? "bg-[#2a2a2a] text-white shadow-sm"
+                                                : "bg-white text-[#4dbf39] shadow-sm border border-[#e0e0eb]"
+                                            : isDark
+                                                ? "text-[#555] hover:text-[#888] hover:bg-white/[0.02]"
+                                                : "text-[#999] hover:text-[#555] hover:bg-[#efeff5]"
+                                    )}
+                                >
+                                    <span className={cn(
+                                        "transition-colors",
+                                        tab === t.id ? "text-[#4dbf39]" : "opacity-40 group-hover:opacity-60"
+                                    )}>
+                                        {t.icon}
+                                    </span>
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Content Area */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        <div className="flex-1 px-6 py-6 overflow-y-auto no-scrollbar">
+                            <h3 className={cn("text-[14px] font-bold mb-5 flex items-center gap-2", isDark ? "text-white" : "text-[#111]")}>
+                                New {tab === 'Client' ? 'Contact' : tab}
+                            </h3>
+                            
+                            <div className="flex flex-col gap-3">
+                                {/* ── Contact Form ── */}
+                                {tab === 'Client' && (
+                                    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
+                                        <Field label="Full name" icon={<User size={11} />} isDark={isDark}>
+                                            <TextInput value={cName} onChange={setCName} placeholder="John Doe" isDark={isDark} autoFocus />
+                                        </Field>
+                                        <Field label="Email address" icon={<Mail size={11} />} isDark={isDark}>
+                                            <TextInput value={cEmail} onChange={setCEmail} placeholder="john@example.com" type="email" isDark={isDark} />
+                                        </Field>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Field label="Phone" icon={<Phone size={11} />} isDark={isDark}>
+                                                <TextInput value={cPhone} onChange={setCPhone} placeholder="+1 234 567 890" isDark={isDark} />
+                                            </Field>
+                                            <Field label="Company" icon={<Building2 size={11} />} isDark={isDark}>
+                                                <TextInput value={cCompany} onChange={setCCompany} placeholder="Acme Inc." isDark={isDark} />
+                                            </Field>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ── Proposal Form ── */}
+                                {tab === 'Proposal' && (
+                                    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
+                                        <Field label="Proposal title" icon={<PenTool size={11} />} isDark={isDark}>
+                                            <TextInput value={pTitle} onChange={setPTitle} placeholder="Untitled proposal" isDark={isDark} autoFocus />
+                                        </Field>
+                                        <ClientPicker
+                                            isDark={isDark}
+                                            selectedClient={pClient}
+                                            selectedClientId={pClientId}
+                                            onSelect={(name, id) => { setPClient(name); setPClientId(id); }}
+                                        />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Field label="Issue date" icon={<Calendar size={11} />} isDark={isDark}>
+                                                <TextInput value={pIssueDate} onChange={setPIssueDate} type="date" isDark={isDark} />
+                                            </Field>
+                                            <Field label="Expiration date" icon={<Calendar size={11} />} isDark={isDark}>
+                                                <TextInput value={pExpiry} onChange={setPExpiry} type="date" isDark={isDark} />
+                                            </Field>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ── Invoice Form ── */}
+                                {tab === 'Invoice' && (
+                                    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
+                                        <Field label="Invoice title" icon={<FileText size={11} />} isDark={isDark}>
+                                            <TextInput value={iTitle} onChange={setITitle} placeholder="INV-000" isDark={isDark} autoFocus />
+                                        </Field>
+                                        <ClientPicker
+                                            isDark={isDark}
+                                            selectedClient={iClient}
+                                            selectedClientId={iClientId}
+                                            onSelect={(name, id) => { setIClient(name); setIClientId(id); }}
+                                        />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Field label="Issue date" icon={<Calendar size={11} />} isDark={isDark}>
+                                                <TextInput value={iIssueDate} onChange={setIIssueDate} type="date" isDark={isDark} />
+                                            </Field>
+                                            <Field label="Due date" icon={<Calendar size={11} />} isDark={isDark}>
+                                                <TextInput value={iDueDate} onChange={setIDueDate} type="date" isDark={isDark} />
+                                            </Field>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Footer */}
                         <div className={cn(
-                            "px-6 py-4 flex items-center gap-3 justify-end border-t mt-auto",
-                            isDark ? "border-[#222] bg-[#161616]" : "border-[#eaeaef] bg-white"
+                            "flex items-center justify-between px-6 py-4 border-t mt-auto",
+                            isDark ? "border-[#252525] bg-[#111]" : "border-[#e8e8e8] bg-white"
                         )}>
                             <button
                                 onClick={() => setCreateModalOpen(false)}
                                 className={cn(
-                                    "px-4 py-2 rounded-[10px] text-[12px] font-bold transition-all",
-                                    isDark ? "text-[#444] hover:text-white" : "text-[#888] hover:text-[#111]"
+                                    "px-4 py-2 text-[13px] font-medium rounded-xl transition-colors",
+                                    isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f5f5f5]"
                                 )}
                             >
                                 Cancel
@@ -214,143 +413,15 @@ export default function CreateEntryModal() {
                             <button
                                 onClick={handleCreate}
                                 disabled={loading}
-                                className={cn(
-                                    "px-6 py-2 rounded-[10px] text-[12px] font-bold transition-all active:scale-[0.98] disabled:opacity-50",
-                                    "bg-[#4dbf39] text-black hover:bg-[#59d044] shadow-[0_8px_20px_-4px_rgba(77,191,57,0.3)]"
-                                )}
+                                className="flex items-center gap-2 px-6 py-2 text-[13px] font-bold rounded-xl bg-[#4dbf39] hover:bg-[#59d044] text-black transition-all active:scale-[0.98] disabled:opacity-60 shadow-[0_4px_14px_-4px_rgba(77,191,57,0.4)]"
                             >
-                                {loading ? 'Creating...' : `Create ${selectedEntity}`}
+                                {loading ? 'Creating...' : ctaLabel}
+                                {!loading && <ChevronRight size={14} strokeWidth={2.5} />}
                             </button>
                         </div>
                     </div>
                 </div>
 
-            </div>
-        </div>
-    );
-}
-
-// ----------------------------------------------------
-// FORM COMPONENTS
-// ----------------------------------------------------
-
-function QuickInput({ label, icon: Icon, value, onChange, placeholder, isDark, type = 'text' }: any) {
-    return (
-        <div className={cn(
-            "rounded-[12px] border px-4 py-3 transition-all group focus-within:border-[#4dbf39]/30",
-            isDark ? "bg-[#1c1c1c] border-[#222]" : "bg-[#f9f9fb] border-[#eaeaef]"
-        )}>
-            <div className="flex items-center gap-2 mb-1.5">
-                {Icon && <Icon size={10} className="opacity-20" />}
-                <label className={cn("text-[9px] font-black uppercase tracking-[0.15em] opacity-30", isDark ? "text-white" : "text-[#111]")}>{label}</label>
-            </div>
-            <input
-                type={type}
-                value={value}
-                onChange={e => onChange(e.target.value)}
-                placeholder={placeholder}
-                className={cn(
-                    "w-full bg-transparent border-none p-0 text-[13px] font-bold focus:ring-0 leading-tight",
-                    isDark ? "text-white placeholder-white/[0.05]" : "text-[#111] placeholder-black/10"
-                )}
-            />
-        </div>
-    );
-}
-
-function ContactForm({ isDark, data, onChange }: any) {
-    return (
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <h3 className={cn("text-[14px] font-black tracking-tight mb-2", isDark ? "text-white" : "text-[#111]")}>Create New Contact</h3>
-            <div className="space-y-3">
-                <QuickInput label="Full Name" icon={User} value={data.name} onChange={(v: string) => onChange('name', v)} placeholder="John Doe" isDark={isDark} />
-                <QuickInput label="Email Address" icon={Mail} value={data.email} onChange={(v: string) => onChange('email', v)} placeholder="john@example.com" isDark={isDark} />
-                <div className="grid grid-cols-2 gap-3">
-                    <QuickInput label="Phone" icon={Phone} value={data.phone} onChange={(v: string) => onChange('phone', v)} placeholder="+1..." isDark={isDark} />
-                    <QuickInput label="Company" icon={Building} value={data.company} onChange={(v: string) => onChange('company', v)} placeholder="Acme Inc." isDark={isDark} />
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function ProposalForm({ isDark, data, onChange }: any) {
-    const { clients } = useClientStore();
-    return (
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <h3 className={cn("text-[14px] font-black tracking-tight mb-2", isDark ? "text-white" : "text-[#111]")}>Create New Proposal</h3>
-            <div className="space-y-3">
-                <QuickInput label="Proposal Title" icon={PenTool} value={data.title} onChange={(v: string) => onChange('title', v)} placeholder="Untitled Proposal" isDark={isDark} />
-                
-                <div className={cn(
-                    "rounded-[12px] border px-4 py-3 transition-all group",
-                    isDark ? "bg-[#1c1c1c] border-[#222]" : "bg-[#f9f9fb] border-[#eaeaef]"
-                )}>
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <User size={10} className="opacity-20" />
-                        <label className={cn("text-[9px] font-black uppercase tracking-[0.15em] opacity-30", isDark ? "text-white" : "text-[#111]")}>Client</label>
-                    </div>
-                    <select 
-                        value={data.clientId || ''} 
-                        onChange={e => {
-                            const c = clients.find(cl => cl.id === e.target.value);
-                            onChange('clientId', e.target.value);
-                            onChange('clientName', c ? c.contact_person : '');
-                        }}
-                        className={cn(
-                            "w-full bg-transparent border-none p-0 text-[13px] font-bold focus:ring-0 appearance-none cursor-pointer",
-                            isDark ? "text-white" : "text-[#111]"
-                        )}
-                    >
-                        <option value="" disabled className={isDark ? "bg-[#141414]" : "bg-white"}>Choose from contacts...</option>
-                        {clients.map(c => (
-                            <option key={c.id} value={c.id} className={isDark ? "bg-[#141414]" : "bg-white"}>{c.contact_person}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <QuickInput label="Issue Date" icon={Calendar} value={data.date} onChange={(v: string) => onChange('date', v)} type="date" isDark={isDark} />
-            </div>
-        </div>
-    );
-}
-
-function InvoiceForm({ isDark, data, onChange }: any) {
-    const { clients } = useClientStore();
-    return (
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <h3 className={cn("text-[14px] font-black tracking-tight mb-2", isDark ? "text-white" : "text-[#111]")}>Create New Invoice</h3>
-            <div className="space-y-3">
-                <QuickInput label="Invoice Identifier" icon={FileText} value={data.title} onChange={(v: string) => onChange('title', v)} placeholder="INV-000" isDark={isDark} />
-                
-                <div className={cn(
-                    "rounded-[12px] border px-4 py-3 transition-all group",
-                    isDark ? "bg-[#1c1c1c] border-[#222]" : "bg-[#f9f9fb] border-[#eaeaef]"
-                )}>
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <User size={10} className="opacity-20" />
-                        <label className={cn("text-[9px] font-black uppercase tracking-[0.15em] opacity-30", isDark ? "text-white" : "text-[#111]")}>Client</label>
-                    </div>
-                    <select 
-                        value={data.clientId || ''} 
-                        onChange={e => {
-                            const c = clients.find(cl => cl.id === e.target.value);
-                            onChange('clientId', e.target.value);
-                            onChange('clientName', c ? c.contact_person : '');
-                        }}
-                        className={cn(
-                            "w-full bg-transparent border-none p-0 text-[13px] font-bold focus:ring-0 appearance-none cursor-pointer",
-                            isDark ? "text-white" : "text-[#111]"
-                        )}
-                    >
-                        <option value="" disabled className={isDark ? "bg-[#141414]" : "bg-white"}>Choose from contacts...</option>
-                        {clients.map(c => (
-                            <option key={c.id} value={c.id} className={isDark ? "bg-[#141414]" : "bg-white"}>{c.contact_person}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <QuickInput label="Due Date" icon={Calendar} value={data.date} onChange={(v: string) => onChange('date', v)} type="date" isDark={isDark} />
             </div>
         </div>
     );

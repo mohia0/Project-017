@@ -14,6 +14,7 @@ export interface Invoice {
     due_date: string;
     notes: string;
     blocks: any[]; // For Notion-style editor blocks
+    meta?: any;
     created_at: string;
 }
 

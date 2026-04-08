@@ -1,10 +1,11 @@
 "use client";
 
 import React from 'react';
-import { ChevronLeft, ChevronRight, Settings, LayoutGrid, GripVertical, RotateCcw, Check, Save, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, LayoutGrid, GripVertical, RotateCcw, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useUIStore } from '@/store/useUIStore';
 import { useMenuStore, ICON_MAP, NavItem } from '@/store/useMenuStore';
 import {
@@ -79,15 +80,14 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate }: {
         );
     }
 
-    return (
+    const content = (
         <Link
             ref={setNodeRef}
             style={style}
             href={item.href}
-            title={item.label}
             className={cn(
-                "w-full h-9 rounded-[10px] flex items-center transition-colors relative",
-                isExpanded ? "justify-start gap-3 px-2.5" : "justify-center",
+                "w-full h-9 rounded-xl flex items-center transition-colors relative",
+                isExpanded ? "justify-start gap-3 px-3" : "justify-center px-1.5",
                 isActive
                     ? "bg-white/10 text-white shadow-sm"
                     : "text-[#6b6b6b] hover:text-white hover:bg-white/5"
@@ -104,6 +104,12 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate }: {
             </div>
         </Link>
     );
+
+    if (!isExpanded) {
+        return <Tooltip content={item.label} side="right" delay={0.1}>{content}</Tooltip>;
+    }
+
+    return content;
 }
 
 export default function LeftSystemMenu() {
@@ -155,9 +161,9 @@ export default function LeftSystemMenu() {
 
     return (
         <nav className={cn(
-            "h-full flex flex-col items-center shrink-0 transition-all duration-300 rounded-2xl z-10 overflow-hidden",
+            "h-full flex flex-col items-center shrink-0 transition-all duration-300 rounded-2xl z-10 overflow-hidden border border-white/5",
             isDark ? "bg-[#141414] text-white" : "bg-[#1c1c1e] text-white",
-            isLeftMenuExpanded ? "w-[160px] px-2 shadow-2xl shadow-black/50" : "w-[44px]"
+            isLeftMenuExpanded ? "w-[160px] px-2 shadow-xl shadow-black/10" : "w-[44px]"
         )}>
 
             {/* Workspace logo */}
@@ -201,7 +207,7 @@ export default function LeftSystemMenu() {
                     <div className={cn("flex flex-col w-full gap-1.5 items-center px-1.5", !isLeftMenuExpanded && "hidden")}>
                         <button 
                             onClick={handleSave} 
-                            className="w-full h-8 flex items-center justify-center gap-2 rounded-[10px] bg-white text-black text-[11px] font-bold hover:bg-white/90 active:scale-[0.98] transition-all"
+                            className="w-full h-8 flex items-center justify-center gap-2 rounded-xl bg-white text-black text-[11px] font-bold hover:bg-white/90 active:scale-[0.98] transition-all"
                         >
                             <Check size={14} strokeWidth={3} /> Done
                         </button>
@@ -209,14 +215,14 @@ export default function LeftSystemMenu() {
                             <button 
                                 onClick={handleReset} 
                                 title="Reset to default"
-                                className="flex-1 h-8 flex items-center justify-center rounded-[10px] bg-white/5 text-[#6b6b6b] hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                                className="flex-1 h-8 flex items-center justify-center rounded-xl bg-white/5 text-[#6b6b6b] hover:text-white hover:bg-white/10 transition-all active:scale-95"
                             >
                                 <RotateCcw size={13} />
                             </button>
                             <button 
                                 onClick={() => setIsEditing(false)} 
                                 title="Cancel"
-                                className="flex-1 h-8 flex items-center justify-center rounded-[10px] bg-white/5 text-[#6b6b6b] hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                                className="flex-1 h-8 flex items-center justify-center rounded-xl bg-white/5 text-[#6b6b6b] hover:text-white hover:bg-white/10 transition-all active:scale-95"
                             >
                                 <X size={13} />
                             </button>
@@ -224,26 +230,28 @@ export default function LeftSystemMenu() {
                     </div>
                 ) : (
                     <>
-                        <button
-                            onClick={() => {
-                                setIsEditing(true);
-                                if (!isLeftMenuExpanded) toggleLeftMenu();
-                            }}
-                            title="Edit Menu"
-                            className="w-full h-8 rounded-[10px] flex items-center justify-center transition-colors text-[#4a4a4a] hover:text-white hover:bg-white/5"
-                        >
-                            <Settings size={14} strokeWidth={2} />
-                        </button>
+                        <Tooltip content="Edit Menu" side="right" delay={0.1}>
+                            <button
+                                onClick={() => {
+                                    setIsEditing(true);
+                                    if (!isLeftMenuExpanded) toggleLeftMenu();
+                                }}
+                                className="w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-[#4a4a4a] hover:text-white hover:bg-white/5"
+                            >
+                                <Settings size={14} strokeWidth={2} />
+                            </button>
+                        </Tooltip>
 
-                        <button
-                            onClick={toggleLeftMenu}
-                            title={isLeftMenuExpanded ? "Collapse" : "Expand"}
-                            className="w-full h-8 rounded-[10px] flex items-center justify-center transition-colors text-[#4a4a4a] hover:text-white hover:bg-white/5"
-                        >
-                            {isLeftMenuExpanded
-                                ? <ChevronLeft size={14} strokeWidth={2} />
-                                : <ChevronRight size={14} strokeWidth={2} />}
-                        </button>
+                        <Tooltip content={isLeftMenuExpanded ? "Collapse" : "Expand"} side="right" delay={0.1}>
+                            <button
+                                onClick={toggleLeftMenu}
+                                className="w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-[#4a4a4a] hover:text-white hover:bg-white/5"
+                            >
+                                {isLeftMenuExpanded
+                                    ? <ChevronLeft size={14} strokeWidth={2} />
+                                    : <ChevronRight size={14} strokeWidth={2} />}
+                            </button>
+                        </Tooltip>
                     </>
                 )}
             </div>

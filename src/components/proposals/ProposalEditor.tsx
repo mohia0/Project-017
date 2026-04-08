@@ -18,19 +18,25 @@ import {
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image as ImageIcon, SeparatorHorizontal,
     Settings, ChevronRight, RotateCcw, Monitor, Smartphone, PanelTop,
-    X, Upload
+    X, Upload, LayoutTemplate
 } from 'lucide-react';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useClientStore } from '@/store/useClientStore';
+import { useTemplateStore } from '@/store/useTemplateStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ContentBlock } from './blocks/ContentBlock';
 import { SectionBlockWrapper } from './blocks/SectionBlockWrapper';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import ImageUploadModal from '../modals/ImageUploadModal';
+import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
+import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
+import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -81,20 +87,12 @@ interface ProposalMeta {
     status: 'Draft' | 'Pending' | 'Accepted' | 'Declined' | 'Overdue';
     logoUrl?: string;
     documentTitle?: string;
+    design?: DocumentDesign;
 }
 
 type RightPanelTab = 'details' | 'appearance' | 'automation';
 
-/* ═══════════════════════════════════════════════════════
-   HELPERS
-═══════════════════════════════════════════════════════ */
-const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-    Draft:    { bg: 'bg-[#dbeafe] border border-[#bfdbfe]', text: 'text-[#1d4ed8]' },
-    Pending:  { bg: 'bg-[#fef3c7] border border-[#fde68a]', text: 'text-[#b45309]' },
-    Accepted: { bg: 'bg-[#dcfce7] border border-[#bbf7d0]', text: 'text-[#15803d]' },
-    Overdue:  { bg: 'bg-[#fee2e2] border border-[#fecaca]', text: 'text-[#dc2626]' },
-    Declined: { bg: 'bg-[#f3e8e3] border border-[#eec7b7]', text: 'text-[#7c4d3a]' },
-};
+
 
 function fmt(n: number, currency = 'USD') {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
@@ -118,6 +116,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const isDark = theme === 'dark';
     const { clients, fetchClients } = useClientStore();
     const { updateProposal, fetchProposals, proposals } = useProposalStore();
+    const { addTemplate } = useTemplateStore();
 
 
     React.useEffect(() => {
@@ -132,13 +131,14 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showStatusMenu, setShowStatusMenu] = useState(false);
     const [showActionsMenu, setShowActionsMenu] = useState(false);
+    const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     // insertAfterIdx: -1 = before first block, 0..n-1 = after block at that index, null = no active insert zone
     const [insertAfterIdx, setInsertAfterIdx] = useState<number | null>(null);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null); // same index scheme
     const [isSignModalOpen, setIsSignModalOpen] = useState(false);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
-    const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block', blockId?: string } | null>(null);
+    const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
 
     const isMobilePreview = isPreview && previewMode === 'mobile';
 
@@ -202,7 +202,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 issueDate: proposal.issue_date ? proposal.issue_date.split('T')[0] : prev.issueDate,
                 expirationDate: proposal.due_date ? proposal.due_date.split('T')[0] : prev.expirationDate,
                 status: proposal.status as any,
-                proposalNumber: proposal.id.slice(0, 8).toUpperCase()
+                proposalNumber: proposal.id.slice(0, 8).toUpperCase(),
+                ...((proposal.meta as any) || {})
             }));
             if (proposal.blocks && Array.isArray(proposal.blocks) && proposal.blocks.length > 0) {
                 setBlocks(proposal.blocks);
@@ -239,6 +240,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
             due_date: debouncedMeta.expirationDate,
             amount: totalAmount,
             blocks: debouncedBlocks,
+            meta: debouncedMeta
         }).then(() => {
             setSaveStatus('saved');
             setTimeout(() => setSaveStatus('idle'), 2500);
@@ -296,7 +298,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
         return { subtotal, discAmt, taxAmt, total: subtotal - discAmt + taxAmt };
     }, [blocks]);
 
-    const sc = STATUS_STYLE[meta.status] || STATUS_STYLE.Draft;
+    const sc = getStatusColors(meta.status);
 
     /* ═══ RENDER ═══ */
     return (
@@ -312,15 +314,17 @@ export default function ProposalEditor({ id }: { id?: string }) {
             )}>
                 {/* Left: Editable Title & Status Indicator */}
                 <div className="flex items-center gap-4 flex-1">
-                    <button
-                        onClick={() => router.push('/proposals')}
-                        className={cn(
-                            "flex items-center justify-center w-8 h-8 rounded-[8px] transition-all",
-                            isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]"
-                        )}
-                    >
-                        <ArrowLeft size={16} />
-                    </button>
+                    <Tooltip content="Back to list" side="bottom" delay={0.1}>
+                        <button
+                            onClick={() => router.push('/proposals')}
+                            className={cn(
+                                "flex items-center justify-center w-8 h-8 rounded-[8px] transition-all",
+                                isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]"
+                            )}
+                        >
+                            <ArrowLeft size={16} />
+                        </button>
+                    </Tooltip>
                     <div className="flex items-center gap-2">
                         <div className={cn(
                             "flex items-center gap-2 text-[13px] font-medium",
@@ -354,8 +358,10 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         <button
                             onClick={() => setShowStatusMenu(s => !s)}
                             className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all",
-                                sc.bg, sc.text
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all border",
+                                isDark
+                                    ? "bg-white/[0.06] text-[#aaa] border-white/10"
+                                    : cn(sc.badge, sc.badgeText, sc.badgeBorder)
                             )}
                         >
                             <div className={cn("w-1.5 h-1.5 rounded-full bg-current opacity-70")} />
@@ -367,7 +373,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 "absolute right-0 top-full mt-1.5 w-40 rounded-[10px] shadow-xl py-1 z-50 border",
                                 isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]"
                             )}>
-                                {Object.keys(STATUS_STYLE).map(s => (
+                                {Object.keys(STATUS_COLORS).filter(k => k !== 'All' && k !== 'Paid').map(s => (
                                     <button
                                         key={s}
                                         onClick={() => { updateMeta({ status: s as any }); setShowStatusMenu(false); }}
@@ -396,7 +402,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 setPreviewMode('desktop');
                             }
                         }}
-                        title={isPreview ? "Exit preview" : "Preview"}
                         className={cn(
                             "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
                             isPreview
@@ -416,51 +421,55 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             "flex items-center rounded-[8px] h-[32px] p-[3px]",
                             isDark ? "bg-white/[0.03]" : "bg-[#f0f0f0]"
                         )}>
-                            <button
-                                onClick={() => setPreviewMode('desktop')}
-                                title="Desktop preview"
-                                className={cn(
-                                    "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
-                                    previewMode === 'desktop'
-                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
-                                        : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
-                                )}
-                            >
-                                <Monitor size={14} />
-                            </button>
-                            <button
-                                onClick={() => setPreviewMode('mobile')}
-                                title="Mobile preview"
-                                className={cn(
-                                    "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
-                                    previewMode === 'mobile'
-                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
-                                        : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
-                                )}
-                            >
-                                <Smartphone size={14} />
-                            </button>
+                            <Tooltip content="Desktop View" side="bottom" delay={0.1}>
+                                <button
+                                    onClick={() => setPreviewMode('desktop')}
+                                    className={cn(
+                                        "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
+                                        previewMode === 'desktop'
+                                            ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                            : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
+                                    )}
+                                >
+                                    <Monitor size={14} />
+                                </button>
+                            </Tooltip>
+                            <Tooltip content="Mobile View" side="bottom" delay={0.1}>
+                                <button
+                                    onClick={() => setPreviewMode('mobile')}
+                                    className={cn(
+                                        "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
+                                        previewMode === 'mobile'
+                                            ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                            : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
+                                    )}
+                                >
+                                    <Smartphone size={14} />
+                                </button>
+                            </Tooltip>
                         </div>
                     )}
 
-                    <button
-                        onClick={copyLink}
-                        title={copied ? "Copied!" : "Copy link"}
-                        className={cn(
-                            "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
-                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
-                        )}
-                    >
-                        {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
-                    </button>
+                    <Tooltip content="Copy share link" side="bottom" delay={0.1}>
+                        <button
+                            onClick={copyLink}
+                            className={cn(
+                                "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                            )}
+                        >
+                            {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
+                        </button>
+                    </Tooltip>
 
                     {/* Send Email equivalent */}
-                    <button
-                        title="Send via Email"
-                        className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
-                    >
-                        <Send size={14} />
-                    </button>
+                    <Tooltip content="Send to client" side="bottom" delay={0.1}>
+                        <button
+                            className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
+                        >
+                            <Send size={14} />
+                        </button>
+                    </Tooltip>
 
                     {/* Actions dropdown (ProposalDropDown equivalent) */}
                     <div className="relative ml-1">
@@ -479,13 +488,17 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 isDark ? "bg-[#0c0c0c]" : "bg-white border-[#d2d2eb]"
                             )}>
                                 {[
-                                    { icon: Download, label: 'Download PDF' },
-                                    { icon: Copy,     label: 'Duplicate Proposal' },
-                                    { icon: Trash2,   label: 'Delete' },
-                                ].map(({ icon: Icon, label }) => (
+                                    { icon: LayoutTemplate, label: 'Save as Template', action: () => setIsSaveTemplateModalOpen(true) },
+                                    { icon: Download, label: 'Download PDF', action: () => console.log('Download') },
+                                    { icon: Copy,     label: 'Duplicate Proposal', action: () => console.log('Duplicate') },
+                                    { icon: Trash2,   label: 'Delete', action: () => console.log('Delete') },
+                                ].map(({ icon: Icon, label, action }) => (
                                     <button
                                         key={label}
-                                        onClick={() => setShowActionsMenu(false)}
+                                        onClick={() => {
+                                            action();
+                                            setShowActionsMenu(false);
+                                        }}
                                         className={cn(
                                             "w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors",
                                             label === 'Delete' 
@@ -505,10 +518,16 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
             <div className="flex-1 flex overflow-hidden relative">
                 {/* ── LEFT: CANVAS ── */}
-                <div className={cn(
-                    "flex-1 overflow-auto relative w-full",
-                    isDark ? "bg-[#080808]" : "bg-[#f7f7f7]"
-                )}>
+                <div 
+                    className="flex-1 overflow-auto relative w-full"
+                    style={{ 
+                        backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
+                        backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundAttachment: 'fixed',
+                    }}
+                >
                     <div className={cn(
                         "flex flex-col items-center min-h-full",
                         isMobilePreview ? "py-8 px-4" : "py-10 px-6"
@@ -576,8 +595,13 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                             updateMeta={updateMeta}
                                             setBlocks={setBlocks}
                                             currency={meta.currency}
-                                            setImageUploadOpen={setImageUploadOpen}
-                                            setUploadTarget={setUploadTarget}
+                                            setImageUploadOpen={setImageUploadOpen as any}
+                                            setUploadTarget={setUploadTarget as any}
+                                            isSaveTemplateModalOpen={isSaveTemplateModalOpen}
+                                            setIsSaveTemplateModalOpen={setIsSaveTemplateModalOpen}
+                                            addTemplate={addTemplate}
+                                            isFirst={true}
+                                            isLast={true}
                                         />
                                     </div>
                                     {/* Home bar */}
@@ -606,6 +630,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 currency={meta.currency}
                                 setImageUploadOpen={setImageUploadOpen}
                                 setUploadTarget={setUploadTarget}
+                                isSaveTemplateModalOpen={isSaveTemplateModalOpen}
+                                setIsSaveTemplateModalOpen={setIsSaveTemplateModalOpen}
+                                addTemplate={addTemplate}
                             />
                         )}
                     </div>
@@ -795,78 +822,19 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             )}
 
                             {rightTab === 'appearance' && (
-                                <div className="space-y-3 pt-1">
-                                    <div className={cn("text-[10px] uppercase tracking-widest font-bold", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                        Font
-                                    </div>
-                                    {['Inter', 'Outfit', 'Playfair', 'IBM Plex Mono'].map(font => (
-                                        <button
-                                            key={font}
-                                            className={cn(
-                                                "w-full text-left px-3 py-2 rounded-lg text-[12px] border transition-all",
-                                                isDark ? "border-[#2a2a2a] text-[#aaa] hover:border-[#3a3a3a] hover:bg-white/5" : "border-[#ebebeb] text-[#555] hover:border-[#ccc] hover:bg-white"
-                                            )}
-                                        >
-                                            {font}
-                                        </button>
-                                    ))}
-                                    <div className={cn("text-[10px] uppercase tracking-widest font-bold pt-2", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                        Branding
-                                    </div>
-                                    <MetaField label="Logo" isDark={isDark}>
-                                        <div className="flex flex-col gap-2">
-                                            {meta.logoUrl && (
-                                                <div className="relative group/logo w-fit">
-                                                    <img src={meta.logoUrl} alt="Logo" className="h-12 w-auto rounded border border-white/5 bg-white/5 p-1" />
-                                                    <button 
-                                                        onClick={() => updateMeta({ logoUrl: '' })}
-                                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/logo:opacity-100 transition-opacity"
-                                                    >
-                                                        <X size={10} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                            <button 
-                                                onClick={() => {
-                                                    setUploadTarget({ type: 'logo' });
-                                                    setImageUploadOpen(true);
-                                                }}
-                                                className={cn(
-                                                    "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed transition-all",
-                                                    isDark ? "border-white/5 hover:border-[#4dbf39]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[#4dbf39]/30 hover:bg-gray-50 text-gray-500"
-                                                )}
-                                            >
-                                                <Upload size={14} />
-                                                <span className="text-[12px] font-medium">
-                                                    {meta.logoUrl ? "Change Logo" : "Upload Logo"}
-                                                </span>
-                                            </button>
-                                        </div>
-                                    </MetaField>
-                                    <MetaField label="Document Title" isDark={isDark}>
-                                        <textarea 
-                                            value={meta.documentTitle || ''} 
-                                            onChange={e => updateMeta({ documentTitle: e.target.value })} 
-                                            placeholder="PROPOSAL & AGREEMENT" 
-                                            rows={2}
-                                            className={cn("w-full text-[12px] bg-transparent outline-none resize-none", isDark ? "text-[#ccc]" : "text-[#333]")}
-                                        />
-                                    </MetaField>
-
-                                    <div className={cn("text-[10px] uppercase tracking-widest font-bold pt-4", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                        Typography
-                                    </div>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {['#111111', '#2563eb', '#16a34a', '#dc2626', '#9333ea', '#ea580c'].map(color => (
-                                            <button
-                                                key={color}
-                                                title={color}
-                                                style={{ background: color }}
-                                                className="w-7 h-7 rounded-full border-2 border-[#4dbf39]/30 hover:scale-110 transition-transform shadow-sm"
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
+                                <DesignSettingsPanel 
+                                    isDark={isDark} 
+                                    meta={meta} 
+                                    updateMeta={updateMeta} 
+                                    onUploadLogo={() => {
+                                        setUploadTarget({ type: 'logo' });
+                                        setImageUploadOpen(true);
+                                    }} 
+                                    onUploadBackground={() => {
+                                        setUploadTarget({ type: 'background' });
+                                        setImageUploadOpen(true);
+                                    }}
+                                />
                             )}
 
                         </div>
@@ -899,6 +867,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 onUpload={(url: string) => {
                     if (uploadTarget?.type === 'logo') {
                         updateMeta({ logoUrl: url });
+                    } else if (uploadTarget?.type === 'background') {
+                        updateMeta({ design: { ...(meta.design || DEFAULT_DOCUMENT_DESIGN), backgroundImage: url } });
                     } else if (uploadTarget?.type === 'block' && uploadTarget.blockId) {
                         updateBlock(uploadTarget.blockId, { url });
                     }
@@ -912,10 +882,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
 /* ═══════════════════════════════════════════════════════
    PROPOSAL DOCUMENT — The Paper / Content Area
 ═══════════════════════════════════════════════════════ */
-function ProposalDocument({
+export function ProposalDocument({
     meta, blocks, totals, isDark, isPreview, isMobile,
     updateBlock, removeBlock, addBlock, openInsertMenu, setOpenInsertMenu,
-    updateMeta, setBlocks, currency, setImageUploadOpen, setUploadTarget
+    updateMeta, setBlocks, currency, setImageUploadOpen, setUploadTarget,
+    isSaveTemplateModalOpen, setIsSaveTemplateModalOpen, addTemplate
 }: any) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -931,13 +902,36 @@ function ProposalDocument({
         }
     };
 
+    const design = meta.design || DEFAULT_DOCUMENT_DESIGN;
+    const documentStyle = React.useMemo(() => ({
+        fontFamily: design.fontFamily || 'Inter',
+        color: '#111111',
+        backgroundColor: design.backgroundColor || '#ffffff',
+        backgroundImage: design.backgroundImage ? `url(${design.backgroundImage})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        paddingTop: 'var(--block-margin-top)',
+        paddingBottom: 'var(--block-margin-bottom)',
+        '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
+        '--block-margin-top': `${design.marginTop ?? 24}px`,
+        '--block-border-radius': `${design.borderRadius ?? 16}px`,
+        '--sign-bar-color': design.signBarColor || '#000000',
+        '--sign-bar-thick': `${design.signBarThickness ?? 1}px`,
+        '--table-border-radius': `${design.tableBorderRadius ?? 8}px`,
+        '--table-header-bg': design.tableHeaderBg || '#fafafa',
+        '--table-border-color': design.tableBorderColor || '#ebebeb',
+        '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
+    } as React.CSSProperties), [design]);
+
     return (
-        <div className={cn(
-            "w-full transition-all duration-300",
-            isMobile ? "max-w-full px-4" : "max-w-[850px] shadow-sm",
-            isDark ? "bg-[#1c1c1c] text-white" : "bg-white text-[#111]",
-            !isMobile && "min-h-[1100px] py-10 px-12 rounded-[4px]"
-        )}>
+        <div 
+            style={{ ...documentStyle, borderRadius: `${design.borderRadius ?? 16}px` }} 
+            className={cn(
+                "w-full transition-all duration-300 relative",
+                isMobile ? "max-w-full px-4" : "max-w-[850px] shadow-sm",
+                !isMobile && "min-h-[1100px] py-10 px-12"
+            )}
+        >
             {/* Blocks */}
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blocks.map((b: any) => b.id)} strategy={verticalListSortingStrategy}>
@@ -968,6 +962,8 @@ function ProposalDocument({
                                     updateMeta={updateMeta}
                                     setImageUploadOpen={setImageUploadOpen}
                                     setUploadTarget={setUploadTarget}
+                                    isFirst={idx === 0}
+                                    isLast={idx === blocks.length - 1}
                                     onDuplicate={() => {
                                         const nb = { ...block, id: uuidv4() };
                                         const nbx = [...blocks];
@@ -1027,6 +1023,23 @@ function ProposalDocument({
                     </div>
                 </div>
             )}
+            
+            <SaveTemplateModal 
+                open={isSaveTemplateModalOpen} 
+                onClose={() => setIsSaveTemplateModalOpen(false)} 
+                defaultName={meta.projectName || 'My Proposal Template'}
+                entityType="proposal"
+                onSave={async (name, description, isDefault) => {
+                    await addTemplate({
+                        name,
+                        description,
+                        is_default: isDefault,
+                        entity_type: 'proposal',
+                        blocks,
+                        design: meta.design || DEFAULT_DOCUMENT_DESIGN
+                    });
+                }}
+            />
         </div>
     );
 }
@@ -1036,7 +1049,7 @@ function ProposalDocument({
 ═══════════════════════════════════════════════════════ */
 function SortableBlock({
     block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, onMoveUp, onMoveDown, onDuplicate, meta, updateMeta,
-    setImageUploadOpen, setUploadTarget
+    setImageUploadOpen, setUploadTarget, isFirst, isLast
 }: {
     block: BlockData;
     isDark: boolean;
@@ -1052,6 +1065,8 @@ function SortableBlock({
     updateMeta?: (patch: any) => void;
     setImageUploadOpen: (open: boolean) => void;
     setUploadTarget: (target: any) => void;
+    isFirst?: boolean;
+    isLast?: boolean;
 }) {
     const {
         attributes, listeners, setNodeRef,
@@ -1067,6 +1082,8 @@ function SortableBlock({
             onMoveUp={onMoveUp}
             onMoveDown={onMoveDown}
             isPreview={isPreview}
+            isFirst={isFirst}
+            isLast={isLast}
         >
             <BlockRenderer
                 block={block}
@@ -1269,7 +1286,7 @@ function HeadingBlock({ block, isDark, isPreview, updateBlock }: any) {
     const sizes: Record<number, string> = { 1: 'text-[22px] font-black', 2: 'text-[17px] font-bold', 3: 'text-[14px] font-semibold' };
     const cls = sizes[block.level || 1] || sizes[1];
     return (
-        <div className="py-1 group/hb flex items-start gap-2">
+        <div className="group/hb flex items-start gap-2">
             {!isPreview && (
                 <select
                     value={block.level || 1}
@@ -1321,7 +1338,7 @@ function TextBlock({ block, isDark, isPreview, updateBlock }: any) {
     if (!mounted) return <div className="py-2 min-h-[50px]" />;
 
     return (
-        <div className="py-2">
+        <div>
             <ContentBlock
                 id={block.id}
                 data={block}
@@ -1332,7 +1349,7 @@ function TextBlock({ block, isDark, isPreview, updateBlock }: any) {
 }
 
 /* ─── Pricing Block ─── */
-function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) {
+function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }: any) {
     const rows: PricingRow[] = block.rows || [];
     const hideQty = block.hideQty || false;
     const subtotal = rows.reduce((s: number, r: PricingRow) => s + (hideQty ? 1 : r.qty) * r.rate, 0);
@@ -1355,16 +1372,21 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
         updateBlock(block.id, { rows: rows.filter((r: PricingRow) => r.id !== rowId) });
     };
 
-    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-[#555]" : "text-[#aaa]");
-    const td = cn("py-2 text-[12px]", isDark ? "text-[#ccc]" : "text-[#333]");
+    const th = "text-[10px] font-bold uppercase tracking-wider pb-2 text-left text-black/40";
+    const td = "py-2 text-[12px] text-black/80";
 
     return (
-        <div className={cn(
-            "my-4 rounded-xl border overflow-hidden",
-            isDark ? "border-[#2a2a2a]" : "border-[#ebebeb]"
-        )}>
+        <div 
+            className="bg-white overflow-hidden" 
+            style={{ 
+                borderRadius: 'var(--table-border-radius)', 
+                borderColor: 'var(--table-border-color)',
+                borderWidth: 'var(--table-stroke-width)',
+                borderStyle: 'solid'
+            }}
+        >
             <table className="w-full">
-                <thead className={cn("border-b", isDark ? "border-[#2a2a2a] bg-[#1f1f1f]" : "border-[#f0f0f0] bg-[#fafafa]")}>
+                <thead style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderBottomWidth: 'var(--table-stroke-width)', borderBottomStyle: 'solid' }}>
                     <tr>
                         <th className={cn(th, "px-4 py-2 w-full")}>Item</th>
                         {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
@@ -1373,15 +1395,21 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
                         {!isPreview && <th className="w-8" />}
                     </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y" style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)' }}>
+                    <style dangerouslySetInnerHTML={{ __html: `
+                        .divide-y > * + * {
+                            border-top-width: var(--table-stroke-width) !important;
+                            border-color: var(--table-border-color) !important;
+                        }
+                    ` }} />
                     {rows.map((row: PricingRow) => (
-                        <tr key={row.id} className={cn("border-b group/row", isDark ? "border-[#1f1f1f]" : "border-[#f8f8f8]")}>
+                        <tr key={row.id} className="group/row">
                             <td className={cn(td, "px-4")}>
                                 {isPreview
                                     ? (
                                         <div className="flex flex-col">
-                                            <div className="font-bold text-[15px]">{row.title || row.description || 'Item'}</div>
-                                            {(row.title && row.description) && <div className={cn("text-[10.5px] mt-0.5", isDark ? "text-[#888]" : "text-[#666]")}>{row.description}</div>}
+                                            <div className="font-bold text-[16px]">{row.title || row.description || 'Item'}</div>
+                                            {(row.title && row.description) && <div className={cn("text-[11px] mt-0.5", isDark ? "text-[#888]" : "text-[#666]")}>{row.description}</div>}
                                         </div>
                                     )
                                     : (
@@ -1389,14 +1417,14 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
                                             <input
                                                 value={row.title || ''}
                                                 onChange={e => updateRow(row.id, { title: e.target.value })}
-                                                placeholder={row.description || "Item title..."}
-                                                className={cn("w-full bg-transparent outline-none font-bold text-[15px]", isDark ? "text-white placeholder:text-[#555]" : "text-[#111] placeholder:text-[#ccc]")}
+                                                placeholder={row.description ? "Item title..." : "Item Name..."}
+                                                className="w-full bg-transparent outline-none font-bold text-[16px] text-black placeholder:text-black/20"
                                             />
                                             <input
                                                 value={row.description}
                                                 onChange={e => updateRow(row.id, { description: e.target.value })}
                                                 placeholder="Description (optional)..."
-                                                className={cn("w-full bg-transparent outline-none text-[10.5px]", isDark ? "text-[#888] placeholder:text-[#444]" : "text-[#666] placeholder:text-[#ddd]")}
+                                                className="w-full bg-transparent outline-none text-[11px] text-black/50 placeholder:text-black/10"
                                             />
                                         </div>
                                     )
@@ -1422,18 +1450,22 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
                                         type="number"
                                         value={row.rate}
                                         onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
-                                        className={cn("w-20 text-right bg-transparent outline-none text-[12px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                        className="w-20 text-right bg-transparent outline-none text-[12px] text-black/80"
                                     />
                                 }
                             </td>
                             {!hideQty && <td className={cn(td, "px-4 text-right font-semibold align-top pt-3")}>{fmt(row.qty * row.rate, currency)}</td>}
                             {!isPreview && (
-                                <td className="pr-2 align-top pt-3">
+                                <td className="w-0 relative p-0 border-0">
                                     <button
                                         onClick={() => removeRow(row.id)}
-                                        className={cn("opacity-0 group-hover/row:opacity-100 p-1 rounded transition-all", isDark ? "text-[#555] hover:text-red-400" : "text-[#ddd] hover:text-red-400")}
+                                        className={cn(
+                                            "absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 p-2 rounded-full transition-all hover:bg-red-500/10 hover:text-red-500 animate-in fade-in duration-200",
+                                            "text-[#aaa] hover:text-red-500"
+                                        )}
+                                        title="Delete row"
                                     >
-                                        <Trash2 size={11} />
+                                        <Trash2 size={13} />
                                     </button>
                                 </td>
                             )}
@@ -1443,7 +1475,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
             </table>
 
             {/* Totals */}
-            <div className={cn("px-4 py-3 space-y-1 border-t", isDark ? "border-[#2a2a2a] bg-[#1a1a1a]" : "border-[#f0f0f0] bg-[#fafafa]")}>
+            <div className="px-4 py-3 space-y-1 border-t" style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)' }}>
                 {!isPreview && (
                     <div className="flex justify-between items-center mb-2">
                         <button
@@ -1452,14 +1484,25 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency }: any) 
                         >
                             <Plus size={11} /> Add line
                         </button>
-                        <label className={cn("flex items-center gap-2 text-[11px] cursor-pointer", isDark ? "text-[#888] hover:text-[#ccc]" : "text-[#666] hover:text-[#111]")}>
+                        <label className={cn("flex items-center gap-2 text-[11px] font-medium cursor-pointer transition-colors", isDark ? "text-[#888] hover:text-[#ccc]" : "text-[#666] hover:text-[#111]")}>
+                            <div className={cn(
+                                "relative w-[26px] h-[14px] rounded-full transition-colors border",
+                                hideQty 
+                                    ? "bg-[#4dbf39] border-[#4dbf39]" 
+                                    : (isDark ? "bg-white/10 border-white/5" : "bg-black/10 border-black/5")
+                            )}>
+                                <div className={cn(
+                                    "absolute top-px left-px w-[10px] h-[10px] rounded-full bg-white transition-transform",
+                                    hideQty ? "translate-x-[12px]" : "translate-x-0"
+                                )} />
+                            </div>
                             <input 
                                 type="checkbox" 
                                 checked={hideQty} 
                                 onChange={e => updateBlock(block.id, { hideQty: e.target.checked })} 
-                                className="rounded accent-current" 
+                                className="hidden" 
                             />
-                            Hide Qty
+                            Hide QTY
                         </label>
                     </div>
                 )}

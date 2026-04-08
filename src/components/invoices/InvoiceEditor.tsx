@@ -18,10 +18,12 @@ import {
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image, SeparatorHorizontal,
     Settings, ChevronRight, RotateCcw, Monitor, Smartphone, PanelTop,
-    Printer
+    Printer, LayoutTemplate
 } from 'lucide-react';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
@@ -29,6 +31,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { ContentBlock } from '../proposals/blocks/ContentBlock';
 import { SectionBlockWrapper } from '../proposals/blocks/SectionBlockWrapper';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
+import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
+import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
+import { useTemplateStore } from '@/store/useTemplateStore';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -72,16 +77,12 @@ interface InvoiceMeta {
     status: 'Draft' | 'Pending' | 'Paid' | 'Overdue';
     logoUrl?: string;
     documentTitle?: string;
+    design?: DocumentDesign;
 }
 
 type RightPanelTab = 'details' | 'appearance' | 'automation';
 
-const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-    Draft:    { bg: 'bg-[#eff6ff] border border-[#bfdbfe]', text: 'text-[#1d4ed8]' },
-    Pending:  { bg: 'bg-[#fef3c7] border border-[#fde68a]', text: 'text-[#b45309]' },
-    Paid:     { bg: 'bg-[#dcfce7] border border-[#bbf7d0]', text: 'text-[#15803d]' },
-    Overdue:  { bg: 'bg-[#fff7ed] border border-[#fed7aa]', text: 'text-[#c2410c]' },
-};
+
 
 function fmt(n: number, currency = 'USD') {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
@@ -101,6 +102,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const isDark = theme === 'dark';
     const { clients, fetchClients } = useClientStore();
     const { updateInvoice, fetchInvoices, invoices } = useInvoiceStore();
+    const { addTemplate } = useTemplateStore();
 
     React.useEffect(() => {
         fetchClients();
@@ -113,6 +115,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showStatusMenu, setShowStatusMenu] = useState(false);
     const [showActionsMenu, setShowActionsMenu] = useState(false);
+    const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
+    const [imageUploadOpen, setImageUploadOpen] = useState(false);
+    const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
 
@@ -171,7 +176,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 issueDate: invoice.issue_date ? invoice.issue_date.split('T')[0] : prev.issueDate,
                 dueDate: invoice.due_date ? invoice.due_date.split('T')[0] : prev.dueDate,
                 status: invoice.status as any,
-                invoiceNumber: invoice.id.slice(0, 8).toUpperCase()
+                invoiceNumber: invoice.id.slice(0, 8).toUpperCase(),
+                ...((invoice.meta as any) || {})
             }));
             if (invoice.blocks && Array.isArray(invoice.blocks) && invoice.blocks.length > 0) {
                 setBlocks(invoice.blocks);
@@ -208,6 +214,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             due_date: debouncedMeta.dueDate,
             amount: totalAmount,
             blocks: debouncedBlocks,
+            meta: debouncedMeta
         }).then(() => {
             setSaveStatus('saved');
             setTimeout(() => setSaveStatus('idle'), 2500);
@@ -255,7 +262,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
         return { subtotal, discAmt, taxAmt, total: subtotal - discAmt + taxAmt };
     }, [blocks]);
 
-    const sc = STATUS_STYLE[meta.status] || STATUS_STYLE.Draft;
+    const sc = getStatusColors(meta.status);
 
     return (
         <div className={cn(
@@ -269,15 +276,17 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#d2d2eb]"
             )}>
                 <div className="flex items-center gap-4 flex-1">
-                    <button
-                        onClick={() => router.push('/invoices')}
-                        className={cn(
-                            "flex items-center justify-center w-8 h-8 rounded-[8px] transition-all",
-                            isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f1f1f9]"
-                        )}
-                    >
-                        <ArrowLeft size={16} />
-                    </button>
+                    <Tooltip content="Back to list" side="bottom" delay={0.1}>
+                        <button
+                            onClick={() => router.push('/invoices')}
+                            className={cn(
+                                "flex items-center justify-center w-8 h-8 rounded-[8px] transition-all",
+                                isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]"
+                            )}
+                        >
+                            <ArrowLeft size={16} />
+                        </button>
+                    </Tooltip>
 
                     <div className="flex items-center gap-2">
                         <div className={cn(
@@ -310,8 +319,10 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         <button
                             onClick={() => setShowStatusMenu(s => !s)}
                             className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all border",
-                                sc.bg, sc.text
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all border",
+                                isDark
+                                    ? "bg-white/[0.06] text-[#aaa] border-white/10"
+                                    : cn(sc.badge, sc.badgeText, sc.badgeBorder)
                             )}
                         >
                             <div className={cn("w-1.5 h-1.5 rounded-full bg-current opacity-70")} />
@@ -323,7 +334,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 "absolute right-0 top-full mt-1.5 w-40 rounded-[10px] border shadow-xl py-1 z-50",
                                 isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#d2d2eb]"
                             )}>
-                                {Object.keys(STATUS_STYLE).map(s => (
+                                {Object.keys(STATUS_COLORS).filter(k => k !== 'All' && k !== 'Accepted' && k !== 'Declined').map(s => (
                                     <button
                                         key={s}
                                         onClick={() => { updateMeta({ status: s as any }); setShowStatusMenu(false); }}
@@ -344,10 +355,21 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                     <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-1" />
 
                     <button
-                        onClick={() => setIsPreview(!isPreview)}
+                        onClick={() => {
+                            if (isPreview) {
+                                setIsPreview(false);
+                            } else {
+                                setIsPreview(true);
+                                setPreviewMode('desktop');
+                            }
+                        }}
                         className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[13px] font-medium transition-all",
-                            isPreview ? "bg-[var(--primary)] text-white" : isDark ? "bg-[#222] text-[#ccc]" : "bg-[#f1f1f9] text-[#555]"
+                            "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
+                            isPreview
+                                ? "bg-[#4dbf39] text-black hover:bg-[#59d044]"
+                                : isDark 
+                                    ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" 
+                                    : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
                         )}
                     >
                         {isPreview ? <PenLine size={14} /> : <Eye size={14} />}
@@ -359,26 +381,111 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             "flex items-center rounded-[8px] border overflow-hidden",
                             isDark ? "border-[#333] bg-[#1c1c1c]" : "border-[#e0e0e0] bg-[#f5f5f5]"
                         )}>
-                            <button onClick={() => setPreviewMode('desktop')} className={cn("p-1.5 px-2.5 transition-all", previewMode === 'desktop' ? (isDark ? "bg-[#333] text-white" : "bg-white shadow-sm") : "opacity-40")}>
-                                <Monitor size={13} />
-                            </button>
-                            <button onClick={() => setPreviewMode('mobile')} className={cn("p-1.5 px-2.5 transition-all", previewMode === 'mobile' ? (isDark ? "bg-[#333] text-white" : "bg-white shadow-sm") : "opacity-40")}>
-                                <Smartphone size={13} />
-                            </button>
+                            <Tooltip content="Desktop View" side="bottom" delay={0.1}>
+                                <button
+                                    onClick={() => setPreviewMode('desktop')}
+                                    className={cn(
+                                        "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
+                                        previewMode === 'desktop'
+                                            ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                            : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
+                                    )}
+                                >
+                                    <Monitor size={14} />
+                                </button>
+                            </Tooltip>
+                            <Tooltip content="Mobile View" side="bottom" delay={0.1}>
+                                <button
+                                    onClick={() => setPreviewMode('mobile')}
+                                    className={cn(
+                                        "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
+                                        previewMode === 'mobile'
+                                            ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                            : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
+                                    )}
+                                >
+                                    <Smartphone size={14} />
+                                </button>
+                            </Tooltip>
                         </div>
                     )}
 
-                    <button className={cn("flex items-center justify-center w-8 h-8 rounded-[8px] bg-[var(--primary)] text-white shadow-sm")}>
-                        <Send size={14} />
-                    </button>
+                    <Tooltip content="Print / PDF" side="bottom" delay={0.1}>
+                        <button
+                            className={cn(
+                                "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                            )}
+                        >
+                            <Printer size={14} />
+                        </button>
+                    </Tooltip>
+
+                    <Tooltip content="Send to client" side="bottom" delay={0.1}>
+                        <button
+                            className={cn(
+                                "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                            )}
+                        >
+                            <Send size={14} />
+                        </button>
+                    </Tooltip>
+
+                    <div className="relative ml-1">
+                        <button
+                            onClick={() => setShowActionsMenu(s => !s)}
+                            className={cn(
+                                "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                            )}
+                        >
+                            <MoreHorizontal size={14} />
+                        </button>
+                        {showActionsMenu && (
+                            <div className={cn(
+                                "absolute right-0 top-full mt-1.5 w-48 rounded-[10px] shadow-xl py-1 z-50",
+                                isDark ? "bg-[#0c0c0c]" : "bg-white border-[#d2d2eb]"
+                            )}>
+                                {[
+                                    { icon: LayoutTemplate, label: 'Save as Template', action: () => setIsSaveTemplateModalOpen(true) },
+                                    { icon: Download, label: 'Download PDF', action: () => console.log('Download') },
+                                    { icon: Trash2,   label: 'Delete', action: () => console.log('Delete') },
+                                ].map(({ icon: Icon, label, action }) => (
+                                    <button
+                                        key={label}
+                                        onClick={() => {
+                                            action();
+                                            setShowActionsMenu(false);
+                                        }}
+                                        className={cn(
+                                            "w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors",
+                                            label === 'Delete' 
+                                                ? "text-red-500 hover:bg-red-50" 
+                                                : isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]"
+                                        )}
+                                    >
+                                        <Icon size={14} className={label === 'Delete' ? "text-red-500" : "opacity-60"} />
+                                        <span>{label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             <div className="flex-1 flex overflow-hidden relative">
-                <div className={cn(
-                    "flex-1 overflow-auto relative w-full",
-                    isDark ? "bg-[#111]" : "bg-[#f2f2f2]"
-                )}>
+                <div 
+                    className="flex-1 overflow-auto relative w-full"
+                    style={{ 
+                        backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
+                        backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundAttachment: 'fixed',
+                    }}
+                >
                     <div className={cn(
                         "flex flex-col items-center min-h-full",
                         isMobilePreview ? "py-8 px-4" : "py-10 px-6"
@@ -479,28 +586,19 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 </>
                             )}
                             {rightTab === 'appearance' && (
-                                <div className="space-y-3 pt-1">
-                                    <div className={cn("text-[10px] uppercase tracking-widest font-bold", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                        Branding
-                                    </div>
-                                    <MetaField label="Logo URL" isDark={isDark}>
-                                        <input 
-                                            value={meta.logoUrl || ''} 
-                                            onChange={e => updateMeta({ logoUrl: e.target.value })} 
-                                            placeholder="https://..." 
-                                            className={cn("w-full text-[12px] bg-transparent outline-none", isDark ? "text-[#ccc]" : "text-[#333]")}
-                                        />
-                                    </MetaField>
-                                    <MetaField label="Document Title" isDark={isDark}>
-                                        <textarea 
-                                            value={meta.documentTitle || ''} 
-                                            onChange={e => updateMeta({ documentTitle: e.target.value })} 
-                                            placeholder="INVOICE" 
-                                            rows={1}
-                                            className={cn("w-full text-[12px] bg-transparent outline-none resize-none", isDark ? "text-[#ccc]" : "text-[#333]")}
-                                        />
-                                    </MetaField>
-                                </div>
+                                <DesignSettingsPanel 
+                                    isDark={isDark} 
+                                    meta={meta} 
+                                    updateMeta={updateMeta} 
+                                    onUploadLogo={() => {
+                                        setUploadTarget({ type: 'logo' });
+                                        setImageUploadOpen(true);
+                                    }} 
+                                    onUploadBackground={() => {
+                                        setUploadTarget({ type: 'background' });
+                                        setImageUploadOpen(true);
+                                    }}
+                                />
                             )}
                         </div>
                     </div>
@@ -510,7 +608,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     );
 }
 
-function InvoiceDocument({
+export function InvoiceDocument({
     meta, blocks, totals, isDark, isPreview, isMobile,
     updateBlock, removeBlock, addBlock, openInsertMenu, setOpenInsertMenu,
     updateMeta, setBlocks
@@ -539,12 +637,30 @@ function InvoiceDocument({
         }
     };
 
+    const design = meta.design || DEFAULT_DOCUMENT_DESIGN;
+    const documentStyle = React.useMemo(() => ({
+        fontFamily: design.fontFamily || 'Inter',
+        color: '#111111',
+        backgroundColor: design.backgroundColor || '#ffffff',
+        backgroundImage: design.backgroundImage ? `url(${design.backgroundImage})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        paddingTop: 'var(--block-margin-top)',
+        paddingBottom: 'var(--block-margin-bottom)',
+        '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
+        '--block-margin-top': `${design.marginTop ?? 24}px`,
+        '--block-border-radius': `${design.borderRadius ?? 16}px`,
+        '--table-border-radius': `${design.tableBorderRadius ?? 8}px`,
+        '--table-header-bg': design.tableHeaderBg || '#fafafa',
+        '--table-border-color': design.tableBorderColor || '#ebebeb',
+        '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
+    } as React.CSSProperties), [design]);
+
     return (
-        <div className={cn(
-            "w-full transition-all duration-300",
+        <div style={{ ...documentStyle, borderRadius: `${design.borderRadius ?? 16}px` }} className={cn(
+            "w-full transition-all duration-300 relative",
             isMobile ? "max-w-full px-4" : "max-w-[850px] shadow-sm",
-            isDark ? "bg-[#1c1c1c] text-white" : "bg-white text-[#111]",
-            !isMobile && "min-h-[1000px] py-10 px-12 rounded-[4px]"
+            !isMobile && "min-h-[1100px] py-10 px-12"
         )}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blocks.map((b: any) => b.id)} strategy={verticalListSortingStrategy}>
@@ -552,7 +668,19 @@ function InvoiceDocument({
                     <div className="space-y-1">
                         {blocks.map((block: any, idx: number) => (
                             <React.Fragment key={block.id}>
-                                <SortableBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} removeBlock={removeBlock} addBlock={addBlock} currency={meta.currency} meta={meta} updateMeta={updateMeta} />
+                                <SortableBlock 
+                                    block={block} 
+                                    isDark={isDark} 
+                                    isPreview={isPreview} 
+                                    updateBlock={updateBlock} 
+                                    removeBlock={removeBlock} 
+                                    addBlock={addBlock} 
+                                    currency={meta.currency} 
+                                    meta={meta} 
+                                    updateMeta={updateMeta}
+                                    isFirst={idx === 0}
+                                    isLast={idx === blocks.length - 1}
+                                />
                                 {!isPreview && <InsertZone idx={idx} isDark={isDark} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={(type) => addBlock(type, block.id)} /> }
                             </React.Fragment>
                         ))}
@@ -561,12 +689,12 @@ function InvoiceDocument({
             </DndContext>
 
                 <div className="mt-16 pt-8 border-t border-dashed border-opacity-20 flex justify-end">
-                    <div className="w-64 space-y-2">
+                    <div className="w-64 space-y-2 p-4 rounded-xl border" style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)' }}>
                         <div className="flex justify-between text-[13px] opacity-50">
                             <span>Subtotal</span>
                             <span>{fmt(totals.subtotal, meta.currency)}</span>
                         </div>
-                        <div className="flex justify-between text-lg font-bold border-t border-opacity-10 pt-2 mt-2">
+                        <div className="flex justify-between text-lg font-bold border-t border-opacity-10 pt-2 mt-2" style={{ borderColor: 'var(--table-border-color)' }}>
                             <span>Total</span>
                             <span>{fmt(totals.total, meta.currency)}</span>
                         </div>
@@ -576,7 +704,7 @@ function InvoiceDocument({
     );
 }
 
-function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, meta, updateMeta }: {
+function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, meta, updateMeta, isFirst, isLast }: {
     block: BlockData;
     isDark: boolean;
     isPreview: boolean;
@@ -586,10 +714,12 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
     currency: string;
     meta: InvoiceMeta;
     updateMeta: (patch: Partial<InvoiceMeta>) => void;
+    isFirst?: boolean;
+    isLast?: boolean;
 }) {
     const { setNodeRef, transform, transition } = useSortable({ id: block.id });
     return (
-        <SectionBlockWrapper id={block.id} type={block.type} onDelete={removeBlock} isPreview={isPreview}>
+        <SectionBlockWrapper id={block.id} type={block.type} onDelete={removeBlock} isPreview={isPreview} isFirst={isFirst} isLast={isLast}>
             <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
                 <BlockRenderer block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} meta={meta} updateMeta={updateMeta} />
             </div>
@@ -704,28 +834,70 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                     </div>
                 </div>
             );
-        case 'pricing':
+        case 'pricing': {
+            const hideQty = block.hideQty || false;
+            
             return (
-                <div className={cn("my-6 rounded-xl border overflow-hidden", isDark ? "border-[#2a2a2a]" : "border-[#ebebeb]")}>
+                <div 
+                    className="bg-white overflow-hidden" 
+                    style={{ 
+                        borderRadius: 'var(--table-border-radius)', 
+                        borderColor: 'var(--table-border-color)',
+                        borderWidth: 'var(--table-stroke-width)',
+                        borderStyle: 'solid'
+                    }}
+                >
                     <table className="w-full">
-                        <thead className={cn("border-b", isDark ? "border-[#2a2a2a] bg-[#1f1f1f]" : "border-[#f0f0f0] bg-[#fafafa]")}>
-                            <tr><th className="text-[10px] uppercase font-bold text-left px-4 py-3">Item</th><th className="text-[10px] uppercase font-bold text-right px-4 py-3">Qty</th><th className="text-[10px] uppercase font-bold text-right px-4 py-3">Rate</th><th className="text-[10px] uppercase font-bold text-right px-4 py-3">Total</th></tr>
+                        <thead style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderBottomWidth: 'var(--table-stroke-width)', borderBottomStyle: 'solid' }}>
+                            <tr>
+                                <th className="text-[10px] uppercase font-bold text-left px-4 py-3">Item</th>
+                                {!hideQty && <th className="text-[10px] uppercase font-bold text-right px-4 py-3 w-16">Qty</th>}
+                                <th className="text-[10px] uppercase font-bold text-right px-4 py-3 w-24">Rate</th>
+                                {!hideQty && <th className="text-[10px] uppercase font-bold text-right px-4 py-3 w-24">Total</th>}
+                            </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y" style={{ borderColor: 'var(--table-border-color)' }}>
+                            <style dangerouslySetInnerHTML={{ __html: `
+                                .divide-y > * + * {
+                                    border-top-width: var(--table-stroke-width) !important;
+                                    border-color: var(--table-border-color) !important;
+                                }
+                            ` }} />
                             {(block.rows || []).map((row: any) => (
-                                <tr key={row.id} className="border-b last:border-0 border-opacity-10">
-                                    <td className="px-4 py-3"><div className="font-bold">{row.title || 'Item'}</div><div className="text-[10px] opacity-50">{row.description}</div></td>
-                                    <td className="px-4 py-3 text-right">{row.qty}</td>
-                                    <td className="px-4 py-3 text-right">{fmt(row.rate, currency)}</td>
-                                    <td className="px-4 py-3 text-right font-bold">{fmt(row.qty * row.rate, currency)}</td>
+                                <tr key={row.id} className="group/row">
+                                    <td className="px-4 py-3">
+                                        <div className="font-bold text-[16px]">{row.title || 'Item'}</div>
+                                        {row.description && <div className="text-[11px] opacity-50 mt-0.5">{row.description}</div>}
+                                    </td>
+                                    {!hideQty && <td className="px-4 py-3 text-right text-[12px]">{row.qty}</td>}
+                                    <td className="px-4 py-3 text-right text-[12px] text-black/60">{fmt(row.rate, currency)}</td>
+                                    {!hideQty && <td className="px-4 py-3 text-right font-bold text-[12px] text-black/90">{fmt(row.qty * row.rate, currency)}</td>}
+                                    {!isPreview && (
+                                        <td className="w-0 relative p-0 border-0">
+                                            <button
+                                                onClick={() => {
+                                                    const rows = block.rows || [];
+                                                    updateBlock(block.id, { rows: rows.filter((r: any) => r.id !== row.id) });
+                                                }}
+                                                className={cn(
+                                                    "absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 p-2 rounded-full transition-all hover:bg-red-500/10 hover:text-red-500 animate-in fade-in duration-200",
+                                                    "text-[#ccc] hover:text-red-500 bg-white shadow-sm border border-black/5"
+                                                )}
+                                                title="Delete row"
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
             );
+        }
         case 'text':
-            return <div className="py-2 text-[13px] opacity-70 leading-relaxed">{block.content}</div>;
+            return <div className="text-[13px] opacity-70 leading-relaxed">{block.content}</div>;
         case 'divider':
             return <div className="my-6 border-t opacity-10" />;
         default: return null;

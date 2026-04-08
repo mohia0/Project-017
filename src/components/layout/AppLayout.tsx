@@ -28,8 +28,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {children}
             </main>
 
-            {/* RIGHT SIDEBAR UNIT */}
-            <div className="flex shrink-0 gap-0 overflow-hidden">
+            {/* RIGHT SIDEBAR UNIT — A unified rounded container */}
+            <div className={cn(
+                "flex shrink-0 transition-all duration-300 rounded-2xl overflow-hidden border",
+                isDark ? "bg-[#141414] border-[#222]" : "bg-white border-[#e4e4e4]"
+            )}>
                 <RightPanel />
                 <RightToolsMenu />
             </div>

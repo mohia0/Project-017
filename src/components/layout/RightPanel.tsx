@@ -441,19 +441,14 @@ export default function RightPanel() {
             {rightPanel && (
                 <motion.div
                     key="right-panel"
-                    initial={{ width: 0, opacity: 0, x: 20 }}
-                    animate={{ width: 280, opacity: 1, x: 0 }}
-                    exit={{ width: 0, opacity: 0, x: 20 }}
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: 280, opacity: 1 }}
+                    exit={{ width: 0, opacity: 0 }}
                     transition={{
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 30,
-                        opacity: { duration: 0.15 }
+                        type: "tween",
+                        duration: 0.2
                     }}
-                    className={cn(
-                        "h-full shrink-0 flex flex-col rounded-l-2xl rounded-r-none overflow-hidden transition-colors",
-                        isDark ? "bg-[#141414]" : "bg-white"
-                    )}
+                    className="h-full shrink-0 flex flex-col overflow-hidden"
                 >
                     <div className="w-[280px] h-full flex flex-col overflow-hidden">
                         <PanelHeader

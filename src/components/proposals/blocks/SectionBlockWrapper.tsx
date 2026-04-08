@@ -16,6 +16,8 @@ interface SectionBlockWrapperProps {
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     isPreview?: boolean;
+    isFirst?: boolean;
+    isLast?: boolean;
 }
 
 export function SectionBlockWrapper({
@@ -27,6 +29,8 @@ export function SectionBlockWrapper({
     onMoveUp,
     onMoveDown,
     isPreview = false,
+    isFirst = false,
+    isLast = false,
 }: SectionBlockWrapperProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
@@ -38,25 +42,40 @@ export function SectionBlockWrapper({
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
+        paddingTop: 'var(--block-margin-top)',
+        paddingBottom: 'var(--block-margin-bottom)',
+        borderRadius: isFirst ? 'var(--block-border-radius) var(--block-border-radius) 0 0' : 
+                      isLast ? '0 0 var(--block-border-radius) var(--block-border-radius)' : '0',
+        backgroundColor: '#ffffff',
     };
 
     if (isPreview) {
-        return <div className="py-6">{children}</div>;
+        return (
+            <div style={{ 
+                paddingTop: 'var(--block-margin-top)', 
+                paddingBottom: 'var(--block-margin-bottom)',
+                borderRadius: isFirst ? 'var(--block-border-radius) var(--block-border-radius) 0 0' : 
+                              isLast ? '0 0 var(--block-border-radius) var(--block-border-radius)' : '0',
+                backgroundColor: '#ffffff',
+            }}>
+                {children}
+            </div>
+        );
     }
 
     return (
         <div
             ref={setNodeRef}
             style={style}
-            className={cn("relative group", isDragging && "z-50")}
+            className={cn("relative group overflow-visible", isDragging && "z-50")}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             {/* Floating action bar — only when hovered, minimal and smart */}
             {hovered && (
                 <div className={cn(
-                    "absolute -top-4 right-2 flex items-center gap-0.5 z-30",
-                    "rounded-xl border px-2 py-1 transition-all shadow-2xl shadow-black/50",
+                    "absolute -top-10 right-2 flex items-center gap-0.5 z-[100]",
+                    "rounded-xl border px-2 py-1 transition-all shadow-2xl shadow-black/50 animate-in fade-in zoom-in-95 duration-200",
                     isDark
                         ? "bg-[#1f1f1f] border-white/[0.05] text-[#999]"
                         : "bg-white border-[#e2e2e2] text-[#888]"

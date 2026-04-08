@@ -5,6 +5,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore, ProposalStatus, Proposal } from '@/store/useProposalStore';
 import { useClientStore } from '@/store/useClientStore';
 import { cn } from '@/lib/utils';
+import { STATUS_COLORS, getStatusColors } from '@/lib/statusConfig';
 import {
     Search, Table2, LayoutGrid, Edit3, ChevronDown,
     ArrowUpDown, Archive, Upload, Plus, User, Filter,
@@ -17,26 +18,6 @@ import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_ORDER: ProposalStatus[] = ['Draft', 'Pending', 'Accepted', 'Overdue', 'Declined', 'Cancelled'];
-
-const STATUS_CONFIG: Record<string, { bar: string; badge: string; badgeText: string; label: string }> = {
-    All:       { bar: 'bg-[#5a5a5a]',  badge: 'bg-[#e0e0e0]', badgeText: 'text-[#444]',    label: 'Proposals' },
-    Draft:     { bar: 'bg-[#4285F4]',  badge: 'bg-[#dbeafe]',  badgeText: 'text-[#1d4ed8]', label: 'Draft' },
-    Pending:   { bar: 'bg-[#e28a02]',  badge: 'bg-[#fef3c7]',  badgeText: 'text-[#b45309]', label: 'Pending' },
-    Accepted:  { bar: 'bg-[#22c55e]',  badge: 'bg-[#dcfce7]',  badgeText: 'text-[#15803d]', label: 'Accepted' },
-    Overdue:   { bar: 'bg-[#ef4444]',  badge: 'bg-[#fee2e2]',  badgeText: 'text-[#dc2626]', label: 'Overdue' },
-    Declined:  { bar: 'bg-[#a16a53]',  badge: 'bg-[#f3e8e3]',  badgeText: 'text-[#7c4d3a]', label: 'Declined' },
-    Cancelled: { bar: 'bg-[#64748b]',  badge: 'bg-[#f1f5f9]',  badgeText: 'text-[#475569]', label: 'Cancelled' },
-};
-
-/* Light-mode cell and card status colors */
-const STATUS_STRIP: Record<string, { bg: string; text: string; border: string }> = {
-    Draft:     { bg: 'bg-[#dbeafe]', text: 'text-[#1d4ed8]', border: 'border-[#bfdbfe]' },
-    Pending:   { bg: 'bg-[#fef3c7]', text: 'text-[#b45309]', border: 'border-[#fde68a]' },
-    Accepted:  { bg: 'bg-[#dcfce7]', text: 'text-[#15803d]', border: 'border-[#bbf7d0]' },
-    Overdue:   { bg: 'bg-[#fee2e2]', text: 'text-[#dc2626]', border: 'border-[#fecaca]' },
-    Declined:  { bg: 'bg-[#f3e8e3]', text: 'text-[#7c4d3a]', border: 'border-[#eec7b7]' },
-    Cancelled: { bg: 'bg-[#f1f5f9]', text: 'text-[#475569]', border: 'border-[#e2e8f0]' },
-};
 
 function fmt$(val: number) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(val);
@@ -150,8 +131,7 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
     onClientChange: (clientId: string, clientName: string) => void;
 }) {
     const [statusOpen, setStatusOpen] = useState(false);
-    const cfg = STATUS_CONFIG[p.status] || STATUS_CONFIG.Draft;
-    const cfgStyle = STATUS_STRIP[p.status] || STATUS_STRIP.Draft;
+    const sc = getStatusColors(p.status);
     return (
         <div
             onClick={onOpen}
@@ -203,15 +183,15 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
                         <button
                             onClick={(e) => { e.stopPropagation(); setStatusOpen(!statusOpen); }}
                             className={cn("flex items-center justify-between w-full px-2.5 py-1.5 rounded-[6px] font-semibold border",
-                                isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(cfgStyle.bg, cfgStyle.text, cfgStyle.border))}
+                                isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(sc.badge, sc.badgeText, sc.badgeBorder))}
                         >
-                            <span>{cfg.label}</span>
+                            <span>{p.status}</span>
                             <ChevronsUpDown size={11} className="opacity-70" />
                         </button>
                         <Dropdown open={statusOpen} onClose={() => setStatusOpen(false)} isDark={isDark}>
                             <div className="py-1">
                                 {STATUS_ORDER.map(s => {
-                                    const cCfg = STATUS_CONFIG[s];
+                                    const sSc = getStatusColors(s);
                                     const isActive = s === p.status;
                                     return (
                                         <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setStatusOpen(false); }}
@@ -219,8 +199,8 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
                                                 isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                             )}
                                         >
-                                            <span className={cn("font-medium", cCfg.badgeText)}>
-                                                {cCfg.label}
+                                            <span className={cn("font-medium", isDark ? "text-[#ccc]" : sSc.badgeText)}>
+                                                {s}
                                             </span>
                                             {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
                                         </button>
@@ -254,20 +234,20 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
 
 function StatusCell({ status, onStatusChange, isDark }: { status: ProposalStatus; onStatusChange: (s: ProposalStatus) => void; isDark: boolean }) {
     const [open, setOpen] = useState(false);
-    const cfgStyle = STATUS_STRIP[status] || STATUS_STRIP.Draft;
+    const sc = getStatusColors(status);
     return (
         <div className="relative">
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
                 className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border",
-                    isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(cfgStyle.bg, cfgStyle.text, cfgStyle.border))}
+                    isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(sc.badge, sc.badgeText, sc.badgeBorder))}
             >
                 {status}<ChevronDown size={10} className="opacity-50" />
             </button>
             <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
                 <div className="py-1">
                     {STATUS_ORDER.map(s => {
-                        const cCfg = STATUS_CONFIG[s];
+                        const sSc = getStatusColors(s);
                         const isActive = s === status;
                         return (
                             <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setOpen(false); }}
@@ -275,8 +255,8 @@ function StatusCell({ status, onStatusChange, isDark }: { status: ProposalStatus
                                     isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                 )}
                             >
-                                <span className={cn("font-medium", cCfg.badgeText)}>
-                                    {cCfg.label}
+                                <span className={cn("font-medium", isDark ? "text-[#ccc]" : sSc.badgeText)}>
+                                    {s}
                                 </span>
                                 {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
                             </button>
@@ -608,15 +588,17 @@ export default function ProposalsPage() {
 
             {/* ── Status bar ── */}
             <div className="flex items-stretch h-[26px] shrink-0">
-                {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
+                {Object.entries(STATUS_COLORS).filter(([k]) => k !== 'Paid').map(([key, cfg]) => {
                     const s = stats[key] || { count: 0, amount: 0 };
                     const isActive = statusFilter === key;
+                    const barStyle = { backgroundColor: cfg.bar };
+                    const activeStyle = isActive ? { filter: 'brightness(1.1)' } : { filter: 'brightness(0.88)' };
                     return (
                         <button key={key} onClick={() => { setStatusFilter(key as any); setShowArchived(false); }}
-                            className={cn("flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all text-white",
-                                cfg.bar, isActive ? "brightness-110" : "brightness-90 hover:brightness-100")}>
+                            style={{ ...barStyle, ...activeStyle }}
+                            className="flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all text-white hover:brightness-100">
                             <span className="font-bold tabular-nums">{s.count}</span>
-                            <span className="opacity-80 font-medium">{cfg.label}</span>
+                            <span className="opacity-80 font-medium">{key === 'All' ? 'Proposals' : cfg.label}</span>
                             {s.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">{fmt$(s.amount)}</span>}
                         </button>
                     );
@@ -745,7 +727,7 @@ export default function ProposalsPage() {
                 </div>
             ) : (
                 /* ── Cards view (Grid) ── */
-                <div className={cn("flex-1 overflow-y-auto p-4", isDark ? "bg-[#0f0f0f]" : "bg-[#f1f1f9]")}>
+                <div className={cn("flex-1 overflow-y-auto p-4", isDark ? "bg-[#0f0f0f]" : "bg-[#f0f0f0]")}>
                     {isLoading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
                             {Array.from({ length: 5 }).map((_, i) => (

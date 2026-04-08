@@ -14,6 +14,7 @@ export interface Proposal {
     due_date: string;
     notes: string;
     blocks: any[]; // For Notion-style editor blocks
+    meta?: any; // Contains design, custom fields
     created_at: string;
 }
 
