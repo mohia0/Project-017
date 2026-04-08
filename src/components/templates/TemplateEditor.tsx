@@ -381,12 +381,13 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                             </div>
                         ) : (
                             <div 
-                                className="w-full max-w-[850px] shadow-2xl rounded-2xl overflow-hidden"
+                                className="w-full max-w-[850px] rounded-2xl overflow-hidden transition-all duration-300"
                                 style={{ 
                                     backgroundColor: (template.design?.blockBackgroundColor) || '#ffffff',
                                     backgroundImage: template.design?.backgroundImage ? `url(${template.design.backgroundImage})` : 'none',
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
+                                    boxShadow: template.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                                 }}
                             >
                                 {template.entity_type === 'proposal' ? (

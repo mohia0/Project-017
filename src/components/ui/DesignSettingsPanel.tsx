@@ -61,6 +61,70 @@ export function MetaField({ label, children, isDark, icon, onReset }: any) {
     );
 }
 
+export function ShadowPicker({ value, onChange, isDark }: any) {
+    const [open, setOpen] = React.useState(false);
+    const ref = React.useRef<HTMLDivElement>(null);
+
+    const options = [
+        { label: 'None',           value: 'none' },
+        { label: 'Subtle',         value: '0 2px 10px -2px rgba(0,0,0,0.03)' },
+        { label: 'Soft (Default)', value: '0 4px 20px -4px rgba(0,0,0,0.05)' },
+        { label: 'Elegant',        value: '0 8px 30px -6px rgba(0,0,0,0.08)' },
+        { label: 'Intense',        value: '0 12px 40px -8px rgba(0,0,0,0.12)' },
+    ];
+
+    const current = options.find(o => o.value === (value || 'none')) || options[0];
+
+    React.useEffect(() => {
+        if (!open) return;
+        const clickBus = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', clickBus);
+        return () => document.removeEventListener('mousedown', clickBus);
+    }, [open]);
+
+    return (
+        <div className="relative" ref={ref}>
+            <button 
+                onClick={() => setOpen(!open)}
+                className={cn(
+                    "flex items-center justify-between w-full px-0.5 py-0.5 text-[12px] font-medium transition-all group",
+                    isDark ? "text-[#ccc] hover:text-white" : "text-[#333] hover:text-black"
+                )}
+            >
+                <span>{current.label}</span>
+                <ChevronDown size={12} className={cn("transition-transform duration-200 opacity-30 group-hover:opacity-100", open && "rotate-180")} />
+            </button>
+
+            {open && (
+                <div className={cn(
+                    "absolute left-[-12px] right-[-12px] top-full mt-2 z-[100] p-1 shadow-2xl rounded-xl border animate-in fade-in zoom-in-95 duration-200",
+                    isDark ? "bg-[#1a1a1a] border-white/5" : "bg-white border-black/5"
+                )}>
+                    {options.map(opt => (
+                        <button
+                            key={opt.value}
+                            onClick={() => {
+                                onChange(opt.value);
+                                setOpen(false);
+                            }}
+                            className={cn(
+                                "w-full text-left px-3 py-2 rounded-lg text-[12px] transition-all",
+                                opt.value === value
+                                    ? (isDark ? "bg-white/10 text-white font-bold" : "bg-black/5 text-black font-bold")
+                                    : (isDark ? "text-[#888] hover:bg-white/5 hover:text-[#ccc]" : "text-[#888] hover:bg-black/5 hover:text-[#333]")
+                            )}
+                        >
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadBackground, hideSignature }: DesignSettingsPanelProps) {
     // Always read latest design so we don't get stale closures on rapid changes
     const metaRef = React.useRef(meta);
@@ -242,17 +306,11 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             isDark={isDark}
                             onReset={() => updateDesign({ blockShadow: DEFAULT_DOCUMENT_DESIGN.blockShadow })}
                         >
-                            <select 
-                                value={design.blockShadow || 'none'} 
-                                onChange={e => updateDesign({ blockShadow: e.target.value })}
-                                className={cn("w-full text-[12px] bg-transparent outline-none appearance-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
-                            >
-                                <option value="none">None</option>
-                                <option value="0 2px 10px -2px rgba(0,0,0,0.03)">Subtle</option>
-                                <option value="0 4px 20px -4px rgba(0,0,0,0.05)">Soft (Default)</option>
-                                <option value="0 8px 30px -6px rgba(0,0,0,0.08)">Elegant</option>
-                                <option value="0 12px 40px -8px rgba(0,0,0,0.12)">Intense</option>
-                            </select>
+                            <ShadowPicker 
+                                value={design.blockShadow}
+                                onChange={(val: string) => updateDesign({ blockShadow: val })}
+                                isDark={isDark}
+                            />
                         </MetaField>
                     </div>
                 )}

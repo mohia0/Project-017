@@ -591,9 +591,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             <div className="flex flex-col items-center">
                                 {/* Phone shell */}
                                 <div className={cn(
-                                    "relative rounded-[44px] border overflow-hidden shrink-0",
+                                    "relative rounded-[44px] border-[4px] overflow-hidden shrink-0 transition-all duration-300",
                                     "w-[390px] h-[844px]",
-                                    isDark ? "border-[#333] bg-black shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)]" : "border-black/[0.05] bg-white shadow-xl"
+                                    isDark ? "border-[#1a1a1a] bg-black shadow-2xl" : "border-[#000] bg-white shadow-2xl"
                                 )}>
                                     {/* Minimalist Notch */}
                                     <div className={cn(
@@ -665,12 +665,13 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         ) : (
                             /* Desktop canvas */
                             <div 
-                                className="w-full max-w-[850px] shadow-2xl rounded-2xl overflow-hidden"
+                                className="w-full max-w-[850px] rounded-2xl overflow-hidden transition-all duration-300"
                                 style={{ 
                                     backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
                                     backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
+                                    boxShadow: meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                                 }}
                             >
                                 <ProposalDocument
@@ -1043,7 +1044,7 @@ export function ProposalDocument({
             style={{ ...documentStyle, borderRadius: `${design.borderRadius ?? 16}px` }} 
             className={cn(
                 "w-full transition-all duration-300 relative bg-[var(--document-bg)]",
-                isMobile ? "max-w-full px-6 py-6" : "max-w-[850px] shadow-sm",
+                isMobile ? "max-w-full px-6 py-6" : "max-w-[850px]",
                 !isMobile && "min-h-[1100px] px-12"
             )}
         >
@@ -1111,33 +1112,6 @@ export function ProposalDocument({
                 </SortableContext>
             </DndContext>
 
-            {/* Total Summary for Preview or when Document is locked */}
-            {isPreview && (
-                <div className="mt-16 pt-8 border-t border-dashed border-opacity-20 flex justify-end">
-                    <div className="w-64 space-y-2">
-                        <div className="flex justify-between text-[13px]">
-                            <span className="opacity-50">Subtotal</span>
-                            <span>{fmt(totals.subtotal, currency)}</span>
-                        </div>
-                        {totals.discAmt > 0 && (
-                            <div className="flex justify-between text-[13px]">
-                                <span className="opacity-50">Discount</span>
-                                <span className="text-red-500">−{fmt(totals.discAmt, currency)}</span>
-                            </div>
-                        )}
-                        {totals.taxAmt > 0 && (
-                            <div className="flex justify-between text-[13px]">
-                                <span className="opacity-50">Tax</span>
-                                <span>{fmt(totals.taxAmt, currency)}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between text-lg font-bold border-t border-opacity-10 pt-2 mt-2">
-                            <span>Total</span>
-                            <span>{fmt(totals.total, currency)}</span>
-                        </div>
-                    </div>
-                </div>
-            )}
             
         </div>
     );
@@ -1368,18 +1342,18 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-8 text-right">
-                    <div>
-                        <div className={cn("text-[10px] font-bold mb-1", isDark ? "text-white" : "text-[#111]")}>Proposal Number:</div>
-                        <div className={cn("text-[11px] font-mono", isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.proposalNumber || '---'}</div>
+                <div className="text-right text-[11px] space-y-1">
+                    <div className="flex items-center justify-end gap-1">
+                        <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Proposal Number:</span> 
+                        <span className={cn(isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.proposalNumber || '---'}</span>
                     </div>
-                    <div>
-                        <div className={cn("text-[10px] font-bold mb-1", isDark ? "text-white" : "text-[#111]")}>Issue Date:</div>
-                        <div className={cn("text-[11px] font-mono", isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.issueDate || '---'}</div>
+                    <div className="flex items-center justify-end gap-1">
+                        <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Issue Date:</span> 
+                        <span className={cn(isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.issueDate || '---'}</span>
                     </div>
-                    <div>
-                        <div className={cn("text-[10px] font-bold mb-1", isDark ? "text-white" : "text-[#111]")}>Due Date:</div>
-                        <div className={cn("text-[11px] font-mono", isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.expirationDate || '---'}</div>
+                    <div className="flex items-center justify-end gap-1">
+                        <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Due Date:</span> 
+                        <span className={cn(isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.expirationDate || '---'}</span>
                     </div>
                 </div>
             </div>

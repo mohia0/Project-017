@@ -538,10 +538,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         {isMobilePreview ? (
                             <div className="flex flex-col items-center">
                                 <div className={cn(
-                                    "relative rounded-[44px] border-[8px] shadow-2xl overflow-hidden shrink-0 w-[390px] h-[844px]",
-                                    isDark ? "border-[#2a2a2a] bg-[#1c1c1c]" : "border-[#c8c8c8] bg-white"
+                                    "relative rounded-[44px] border-[4px] shadow-2xl overflow-hidden shrink-0 w-[390px] h-[844px] transition-all duration-300",
+                                    isDark ? "border-[#1a1a1a] bg-[#1c1c1c]" : "border-[#000] bg-white"
                                 )}>
-                                    <div className={cn("absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[34px] rounded-b-[20px] z-10", isDark ? "bg-[#1a1a1a]" : "bg-[#b8b8b8]")} />
+                                    <div className={cn(
+                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10",
+                                        isDark ? "bg-white/[0.03]" : "bg-black/[0.03]"
+                                    )} />
                                     <div className="absolute inset-x-0 top-[52px] bottom-0 overflow-y-auto scrollbar-none"
                                          style={{ 
                                              backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
@@ -598,12 +601,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 )}
                                 {/* Desktop canvas */}
                                 <div 
-                                    className="w-full max-w-[850px] shadow-2xl rounded-2xl overflow-hidden"
+                                    className="w-full max-w-[850px] rounded-2xl overflow-hidden transition-all duration-300"
                                     style={{ 
                                         backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
                                         backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
                                         backgroundSize: 'cover',
                                         backgroundPosition: 'center',
+                                        boxShadow: meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                                     }}
                                 >
                                     <InvoiceDocument
@@ -909,7 +913,7 @@ export function InvoiceDocument({
     return (
         <div style={{ ...documentStyle, borderRadius: `${design.borderRadius ?? 16}px` }} className={cn(
             "w-full transition-all duration-300 relative bg-[var(--document-bg)]",
-            isMobile ? "max-w-full px-6 py-6" : "max-w-[850px] shadow-sm",
+            isMobile ? "max-w-full px-6 py-6" : "max-w-[850px]",
             !isMobile && (isPreview ? "min-h-0 px-12" : "min-h-[1100px] px-12")
         )}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
