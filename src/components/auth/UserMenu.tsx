@@ -93,8 +93,8 @@ export default function UserMenu() {
                 >
                     <div 
                         className={cn(
-                            "fixed border rounded-2xl shadow-2xl overflow-hidden p-1.5 flex flex-col min-w-[260px] animate-in fade-in slide-in-from-bottom-2 duration-200",
-                            isDark ? "bg-[#0d0d0d] border-white/10" : "bg-white border-black/10 shadow-black/10"
+                            "fixed border rounded-2xl shadow-2xl overflow-hidden p-1.5 flex flex-col min-w-[260px] animate-in fade-in slide-in-from-bottom-2 duration-200 text-white",
+                            isDark ? "bg-[#141414] border-white/10" : "bg-[#1c1c1e] border-white/10 shadow-black/10"
                         )}
                         style={{ 
                             bottom: 10,
@@ -129,11 +129,11 @@ export default function UserMenu() {
                                 }}
                                 className={cn(
                                     "w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-[13px] font-bold",
-                                    isDark ? "hover:bg-white/5 text-white" : "hover:bg-black/5 text-black"
+                                    "hover:bg-white/5 text-white"
                                 )}
                             >
                                 <div className="flex items-center gap-2.5">
-                                    <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center", isDark ? "bg-white/5" : "bg-black/5")}>
+                                    <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center bg-white/5")}>
                                         <Settings size={14} className="opacity-70" strokeWidth={2.5} />
                                     </div>
                                     Manage Profile
@@ -150,8 +150,7 @@ export default function UserMenu() {
                                     router.push('/login');
                                 }}
                                 className={cn(
-                                    "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-[13px] font-bold text-red-500",
-                                    isDark ? "hover:bg-red-500/10" : "hover:bg-red-50/80"
+                                    "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all text-[13px] font-bold text-red-500 hover:bg-red-500/10"
                                 )}
                             >
                                 <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center">
