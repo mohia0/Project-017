@@ -101,15 +101,15 @@ export function ClientActionBar({
                             <span className="text-[13px] font-semibold">Invoice paid on {paidAt || 'today'}</span>
                         </>
                     ) : (
-                        <div className="flex flex-col items-start">
+                        <div className="flex flex-row items-baseline gap-2">
                             <span className={cn("font-medium opacity-50 uppercase tracking-wider", isMobile ? "text-[9px]" : "text-[10px]")}>
-                                {isMobile ? (isAccepted ? 'Paid' : 'Due') : (isAccepted ? 'Total Paid' : 'Amount due')}
+                                {isMobile ? (isAccepted ? 'Paid' : 'Due') : (isAccepted ? 'Paid' : 'Due')}:
                             </span>
-                            <span className={cn("font-bold text-black dark:text-white leading-none", isMobile ? "text-[14px]" : "text-[16px]")}>
+                            <span className={cn("font-bold leading-none", isDark ? "text-white" : "text-[#111]", isMobile ? "text-[14px]" : "text-[16px]")}>
                                 {amountDue || (isDark ? '—' : '0.00')}
                             </span>
-                            {status === 'Draft' && (
-                                <span className="text-[9px] opacity-40 font-medium whitespace-nowrap mt-0.5 mt-0.5">Draft • Not yet sent</span>
+                            {status === 'Draft' && !isMobile && (
+                                <span className={cn("text-[9px] opacity-40 font-medium whitespace-nowrap ml-2 py-0.5 px-1.5 rounded-md border", isDark ? "border-white/10 bg-white/5" : "border-black/5 bg-black/5")}>Draft</span>
                             )}
                         </div>
                     )}

@@ -116,15 +116,26 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
     const updateCoords = useCallback(() => {
         if (containerRef.current) {
             const rect = containerRef.current.getBoundingClientRect();
-            const pickerHeight = 220; // Estimated height of scaled-down picker
+            const pickerWidth = 180;
+            const pickerHeight = 240; // Approx height with swatches
+            
+            // Calculate horizontal center relative to the input but clamp to viewport
+            let left = rect.left + (rect.width / 2) - (pickerWidth / 2);
+            
+            // Ensure it doesn't go off-screen
+            const padding = 12;
+            if (left < padding) left = padding;
+            if (left + pickerWidth > window.innerWidth - padding) {
+                left = window.innerWidth - pickerWidth - padding;
+            }
+
             const spaceBelow = window.innerHeight - rect.bottom;
-            const direction = spaceBelow < pickerHeight ? 'up' : 'down';
+            const spaceAbove = rect.top;
+            const direction = spaceBelow < pickerHeight && spaceAbove > spaceBelow ? 'up' : 'down';
             
             setCoords({
-                top: direction === 'down' 
-                    ? rect.bottom + window.scrollY 
-                    : rect.top + window.scrollY - pickerHeight,
-                left: rect.left + window.scrollX,
+                top: direction === 'down' ? rect.bottom : rect.top - pickerHeight,
+                left: left,
                 width: rect.width,
                 direction
             });
@@ -140,6 +151,7 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
                 if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
                    const portalContent = document.getElementById('color-picker-portal-content');
                    if (portalContent && portalContent.contains(e.target as Node)) return;
+                   addToHistory(value);
                    setIsOpen(false);
                 }
             };
@@ -177,13 +189,15 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
                         ? (isOpen ? "border-[#4dbf39]/50 bg-[#1a1a1a]" : "border-white/5 hover:border-white/10 bg-white/5")
                         : (isOpen ? "border-[#4dbf39]/50 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)]" : "border-gray-100 hover:border-gray-200 bg-gray-50/50")
                 )}
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => {
+                    if (isOpen) addToHistory(value);
+                    setIsOpen(!isOpen);
+                }}
             >
                 <div className="w-5 h-5 rounded shadow-inner border border-black/5 shrink-0" style={{ backgroundColor: value }} />
                 <div className="flex flex-col min-w-0 flex-1">
                     <span className={cn("text-[11px] font-mono font-medium truncate", isDark ? "text-white/90" : "text-gray-700")}>{value}</span>
                 </div>
-                <Hash size={10} className={cn("opacity-20 mr-1", isDark ? "text-white" : "text-black")} />
             </div>
 
             {typeof document !== 'undefined' && createPortal(
@@ -194,17 +208,17 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
                             initial={{ opacity: 0, y: coords.direction === 'down' ? 4 : -4, scale: 0.98 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: coords.direction === 'down' ? 4 : -4, scale: 0.98 }}
-                            transition={{ type: "spring", damping: 30, stiffness: 600 }}
+                            transition={{ type: "spring", damping: 40, stiffness: 800 }}
                             style={{ 
-                                position: 'absolute',
+                                position: 'fixed',
                                 top: coords.direction === 'down' ? coords.top + 6 : coords.top - 6,
                                 left: coords.left,
                                 width: 180, // Scaled down width
                                 zIndex: 99999
                             }}
                             className={cn(
-                                "rounded-xl border p-2 overflow-hidden shadow-2xl",
-                                isDark ? "bg-[#1f1f1f] border-white/10 shadow-black/50" : "bg-white border-gray-100 shadow-gray-200/50"
+                                "rounded-xl border p-2 overflow-hidden shadow-2xl backdrop-blur-sm",
+                                isDark ? "bg-[#1f1f1f]/95 border-white/10 shadow-black/50" : "bg-white/95 border-gray-100 shadow-gray-200/50"
                             )}
                         >
                             {/* Saturation / Value */}
@@ -216,7 +230,10 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-white to-transparent" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
-                                <motion.div className="absolute w-3 h-3 -ml-1.5 -mb-1.5 border-2 border-white rounded-full pointer-events-none shadow-sm" animate={{ left: `${localHsv.s}%`, bottom: `${localHsv.v}%` }} />
+                                <div 
+                                    className="absolute w-3 h-3 -ml-1.5 -mb-1.5 border-2 border-white rounded-full pointer-events-none shadow-sm" 
+                                    style={{ left: `${localHsv.s}%`, bottom: `${localHsv.v}%` }} 
+                                />
                             </div>
 
                             {/* Hue Slider */}
@@ -226,7 +243,10 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
                                 onMouseDownCapture={handleHueDrag}
                                 onTouchStartCapture={handleHueDrag}
                             >
-                                <motion.div className="absolute top-1/2 -mt-1.5 w-3 h-3 -ml-1.5 bg-white rounded-full shadow-sm pointer-events-none border border-black/5" animate={{ left: `${(localHsv.h / 360) * 100}%` }} />
+                                <div 
+                                    className="absolute top-1/2 -mt-1.5 w-3 h-3 -ml-1.5 bg-white rounded-full shadow-sm pointer-events-none border border-black/5" 
+                                    style={{ left: `${(localHsv.h / 360) * 100}%` }} 
+                                />
                             </div>
 
                             {/* Hex Input */}
@@ -240,18 +260,42 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
                                 />
                             </div>
 
-                            {/* Minimal Swatches */}
-                            <div className="flex flex-wrap gap-1.5 justify-start">
-                                {['#FFFFFF', '#000000', '#4DBF39', '#2563EB', '#D97706', '#E11D48'].map((color) => (
-                                    <button
-                                        key={color}
-                                        className={cn(
-                                            "w-4 h-4 rounded border border-black/5 hover:scale-110 active:scale-95 transition-all outline-none",
-                                        )}
-                                        style={{ backgroundColor: color }}
-                                        onClick={(e) => { e.stopPropagation(); onChange(color); }}
-                                    />
-                                ))}
+                            {/* Color History / Recent Colors */}
+                            <div className="mt-1">
+                                <div className={cn("text-[9px] font-bold uppercase tracking-wider opacity-40 mb-1 pl-0.5", isDark ? "text-white" : "text-black")}>
+                                    Recent
+                                </div>
+                                <div className="flex flex-wrap gap-1.5 justify-start mb-2">
+                                    {(typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('recent-colors') || '[]') : []).length === 0 ? (
+                                        <div className={cn("text-[9px] opacity-20 py-1 pl-0.5", isDark ? "text-white" : "text-black")}>No history</div>
+                                    ) : (
+                                        (typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('recent-colors') || '[]') : []).map((color: string) => (
+                                            <button
+                                                key={color}
+                                                className="w-4 h-4 rounded border border-black/5 hover:scale-110 active:scale-95 transition-all outline-none"
+                                                style={{ backgroundColor: color }}
+                                                onClick={(e) => { e.stopPropagation(); onChange(color); addToHistory(color); }}
+                                            />
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Standard Swatches */}
+                            <div className="mt-1">
+                                <div className={cn("text-[9px] font-bold uppercase tracking-wider opacity-40 mb-1 pl-0.5", isDark ? "text-white" : "text-black")}>
+                                    System
+                                </div>
+                                <div className="flex flex-wrap gap-1.5 justify-start">
+                                    {['#FFFFFF', '#000000', '#4DBF39', '#2563EB', '#D97706', '#E11D48'].map((color) => (
+                                        <button
+                                            key={color}
+                                            className="w-4 h-4 rounded border border-black/5 hover:scale-110 active:scale-95 transition-all outline-none"
+                                            style={{ backgroundColor: color }}
+                                            onClick={(e) => { e.stopPropagation(); onChange(color); }}
+                                        />
+                                    ))}
+                                </div>
                             </div>
                         </motion.div>
                     )}
@@ -260,4 +304,12 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
             )}
         </div>
     );
+}
+
+// ── UTILITY TO ADD TO HISTORY ──
+function addToHistory(color: string) {
+    if (typeof window === 'undefined') return;
+    const history = JSON.parse(localStorage.getItem('recent-colors') || '[]');
+    const newHistory = [color, ...history.filter((c: string) => c !== color)].slice(0, 6);
+    localStorage.setItem('recent-colors', JSON.stringify(newHistory));
 }

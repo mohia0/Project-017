@@ -73,8 +73,8 @@ function TbBtn({ label, icon, active, onClick, isDark }: { label: string; icon: 
 }
 
 export default function ClientsPage() {
-    const { clients, addClient, fetchClients } = useClientStore();
-    const { companies, fetchCompanies } = useCompanyStore();
+    const { clients, addClient, fetchClients, isLoading: isClientsLoading } = useClientStore();
+    const { companies, fetchCompanies, isLoading: isCompaniesLoading } = useCompanyStore();
     const { theme, openRightPanel, rightPanel } = useUIStore();
     const isDark = theme === 'dark';
     const [tab, setTab] = useState<Tab>('people');
@@ -231,7 +231,48 @@ export default function ClientsPage() {
                 {/* ── People ── */}
                 {tab === 'people' && (
                     <>
-                        {filteredPeople.length === 0 ? (
+                        {isClientsLoading ? (
+                            view === 'grid' ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                    {Array.from({ length: 8 }).map((_, i) => (
+                                        <div key={i} className={cn("rounded-xl border overflow-hidden pointer-events-none", cardBg, cardBorder)}>
+                                            <div className="flex items-center gap-3 px-4 py-3.5 border-b border-transparent">
+                                                <div className={cn("w-7 h-7 rounded-lg animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                                <div className={cn("h-3.5 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                            </div>
+                                            <div className={cn("flex items-center gap-0 border-t py-2 px-4", isDark ? "border-white/[0.03]" : "border-dashed border-[#e8e8e8]")}>
+                                                <span className={cn("text-[11px] shrink-0 w-[100px]", isDark ? "text-[#555]" : "text-[#aaa]")}>Email</span>
+                                                <div className={cn("h-2.5 w-32 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                            </div>
+                                            <div className={cn("flex items-center gap-0 border-t py-2 px-4", isDark ? "border-white/[0.03]" : "border-dashed border-[#e8e8e8]")}>
+                                                <span className={cn("text-[11px] shrink-0 w-[100px]", isDark ? "text-[#555]" : "text-[#aaa]")}>Phone</span>
+                                                <div className={cn("h-2.5 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                            </div>
+                                            <div className={cn("flex items-center gap-0 border-t py-2 px-4", isDark ? "border-white/[0.03]" : "border-dashed border-[#e8e8e8]")}>
+                                                <span className={cn("text-[11px] shrink-0 w-[100px]", isDark ? "text-[#555]" : "text-[#aaa]")}>Company</span>
+                                                <div className={cn("h-2.5 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className={cn("rounded-xl border overflow-hidden", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
+                                    <div className={cn("grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider", isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]")} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}>
+                                        <div /><div /><div>Name</div><div>Email</div><div>Phone</div><div>Company</div>
+                                    </div>
+                                    {Array.from({ length: 10 }).map((_, i) => (
+                                        <div key={i} className={cn("grid px-4 py-2.5 items-center pointer-events-none", i !== 0 && `border-t ${isDark ? "border-[#1f1f1f]" : "border-[#f5f5f5]"}`)} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}>
+                                            <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                            <div className={cn("w-7 h-7 rounded-lg animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                            <div className="px-2"><div className={cn("h-3 w-28 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                            <div className="px-2"><div className={cn("h-3 w-36 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                            <div className="px-2"><div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                            <div className="px-2"><div className={cn("h-3 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )
+                        ) : filteredPeople.length === 0 ? (
                             <div className={cn("flex flex-col items-center justify-center h-full gap-3", muted)}>
                                 <Users size={32} strokeWidth={1.25} />
                                 <p className="text-[12px]">No contacts yet.</p>
@@ -349,7 +390,33 @@ export default function ClientsPage() {
                 {/* ── Companies ── */}
                 {tab === 'companies' && (
                     <>
-                        {filteredCompanies.length === 0 ? (
+                        {isCompaniesLoading ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                {Array.from({ length: 8 }).map((_, i) => (
+                                    <div key={i} className={cn("rounded-xl border overflow-hidden pointer-events-none", cardBg, cardBorder)}>
+                                        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-transparent">
+                                            <div className={cn("w-7 h-7 rounded-lg animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                            <div className={cn("h-3.5 w-32 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                        </div>
+                                        <div className={cn("flex items-center gap-0 border-t py-2 px-4", isDark ? "border-white/[0.03]" : "border-dashed border-[#e8e8e8]")}>
+                                            <span className={cn("text-[11px] shrink-0 w-[100px]", isDark ? "text-[#555]" : "text-[#aaa]")}>Industry</span>
+                                            <div className={cn("h-2.5 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                        </div>
+                                        <div className={cn("flex items-center gap-0 border-t py-2 px-4", isDark ? "border-white/[0.03]" : "border-dashed border-[#e8e8e8]")}>
+                                            <span className={cn("text-[11px] shrink-0 w-[100px]", isDark ? "text-[#555]" : "text-[#aaa]")}>Email</span>
+                                            <div className={cn("h-2.5 w-28 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                        </div>
+                                        <div className={cn("flex items-center gap-0 border-t py-2 px-4", isDark ? "border-white/[0.03]" : "border-dashed border-[#e8e8e8]")}>
+                                            <span className={cn("text-[11px] shrink-0 w-[100px]", isDark ? "text-[#555]" : "text-[#aaa]")}>Phone</span>
+                                            <div className={cn("h-2.5 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                        </div>
+                                        <div className={cn("flex items-center gap-1.5 border-t px-4 py-3", isDark ? "border-[#252525]" : "border-dashed border-[#e8e8e8]")}>
+                                            <div className={cn("h-2.5 w-16 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : filteredCompanies.length === 0 ? (
                             <div className={cn("flex flex-col items-center justify-center h-full gap-3", muted)}>
                                 <Building2 size={32} strokeWidth={1.25} />
                                 <p className="text-[12px]">No companies yet.</p>

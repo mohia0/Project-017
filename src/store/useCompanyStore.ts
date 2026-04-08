@@ -26,7 +26,7 @@ interface CompanyState {
 
 export const useCompanyStore = create<CompanyState>((set) => ({
     companies: [],
-    isLoading: false,
+    isLoading: true,
     error: null,
 
     fetchCompanies: async () => {

@@ -18,6 +18,8 @@ export interface DocumentDesign {
     actionButtonColor?: string;
     actionButtonMarginTop?: number;
     actionButtonMarginBottom?: number;
+    blockBackgroundColor?: string;
+    blockShadow?: string;
 }
 
 export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
@@ -40,4 +42,6 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     actionButtonColor: '#111111',
     actionButtonMarginTop: 16,
     actionButtonMarginBottom: 16,
+    blockBackgroundColor: '#ffffff',
+    blockShadow: '0 4px 20px -4px rgba(0,0,0,0.05)',
 };

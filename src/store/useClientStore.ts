@@ -25,7 +25,7 @@ interface ClientState {
 
 export const useClientStore = create<ClientState>((set) => ({
     clients: [],
-    isLoading: false,
+    isLoading: true,
     error: null,
 
     fetchClients: async () => {

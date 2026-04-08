@@ -30,7 +30,7 @@ interface InvoiceState {
 
 export const useInvoiceStore = create<InvoiceState>((set) => ({
     invoices: [],
-    isLoading: false,
+    isLoading: true,
     error: null,
 
     fetchInvoices: async () => {

@@ -37,6 +37,7 @@ import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { BankTransferModal } from '@/components/modals/BankTransferModal';
 import ImageUploadModal from '../modals/ImageUploadModal';
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -126,6 +127,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
+    const [pendingStatusChange, setPendingStatusChange] = useState<InvoiceMeta['status'] | null>(null);
 
     const statusRef = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
@@ -270,6 +272,21 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
     const updateMeta = (patch: Partial<InvoiceMeta>) => setMeta(m => ({ ...m, ...patch }));
 
+    const handleStatusChange = (newStatus: InvoiceMeta['status']) => {
+        // Pattern matched from proposals
+        if (meta.status === 'Paid') {
+            setPendingStatusChange(newStatus);
+            return;
+        }
+        updateMeta({ status: newStatus });
+    };
+
+    const confirmStatusChange = () => {
+        if (!pendingStatusChange) return;
+        updateMeta({ status: pendingStatusChange as any });
+        setPendingStatusChange(null);
+    };
+
     const totals = React.useMemo(() => {
         const pricingBlocks = blocks.filter(b => b.type === 'pricing');
         let subtotal = 0;
@@ -373,7 +390,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 {Object.keys(STATUS_COLORS).filter(k => k !== 'All' && k !== 'Accepted' && k !== 'Declined').map(s => (
                                     <button
                                         key={s}
-                                        onClick={() => { updateMeta({ status: s as any }); setShowStatusMenu(false); }}
+                                        onClick={() => { handleStatusChange(s as any); setShowStatusMenu(false); }}
                                         className={cn(
                                             "w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
                                             isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
@@ -505,7 +522,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 <div 
                     className="flex-1 overflow-auto relative w-full"
                     style={{ 
-                        backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
+                        backgroundColor: isMobilePreview 
+                            ? (isDark ? '#080808' : '#f7f7f7') 
+                            : (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
                         backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
@@ -514,7 +533,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 >
                     <div className={cn(
                         "flex flex-col items-center min-h-full",
-                        isMobilePreview ? "py-8 px-4" : "py-10 px-6"
+                        isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
                     )}>
                         {isMobilePreview ? (
                             <div className="flex flex-col items-center">
@@ -564,32 +583,45 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             </div>
                         ) : (
                             <>
-                                <ClientActionBar
-                                    type="invoice"
-                                    status={meta.status as any}
-                                    amountDue={fmt(totals.total, meta.currency)}
-                                    paidAt="July 4, 2026"
-                                    inline={true}
-                                    design={meta.design}
-                                    onDownloadPDF={() => console.log('Download PDF')}
-                                    onPrint={() => window.print()}
-                                    onPay={() => setIsPayModalOpen(true)}
-                                />
-                                <InvoiceDocument
-                                    meta={meta}
-                                    blocks={blocks}
-                                    totals={totals}
-                                    isDark={isDark}
-                                    isPreview={isPreview}
-                                    isMobile={false}
-                                    updateBlock={updateBlock}
-                                    removeBlock={removeBlock}
-                                    addBlock={addBlock}
-                                    openInsertMenu={openInsertMenu}
-                                    setOpenInsertMenu={setOpenInsertMenu}
-                                    updateMeta={updateMeta}
-                                    setBlocks={setBlocks}
-                                />
+                                {!isMobilePreview && (
+                                    <ClientActionBar
+                                        type="invoice"
+                                        status={meta.status as any}
+                                        amountDue={fmt(totals.total, meta.currency)}
+                                        paidAt="July 4, 2026"
+                                        inline={true}
+                                        design={meta.design}
+                                        onDownloadPDF={() => console.log('Download PDF')}
+                                        onPrint={() => window.print()}
+                                        onPay={() => setIsPayModalOpen(true)}
+                                    />
+                                )}
+                                {/* Desktop canvas */}
+                                <div 
+                                    className="w-full max-w-[850px] shadow-2xl rounded-2xl overflow-hidden"
+                                    style={{ 
+                                        backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
+                                        backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center',
+                                    }}
+                                >
+                                    <InvoiceDocument
+                                        meta={meta}
+                                        blocks={blocks}
+                                        totals={totals}
+                                        isDark={isDark}
+                                        isPreview={isPreview}
+                                        isMobile={false}
+                                        updateBlock={updateBlock}
+                                        removeBlock={removeBlock}
+                                        addBlock={addBlock}
+                                        openInsertMenu={openInsertMenu}
+                                        setOpenInsertMenu={setOpenInsertMenu}
+                                        updateMeta={updateMeta}
+                                        setBlocks={setBlocks}
+                                    />
+                                </div>
                             </>
                         )}
                     </div>
@@ -624,20 +656,140 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         <div className="flex-1 overflow-auto py-3 px-3 space-y-1.5">
                             {rightTab === 'details' && (
                                 <>
-                                    <MetaField label="Client" isDark={isDark} icon={<User size={11} />}>
-                                        <input value={meta.clientName} onChange={e => updateMeta({ clientName: e.target.value })} placeholder="Select client..." className="w-full bg-transparent outline-none text-[12px]" />
+                                    <MetaField 
+                                        label="Client" 
+                                        isDark={isDark} 
+                                        icon={<User size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' })}
+                                    >
+                                        <input 
+                                            value={meta.clientName} 
+                                            onChange={e => updateMeta({ clientName: e.target.value })} 
+                                            placeholder="Select client..." 
+                                            className={cn(
+                                                "w-full bg-transparent outline-none text-[12px] font-medium",
+                                                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                            )}
+                                        />
                                     </MetaField>
-                                    <MetaField label="Project" isDark={isDark} icon={<FileText size={11} />}>
-                                        <input value={meta.projectName} onChange={e => updateMeta({ projectName: e.target.value })} placeholder="Set project..." className="w-full bg-transparent outline-none text-[12px]" />
+                                    <MetaField 
+                                        label="Project" 
+                                        isDark={isDark} 
+                                        icon={<FileText size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ projectName: '' })}
+                                    >
+                                        <input 
+                                            value={meta.projectName} 
+                                            onChange={e => updateMeta({ projectName: e.target.value })} 
+                                            placeholder="Set project..." 
+                                            className={cn(
+                                                "w-full bg-transparent outline-none text-[12px] font-medium",
+                                                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                            )}
+                                        />
                                     </MetaField>
-                                    <MetaField label="Invoice #" isDark={isDark} icon={<Tag size={11} />}>
-                                        <input value={meta.invoiceNumber} onChange={e => updateMeta({ invoiceNumber: e.target.value })} className="w-full bg-transparent outline-none text-[12px]" />
+                                    <MetaField 
+                                        label="Invoice number" 
+                                        isDark={isDark} 
+                                        icon={<Tag size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ invoiceNumber: `INV-${Math.floor(Math.random()*1000000)}` })}
+                                    >
+                                        <input 
+                                            value={meta.invoiceNumber} 
+                                            onChange={e => updateMeta({ invoiceNumber: e.target.value })} 
+                                            className={cn(
+                                                "w-full bg-transparent outline-none text-[12px] font-medium",
+                                                isDark ? "text-[#ccc]" : "text-[#333]"
+                                            )}
+                                        />
                                     </MetaField>
-                                    <MetaField label="Issue Date" isDark={isDark} icon={<Calendar size={11} />}>
-                                        <DatePicker value={meta.issueDate} onChange={v => updateMeta({ issueDate: v })} isDark={isDark} align="right" />
+                                    <MetaField 
+                                        label="Issue Date" 
+                                        isDark={isDark} 
+                                        icon={<Calendar size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ issueDate: new Date().toISOString().split('T')[0] })}
+                                    >
+                                        <DatePicker 
+                                            value={meta.issueDate} 
+                                            onChange={v => updateMeta({ issueDate: v })} 
+                                            isDark={isDark} 
+                                            align="right" 
+                                        />
                                     </MetaField>
-                                    <MetaField label="Due Date" isDark={isDark} icon={<Calendar size={11} />}>
-                                        <DatePicker value={meta.dueDate} onChange={v => updateMeta({ dueDate: v })} isDark={isDark} align="right" />
+                                    <MetaField 
+                                        label="Due Date" 
+                                        isDark={isDark} 
+                                        icon={<Calendar size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ dueDate: '' })}
+                                    >
+                                        <DatePicker 
+                                            value={meta.dueDate} 
+                                            onChange={v => updateMeta({ dueDate: v })} 
+                                            isDark={isDark} 
+                                            align="right" 
+                                            placeholder="Set due date"
+                                        />
+                                    </MetaField>
+
+                                    <MetaField
+                                        label="Currency"
+                                        isDark={isDark}
+                                        icon={<DollarSign size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ currency: 'USD' })}
+                                    >
+                                        <select
+                                            value={meta.currency}
+                                            onChange={e => updateMeta({ currency: e.target.value })}
+                                            className={cn(
+                                                "w-full text-[12px] bg-transparent outline-none font-medium appearance-none",
+                                                isDark ? "text-[#ccc]" : "text-[#333]"
+                                            )}
+                                        >
+                                            <option value="USD">US Dollar ($)</option>
+                                            <option value="EUR">Euro (€)</option>
+                                            <option value="GBP">British Pound (£)</option>
+                                            <option value="SAR">Saudi Riyal (﷼)</option>
+                                            <option value="AED">UAE Dirham (د.إ)</option>
+                                        </select>
+                                    </MetaField>
+
+                                    <MetaField
+                                        label="Discount Calc."
+                                        isDark={isDark}
+                                        icon={<Tag size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ discountCalc: 'before_tax' })}
+                                    >
+                                        <select
+                                            value={meta.discountCalc}
+                                            onChange={e => updateMeta({ discountCalc: e.target.value as any })}
+                                            className={cn(
+                                                "w-full text-[12px] bg-transparent outline-none font-medium appearance-none",
+                                                isDark ? "text-[#ccc]" : "text-[#333]"
+                                            )}
+                                        >
+                                            <option value="before_tax">Before tax</option>
+                                            <option value="after_tax">After tax</option>
+                                        </select>
+                                    </MetaField>
+
+                                    <MetaField
+                                        label="Status"
+                                        isDark={isDark}
+                                        icon={<Zap size={11} className="opacity-50" />}
+                                        onReset={() => handleStatusChange('Draft')}
+                                    >
+                                        <select
+                                            value={meta.status}
+                                            onChange={e => handleStatusChange(e.target.value as any)}
+                                            className={cn(
+                                                "w-full text-[12px] bg-transparent outline-none font-medium appearance-none",
+                                                isDark ? "text-[#ccc]" : "text-[#333]"
+                                            )}
+                                        >
+                                            {['Draft', 'Pending', 'Paid', 'Overdue'].map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
                                     </MetaField>
                                 </>
                             )}
@@ -646,6 +798,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     isDark={isDark} 
                                     meta={meta} 
                                     updateMeta={updateMeta} 
+                                    hideSignature={true}
                                     onUploadLogo={() => {
                                         setUploadTarget({ type: 'logo' });
                                         setImageUploadOpen(true);
@@ -666,6 +819,15 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 onClose={() => setIsPayModalOpen(false)}
                 onMarkAsPaid={() => updateMeta({ status: 'Paid' })}
                 amountDue={fmt(totals.total, meta.currency)}
+            />
+
+            <DeleteConfirmModal 
+                open={!!pendingStatusChange}
+                onClose={() => setPendingStatusChange(null)}
+                onConfirm={confirmStatusChange}
+                title="Change Paid Status?"
+                description={`This invoice is currently marked as "Paid". Changing the status to "${pendingStatusChange}" might affect your financial records. Are you sure you want to proceed?`}
+                isDark={isDark}
             />
 
             <ImageUploadModal 
@@ -725,7 +887,7 @@ export function InvoiceDocument({
         fontFamily: design.fontFamily || 'Inter',
         color: '#111111',
         backgroundColor: 'transparent',
-        '--document-bg': '#ffffff',
+        '--document-bg': design.blockBackgroundColor || '#ffffff',
         paddingTop: 'var(--block-margin-top)',
         paddingBottom: 'var(--block-margin-bottom)',
         '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
@@ -748,12 +910,12 @@ export function InvoiceDocument({
         <div style={{ ...documentStyle, borderRadius: `${design.borderRadius ?? 16}px` }} className={cn(
             "w-full transition-all duration-300 relative bg-[var(--document-bg)]",
             isMobile ? "max-w-full px-6 py-6" : "max-w-[850px] shadow-sm",
-            !isMobile && (isPreview ? "min-h-0 py-10 px-12" : "min-h-[1100px] py-10 px-12")
+            !isMobile && (isPreview ? "min-h-0 px-12" : "min-h-[1100px] px-12")
         )}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blocks.map((b: any) => b.id)} strategy={verticalListSortingStrategy}>
-                    {!isPreview && <InsertZone idx={-1} isDark={isDark} isOpen={openInsertMenu === -1} onOpen={() => setOpenInsertMenu(-1)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} /> }
-                    <div className="space-y-1">
+                    {!isPreview && <InsertZone idx={-1} isDark={false} isOpen={openInsertMenu === -1} onOpen={() => setOpenInsertMenu(-1)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} /> }
+                    <div>
                         {blocks.map((block: any, idx: number) => (
                             <React.Fragment key={block.id}>
                                 <SortableBlock 
@@ -769,38 +931,13 @@ export function InvoiceDocument({
                                     isFirst={idx === 0}
                                     isLast={idx === blocks.length - 1}
                                 />
-                                {!isPreview && <InsertZone idx={idx} isDark={isDark} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} /> }
+                                {!isPreview && <InsertZone idx={idx} isDark={false} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} /> }
                             </React.Fragment>
                         ))}
                     </div>
                 </SortableContext>
             </DndContext>
-            {!isPreview && (
-                <div className="mt-16 pt-8 border-t border-dashed border-opacity-20 flex justify-end">
-                    <div className="w-64 space-y-2.5 p-5 rounded-xl border transition-all" style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)' }}>
-                        <div className={cn("flex justify-between text-[12px] font-medium", isDark ? "text-white/40" : "text-black/40")}>
-                            <span>Subtotal</span>
-                            <span>{fmt(totals.subtotal, meta.currency)}</span>
-                        </div>
-                        {totals.discAmt > 0 && (
-                            <div className={cn("flex justify-between text-[12px] font-medium", isDark ? "text-white/40" : "text-black/40")}>
-                                <span>Discount</span>
-                                <span>−{fmt(totals.discAmt, meta.currency)}</span>
-                            </div>
-                        )}
-                        {totals.taxAmt > 0 && (
-                            <div className={cn("flex justify-between text-[12px] font-medium", isDark ? "text-white/40" : "text-black/40")}>
-                                <span>Tax</span>
-                                <span>{fmt(totals.taxAmt, meta.currency)}</span>
-                            </div>
-                        )}
-                        <div className={cn("flex justify-between text-[16px] font-black border-t pt-3 mt-3", isDark ? "border-white/5 text-white" : "border-black/5 text-black")} style={{ borderColor: 'var(--table-border-color)' }}>
-                            <span>Total</span>
-                            <span>{fmt(totals.total, meta.currency)}</span>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Final global summary removed as it's now part of the table block for cleaner layout */}
         </div>
     );
 }
@@ -904,7 +1041,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         </div>
                         <div className="text-right text-[11px] space-y-1">
                             <div className="flex items-center justify-end gap-1">
-                                <span className="font-bold">Invoice #:</span> 
+                                <span className="font-bold">Invoice Number:</span> 
                                 <span 
                                     contentEditable={!isPreview}
                                     suppressContentEditableWarning
@@ -967,6 +1104,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
             const td = cn("border-none", isDark ? "text-white" : "text-black");
 
             return (
+                <React.Fragment>
                 <div 
                     className="w-full transition-all duration-300 border-collapse"
                     style={{ 
@@ -1071,20 +1209,21 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         </tbody>
                     </table>
 
-                    {/* Totals Section within block */}
-                    <div className="px-4 py-3 space-y-1 border-t transition-all" style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)' }}>
-                        <div className="flex justify-between items-center mb-2">
-                            {!isPreview && (
+                </div>
+                
+                {/* Summary Card under the table */}
+                <div className="flex justify-end mt-6">
+                    <div className={cn("w-full p-5 rounded-xl border transition-all", isPreview ? "max-w-none" : "max-w-[280px]")} style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)' }}>
+                        {!isPreview && (
+                            <div className="flex justify-between items-center mb-4">
                                 <button
                                     onClick={addRow}
-                                    className={cn("flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 border border-dashed transition-all", isDark ? "border-white/10 text-white/40 hover:border-white/20 hover:text-white/60" : "border-black/10 text-black/40 hover:border-black/20 hover:text-black/60")}
+                                    className={cn("flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 border border-dashed transition-all hover:bg-black/5 dark:hover:bg-white/5", isDark ? "border-white/10 text-white/40" : "border-black/10 text-black/40")}
                                     style={{ borderRadius: 'var(--block-button-radius)' }}
                                 >
-                                    <Plus size={11} /> ADD ITEM
+                                    <Plus size={10} /> ADD ITEM
                                 </button>
-                            )}
-                            {!isPreview && (
-                                <label className={cn("flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider cursor-pointer opacity-40 hover:opacity-100 transition-opacity")}>
+                                <label className={cn("flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider cursor-pointer opacity-30 hover:opacity-100 transition-opacity")}>
                                     <input 
                                         type="checkbox" 
                                         checked={hideQty} 
@@ -1093,56 +1232,61 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                     />
                                     Hide QTY
                                 </label>
-                            )}
-                        </div>
-                        {(!isPreview || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
-                            <div className={cn("flex justify-between font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                            </div>
+                        )}
+                        
+                        <div className="space-y-2.5">
+                            <div className={cn("flex justify-between text-[12px] font-medium opacity-50")}>
                                 <span>Subtotal</span>
                                 <span>{fmt(subtotal, currency)}</span>
                             </div>
-                        )}
-                        {(!isPreview || (block.discountRate || 0) > 0) && (
-                            <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                <div className="flex items-center gap-2">
-                                    <span>Discount</span>
-                                    {!isPreview && (
-                                        <input
-                                            type="number"
-                                            value={block.discountRate || 0}
-                                            onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
-                                            className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                        />
-                                    )}
-                                    {(!isPreview || (block.discountRate || 0) > 0) && <span>%</span>}
+                            
+                            {(!isPreview || (block.discountRate || 0) > 0) && (
+                                <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-50")}>
+                                    <div className="flex items-center gap-2">
+                                        <span>Discount</span>
+                                        {!isPreview && (
+                                            <input
+                                                type="number"
+                                                value={block.discountRate || 0}
+                                                onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
+                                                className={cn("w-10 bg-transparent outline-none border-b text-center font-bold", isDark ? "border-white/10" : "border-black/10")}
+                                            />
+                                        )}
+                                        {(!isPreview || (block.discountRate || 0) > 0) && <span>%</span>}
+                                    </div>
+                                    <span>−{fmt(discAmt, currency)}</span>
                                 </div>
-                                <span>−{fmt(discAmt, currency)}</span>
-                            </div>
-                        )}
-                        {(!isPreview || (block.taxRate || 0) > 0) && (
-                            <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                <div className="flex items-center gap-2">
-                                    <span>Tax</span>
-                                    {!isPreview && (
-                                        <input
-                                            type="number"
-                                            value={block.taxRate || 0}
-                                            onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
-                                            className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                        />
-                                    )}
-                                    {(!isPreview || (block.taxRate || 0) > 0) && <span>%</span>}
+                            )}
+                            
+                            {(!isPreview || (block.taxRate || 0) > 0) && (
+                                <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-50")}>
+                                    <div className="flex items-center gap-2">
+                                        <span>Tax</span>
+                                        {!isPreview && (
+                                            <input
+                                                type="number"
+                                                value={block.taxRate || 0}
+                                                onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
+                                                className={cn("w-10 bg-transparent outline-none border-b text-center font-bold", isDark ? "border-white/10" : "border-black/10")}
+                                            />
+                                        )}
+                                        {(!isPreview || (block.taxRate || 0) > 0) && <span>%</span>}
+                                    </div>
+                                    <span>{fmt(taxAmt, currency)}</span>
                                 </div>
-                                <span>{fmt(taxAmt, currency)}</span>
+                            )}
+                            
+                            <div className={cn("flex justify-between font-black pt-4 mt-2 border-t")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: '16px' }}>
+                                <span>Total</span>
+                                <span style={{ color: 'var(--primary-color)' }}>{fmt(total, currency)}</span>
                             </div>
-                        )}
-                        <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
-                            <span>Total</span>
-                            <span>{fmt(total, currency)}</span>
                         </div>
                     </div>
                 </div>
-            );
-        }
+            </React.Fragment>
+        );
+    }
         case 'heading': {
             const sizes: Record<number, string> = { 1: 'text-[22px] font-black', 2: 'text-[17px] font-bold', 3: 'text-[14px] font-semibold' };
             const cls = sizes[block.level || 1] || sizes[1];
@@ -1198,10 +1342,35 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
     }
 }
 
-function MetaField({ label, children, isDark, icon }: any) {
+function MetaField({
+    label, children, isDark, icon, onReset
+}: {
+    label: string;
+    children: React.ReactNode;
+    isDark: boolean;
+    icon?: React.ReactNode;
+    onReset?: () => void;
+}) {
     return (
-        <div className={cn("rounded-lg border px-3 py-2.5 transition-colors", isDark ? "border-[#252525] bg-[#1f1f1f] hover:border-[#333]" : "border-[#eeeeee] bg-white hover:border-[#e4e4e4]")}>
-            <div className={cn("flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider mb-1", isDark ? "text-[#555]" : "text-[#bbb]")}>{icon}{label}</div>
+        <div className={cn(
+            "rounded-lg border px-3 py-2.5 transition-colors",
+            isDark ? "border-[#252525] bg-[#1f1f1f] hover:border-[#333]" : "border-[#eeeeee] bg-white hover:border-[#e4e4e4]"
+        )}>
+            <div className="flex items-center justify-between mb-1">
+                <div className={cn("flex items-center gap-1.5 text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                    {icon}
+                    {label}
+                </div>
+                {onReset && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onReset(); }}
+                        className={cn("p-1 rounded-md transition-all", isDark ? "hover:bg-white/5 text-[#444] hover:text-[#888]" : "hover:bg-black/5 text-[#ddd] hover:text-[#aaa]")}
+                        title="Reset to default"
+                    >
+                        <RotateCcw size={10} />
+                    </button>
+                )}
+            </div>
             {children}
         </div>
     );
@@ -1221,6 +1390,13 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd }: {
     return (
         <div 
             className="relative flex items-center group/insert h-6" 
+            style={{
+                backgroundColor: 'var(--document-bg, #ffffff)',
+                marginLeft: '-3rem',
+                marginRight: '-3rem',
+                paddingLeft: '3rem',
+                paddingRight: '3rem',
+            }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => { if (!isOpen) setHovered(false); }}
         >

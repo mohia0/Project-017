@@ -36,8 +36,9 @@ import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import ImageUploadModal from '../modals/ImageUploadModal';
 import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
-import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
+import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
 import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -73,6 +74,8 @@ interface BlockData {
     signerRole?: string;
     signed?: boolean;
     signatureImage?: string;
+    // section background
+    backgroundColor?: string;
 }
 
 interface ProposalMeta {
@@ -138,6 +141,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     // insertAfterIdx: -1 = before first block, 0..n-1 = after block at that index, null = no active insert zone
     const [insertAfterIdx, setInsertAfterIdx] = useState<number | null>(null);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null); // same index scheme
+    const [pendingStatusChange, setPendingStatusChange] = useState<ProposalMeta['status'] | null>(null);
     const [isSignModalOpen, setIsSignModalOpen] = useState(false);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
@@ -295,6 +299,27 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
     const updateMeta = (patch: Partial<ProposalMeta>) => setMeta(m => ({ ...m, ...patch }));
 
+    const handleStatusChange = (newStatus: ProposalMeta['status']) => {
+        // If we have an accepted/declined status (likely with signature), ask for confirmation
+        if (meta.status === 'Accepted' || meta.status === 'Declined') {
+            setPendingStatusChange(newStatus);
+            return;
+        }
+        updateMeta({ status: newStatus });
+    };
+
+    const confirmStatusChange = () => {
+        if (!pendingStatusChange) return;
+        
+        // Remove signatures if we are invalidating them
+        const nb = blocks.map((b: any) => 
+            b.type === 'signature' ? { ...b, signed: false, signatureImage: undefined } : b
+        );
+        setBlocks(nb);
+        updateMeta({ status: pendingStatusChange as any });
+        setPendingStatusChange(null);
+    };
+
     /* ── Copy link ── */
     const copyLink = () => {
         navigator.clipboard.writeText(window.location.href);
@@ -403,7 +428,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 {Object.keys(STATUS_COLORS).filter(k => k !== 'All' && k !== 'Paid').map(s => (
                                     <button
                                         key={s}
-                                        onClick={() => { updateMeta({ status: s as any }); setShowStatusMenu(false); }}
+                                        onClick={() => { handleStatusChange(s as any); setShowStatusMenu(false); }}
                                         className={cn(
                                             "w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
                                             isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
@@ -536,7 +561,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 <div 
                     className="flex-1 overflow-auto relative w-full"
                     style={{ 
-                        backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
+                        backgroundColor: isMobilePreview 
+                            ? (isDark ? '#080808' : '#f7f7f7') 
+                            : (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
                         backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
@@ -545,7 +572,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 >
                     <div className={cn(
                         "flex flex-col items-center min-h-full",
-                        isMobilePreview ? "py-8 px-4" : "py-10 px-6"
+                        isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
                     )}>
                         {!isMobilePreview && (
                             <ClientActionBar
@@ -640,7 +667,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             <div 
                                 className="w-full max-w-[850px] shadow-2xl rounded-2xl overflow-hidden"
                                 style={{ 
-                                    backgroundColor: (meta.design?.backgroundColor) || '#ffffff',
+                                    backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
                                     backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
@@ -711,6 +738,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         label="Client"
                                         isDark={isDark}
                                         icon={<User size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' })}
                                     >
                                         <div className="relative">
                                             <input
@@ -724,13 +752,13 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                     isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
                                                 )}
                                             />
-                                            {clientDropdownOpen && clients.filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase())).length > 0 && (
+                                            {clientDropdownOpen && clients.filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()) || (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase()))).length > 0 && (
                                                 <div className={cn(
                                                     "absolute top-full left-0 w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-b-lg border border-t-0 shadow-xl overflow-hidden z-50 max-h-[220px] overflow-y-auto",
                                                     isDark ? "bg-[#1f1f1f] border-[#252525]" : "bg-white border-[#ebebeb]"
                                                 )}>
                                                     {clients
-                                                        .filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()))
+                                                        .filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()) || (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase())))
                                                         .map(c => (
                                                             <button
                                                                 key={c.id}
@@ -770,6 +798,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         isDark={isDark}
                                         icon={<FileText size={11} className="opacity-50" />}
                                         hasInfo
+                                        onReset={() => updateMeta({ projectName: '' })}
                                     >
                                         <input
                                             value={meta.projectName}
@@ -787,6 +816,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         isDark={isDark}
                                         icon={<Calendar size={11} className="opacity-50" />}
                                         hasInfo
+                                        onReset={() => updateMeta({ issueDate: new Date().toISOString().split('T')[0] })}
                                     >
                                         <DatePicker
                                             value={meta.issueDate}
@@ -801,6 +831,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         isDark={isDark}
                                         icon={<Calendar size={11} className="opacity-50" />}
                                         hasInfo
+                                        onReset={() => updateMeta({ expirationDate: '' })}
                                     >
                                         <DatePicker
                                             value={meta.expirationDate}
@@ -815,6 +846,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         label="Currency"
                                         isDark={isDark}
                                         icon={<DollarSign size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ currency: 'USD' })}
                                     >
                                         <select
                                             value={meta.currency}
@@ -836,6 +868,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         label="Discount calc."
                                         isDark={isDark}
                                         icon={<Tag size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ discountCalc: 'before_tax' })}
                                     >
                                         <select
                                             value={meta.discountCalc}
@@ -847,6 +880,26 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         >
                                             <option value="before_tax">Before tax</option>
                                             <option value="after_tax">After tax</option>
+                                        </select>
+                                    </MetaField>
+                                    
+                                    <MetaField
+                                        label="Status"
+                                        isDark={isDark}
+                                        icon={<Zap size={11} className="opacity-50" />}
+                                        onReset={() => handleStatusChange('Draft')}
+                                    >
+                                        <select
+                                            value={meta.status}
+                                            onChange={e => handleStatusChange(e.target.value as any)}
+                                            className={cn(
+                                                "w-full text-[12px] bg-transparent outline-none font-medium appearance-none",
+                                                isDark ? "text-[#ccc]" : "text-[#333]"
+                                            )}
+                                        >
+                                            {Object.keys(STATUS_COLORS).filter(k => k !== 'All').map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
                                         </select>
                                     </MetaField>
                                 </>
@@ -907,6 +960,32 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 }}
                 title={uploadTarget?.type === 'logo' ? "Upload Logo" : "Upload Image"}
             />
+
+            <SaveTemplateModal 
+                open={isSaveTemplateModalOpen} 
+                onClose={() => setIsSaveTemplateModalOpen(false)} 
+                defaultName={meta.projectName || 'My Proposal Template'}
+                entityType="proposal"
+                onSave={async (name, description, isDefault) => {
+                    await addTemplate({
+                        name,
+                        description,
+                        is_default: isDefault,
+                        entity_type: 'proposal',
+                        blocks,
+                        design: meta.design || DEFAULT_DOCUMENT_DESIGN
+                    });
+                }}
+            />
+
+            <DeleteConfirmModal 
+                open={!!pendingStatusChange}
+                onClose={() => setPendingStatusChange(null)}
+                onConfirm={confirmStatusChange}
+                title="Invalidate Signature?"
+                description={`Changing the status to "${pendingStatusChange}" will invalidate and remove the client's existing signature. Are you sure you want to proceed?`}
+                isDark={isDark}
+            />
         </div>
     );
 }
@@ -942,7 +1021,7 @@ export function ProposalDocument({
         backgroundColor: 'transparent',
         paddingTop: 'var(--block-margin-top)',
         paddingBottom: 'var(--block-margin-bottom)',
-        '--document-bg': '#ffffff',
+        '--document-bg': design.blockBackgroundColor || '#ffffff',
         '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
         '--block-margin-top': `${design.marginTop ?? 24}px`,
         '--block-border-radius': `${design.borderRadius ?? 16}px`,
@@ -965,7 +1044,7 @@ export function ProposalDocument({
             className={cn(
                 "w-full transition-all duration-300 relative bg-[var(--document-bg)]",
                 isMobile ? "max-w-full px-6 py-6" : "max-w-[850px] shadow-sm",
-                !isMobile && "min-h-[1100px] py-16 px-12"
+                !isMobile && "min-h-[1100px] px-12"
             )}
         >
             {/* Blocks */}
@@ -974,7 +1053,7 @@ export function ProposalDocument({
                     {!isPreview && (
                         <InsertZone
                             idx={-1}
-                            isDark={isDark}
+                            isDark={false}
                             isOpen={openInsertMenu === -1}
                             onOpen={() => setOpenInsertMenu(-1)}
                             onClose={() => setOpenInsertMenu(null)}
@@ -983,7 +1062,7 @@ export function ProposalDocument({
                         />
                     )}
 
-                    <div className="space-y-1">
+                    <div>
                         {blocks.map((block: any, idx: number) => (
                             <React.Fragment key={block.id}>
                                 <SortableBlock
@@ -1018,7 +1097,7 @@ export function ProposalDocument({
                                 {!isPreview && (
                                     <InsertZone
                                         idx={idx}
-                                        isDark={isDark}
+                                        isDark={false}
                                         isOpen={openInsertMenu === idx}
                                         onOpen={() => setOpenInsertMenu(idx)}
                                         onClose={() => setOpenInsertMenu(null)}
@@ -1060,22 +1139,6 @@ export function ProposalDocument({
                 </div>
             )}
             
-            <SaveTemplateModal 
-                open={isSaveTemplateModalOpen} 
-                onClose={() => setIsSaveTemplateModalOpen(false)} 
-                defaultName={meta.projectName || 'My Proposal Template'}
-                entityType="proposal"
-                onSave={async (name, description, isDefault) => {
-                    await addTemplate({
-                        name,
-                        description,
-                        is_default: isDefault,
-                        entity_type: 'proposal',
-                        blocks,
-                        design: meta.design || DEFAULT_DOCUMENT_DESIGN
-                    });
-                }}
-            />
         </div>
     );
 }
@@ -1120,6 +1183,8 @@ function SortableBlock({
             isPreview={isPreview}
             isFirst={isFirst}
             isLast={isLast}
+            backgroundColor={block.backgroundColor}
+            onBackgroundColorChange={(color) => updateBlock(block.id, { backgroundColor: color })}
         >
             <BlockRenderer
                 block={block}
@@ -1686,13 +1751,14 @@ function SignatureBlock({ block, isDark, isPreview, updateBlock }: any) {
    PANEL SUB-COMPONENTS
 ═══════════════════════════════════════════════════════ */
 function MetaField({
-    label, children, isDark, icon, hasInfo
+    label, children, isDark, icon, hasInfo, onReset
 }: {
     label: string;
     children: React.ReactNode;
     isDark: boolean;
     icon?: React.ReactNode;
     hasInfo?: boolean;
+    onReset?: () => void;
 }) {
     return (
         <div className={cn(
@@ -1700,15 +1766,26 @@ function MetaField({
             isDark ? "border-[#252525] bg-[#1f1f1f] hover:border-[#333]" : "border-[#eeeeee] bg-white hover:border-[#e4e4e4]"
         )}>
             <div className="flex items-center justify-between mb-1">
-                <div className={cn("flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                <div className={cn("flex items-center gap-1.5 text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>
                     {icon}
                     {label}
                 </div>
-                {hasInfo && (
-                    <button className={cn("transition-colors", isDark ? "text-[#444] hover:text-[#888]" : "text-[#ddd] hover:text-[#aaa]")}>
-                        <ChevronRight size={11} />
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    {onReset && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onReset(); }}
+                            className={cn("p-1 rounded-md transition-all", isDark ? "hover:bg-white/5 text-[#444] hover:text-[#888]" : "hover:bg-black/5 text-[#ddd] hover:text-[#aaa]")}
+                            title="Reset to default"
+                        >
+                            <RotateCcw size={10} />
+                        </button>
+                    )}
+                    {hasInfo && (
+                        <button className={cn("transition-colors", isDark ? "text-[#444] hover:text-[#888]" : "text-[#ddd] hover:text-[#aaa]")}>
+                            <ChevronRight size={11} />
+                        </button>
+                    )}
+                </div>
             </div>
             {children}
         </div>
@@ -1764,6 +1841,13 @@ function InsertZone({
     return (
         <div
             className="relative flex items-center group/insert h-[24px]"
+            style={{
+                backgroundColor: 'var(--document-bg, #ffffff)',
+                marginLeft: '-3rem',
+                marginRight: '-3rem',
+                paddingLeft: '3rem',
+                paddingRight: '3rem',
+            }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => { if (!isOpen) setHovered(false); }}
         >

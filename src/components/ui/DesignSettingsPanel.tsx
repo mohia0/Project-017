@@ -31,14 +31,15 @@ interface DesignSettingsPanelProps {
     updateMeta: (patch: any) => void;
     onUploadLogo: () => void;
     onUploadBackground: () => void;
+    hideSignature?: boolean;
 }
 
 export function MetaField({ label, children, isDark, icon, onReset }: any) {
     return (
         <div className={cn("rounded-lg border px-3 py-2.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.02)] group/field", isDark ? "border-[#252525] bg-[#1f1f1f]" : "border-[#ebebeb] bg-white")}>
             {label && (
-                <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider opacity-40">
+                <div className="flex items-center justify-between mb-1">
+                    <div className={cn("flex items-center gap-1.5 text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>
                         {icon}
                         {label}
                     </div>
@@ -60,7 +61,7 @@ export function MetaField({ label, children, isDark, icon, onReset }: any) {
     );
 }
 
-export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadBackground }: DesignSettingsPanelProps) {
+export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadBackground, hideSignature }: DesignSettingsPanelProps) {
     // Always read latest design so we don't get stale closures on rapid changes
     const metaRef = React.useRef(meta);
     React.useEffect(() => { metaRef.current = meta; }, [meta]);
@@ -96,7 +97,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 isDark ? "hover:text-white" : "hover:text-black"
             )}
         >
-            <span className={cn("text-[10px] uppercase tracking-widest font-bold", isDark ? "text-[#555]" : "text-[#bbb]", !collapsed[id] && "text-[#4dbf39]")}>
+            <span className={cn("text-[9px] uppercase tracking-widest font-black", isDark ? "text-[#555]" : "text-[#bbb]", !collapsed[id] && "text-[#4dbf39]")}>
                 {label}
             </span>
             <div className={cn("transition-transform duration-200", collapsed[id] ? "-rotate-90" : "rotate-0")}>
@@ -139,9 +140,9 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 
                                 {meta.logoUrl && (
                                     <div className="space-y-1.5 px-0.5">
-                                        <div className="flex items-center justify-between">
-                                            <span className={cn("text-[10px] font-medium opacity-40 uppercase tracking-tight")}>Size</span>
-                                            <span className={cn("text-[10px] font-mono opacity-30")}>{design.logoSize ?? 48}px</span>
+                                        <div className="flex items-center justify-between mb-1 px-0.5">
+                                            <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Size</span>
+                                            <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.logoSize ?? 48}px</span>
                                         </div>
                                         <input 
                                             type="range" min="20" max="150" step="2" 
@@ -195,8 +196,8 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ marginTop: DEFAULT_DOCUMENT_DESIGN.marginTop })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Block Spacing (Top)</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.marginTop ?? 24}px</span>
+                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Block Spacing (Top)</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.marginTop ?? 24}px</span>
                             </div>
                             <input 
                                 type="range" min="0" max="120" step="4" 
@@ -210,8 +211,8 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ marginBottom: DEFAULT_DOCUMENT_DESIGN.marginBottom })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Block Spacing (Bottom)</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.marginBottom ?? 24}px</span>
+                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Block Spacing (Bottom)</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.marginBottom ?? 24}px</span>
                             </div>
                             <input 
                                 type="range" min="0" max="120" step="4" 
@@ -225,8 +226,8 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ borderRadius: DEFAULT_DOCUMENT_DESIGN.borderRadius })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Global Roundness</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.borderRadius ?? 16}px</span>
+                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Global Roundness</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.borderRadius ?? 16}px</span>
                             </div>
                             <input 
                                 type="range" min="0" max="40" step="2" 
@@ -234,6 +235,24 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 onChange={e => updateDesign({ borderRadius: Number(e.target.value) })}
                                 className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
                             />
+                        </MetaField>
+
+                        <MetaField 
+                            label="Shadow"
+                            isDark={isDark}
+                            onReset={() => updateDesign({ blockShadow: DEFAULT_DOCUMENT_DESIGN.blockShadow })}
+                        >
+                            <select 
+                                value={design.blockShadow || 'none'} 
+                                onChange={e => updateDesign({ blockShadow: e.target.value })}
+                                className={cn("w-full text-[12px] bg-transparent outline-none appearance-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
+                            >
+                                <option value="none">None</option>
+                                <option value="0 2px 10px -2px rgba(0,0,0,0.03)">Subtle</option>
+                                <option value="0 4px 20px -4px rgba(0,0,0,0.05)">Soft (Default)</option>
+                                <option value="0 8px 30px -6px rgba(0,0,0,0.08)">Elegant</option>
+                                <option value="0 12px 40px -8px rgba(0,0,0,0.12)">Intense</option>
+                            </select>
                         </MetaField>
                     </div>
                 )}
@@ -308,6 +327,22 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 </p>
                             </div>
                         </MetaField>
+                        <MetaField 
+                            label="Main Blocks Background" 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ blockBackgroundColor: DEFAULT_DOCUMENT_DESIGN.blockBackgroundColor })}
+                        >
+                            <div className="flex flex-col gap-2">
+                                <ColorisInput 
+                                    value={design.blockBackgroundColor || '#ffffff'} 
+                                    onChange={val => updateDesign({ blockBackgroundColor: val })}
+                                    className="w-full"
+                                />
+                                <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
+                                    This sets the default background color for all blocks.
+                                </p>
+                            </div>
+                        </MetaField>
 
                         <MetaField 
                             label="Background Image / GIF" 
@@ -357,8 +392,8 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ tableBorderRadius: DEFAULT_DOCUMENT_DESIGN.tableBorderRadius })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Border Radius</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.tableBorderRadius ?? 8}px</span>
+                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Border Radius</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.tableBorderRadius ?? 8}px</span>
                             </div>
                             <input 
                                 type="range" min="0" max="32" 
@@ -413,8 +448,8 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ tableFontSize: DEFAULT_DOCUMENT_DESIGN.tableFontSize })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Font Size</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.tableFontSize ?? 12}px</span>
+                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Font Size</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.tableFontSize ?? 12}px</span>
                             </div>
                             <input 
                                 type="range" min="8" max="20" step="1" 
@@ -429,8 +464,8 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ tableCellPadding: DEFAULT_DOCUMENT_DESIGN.tableCellPadding })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Row Spacing</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.tableCellPadding ?? 12}px</span>
+                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Row Spacing</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.tableCellPadding ?? 12}px</span>
                             </div>
                             <input 
                                 type="range" min="4" max="32" step="2" 
@@ -444,40 +479,42 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
             </div>
 
             {/* ── SIGNATURE BLOCK ── */}
-            <div>
-                <SectionHeader id="signature" label="Signature Block" />
-                {!collapsed['signature'] && (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                        <MetaField 
-                            label="Line Color" 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ signBarColor: DEFAULT_DOCUMENT_DESIGN.signBarColor })}
-                        >
-                            <ColorisInput 
-                                value={design.signBarColor || (isDark ? '#ffffff' : '#000000')} 
-                                onChange={val => updateDesign({ signBarColor: val })}
-                                className="w-full"
-                            />
-                        </MetaField>
+            {!hideSignature && (
+                <div>
+                    <SectionHeader id="signature" label="Signature Block" />
+                    {!collapsed['signature'] && (
+                        <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <MetaField 
+                                label="Line Color" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ signBarColor: DEFAULT_DOCUMENT_DESIGN.signBarColor })}
+                            >
+                                <ColorisInput 
+                                    value={design.signBarColor || (isDark ? '#ffffff' : '#000000')} 
+                                    onChange={val => updateDesign({ signBarColor: val })}
+                                    className="w-full"
+                                />
+                            </MetaField>
 
-                        <MetaField 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ signBarThickness: DEFAULT_DOCUMENT_DESIGN.signBarThickness })}
-                        >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Line Thickness</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.signBarThickness ?? 1}px</span>
-                            </div>
-                            <input 
-                                type="range" min="1" max="6" step="1" 
-                                value={design.signBarThickness ?? 1} 
-                                onChange={e => updateDesign({ signBarThickness: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
-                            />
-                        </MetaField>
-                    </div>
-                )}
-            </div>
+                            <MetaField 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ signBarThickness: DEFAULT_DOCUMENT_DESIGN.signBarThickness })}
+                            >
+                                <div className="flex items-center justify-between mb-1.5 px-0.5">
+                                    <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Line Thickness</span>
+                                    <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.signBarThickness ?? 1}px</span>
+                                </div>
+                                <input 
+                                    type="range" min="1" max="6" step="1" 
+                                    value={design.signBarThickness ?? 1} 
+                                    onChange={e => updateDesign({ signBarThickness: Number(e.target.value) })}
+                                    className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                />
+                            </MetaField>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── ACTION BAR ── */}
             <div>
@@ -501,8 +538,8 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ actionButtonMarginTop: DEFAULT_DOCUMENT_DESIGN.actionButtonMarginTop })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Action Bar Spacing (Top)</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.actionButtonMarginTop ?? 16}px</span>
+                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Action Bar Spacing (Top)</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.actionButtonMarginTop ?? 16}px</span>
                             </div>
                             <input 
                                 type="range" min="0" max="64" step="4" 
@@ -517,8 +554,8 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ actionButtonMarginBottom: DEFAULT_DOCUMENT_DESIGN.actionButtonMarginBottom })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Action Bar Spacing (Bottom)</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.actionButtonMarginBottom ?? 16}px</span>
+                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Action Bar Spacing (Bottom)</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.actionButtonMarginBottom ?? 16}px</span>
                             </div>
                             <input 
                                 type="range" min="0" max="64" step="4" 
