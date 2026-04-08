@@ -116,7 +116,7 @@ export default function WorkspaceSwitcher() {
                     <div 
                         className={cn(
                             "fixed border border-white/10 rounded-xl shadow-2xl overflow-hidden p-1 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200",
-                            isDark ? "bg-[#0d0d0d]" : "bg-white shadow-black/10"
+                            isDark ? "bg-[#141414]" : "bg-[#1c1c1e]"
                         )}
                         style={{ 
                             top: 10, 
@@ -142,7 +142,7 @@ export default function WorkspaceSwitcher() {
                                     className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-left group"
                                 >
                                     <div className="flex items-center gap-2 truncate">
-                                        <div className="w-6 h-6 rounded-md bg-[#2a2a2a] flex items-center justify-center shrink-0 border border-white/5 group-hover:border-white/20 transition-colors">
+                                        <div className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center shrink-0 border border-white/5 group-hover:border-white/10 transition-colors">
                                             {ws.logo_url ? (
                                                 <img src={ws.logo_url} alt="" className="w-full h-full object-cover rounded-md" />
                                             ) : (

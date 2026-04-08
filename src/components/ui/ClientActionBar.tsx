@@ -195,7 +195,7 @@ export function ClientActionBar({
                                     View receipt
                                 </button>
                         </>
-                    ) : status !== 'Draft' && (
+                    ) : (
                         <button 
                             onClick={onPay}
                             className={cn(
