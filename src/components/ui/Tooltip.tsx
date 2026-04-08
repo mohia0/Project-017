@@ -16,7 +16,7 @@ interface TooltipProps {
 
 export function Tooltip({ children, content, delay = 0.2, side = 'top', className }: TooltipProps) {
     const [isVisible, setIsVisible] = useState(false);
-    const [coords, setCoords] = useState({ x: 0, y: 0 });
+    const [coords, setCoords] = useState({ x: 0, y: 0, width: 0, height: 0 });
     const triggerRef = useRef<HTMLDivElement>(null);
     const timeoutRef = useRef<NodeJS.Timeout>(null);
     const { theme } = useUIStore();
@@ -43,17 +43,39 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
     };
 
     // Calculate position based on side
-    const getPosition = () => {
+    const getPosStyles = () => {
+        if (!coords.width) return {};
         const offset = 8;
+        
         switch (side) {
-            case 'bottom': return { top: coords.y + (coords as any).height + offset, left: coords.x };
-            case 'left': return { top: coords.y + (coords as any).height / 2, left: coords.x - (coords as any).width / 2 - offset };
-            case 'right': return { top: coords.y + (coords as any).height / 2, left: coords.x + (coords as any).width / 2 + offset };
-            default: return { top: coords.y - offset, left: coords.x }; // top
+            case 'bottom': 
+                return { 
+                    top: coords.y + coords.height + offset, 
+                    left: coords.x,
+                    transform: 'translateX(-50%)'
+                };
+            case 'left': 
+                return { 
+                    top: coords.y + coords.height / 2, 
+                    left: coords.x - (coords.width / 2) - offset,
+                    transform: 'translate(-100%, -50%)'
+                };
+            case 'right': 
+                return { 
+                    top: coords.y + coords.height / 2, 
+                    left: coords.x + (coords.width / 2) + offset,
+                    transform: 'translate(0, -50%)'
+                };
+            default: // top
+                return { 
+                    top: coords.y - offset, 
+                    left: coords.x,
+                    transform: 'translate(-50%, -100%)'
+                };
         }
     };
 
-    const pos = getPosition();
+    const posStyles = getPosStyles();
 
     return (
         <>
@@ -70,20 +92,30 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
                 <AnimatePresence>
                     {isVisible && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: side === 'top' ? 4 : -4 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            initial={{ 
+                                opacity: 0, 
+                                scale: 0.95, 
+                                x: side === 'left' ? 4 : side === 'right' ? -4 : 0,
+                                y: side === 'top' ? 4 : side === 'bottom' ? -4 : 0,
+                            }}
+                            animate={{ 
+                                opacity: 1, 
+                                scale: 1, 
+                                x: 0, 
+                                y: 0 
+                            }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            transition={{ duration: 0.1, ease: "easeOut" }}
                             style={{ 
                                 position: 'fixed',
-                                top: pos.top,
-                                left: pos.left,
-                                transform: `translate(-50%, ${side === 'top' ? '-100%' : '0'})`,
+                                top: (posStyles as any).top,
+                                left: (posStyles as any).left,
+                                transform: (posStyles as any).transform,
                                 zIndex: 9999,
                                 pointerEvents: 'none'
                             }}
                             className={cn(
-                                "px-2 py-1 rounded-md text-[10px] font-medium tracking-wide whitespace-nowrap shadow-xl border",
+                                "px-2 py-1.5 rounded-lg text-[10px] font-bold tracking-tight whitespace-nowrap shadow-2xl border",
                                 isDark 
                                     ? "bg-[#1a1a1a] text-white/90 border-white/10 shadow-black/50" 
                                     : "bg-white text-black/80 border-black/5 shadow-black/10",

@@ -84,23 +84,20 @@ export function ColorisInput({ value, onChange, className, presetColors }: Color
                      }
                 }}
                 className={cn(
-                    "h-10 rounded-xl border pl-4 pr-14 text-[13px] font-mono tracking-wider w-full outline-none transition-all cursor-pointer",
+                    "h-10 rounded-xl border px-4 transition-all cursor-pointer",
+                    "text-[12px] font-bold tracking-tight w-full outline-none text-center flex items-center justify-center",
                     isDark 
                         ? "bg-[#141414] border-white/5 text-white/90 group-hover/coloris:border-white/10" 
                         : "bg-white border-black/10 text-black/90 group-hover/coloris:border-black/20",
                     className
                 )}
+                style={{ 
+                    backgroundColor: localValue || 'transparent',
+                    color: (localValue && localValue !== 'transparent') ? '#fff' : (isDark ? '#ccc' : '#333'),
+                    textShadow: (localValue && localValue !== 'transparent') ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
+                    border: localValue === '#ffffff' || localValue === 'white' ? (isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)') : undefined
+                }}
             />
-            {/* Premium Color Indicator Block */}
-            <div className="absolute right-1.5 top-1.5 bottom-1.5 w-10 flex items-center justify-center pointer-events-none">
-                <div 
-                    className={cn(
-                        "w-full h-full rounded-[8px] transition-all",
-                        isDark ? "border border-white/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]" : "border border-black/[0.08] shadow-sm"
-                    )}
-                    style={{ backgroundColor: localValue || 'transparent' }}
-                />
-            </div>
         </div>
     );
 }

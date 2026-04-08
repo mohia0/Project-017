@@ -130,7 +130,10 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                         className="w-full text-center text-sm font-medium bg-transparent border-none p-0 focus:ring-0 text-[#111]"
                                     />
                                 </div>
-                                <div className="w-24 text-right font-bold text-[#111] pr-2">
+                                <div className={cn(
+                                    "w-24 text-right pr-2 transition-all",
+                                    settings.hideQuantity ? "font-black text-[15px] text-[#000]" : "font-bold text-[#111]"
+                                )}>
                                     {formatCurrency(item.qty * item.rate)}
                                 </div>
                             </div>
@@ -171,7 +174,7 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                         onClick={() => setSettings({ ...settings, viewMode: 'table' })}
                                         className={cn(
                                             "relative group flex flex-col rounded-xl overflow-hidden border-2 transition-all h-[120px]",
-                                            settings.viewMode === 'table' ? "border-[#4dbf39]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
+                                            settings.viewMode === 'table' ? "border-[var(--primary-color)]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
                                         )}
                                     >
                                         <div className="flex-1 p-4 flex flex-col gap-2">
@@ -187,7 +190,7 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                         onClick={() => setSettings({ ...settings, viewMode: 'cards' })}
                                         className={cn(
                                             "relative group flex flex-col rounded-xl overflow-hidden border-2 transition-all h-[120px]",
-                                            settings.viewMode === 'cards' ? "border-[#4dbf39]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
+                                            settings.viewMode === 'cards' ? "border-[var(--primary-color)]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
                                         )}
                                     >
                                         <div className="flex-1 p-4 flex gap-2 justify-center items-center">
@@ -215,7 +218,7 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                             <div className="flex items-center gap-10">
                                                 <button
                                                     onClick={() => setSettings({ ...settings, allowSelection: !settings.allowSelection })}
-                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.allowSelection ? "bg-[#4ade80]" : "bg-[#333]")}
+                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.allowSelection ? "bg-[var(--primary-color)]" : "bg-[#333]")}
                                                 >
                                                     <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300", settings.allowSelection ? "left-7" : "left-1")}>
                                                         <div className="w-full h-full flex items-center justify-center">
@@ -244,7 +247,7 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                             <div className="flex items-center gap-6">
                                                 <button
                                                     onClick={() => setSettings({ ...settings, hideQuantity: !settings.hideQuantity })}
-                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.hideQuantity ? "bg-[#4ade80]" : "bg-[#333]")}
+                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.hideQuantity ? "bg-[var(--primary-color)]" : "bg-[#333]")}
                                                 >
                                                     <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300", settings.hideQuantity ? "left-7" : "left-1")}>
                                                         <div className="w-full h-full flex items-center justify-center">
@@ -262,7 +265,7 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                             <div className="flex items-center gap-6">
                                                 <button
                                                     onClick={() => setSettings({ ...settings, hideAmount: !settings.hideAmount })}
-                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.hideAmount ? "bg-[#4ade80]" : "bg-[#333]")}
+                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.hideAmount ? "bg-[var(--primary-color)]" : "bg-[#333]")}
                                                 >
                                                     <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300", settings.hideAmount ? "left-7" : "left-1")}>
                                                         <div className="w-full h-full flex items-center justify-center">
@@ -289,7 +292,8 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                 </button>
                                 <button
                                     onClick={() => handleSaveSettings(settings)}
-                                    className="flex-1 py-4 px-6 rounded-2xl bg-[#4ade80] text-black font-bold text-[15px] hover:bg-[#34d399] transition-all shadow-[0_4px_20px_rgba(74,222,128,0.2)]"
+                                    className="flex-1 py-4 px-6 rounded-2xl text-black font-bold text-[15px] hover:opacity-90 transition-all"
+                                    style={{ backgroundColor: data.design?.primaryColor || '#4dbf39' }}
                                 >
                                     Save
                                 </button>

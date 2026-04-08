@@ -121,6 +121,22 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [copied, setCopied] = useState(false);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
 
+    const statusRef = useRef<HTMLDivElement>(null);
+    const actionsRef = useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (statusRef.current && !statusRef.current.contains(event.target as Node)) {
+                setShowStatusMenu(false);
+            }
+            if (actionsRef.current && !actionsRef.current.contains(event.target as Node)) {
+                setShowActionsMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const isMobilePreview = isPreview && previewMode === 'mobile';
 
     const [meta, setMeta] = useState<InvoiceMeta>({
@@ -272,7 +288,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center px-6 py-4 border-b shrink-0 transition-colors",
+                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#d2d2eb]"
             )}>
                 <div className="flex items-center gap-4 flex-1">
@@ -307,15 +323,26 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             placeholder="Untitled Invoice"
                         />
                     </div>
-                    {/* Auto-save Indicator */}
-                    <div className="flex items-center ml-2 pt-1">
-                        {saveStatus === 'saving' && <span className={cn("text-[11px] font-medium animate-pulse", isDark ? "text-[#888]" : "text-[#aaa]")}>Saving...</span>}
-                        {saveStatus === 'saved' && <span className="text-[11px] font-medium text-[#4dbf39]">Saved</span>}
-                    </div>
+                </div>
+                
+                {/* Middle: Auto-save Indicator */}
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center pointer-events-none">
+                    {saveStatus === 'saving' && (
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                            <span className={cn("text-[10px] font-bold tracking-widest uppercase opacity-60", isDark ? "text-white" : "text-black")}>Saving...</span>
+                        </div>
+                    )}
+                    {saveStatus === 'saved' && (
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#4dbf39]/5 border border-[#4dbf39]/10 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="w-1 h-1 rounded-full bg-[#4dbf39]" />
+                            <span className="text-[10px] font-bold tracking-widest uppercase text-[#4dbf39]">Saved</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <div className="relative flex items-center">
+                    <div className="relative flex items-center" ref={statusRef}>
                         <button
                             onClick={() => setShowStatusMenu(s => !s)}
                             className={cn(
@@ -378,35 +405,31 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
                     {isPreview && (
                         <div className={cn(
-                            "flex items-center rounded-[8px] border overflow-hidden",
-                            isDark ? "border-[#333] bg-[#1c1c1c]" : "border-[#e0e0e0] bg-[#f5f5f5]"
+                            "flex items-center rounded-xl h-[32px] p-1 gap-1",
+                            isDark ? "bg-white/[0.04]" : "bg-[#111]/[0.03]"
                         )}>
-                            <Tooltip content="Desktop View" side="bottom" delay={0.1}>
-                                <button
-                                    onClick={() => setPreviewMode('desktop')}
-                                    className={cn(
-                                        "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
-                                        previewMode === 'desktop'
-                                            ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
-                                            : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
-                                    )}
-                                >
-                                    <Monitor size={14} />
-                                </button>
-                            </Tooltip>
-                            <Tooltip content="Mobile View" side="bottom" delay={0.1}>
-                                <button
-                                    onClick={() => setPreviewMode('mobile')}
-                                    className={cn(
-                                        "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
-                                        previewMode === 'mobile'
-                                            ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
-                                            : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
-                                    )}
-                                >
-                                    <Smartphone size={14} />
-                                </button>
-                            </Tooltip>
+                            <button
+                                onClick={() => setPreviewMode('desktop')}
+                                className={cn(
+                                    "flex-1 flex items-center justify-center rounded-[8px] transition-all",
+                                    previewMode === 'desktop'
+                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                        : isDark ? "text-white/20 hover:text-white/40" : "text-[#aaa] hover:text-[#666]"
+                                )}
+                            >
+                                <Monitor size={13} strokeWidth={2.5} />
+                            </button>
+                            <button
+                                onClick={() => setPreviewMode('mobile')}
+                                className={cn(
+                                    "flex-1 flex items-center justify-center rounded-[8px] transition-all",
+                                    previewMode === 'mobile'
+                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                        : isDark ? "text-white/20 hover:text-white/40" : "text-[#aaa] hover:text-[#666]"
+                                )}
+                            >
+                                <Smartphone size={13} strokeWidth={2.5} />
+                            </button>
                         </div>
                     )}
 
@@ -432,7 +455,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         </button>
                     </Tooltip>
 
-                    <div className="relative ml-1">
+                    <div className="relative ml-1" ref={actionsRef}>
                         <button
                             onClick={() => setShowActionsMenu(s => !s)}
                             className={cn(
@@ -490,7 +513,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         "flex flex-col items-center min-h-full",
                         isMobilePreview ? "py-8 px-4" : "py-10 px-6"
                     )}>
-                        {isPreview && !isMobilePreview && (
+                        {!isMobilePreview && (
                             <ClientActionBar
                                 type="invoice"
                                 status={meta.status as any}
@@ -561,9 +584,29 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
                 {!isPreview && (
                     <div className={cn("w-[240px] shrink-0 flex flex-col overflow-hidden", isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]")}>
-                        <div className="flex items-center p-1">
-                            <button onClick={() => setRightTab('details')} className={cn("flex-1 py-2 text-[11px] font-medium rounded-lg", rightTab === 'details' ? (isDark ? "bg-white/5 text-white" : "bg-black/5 text-black") : "opacity-40")}>Details</button>
-                            <button onClick={() => setRightTab('appearance')} className={cn("flex-1 py-2 text-[11px] font-medium rounded-lg", rightTab === 'appearance' ? (isDark ? "bg-white/5 text-white" : "bg-black/5 text-black") : "opacity-40")}>Design</button>
+                        <div className="flex items-center p-1.5 gap-1">
+                            <button 
+                                onClick={() => setRightTab('details')} 
+                                className={cn(
+                                    "flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all", 
+                                    rightTab === 'details' 
+                                        ? (isDark ? "bg-white/10 text-white" : "bg-[#111]/5 text-[#111]") 
+                                        : "opacity-40 hover:opacity-100"
+                                )}
+                            >
+                                Details
+                            </button>
+                            <button 
+                                onClick={() => setRightTab('appearance')} 
+                                className={cn(
+                                    "flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all", 
+                                    rightTab === 'appearance' 
+                                        ? (isDark ? "bg-white/10 text-white" : "bg-[#111]/5 text-[#111]") 
+                                        : "opacity-40 hover:opacity-100"
+                                )}
+                            >
+                                Design
+                            </button>
                         </div>
                         <div className="flex-1 overflow-auto py-3 px-3 space-y-1.5">
                             {rightTab === 'details' && (
@@ -654,6 +697,8 @@ export function InvoiceDocument({
         '--table-header-bg': design.tableHeaderBg || '#fafafa',
         '--table-border-color': design.tableBorderColor || '#ebebeb',
         '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
+        '--primary-color': design.primaryColor || '#4dbf39',
+        '--primary': design.primaryColor || '#4dbf39',
     } as React.CSSProperties), [design]);
 
     return (
@@ -742,7 +787,12 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                 <div className="mb-4">
                     <div className="flex justify-between items-start mb-10">
                         {meta.logoUrl ? (
-                            <img src={meta.logoUrl} alt="Logo" className="max-h-16 w-auto" />
+                            <img 
+                                src={meta.logoUrl} 
+                                alt="Logo" 
+                                className="w-auto transition-all duration-300 ease-out" 
+                                style={{ height: `${meta.design?.logoSize ?? 64}px` }} 
+                            />
                         ) : (
                             <div className={cn(
                                 "font-black text-4xl leading-[0.85] tracking-tighter",
@@ -940,9 +990,9 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd }: {
                     className={cn(
                         "mx-2 w-5 h-5 flex items-center justify-center rounded-full border transition-all shrink-0 shadow-sm",
                         isOpen
-                            ? isDark ? "bg-[var(--primary)] border-[var(--primary)] text-white" : "bg-[var(--primary)] border-[var(--primary)] text-white"
-                            : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary)] hover:text-[var(--primary)]"
-                                     : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                            ? isDark ? "bg-[var(--primary-color)] border-[var(--primary-color)] text-white" : "bg-[var(--primary-color)] border-[var(--primary-color)] text-white"
+                            : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
+                                     : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
                     )}
                 >
                     <Plus size={12} strokeWidth={2.5} />

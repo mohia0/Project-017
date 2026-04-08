@@ -5,7 +5,7 @@ import { GripVertical, Plus, Trash2, PenBox } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import { BlockProps } from './ContentBlock';
+import { BlockProps } from './SectionBlockWrapper';
 
 export function SignatureBlock({ id, data, updateData, removeBlock, addBlockAfter }: BlockProps) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -33,7 +33,7 @@ export function SignatureBlock({ id, data, updateData, removeBlock, addBlockAfte
             <div className="absolute left-2 top-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                 <button
                     onClick={() => addBlockAfter?.(id)}
-                    className="p-1 text-[#ccc] hover:text-[#2563eb] hover:bg-[#ebf2ff] rounded cursor-pointer transition-colors"
+                    className="p-1 text-[#ccc] hover:text-[var(--primary-color)] hover:bg-[var(--primary-color)]/5 rounded cursor-pointer transition-colors"
                     title="Add block below"
                 >
                     <Plus size={16} />

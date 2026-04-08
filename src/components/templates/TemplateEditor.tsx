@@ -82,7 +82,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
         )}>
             {/* ── Page Header ── */}
             <header className={cn(
-                "h-14 border-b flex items-center justify-between px-5 shrink-0 transition-all z-50",
+                "h-14 border-b flex items-center justify-between px-5 shrink-0 transition-all z-50 relative",
                 isDark ? "bg-[#141414] border-white/5" : "bg-white border-black/5"
             )}>
                 <div className="flex items-center gap-2">
@@ -103,6 +103,22 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                             placeholder="Template Name..."
                         />
                     </div>
+                </div>
+                
+                {/* Middle: Auto-save Indicator (Unified with other editors) */}
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center pointer-events-none">
+                    {saveStatus === 'saving' && (
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                            <span className={cn("text-[10px] font-bold tracking-widest uppercase opacity-60", isDark ? "text-white" : "text-black")}>Saving...</span>
+                        </div>
+                    )}
+                    {saveStatus === 'saved' && (
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#4dbf39]/5 border border-[#4dbf39]/10 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="w-1 h-1 rounded-full bg-[#4dbf39]" />
+                            <span className="text-[10px] font-bold tracking-widest uppercase text-[#4dbf39]">Saved</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -140,13 +156,11 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                         disabled={isSaving}
                         className={cn(
                             "h-9 px-5 rounded-[12px] text-[12px] font-bold flex items-center gap-2 transition-all shadow-xl active:scale-95",
-                            saveStatus === 'saved' 
-                                ? "bg-green-500 text-white" 
-                                : isDark ? "bg-[#4dbf39] hover:bg-[#5cd646] text-[#0a0a0a]" : "bg-black hover:bg-black/80 text-white"
+                            isDark ? "bg-[#4dbf39] hover:bg-[#5cd646] text-[#0a0a0a]" : "bg-black hover:bg-black/80 text-white"
                         )}
                     >
-                        {isSaving ? <RotateCcw size={14} className="animate-spin" /> : <Save size={14} />}
-                        {saveStatus === 'saved' ? "Saved successfully" : "Save Changes"}
+                        <Save size={14} />
+                        Save Changes
                     </button>
                 </div>
             </header>

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Upload, X, RotateCcw, ChevronDown } from 'lucide-react';
 import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import { ColorisInput } from './ColorisInput';
+import { Tooltip } from './Tooltip';
 
 interface DesignSettingsPanelProps {
     isDark: boolean;
@@ -34,7 +35,6 @@ export function MetaField({ label, children, isDark, icon, onReset }: any) {
                                 "opacity-0 group-hover/field:opacity-40 hover:!opacity-100 transition-opacity p-0.5 rounded-sm",
                                 isDark ? "hover:bg-white/10 text-white" : "hover:bg-black/5 text-black"
                             )}
-                            title="Reset to default"
                         >
                             <RotateCcw size={10} />
                         </button>
@@ -82,12 +82,19 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                         <MetaField 
                             label="Logo" 
                             isDark={isDark}
-                            onReset={() => updateMeta({ logoUrl: '' })}
+                            onReset={() => {
+                                updateMeta({ logoUrl: '' });
+                                updateDesign({ logoSize: DEFAULT_DOCUMENT_DESIGN.logoSize });
+                            }}
                         >
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-3">
                                 {meta.logoUrl && (
                                     <div className="relative group/logo w-fit">
-                                        <img src={meta.logoUrl} alt="Logo" className="h-12 w-auto rounded border border-white/5 bg-white/5 p-1" />
+                                        <img 
+                                            src={meta.logoUrl} 
+                                            alt="Logo" 
+                                            className="h-12 w-auto rounded border border-white/5 bg-white/5 p-1 transition-all" 
+                                        />
                                         <button 
                                             onClick={() => updateMeta({ logoUrl: '' })}
                                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/logo:opacity-100 transition-opacity"
@@ -96,6 +103,22 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                         </button>
                                     </div>
                                 )}
+                                
+                                {meta.logoUrl && (
+                                    <div className="space-y-1.5 px-0.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className={cn("text-[10px] font-medium opacity-40 uppercase tracking-tight")}>Size</span>
+                                            <span className={cn("text-[10px] font-mono opacity-30")}>{design.logoSize ?? 48}px</span>
+                                        </div>
+                                        <input 
+                                            type="range" min="20" max="150" step="2" 
+                                            value={design.logoSize ?? 48} 
+                                            onChange={e => updateDesign({ logoSize: Number(e.target.value) })}
+                                            className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                        />
+                                    </div>
+                                )}
+
                                 <button 
                                     onClick={onUploadLogo}
                                     className={cn(
@@ -138,11 +161,11 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ marginTop: DEFAULT_DOCUMENT_DESIGN.marginTop })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Margin Top</span>
+                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Block Spacing (Top)</span>
                                 <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.marginTop ?? 24}px</span>
                             </div>
                             <input 
-                                type="range" min="0" max="64" step="4" 
+                                type="range" min="0" max="120" step="4" 
                                 value={design.marginTop ?? 24} 
                                 onChange={e => updateDesign({ marginTop: Number(e.target.value) })}
                                 className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
@@ -153,11 +176,11 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ marginBottom: DEFAULT_DOCUMENT_DESIGN.marginBottom })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Margin Bottom</span>
+                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Block Spacing (Bottom)</span>
                                 <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.marginBottom ?? 24}px</span>
                             </div>
                             <input 
-                                type="range" min="0" max="64" step="4" 
+                                type="range" min="0" max="120" step="4" 
                                 value={design.marginBottom ?? 24} 
                                 onChange={e => updateDesign({ marginBottom: Number(e.target.value) })}
                                 className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
@@ -215,6 +238,36 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 />
                                 <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
                                     This affects the base background behind the document blocks.
+                                </p>
+                            </div>
+                        </MetaField>
+
+                        <MetaField 
+                            label="Primary Accent Color" 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ primaryColor: DEFAULT_DOCUMENT_DESIGN.primaryColor })}
+                        >
+                            <div className="flex flex-col gap-3 pt-1">
+                                <div className="flex items-center gap-2.5">
+                                    {['#111111', '#2563eb', '#16a34a', '#dc2626', '#d97706', '#9333ea'].map(color => (
+                                        <button
+                                            key={color}
+                                            onClick={() => updateDesign({ primaryColor: color })}
+                                            style={{ background: color }}
+                                            className={cn(
+                                                "w-6 h-6 rounded-full border-2 transition-all shadow-sm",
+                                                (design.primaryColor || '#4dbf39') === color ? "border-[#4dbf39] scale-110" : "border-transparent"
+                                            )}
+                                        />
+                                    ))}
+                                </div>
+                                <ColorisInput 
+                                    value={design.primaryColor || '#4dbf39'} 
+                                    onChange={val => updateDesign({ primaryColor: val })}
+                                    className="w-full"
+                                />
+                                <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
+                                    This controls the color of buttons and primary design accents.
                                 </p>
                             </div>
                         </MetaField>

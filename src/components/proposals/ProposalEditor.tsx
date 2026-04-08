@@ -140,6 +140,22 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
 
+    const statusRef = useRef<HTMLDivElement>(null);
+    const actionsRef = useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (statusRef.current && !statusRef.current.contains(event.target as Node)) {
+                setShowStatusMenu(false);
+            }
+            if (actionsRef.current && !actionsRef.current.contains(event.target as Node)) {
+                setShowActionsMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const isMobilePreview = isPreview && previewMode === 'mobile';
 
     const [meta, setMeta] = useState<ProposalMeta>({
@@ -309,7 +325,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
             {/* ── TOP BAR (SaaS PageHeader Match) ── */}
             <div className={cn(
-                "flex items-center px-6 py-4 border-b shrink-0 transition-colors",
+                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 {/* Left: Editable Title & Status Indicator */}
@@ -344,17 +360,28 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             placeholder="Untitled Proposal"
                         />
                     </div>
-                    {/* Auto-save Indicator */}
-                    <div className="flex items-center ml-2 pt-1">
-                        {saveStatus === 'saving' && <span className={cn("text-[11px] font-medium animate-pulse", isDark ? "text-[#888]" : "text-[#aaa]")}>Saving...</span>}
-                        {saveStatus === 'saved' && <span className="text-[11px] font-medium text-[#4dbf39]">Saved</span>}
-                    </div>
+                </div>
+
+                {/* Middle: Auto-save Indicator */}
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center pointer-events-none">
+                    {saveStatus === 'saving' && (
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                            <span className={cn("text-[10px] font-bold tracking-widest uppercase opacity-60", isDark ? "text-white" : "text-black")}>Saving...</span>
+                        </div>
+                    )}
+                    {saveStatus === 'saved' && (
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#4dbf39]/5 border border-[#4dbf39]/10 animate-in fade-in zoom-in-95 duration-200">
+                            <div className="w-1 h-1 rounded-full bg-[#4dbf39]" />
+                            <span className="text-[10px] font-bold tracking-widest uppercase text-[#4dbf39]">Saved</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right: Actions (CopyLink, SendEmail, DropDown) */}
                 <div className="flex items-center gap-2">
                     {/* Status badge */}
-                    <div className="relative flex items-center">
+                    <div className="relative flex items-center" ref={statusRef}>
                         <button
                             onClick={() => setShowStatusMenu(s => !s)}
                             className={cn(
@@ -415,38 +442,33 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         {isPreview ? "Edit" : "Preview"}
                     </button>
 
-                    {/* Desktop / Mobile toggle — only in preview mode */}
                     {isPreview && (
                         <div className={cn(
-                            "flex items-center rounded-[8px] h-[32px] p-[3px]",
-                            isDark ? "bg-white/[0.03]" : "bg-[#f0f0f0]"
+                            "flex items-center rounded-xl h-[32px] p-1 gap-1",
+                            isDark ? "bg-white/[0.04]" : "bg-[#111]/[0.03]"
                         )}>
-                            <Tooltip content="Desktop View" side="bottom" delay={0.1}>
-                                <button
-                                    onClick={() => setPreviewMode('desktop')}
-                                    className={cn(
-                                        "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
-                                        previewMode === 'desktop'
-                                            ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
-                                            : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
-                                    )}
-                                >
-                                    <Monitor size={14} />
-                                </button>
-                            </Tooltip>
-                            <Tooltip content="Mobile View" side="bottom" delay={0.1}>
-                                <button
-                                    onClick={() => setPreviewMode('mobile')}
-                                    className={cn(
-                                        "flex items-center justify-center w-[28px] h-full rounded-[6px] transition-all",
-                                        previewMode === 'mobile'
-                                            ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
-                                            : isDark ? "text-white/30 hover:text-white" : "text-[#888] hover:text-[#111]"
-                                    )}
-                                >
-                                    <Smartphone size={14} />
-                                </button>
-                            </Tooltip>
+                            <button
+                                onClick={() => setPreviewMode('desktop')}
+                                className={cn(
+                                    "flex items-center justify-center w-[28px] h-full rounded-[8px] transition-all",
+                                    previewMode === 'desktop'
+                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                        : isDark ? "text-white/20 hover:text-white/40" : "text-[#aaa] hover:text-[#666]"
+                                )}
+                            >
+                                <Monitor size={13} strokeWidth={2.5} />
+                            </button>
+                            <button
+                                onClick={() => setPreviewMode('mobile')}
+                                className={cn(
+                                    "flex items-center justify-center w-[28px] h-full rounded-[8px] transition-all",
+                                    previewMode === 'mobile'
+                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
+                                        : isDark ? "text-white/20 hover:text-white/40" : "text-[#aaa] hover:text-[#666]"
+                                )}
+                            >
+                                <Smartphone size={13} strokeWidth={2.5} />
+                            </button>
                         </div>
                     )}
 
@@ -472,7 +494,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     </Tooltip>
 
                     {/* Actions dropdown (ProposalDropDown equivalent) */}
-                    <div className="relative ml-1">
+                    <div className="relative ml-1" ref={actionsRef}>
                         <button
                             onClick={() => setShowActionsMenu(s => !s)}
                             className={cn(
@@ -518,21 +540,12 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
             <div className="flex-1 flex overflow-hidden relative">
                 {/* ── LEFT: CANVAS ── */}
-                <div 
-                    className="flex-1 overflow-auto relative w-full"
-                    style={{ 
-                        backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                        backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundAttachment: 'fixed',
-                    }}
-                >
+                <div className="flex-1 overflow-auto relative w-full bg-[#101010]/5 dark:bg-black/20">
                     <div className={cn(
                         "flex flex-col items-center min-h-full",
                         isMobilePreview ? "py-8 px-4" : "py-10 px-6"
                     )}>
-                        {isPreview && !isMobilePreview && (
+                        {!isMobilePreview && (
                             <ClientActionBar
                                 type="proposal"
                                 status={meta.status as any}
@@ -568,7 +581,14 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     </div>
 
                                     {/* Scrollable content */}
-                                    <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0">
+                                    <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0"
+                                         style={{ 
+                                             backgroundColor: (meta.design?.backgroundColor) || '#ffffff',
+                                             backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                                             backgroundSize: 'cover',
+                                             backgroundPosition: 'center',
+                                         }}
+                                    >
                                         <ClientActionBar
                                             type="proposal"
                                             status={meta.status as any}
@@ -613,27 +633,37 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             </div>
                         ) : (
                             /* Desktop canvas */
-                            <ProposalDocument
-                                meta={meta}
-                                blocks={blocks}
-                                totals={totals}
-                                isDark={isDark}
-                                isPreview={isPreview}
-                                isMobile={false}
-                                updateBlock={updateBlock}
-                                removeBlock={removeBlock}
-                                addBlock={addBlock}
-                                openInsertMenu={openInsertMenu}
-                                setOpenInsertMenu={setOpenInsertMenu}
-                                updateMeta={updateMeta}
-                                setBlocks={setBlocks}
-                                currency={meta.currency}
-                                setImageUploadOpen={setImageUploadOpen}
-                                setUploadTarget={setUploadTarget}
-                                isSaveTemplateModalOpen={isSaveTemplateModalOpen}
-                                setIsSaveTemplateModalOpen={setIsSaveTemplateModalOpen}
-                                addTemplate={addTemplate}
-                            />
+                            <div 
+                                className="w-full max-w-[850px] shadow-2xl rounded-2xl overflow-hidden"
+                                style={{ 
+                                    backgroundColor: (meta.design?.backgroundColor) || '#ffffff',
+                                    backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                }}
+                            >
+                                <ProposalDocument
+                                    meta={meta}
+                                    blocks={blocks}
+                                    totals={totals}
+                                    isDark={isDark}
+                                    isPreview={isPreview}
+                                    isMobile={false}
+                                    updateBlock={updateBlock}
+                                    removeBlock={removeBlock}
+                                    addBlock={addBlock}
+                                    openInsertMenu={openInsertMenu}
+                                    setOpenInsertMenu={setOpenInsertMenu}
+                                    updateMeta={updateMeta}
+                                    setBlocks={setBlocks}
+                                    currency={meta.currency}
+                                    setImageUploadOpen={setImageUploadOpen}
+                                    setUploadTarget={setUploadTarget}
+                                    isSaveTemplateModalOpen={isSaveTemplateModalOpen}
+                                    setIsSaveTemplateModalOpen={setIsSaveTemplateModalOpen}
+                                    addTemplate={addTemplate}
+                                />
+                            </div>
                         )}
                     </div>
                 </div>
@@ -644,24 +674,26 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         "w-[240px] shrink-0 flex flex-col overflow-hidden border-l",
                         isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#f7f7f7] border-[#e4e4e4]"
                     )}>
-                        <div className="flex items-center shrink-0 py-1">
+                        <div className="flex items-center shrink-0 p-1.5 gap-1">
                             {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => (
                                 <button
                                     key={tab}
                                     onClick={() => setRightTab(tab)}
-                                    title={label}
                                     className={cn(
-                                        "flex-1 flex items-center justify-center py-2.5 text-[11px] font-medium transition-all rounded-lg mx-1",
+                                        "flex-1 flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold transition-all rounded-xl",
                                         rightTab === tab
                                             ? isDark
-                                                ? "bg-white/5 text-white"
+                                                ? "bg-white/10 text-white"
                                                 : "bg-[#111]/5 text-[#111]"
                                             : isDark
-                                                ? "text-[#555] hover:bg-white/[0.02] hover:text-[#aaa]"
-                                                : "text-[#bbb] hover:bg-black/[0.02] hover:text-[#666]"
+                                                ? "text-[#555] hover:bg-white/[0.03] hover:text-[#aaa]"
+                                                : "text-[#bbb] hover:bg-black/[0.03] hover:text-[#666]"
                                     )}
                                 >
-                                    <Icon size={13} />
+                                    <Icon size={14} strokeWidth={rightTab === tab ? 2.5 : 2} />
+                                    <span className={cn("transition-all", rightTab === tab ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 absolute")}>
+                                        {label}
+                                    </span>
                                 </button>
                             ))}
                         </div>
@@ -921,6 +953,8 @@ export function ProposalDocument({
         '--table-header-bg': design.tableHeaderBg || '#fafafa',
         '--table-border-color': design.tableBorderColor || '#ebebeb',
         '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
+        '--primary-color': design.primaryColor || '#4dbf39',
+        '--primary': design.primaryColor || '#4dbf39',
     } as React.CSSProperties), [design]);
 
     return (
@@ -1189,7 +1223,12 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
                 <div className="space-y-4">
                     {/* Branding Logo */}
                     {meta.logoUrl ? (
-                        <img src={meta.logoUrl} alt="Logo" className="max-h-16 w-auto" />
+                        <img 
+                            src={meta.logoUrl} 
+                            alt="Logo" 
+                            className="w-auto transition-all duration-300 ease-out" 
+                            style={{ height: `${meta.design?.logoSize ?? 64}px` }} 
+                        />
                     ) : (
                         <div className={cn(
                             "font-black text-4xl leading-[0.85] tracking-tighter",
@@ -1706,9 +1745,9 @@ function InsertZone({
                     className={cn(
                         "mx-2 w-5 h-5 flex items-center justify-center rounded-full border transition-all shrink-0 shadow-sm",
                         isOpen
-                            ? isDark ? "bg-[var(--primary)] border-[var(--primary)] text-white" : "bg-[var(--primary)] border-[var(--primary)] text-white"
-                            : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary)] hover:text-[var(--primary)]"
-                                     : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                            ? isDark ? "bg-[var(--primary-color)] border-[var(--primary-color)] text-white" : "bg-[var(--primary-color)] border-[var(--primary-color)] text-white"
+                            : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
+                                     : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
                     )}
                 >
                     <Plus size={12} strokeWidth={2.5} />

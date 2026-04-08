@@ -11,6 +11,8 @@ export interface DocumentDesign {
     tableHeaderBg?: string;
     tableBorderColor?: string;
     tableStrokeWidth?: number;
+    logoSize?: number;
+    primaryColor?: string;
 }
 
 export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
@@ -26,4 +28,6 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     tableHeaderBg: '',
     tableBorderColor: '',
     tableStrokeWidth: 1,
+    logoSize: 48,
+    primaryColor: '#4dbf39',
 };

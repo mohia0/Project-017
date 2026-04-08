@@ -2,6 +2,7 @@ import React from 'react';
 import { Download, ArrowDownToLine, Printer, Check, AlertTriangle, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 export type DocumentType = 'proposal' | 'invoice' | 'document';
 export type DocumentStatus = 'Draft' | 'Pending' | 'Accepted' | 'Declined' | 'Paid';
@@ -81,12 +82,16 @@ export function ClientActionBar({
                     !inline && "pointer-events-auto",
                     isDark ? "bg-[#111]/80 border-[#333] text-[#ccc]" : "bg-white/80 border-[#eaeaea] text-[#555]"
                 )}>
-                    <button onClick={onDownloadPDF} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors" title="Download PDF">
-                        <ArrowDownToLine size={15} />
-                    </button>
-                    <button onClick={onPrint} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors" title="Print">
-                        <Printer size={15} />
-                    </button>
+                    <Tooltip content="Download PDF" side="top" delay={0.1}>
+                        <button onClick={onDownloadPDF} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <ArrowDownToLine size={15} />
+                        </button>
+                    </Tooltip>
+                    <Tooltip content="Print" side="top" delay={0.1}>
+                        <button onClick={onPrint} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <Printer size={15} />
+                        </button>
+                    </Tooltip>
                     {status === 'Paid' && (
                         <>
                             <div className={cn("w-px h-4 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />
@@ -130,12 +135,16 @@ export function ClientActionBar({
                     !inline && "pointer-events-auto",
                     isDark ? "bg-[#111]/80 border-[#333] text-[#ccc]" : "bg-white/80 border-[#eaeaea] text-[#555]"
                 )}>
-                    <button onClick={onDownloadPDF} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors" title="Download PDF">
-                        <ArrowDownToLine size={15} />
-                    </button>
-                    <button onClick={onPrint} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors" title="Print">
-                        <Printer size={15} />
-                    </button>
+                    <Tooltip content="Download PDF" side="top" delay={0.1}>
+                        <button onClick={onDownloadPDF} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <ArrowDownToLine size={15} />
+                        </button>
+                    </Tooltip>
+                    <Tooltip content="Print" side="top" delay={0.1}>
+                        <button onClick={onPrint} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <Printer size={15} />
+                        </button>
+                    </Tooltip>
                 </div>
             </div>
         );
@@ -160,12 +169,16 @@ export function ClientActionBar({
                     "flex items-center gap-0.5 px-2", 
                     isDark ? "text-[#ccc]" : "text-[#777]"
                 )}>
-                    <button onClick={onDownloadPDF} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors" title="Download PDF">
-                        <ArrowDownToLine size={18} strokeWidth={1.75} />
-                    </button>
-                    <button onClick={onPrint} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors" title="Print">
-                        <Printer size={18} strokeWidth={1.75} />
-                    </button>
+                    <Tooltip content="Download PDF" side="top" delay={0.1}>
+                        <button onClick={onDownloadPDF} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <ArrowDownToLine size={18} strokeWidth={1.75} />
+                        </button>
+                    </Tooltip>
+                    <Tooltip content="Print" side="top" delay={0.1}>
+                        <button onClick={onPrint} className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <Printer size={18} strokeWidth={1.75} />
+                        </button>
+                    </Tooltip>
                 </div>
 
                 <div className={cn("w-px h-6 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />
@@ -182,9 +195,10 @@ export function ClientActionBar({
                 <button 
                     onClick={onAccept}
                     className={cn(
-                        "px-5 py-2.5 text-[14px] font-semibold rounded-full shadow-sm transition-transform active:scale-95",
-                        isDark ? "bg-white text-black hover:bg-[#eee]" : "bg-[#111] text-white hover:bg-[#222]"
+                        "px-5 py-2.5 text-[14px] font-semibold rounded-full shadow-sm transition-all active:scale-95 text-white",
+                        isDark ? "hover:opacity-90" : "hover:shadow-lg hover:-translate-y-0.5"
                     )}
+                    style={{ backgroundColor: 'var(--primary-color)' }}
                 >
                     Accept {displayType}
                 </button>

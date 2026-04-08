@@ -82,12 +82,14 @@ export default function RightToolsMenu() {
                 </Tooltip>
 
                 {/* User avatar */}
-                <div className={cn(
-                    "w-8 h-8 rounded-[10px] flex items-center justify-center cursor-pointer transition-colors select-none",
-                    isDark ? "bg-[#2a2a2a] text-white/60 hover:bg-[#333]" : "bg-[#f0f0f0] text-[#666] hover:bg-[#e8e8e8]"
-                )}>
-                    <span className="text-[10px] font-semibold">MH</span>
-                </div>
+                <Tooltip content="Account Settings" side="left" delay={0.1}>
+                    <div className={cn(
+                        "w-8 h-8 rounded-[10px] flex items-center justify-center cursor-pointer transition-colors select-none",
+                        isDark ? "bg-[#2a2a2a] text-white/60 hover:bg-[#333]" : "bg-[#f0f0f0] text-[#666] hover:bg-[#e8e8e8]"
+                    )}>
+                        <span className="text-[10px] font-semibold">MH</span>
+                    </div>
+                </Tooltip>
             </div>
         </nav>
     );

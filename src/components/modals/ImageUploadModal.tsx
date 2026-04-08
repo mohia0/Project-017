@@ -153,10 +153,10 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                         <div 
                             onDragEnter={handleDrag}
                             className={cn(
-                                "relative flex flex-col items-center justify-center h-48 rounded-[20px] border-2 border-dashed transition-all",
+                                "relative flex flex-col items-center justify-center h-48 rounded-[20px] border-2 border-dashed transition-all duration-300",
                                 dragActive 
-                                    ? isDark ? "border-[#4dbf39] bg-[#4dbf39]/5" : "border-[#4dbf39] bg-[#4dbf39]/5"
-                                    : isDark ? "border-white/5 bg-white/[0.01]" : "border-gray-200 bg-gray-50",
+                                    ? isDark ? "border-[#4dbf39] bg-[#4dbf39]/10 shadow-[0_0_20px_rgba(77,191,57,0.1)]" : "border-[#4dbf39] bg-[#4dbf39]/5"
+                                    : isDark ? "border-white/10 hover:border-[#4dbf39]/30 bg-white/[0.01]" : "border-gray-200 hover:border-[#4dbf39]/30 bg-gray-50",
                                 uploading && "opacity-50 pointer-events-none"
                             )}
                         >
@@ -176,8 +176,10 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                             ) : (
                                 <div className="flex flex-col items-center gap-3">
                                     <div className={cn(
-                                        "w-12 h-12 rounded-2xl flex items-center justify-center",
-                                        isDark ? "bg-white/5 text-white/20" : "bg-white text-gray-300 shadow-sm"
+                                        "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300",
+                                        dragActive
+                                            ? isDark ? "bg-[#4dbf39]/20 text-[#4dbf39] scale-110 animate-pulse" : "bg-[#4dbf39]/10 text-[#4dbf39] scale-110"
+                                            : isDark ? "bg-white/5 text-white/20" : "bg-white text-gray-300 shadow-sm"
                                     )}>
                                         <ImageIcon size={24} />
                                     </div>
@@ -203,39 +205,58 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                             )}
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            <div className={cn(
-                                "rounded-xl border p-4 transition-all focus-within:border-[#4dbf39]/30",
-                                isDark ? "bg-white/[0.01] border-white/[0.05]" : "bg-gray-50 border-gray-100"
-                            )}>
-                                <label className={cn("text-[10px] font-bold uppercase tracking-wider block mb-2", isDark ? "text-white/20" : "text-gray-400")}>
-                                    Image URL
-                                </label>
-                                <div className="flex gap-2">
-                                    <input 
-                                        autoFocus
-                                        type="text" 
-                                        value={url}
-                                        onChange={(e) => setUrl(e.target.value)}
-                                        placeholder="https://example.com/image.jpg"
-                                        className={cn(
-                                            "flex-1 bg-transparent outline-none text-[13px]",
-                                            isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-gray-400"
-                                        )}
-                                    />
-                                    <button 
-                                        disabled={!url || uploading}
-                                        onClick={() => { onUpload(url); onClose(); }}
-                                        className="h-8 w-8 rounded-lg bg-[#4dbf39] flex items-center justify-center text-black hover:bg-[#59d044] transition-all disabled:opacity-30"
-                                    >
-                                        <Check size={16} strokeWidth={3} />
-                                    </button>
+                            <div className="space-y-4">
+                                <div className={cn(
+                                    "rounded-xl border p-4 transition-all focus-within:border-[#4dbf39]/30",
+                                    isDark ? "bg-white/[0.01] border-white/[0.05]" : "bg-gray-50 border-gray-100"
+                                )}>
+                                    <label className={cn("text-[10px] font-bold uppercase tracking-wider block mb-2", isDark ? "text-white/20" : "text-gray-400")}>
+                                        Image URL or Action
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            autoFocus
+                                            type="text" 
+                                            value={url}
+                                            onChange={(e) => setUrl(e.target.value)}
+                                            placeholder="https://example.com/image.jpg"
+                                            className={cn(
+                                                "flex-1 bg-transparent outline-none text-[13px]",
+                                                isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-gray-400"
+                                            )}
+                                        />
+                                        <button 
+                                            onClick={async () => {
+                                                try {
+                                                    const text = await navigator.clipboard.readText();
+                                                    if (text) setUrl(text);
+                                                } catch (err) {}
+                                            }}
+                                            className={cn(
+                                                "h-8 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all",
+                                                isDark ? "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white" : "bg-white text-gray-500 hover:bg-gray-100 shadow-sm"
+                                            )}
+                                        >
+                                            Paste
+                                        </button>
+                                        <button 
+                                            disabled={!url || uploading}
+                                            onClick={() => { onUpload(url); onClose(); }}
+                                            className="h-8 w-8 rounded-lg bg-[#4dbf39] flex items-center justify-center text-black hover:bg-[#59d044] transition-all disabled:opacity-30"
+                                        >
+                                            <Check size={16} strokeWidth={3} />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="text-center space-y-1">
+                                    <p className={cn("text-[11px] font-medium animate-pulse", isDark ? "text-[#4dbf39]/60" : "text-[#4dbf39]")}>
+                                        Click more to upload directly
+                                    </p>
+                                    <p className={cn("text-[11px]", isDark ? "text-white/10" : "text-gray-400")}>
+                                        Make sure the link is direct to an image file.
+                                    </p>
                                 </div>
                             </div>
-                            <p className={cn("text-[11px] text-center", isDark ? "text-white/10" : "text-gray-400")}>
-                                Make sure the link is direct to an image file.
-                            </p>
-                        </div>
                     )}
                     
                     {error && (
