@@ -11,9 +11,9 @@ const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
     secondary_color: '',
     font_family: 'Inter',
     border_radius: 12,
-    logo_light_url: '',
-    logo_dark_url: '',
-    favicon_url: ''
+    logo_light_url: '/logo.svg',
+    logo_dark_url: '/logo.svg',
+    favicon_url: '/favicon.svg'
 };
 
 export default function BrandingSettingsPage() {

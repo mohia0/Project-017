@@ -8,6 +8,9 @@ import { BrandingProvider } from '@/components/settings/BrandingProvider';
 export const metadata: Metadata = {
   title: 'Minimal CRM',
   description: 'Scalable CRM operations system',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

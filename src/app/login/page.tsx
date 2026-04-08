@@ -96,10 +96,7 @@ export default function LoginPage() {
                         "w-14 h-14 rounded-[14px] flex items-center justify-center mb-10 shadow-sm",
                         isDark ? "bg-[#1f1f1f] border border-white/10 text-white" : "bg-white border border-black/10 text-black shadow-xl shadow-black/5"
                     )}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect width="18" height="18" x="3" y="3" rx="4" />
-                            <circle cx="12" cy="12" r="3" />
-                        </svg>
+                        <img src="/logo.svg" alt="CRM 17" className="w-10 h-10 object-contain" />
                     </div>
 
                     <div className="w-full flex flex-col mb-8">
