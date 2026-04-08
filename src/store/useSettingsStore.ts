@@ -44,6 +44,7 @@ export interface WorkspaceDomain {
   status: 'pending' | 'verifying' | 'active' | 'error';
   is_primary: boolean;
   ssl_status: 'pending' | 'provisioning' | 'active' | 'error';
+  error_message: string | null;
 }
 
 export interface WorkspaceEmailConfig {

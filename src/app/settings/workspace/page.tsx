@@ -6,7 +6,7 @@ import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsField, SettingsInput } from '@/components/settings/SettingsField';
 import { useWorkspaceStore, Workspace } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
-import { ChevronDown, ChevronRight, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Trash2, X, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
@@ -289,40 +289,37 @@ export default function WorkspaceSettingsPage() {
                                 {/* DNS Record Card (Only for pending) */}
                                 {domain.status !== 'active' && (
                                     <div className={cn(
-                                        "m-2 mt-0 p-4 rounded-xl border flex flex-col gap-4",
-                                        isDark ? "bg-black/40 border-white/5" : "bg-black/[0.02] border-black/5"
+                                        "m-2 mt-0 p-4 rounded-xl flex flex-col gap-3",
+                                        isDark ? "bg-[#111] border border-white/5" : "bg-[#f5f5f5] border border-black/5"
                                     )}>
-                                        <div className="text-[10px] uppercase font-bold tracking-widest opacity-40">
-                                            Add this CNAME record to your DNS provider:
+                                        <div className="text-[12px] opacity-50 font-medium">
+                                            Add this CNAME record to your DNS provider to verify ownership:
                                         </div>
                                         
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <div className="flex flex-col gap-1.5">
-                                                <span className="text-[9px] font-bold opacity-30 uppercase tracking-tighter">Type</span>
-                                                <div className="flex items-center justify-between group">
-                                                    <span className="text-xs font-mono font-bold">CNAME</span>
-                                                    <button onClick={() => navigator.clipboard.writeText('CNAME')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded">
-                                                        <Plus className="rotate-45" size={12} /> {/* Using custom icon since Copy isn't imported yet, or I'll just use text */}
+                                        <div className={cn(
+                                            "flex flex-wrap items-center justify-between gap-4 rounded-lg p-3 px-4",
+                                            isDark ? "bg-[#1a1a1c]" : "bg-[#e4e4e4]/50"
+                                        )}>
+                                            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-[13px]">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="opacity-50">Type:</span>
+                                                    <span className="font-mono font-semibold">CNAME</span>
+                                                    <button onClick={() => navigator.clipboard.writeText('CNAME')} className="opacity-0 group-hover/cname:opacity-100 hover:text-white transition-opacity ml-1 group/cname flex items-center justify-center relative">
+                                                        <span className="opacity-50 group-hover/cname:opacity-100"><Copy size={12}/></span>
                                                     </button>
                                                 </div>
-                                            </div>
-
-                                            <div className="flex flex-col gap-1.5">
-                                                <span className="text-[9px] font-bold opacity-30 uppercase tracking-tighter">Name</span>
-                                                <div className="flex items-center justify-between group">
-                                                    <span className="text-xs font-mono font-medium">{domain.domain.split('.')[0]}</span>
-                                                    <button onClick={() => navigator.clipboard.writeText(domain.domain.split('.')[0])} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded text-xs font-bold">
-                                                        copy
+                                                <div className="flex items-center gap-2 group/name">
+                                                    <span className="opacity-50">Name:</span>
+                                                    <span className="font-mono font-semibold">{domain.domain.split('.')[0]}</span>
+                                                    <button onClick={() => navigator.clipboard.writeText(domain.domain.split('.')[0])} className="opacity-0 group-hover/name:opacity-100 hover:text-white transition-opacity ml-1 flex items-center justify-center">
+                                                        <span className="opacity-50 hover:opacity-100"><Copy size={12}/></span>
                                                     </button>
                                                 </div>
-                                            </div>
-
-                                            <div className="flex flex-col gap-1.5">
-                                                <span className="text-[9px] font-bold opacity-30 uppercase tracking-tighter">Target</span>
-                                                <div className="flex items-center justify-between group">
-                                                    <span className="text-xs font-mono font-medium truncate">proxy.minimal-crm.app</span>
-                                                    <button onClick={() => navigator.clipboard.writeText('proxy.minimal-crm.app')} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white/10 rounded text-xs font-bold">
-                                                        copy
+                                                <div className="flex items-center gap-2 group/target">
+                                                    <span className="opacity-50">Target:</span>
+                                                    <span className="font-mono font-semibold">proxy.minimal-crm.app</span>
+                                                    <button onClick={() => navigator.clipboard.writeText('proxy.minimal-crm.app')} className="opacity-0 group-hover/target:opacity-100 hover:text-white transition-opacity ml-1 flex items-center justify-center">
+                                                        <span className="opacity-50 hover:opacity-100"><Copy size={12}/></span>
                                                     </button>
                                                 </div>
                                             </div>
