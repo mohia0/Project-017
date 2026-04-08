@@ -120,7 +120,7 @@ export default function WorkspaceSwitcher() {
                         )}
                         style={{ 
                             top: 10, 
-                            left: isLeftMenuExpanded ? 172 : 56, 
+                            left: isLeftMenuExpanded ? 180 : 64, 
                             width: '240px'
                         }}
                         onClick={e => e.stopPropagation()}
