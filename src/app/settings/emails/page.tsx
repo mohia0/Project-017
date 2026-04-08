@@ -5,13 +5,14 @@ import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsField, SettingsInput } from '@/components/settings/SettingsField';
 import { useSettingsStore, WorkspaceEmailConfig } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
-import { Mail, Send, Activity, ShieldCheck, FileText, ChevronDown, ChevronRight, RotateCcw, CheckCircle2, Lightbulb, UserPlus, FileSignature, Receipt } from 'lucide-react';
+import { Mail, Send, Activity, ShieldCheck, FileText, ChevronDown, ChevronRight, RotateCcw, CheckCircle2, Lightbulb, UserPlus, FileSignature, Receipt, Globe } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 export default function EmailsSettingsPage() {
     const { activeWorkspaceId } = useUIStore();
     const { emailConfig, fetchEmailConfig, emailTemplates, fetchEmailTemplates, updateEmailTemplate } = useSettingsStore();
+    const { domains, fetchDomains } = useSettingsStore();
 
     const [activeTab, setActiveTab] = useState<'smtp' | 'templates'>('smtp');
     const [openTemplate, setOpenTemplate] = useState<string | null>(null);
@@ -27,8 +28,9 @@ export default function EmailsSettingsPage() {
         if (activeWorkspaceId) {
             fetchEmailConfig(activeWorkspaceId);
             fetchEmailTemplates(activeWorkspaceId);
+            fetchDomains(activeWorkspaceId);
         }
-    }, [activeWorkspaceId, fetchEmailConfig, fetchEmailTemplates]);
+    }, [activeWorkspaceId, fetchEmailConfig, fetchEmailTemplates, fetchDomains]);
 
     useEffect(() => {
         if (emailTemplates.length > 0) {
@@ -79,6 +81,7 @@ export default function EmailsSettingsPage() {
     };
 
     const handleSendTest = async () => {
+        if (!activeWorkspaceId) return;
         setIsTesting(true);
         try {
             await supabase.functions.invoke('test-send-email', {
@@ -90,6 +93,14 @@ export default function EmailsSettingsPage() {
             setIsTesting(false);
         }
     };
+
+    const hasUnsavedSMTP = 
+        formData.smtp_host !== (emailConfig?.smtp_host || '') ||
+        formData.smtp_port !== (emailConfig?.smtp_port || 587) ||
+        formData.smtp_user !== (emailConfig?.smtp_user || '') ||
+        formData.from_name !== (emailConfig?.from_name || '') ||
+        formData.from_address !== (emailConfig?.from_address || '') ||
+        smtpPass !== '';
 
     if (!activeWorkspaceId) return null;
 
@@ -122,93 +133,156 @@ export default function EmailsSettingsPage() {
             </div>
 
             {activeTab === 'smtp' && (
-                <div className="flex flex-col gap-6">
-
+                <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                     <SettingsCard
                         title="Send From Your Domain"
-                        description="Configure SMTP to dispatch client proposals and invoices via your own email address."
+                        description="Configure SMTP to dispatch client proposals and invoices via your own email address for better brand recognition and deliverability."
+                        onSave={handleSaveSMTP}
+                        isSaving={isSaving}
+                        unsavedChanges={hasUnsavedSMTP}
                     >
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex gap-3 text-sm text-blue-800 dark:text-blue-300 mb-2">
-                            <ShieldCheck size={20} className="shrink-0 mt-0.5" />
-                            <p>
-                                <strong>Secure Storage:</strong> We never store your SMTP password in plaintext. 
-                                Passwords are encrypted at rest using Supabase Vault and only decrypted inside our secure Edge Functions during dispatch.
-                            </p>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <SettingsField label="SMTP Host">
-                                <SettingsInput 
-                                    value={formData.smtp_host || ''} 
-                                    onChange={e => setFormData({ ...formData, smtp_host: e.target.value })}
-                                    placeholder="smtp.gmail.com"
-                                />
-                            </SettingsField>
-                            <SettingsField label="SMTP Port">
-                                <SettingsInput 
-                                    type="number"
-                                    value={formData.smtp_port || 587} 
-                                    onChange={e => setFormData({ ...formData, smtp_port: parseInt(e.target.value) })}
-                                />
-                            </SettingsField>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <SettingsField label="SMTP Username">
-                                <SettingsInput 
-                                    value={formData.smtp_user || ''} 
-                                    onChange={e => setFormData({ ...formData, smtp_user: e.target.value })}
-                                />
-                            </SettingsField>
-                            <SettingsField label="SMTP Password" description={emailConfig?.smtp_host ? "Leave blank to keep existing password." : ""}>
-                                <SettingsInput 
-                                    type="password"
-                                    value={smtpPass} 
-                                    onChange={e => setSmtpPass(e.target.value)}
-                                    placeholder={emailConfig?.smtp_host ? "••••••••" : "Password or App Password"}
-                                />
-                            </SettingsField>
-                        </div>
-
-                        <div className="border-t border-black/10 dark:border-white/10 pt-4 mt-2">
-                            <h3 className="font-semibold text-sm mb-4">Sender Details</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <SettingsField label="From Name">
-                                    <SettingsInput 
-                                        value={formData.from_name || ''} 
-                                        onChange={e => setFormData({ ...formData, from_name: e.target.value })}
-                                        placeholder="Acme Studio"
-                                    />
-                                </SettingsField>
-                                <SettingsField label="From Address">
-                                    <SettingsInput 
-                                        value={formData.from_address || ''} 
-                                        onChange={e => setFormData({ ...formData, from_address: e.target.value })}
-                                        placeholder="hello@acme.com"
-                                    />
-                                </SettingsField>
+                        <div className="bg-blue-500/5 dark:bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 flex gap-3 text-[13px] text-blue-700 dark:text-blue-300">
+                            <ShieldCheck size={20} className="shrink-0 mt-0.5 opacity-60" />
+                            <div className="flex flex-col gap-1">
+                                <p><strong>Secure Storage:</strong> We never store your SMTP password in plaintext.</p>
+                                <p className="opacity-70">Passwords are encrypted using Supabase Vault and only decrypted inside our secure Edge Functions during dispatch.</p>
                             </div>
                         </div>
 
-                        <div className="flex gap-3 justify-end mt-4 pt-4 border-t border-black/10 dark:border-white/10">
-                            <button
-                                type="button"
-                                onClick={handleSendTest}
-                                disabled={isTesting || !emailConfig?.smtp_host}
-                                className="px-4 py-2 rounded-lg text-sm font-semibold bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition-colors flex items-center gap-2 disabled:opacity-50"
-                            >
-                                {isTesting ? <Activity size={16} className="animate-spin" /> : <Send size={16} />}
-                                Send Test
-                            </button>
-                            <button
-                                onClick={handleSaveSMTP}
-                                disabled={isSaving}
-                                className="px-4 py-2 rounded-lg text-sm font-bold bg-black text-white dark:bg-white dark:text-black transition-transform active:scale-95 disabled:opacity-50"
-                            >
-                                {isSaving ? 'Saving...' : 'Save Configuration'}
-                            </button>
+                        <div className="space-y-6">
+                            {/* SMTP Config Section */}
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-6 h-6 rounded-md bg-black/5 dark:bg-white/10 flex items-center justify-center">
+                                        <Activity size={12} className="opacity-60" />
+                                    </div>
+                                    <h3 className="text-sm font-bold uppercase tracking-wider opacity-60">SMTP Configuration</h3>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <SettingsField label="SMTP Host">
+                                        <SettingsInput 
+                                            value={formData.smtp_host || ''} 
+                                            onChange={e => setFormData({ ...formData, smtp_host: e.target.value })}
+                                            placeholder="smtp.gmail.com"
+                                        />
+                                    </SettingsField>
+                                    <SettingsField label="SMTP Port">
+                                        <SettingsInput 
+                                            type="number"
+                                            value={formData.smtp_port || 587} 
+                                            onChange={e => setFormData({ ...formData, smtp_port: parseInt(e.target.value) })}
+                                        />
+                                    </SettingsField>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <SettingsField label="SMTP Username">
+                                        <SettingsInput 
+                                            value={formData.smtp_user || ''} 
+                                            onChange={e => setFormData({ ...formData, smtp_user: e.target.value })}
+                                            placeholder="you@domain.com"
+                                        />
+                                    </SettingsField>
+                                    <SettingsField label="SMTP Password">
+                                        <SettingsInput 
+                                            type="password"
+                                            value={smtpPass} 
+                                            onChange={e => setSmtpPass(e.target.value)}
+                                            placeholder={emailConfig?.smtp_host ? "••••••••" : "Password or App Password"}
+                                        />
+                                    </SettingsField>
+                                </div>
+                            </div>
+
+                            {/* Sender Profile Section */}
+                            <div className="flex flex-col gap-4 pt-6 border-t border-black/5 dark:border-white/5">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="w-6 h-6 rounded-md bg-black/5 dark:bg-white/10 flex items-center justify-center">
+                                        <Mail size={12} className="opacity-60" />
+                                    </div>
+                                    <h3 className="text-sm font-bold uppercase tracking-wider opacity-60">Sender Profile</h3>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <SettingsField label="From Name" description="The name clients see in their inbox.">
+                                        <SettingsInput 
+                                            value={formData.from_name || ''} 
+                                            onChange={e => setFormData({ ...formData, from_name: e.target.value })}
+                                            placeholder="Acme Studio"
+                                        />
+                                    </SettingsField>
+                                    <SettingsField label="From Address" description="Should match your SMTP domain.">
+                                        <div className="flex flex-col gap-2">
+                                            <SettingsInput 
+                                                value={formData.from_address || ''} 
+                                                onChange={e => setFormData({ ...formData, from_address: e.target.value })}
+                                                placeholder="hello@acme.com"
+                                            />
+                                            {domains.filter(d => d.status === 'active').map(d => (
+                                                <button 
+                                                    key={d.id}
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, from_address: `hello@${d.domain}` })}
+                                                    className="flex items-center gap-2 text-[11px] font-medium text-black/40 dark:text-white/40 hover:text-black dark:hover:text-white transition-colors"
+                                                >
+                                                    <Globe size={10} />
+                                                    Use verified domain: {d.domain}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </SettingsField>
+                                </div>
+                            </div>
+
+                            {/* Test & Status Footer */}
+                            <div className="flex items-center justify-between pt-2">
+                                <div className="flex items-center gap-2">
+                                    <div className={cn(
+                                        "w-2 h-2 rounded-full",
+                                        emailConfig?.smtp_host ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-black/20 dark:bg-white/20"
+                                    )} />
+                                    <span className="text-xs font-medium opacity-50">
+                                        {emailConfig?.smtp_host ? `Active: ${emailConfig.smtp_host}` : 'SMTP Not Configured'}
+                                    </span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleSendTest}
+                                    disabled={isTesting || !emailConfig?.smtp_host}
+                                    className="px-4 py-2 rounded-xl text-xs font-bold bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 transition-all flex items-center gap-2 disabled:opacity-50 active:scale-95"
+                                >
+                                    {isTesting ? <Activity size={14} className="animate-spin" /> : <Send size={14} />}
+                                    Send Connection Test
+                                </button>
+                            </div>
                         </div>
                     </SettingsCard>
+
+                    {/* Deliverability Card */}
+                    <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 flex flex-col gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                <ShieldCheck size={20} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-[15px]">Improve Deliverability</h3>
+                                <p className="text-sm opacity-60">Best practices for sending from your own email.</p>
+                            </div>
+                        </div>
+                        <ul className="space-y-2 pl-1">
+                            {[
+                                "Ensure your SPF and DKIM records are correctly set up at your DNS provider.",
+                                "Keep your 'From Name' consistent across all communications.",
+                                "Avoid using generic free accounts (e.g. gmail.com) as your 'From Address' if using custom SMTP."
+                            ].map((tip, i) => (
+                                <li key={i} className="flex gap-3 text-[13px] opacity-80 leading-relaxed">
+                                    <CheckCircle2 size={14} className="shrink-0 mt-1 text-emerald-500" />
+                                    {tip}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
             )}
             {activeTab === 'templates' && (

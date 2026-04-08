@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase'; // user might only have normal client, we'll use normal client first if service is absent
+import { supabaseService } from '@/lib/supabase-service';
 
 export async function POST(req: Request) {
     try {
@@ -48,9 +48,21 @@ export async function POST(req: Request) {
             errorMessage = 'DNS not propagated yet, or configured incorrectly. Point CNAME to cname.vercel-dns.com';
         }
 
-        // 3. Try to update status in DB
-        // We will try using standard supabase client if service client doesn't exist
+        // 3. Update status in DB
         const updatedStatus = verified ? 'active' : 'pending';
+        
+        const { error: dbError } = await supabaseService
+            .from('workspace_domains')
+            .update({ 
+                status: updatedStatus,
+                error_message: errorMessage,
+                last_checked_at: new Date().toISOString()
+            })
+            .eq('id', domainId);
+
+        if (dbError) {
+            console.error('Database update error:', dbError);
+        }
         
         return NextResponse.json({ 
             success: true, 
@@ -58,6 +70,7 @@ export async function POST(req: Request) {
             status: updatedStatus, 
             error: errorMessage 
         });
+
 
     } catch (e: any) {
         return NextResponse.json({ error: e.message || 'Unknown network error' }, { status: 500 });
