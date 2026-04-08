@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { useUIStore } from './useUIStore';
 import { DocumentDesign } from '@/types/design';
 
 export interface Template {
@@ -30,8 +31,19 @@ export const useTemplateStore = create<TemplateState>((set) => ({
     error: null,
 
     fetchTemplates: async () => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) {
+            set({ templates: [], isLoading: false });
+            return;
+        }
+
         set({ isLoading: true, error: null });
-        const { data, error } = await supabase.from('templates').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase
+            .from('templates')
+            .select('*')
+            .eq('workspace_id', workspaceId)
+            .order('created_at', { ascending: false });
+            
         if (error) {
             set({ error: error.message, isLoading: false });
         } else {
@@ -40,14 +52,21 @@ export const useTemplateStore = create<TemplateState>((set) => ({
     },
 
     addTemplate: async (template) => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) return false;
+
         set({ isLoading: true });
         try {
             // Auto-disable previous defaults for this entity if new is set to default
             if (template.is_default) {
-                await supabase.from('templates').update({ is_default: false }).eq('entity_type', template.entity_type);
+                await supabase.from('templates')
+                    .update({ is_default: false })
+                    .eq('entity_type', template.entity_type)
+                    .eq('workspace_id', workspaceId);
             }
 
-            const { data, error } = await supabase.from('templates').insert([template]).select().single();
+            const payload = { ...template, workspace_id: workspaceId };
+            const { data, error } = await supabase.from('templates').insert([payload]).select().single();
             if (error) throw error;
             
             set((state) => ({ 
@@ -101,8 +120,15 @@ export const useTemplateStore = create<TemplateState>((set) => ({
     },
 
     setDefaultTemplate: async (id: string, entity_type: 'proposal' | 'invoice') => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) return;
+
         // Reset all templates for this entity type to false
-        await supabase.from('templates').update({ is_default: false }).eq('entity_type', entity_type);
+        await supabase.from('templates')
+            .update({ is_default: false })
+            .eq('entity_type', entity_type)
+            .eq('workspace_id', workspaceId);
+            
         // Set the specific one to true
         const { error } = await supabase.from('templates').update({ is_default: true }).eq('id', id);
         

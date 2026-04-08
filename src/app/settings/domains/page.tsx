@@ -113,6 +113,7 @@ export default function DomainsSettingsPage() {
     const [isAdding, setIsAdding] = useState(false);
     const [domainToDelete, setDomainToDelete] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
     useEffect(() => {
         if (activeWorkspaceId) {
@@ -194,6 +195,19 @@ export default function DomainsSettingsPage() {
         fetchDomains(activeWorkspaceId);
     };
 
+    const handleVerifyDomain = async (domainId: string, domainName: string) => {
+        setVerifyingId(domainId);
+        try {
+            await supabase.functions.invoke('verify-domain', {
+                body: { domainId, domain: domainName }
+            });
+            if (activeWorkspaceId) fetchDomains(activeWorkspaceId);
+        } catch (err) {
+            console.error('Verify failed:', err);
+        }
+        setVerifyingId(null);
+    };
+
     if (!activeWorkspaceId) return <div>Loading...</div>;
 
     return (
@@ -257,6 +271,20 @@ export default function DomainsSettingsPage() {
                                     </div>
                                     
                                     <div className="flex items-center gap-2 shrink-0">
+                                        {domain.status !== 'active' && (
+                                            <button
+                                                onClick={() => handleVerifyDomain(domain.id, domain.domain)}
+                                                disabled={verifyingId === domain.id}
+                                                className={cn(
+                                                    "px-3 h-8 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors",
+                                                    isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10",
+                                                    verifyingId === domain.id && "opacity-60 cursor-not-allowed"
+                                                )}
+                                            >
+                                                <RefreshCw size={12} className={verifyingId === domain.id ? "animate-spin" : ""} />
+                                                {verifyingId === domain.id ? 'Checking...' : 'Verify DNS'}
+                                            </button>
+                                        )}
                                         {domain.status === 'active' && !domain.is_primary && (
                                             <button
                                                 onClick={() => handleSetPrimary(domain.id)}

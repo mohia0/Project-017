@@ -93,7 +93,20 @@ export default function LoginPage() {
                     
                     {/* Logo */}
                     <div className="mb-10 flex items-start">
-                        <img src="/logo.svg" alt="CRM 17" className="h-12 w-auto object-contain" />
+                        <div className="flex items-center gap-2">
+                            <div className={cn(
+                                "w-9 h-9 rounded-xl flex items-center justify-center font-black text-lg tracking-tighter",
+                                isDark ? "bg-white text-black" : "bg-black text-white"
+                            )}>
+                                17
+                            </div>
+                            <span className={cn(
+                                "text-2xl font-black tracking-tighter",
+                                isDark ? "text-white" : "text-black"
+                            )}>
+                                CRM
+                            </span>
+                        </div>
                     </div>
 
                     <div className="w-full flex flex-col mb-8">

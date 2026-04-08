@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { useUIStore } from './useUIStore';
 
 export interface Client {
     id: string;
@@ -29,8 +30,19 @@ export const useClientStore = create<ClientState>((set) => ({
     error: null,
 
     fetchClients: async () => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) {
+            set({ clients: [], isLoading: false });
+            return;
+        }
+
         set({ isLoading: true, error: null });
-        const { data, error } = await supabase.from('clients').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('workspace_id', workspaceId)
+            .order('created_at', { ascending: false });
+            
         if (error) {
             set({ error: error.message, isLoading: false });
         } else {
@@ -39,7 +51,11 @@ export const useClientStore = create<ClientState>((set) => ({
     },
 
     addClient: async (client) => {
-        const { data, error } = await supabase.from('clients').insert(client).select().single();
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) return;
+
+        const payload = { ...client, workspace_id: workspaceId };
+        const { data, error } = await supabase.from('clients').insert(payload).select().single();
         if (error) {
             set({ error: error.message });
         } else if (data) {

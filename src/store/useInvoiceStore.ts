@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { useUIStore } from './useUIStore';
 
 export type InvoiceStatus = 'Draft' | 'Pending' | 'Paid' | 'Overdue' | 'Cancelled';
 
@@ -34,8 +35,19 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
     error: null,
 
     fetchInvoices: async () => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) {
+            set({ invoices: [], isLoading: false });
+            return;
+        }
+
         set({ isLoading: true, error: null });
-        const { data, error } = await supabase.from('invoices').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase
+            .from('invoices')
+            .select('*')
+            .eq('workspace_id', workspaceId)
+            .order('created_at', { ascending: false });
+            
         if (error) {
             set({ error: error.message, isLoading: false });
         } else {
@@ -44,12 +56,16 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
     },
 
     addInvoice: async (invoice) => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) return null;
+
         try {
             const payload = {
                 ...invoice,
                 client_id: invoice.client_id || null,
                 due_date: invoice.due_date || null,
                 issue_date: invoice.issue_date || null,
+                workspace_id: workspaceId,
             };
             const { data, error } = await supabase.from('invoices').insert(payload).select().single();
             if (error) {

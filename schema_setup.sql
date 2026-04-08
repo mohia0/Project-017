@@ -17,6 +17,8 @@ DO $$ BEGIN
     CREATE POLICY "Allow ALL on clients" ON public.clients FOR ALL USING (true) WITH CHECK (true);
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+
 
 -- 2. Proposals Table
 CREATE TABLE IF NOT EXISTS public.proposals (
@@ -45,6 +47,8 @@ DO $$ BEGIN
     CREATE POLICY "Allow ALL on proposals" ON public.proposals FOR ALL USING (true) WITH CHECK (true);
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
+ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+
 
 -- 3. Invoices Table 
 CREATE TABLE IF NOT EXISTS public.invoices (
@@ -72,6 +76,8 @@ ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
     CREATE POLICY "Allow ALL on invoices" ON public.invoices FOR ALL USING (true) WITH CHECK (true);
 EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
 
 
 -- 4. System Config Table
