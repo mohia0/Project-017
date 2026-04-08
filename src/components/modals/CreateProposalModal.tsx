@@ -7,6 +7,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useRouter } from 'next/navigation';
+import DatePicker from '@/components/ui/DatePicker';
 
 interface Props {
     open: boolean;
@@ -30,7 +31,7 @@ export function CreateProposalModal({ open, onClose }: Props) {
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [showClientDrop, setShowClientDrop] = useState(false);
     const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split('T')[0]);
-    const [expiryDate, setExpiryDate] = useState('');
+    const [expiryDate, setExpiryDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
     const clientRef = useRef<HTMLDivElement>(null);
 
@@ -185,20 +186,20 @@ export function CreateProposalModal({ open, onClose }: Props) {
                     <div className="grid grid-cols-2 gap-2.5">
                         <div className={cn(field, "flex flex-col gap-0.5")}>
                             <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Issue date</span>
-                            <input
-                                type="date"
+                            <DatePicker
                                 value={issueDate}
-                                onChange={e => setIssueDate(e.target.value)}
-                                className="bg-transparent outline-none text-[13px] w-full"
+                                onChange={setIssueDate}
+                                isDark={isDark}
                             />
                         </div>
                         <div className={cn(field, "flex flex-col gap-0.5")}>
                             <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Expiration date</span>
-                            <input
-                                type="date"
+                            <DatePicker
                                 value={expiryDate}
-                                onChange={e => setExpiryDate(e.target.value)}
-                                className="bg-transparent outline-none text-[13px] w-full"
+                                onChange={setExpiryDate}
+                                isDark={isDark}
+                                placeholder="Add expiration"
+                                align="right"
                             />
                         </div>
                     </div>

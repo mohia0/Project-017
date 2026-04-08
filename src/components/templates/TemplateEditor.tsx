@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     ArrowLeft, Save, LayoutTemplate, 
@@ -46,6 +46,30 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
         }
     }, [id, templates, isLoaded]);
 
+    const design = template?.design || DEFAULT_DOCUMENT_DESIGN;
+
+    const designVars = useMemo(() => ({
+        // Block layout
+        '--block-margin-top': `${design.marginTop ?? 24}px`,
+        '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
+        '--block-border-radius': `${design.borderRadius ?? 16}px`,
+        // Table
+        '--table-border-radius': `${design.tableBorderRadius ?? 8}px`,
+        '--table-header-bg': design.tableHeaderBg || (isDark ? '#1a1a1a' : '#fcfcfc'),
+        '--table-border-color': design.tableBorderColor || (isDark ? '#2a2a2a' : '#ebebeb'),
+        '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
+        '--table-font-size': `${design.tableFontSize ?? 12}px`,
+        '--table-cell-padding': `${design.tableCellPadding ?? 12}px`,
+        // Colors
+        '--primary-color': design.primaryColor || '#4dbf39',
+        '--primary': design.primaryColor || '#4dbf39',
+        // Signature
+        '--sign-bar-color': design.signBarColor || (isDark ? '#ffffff' : '#000000'),
+        '--sign-bar-thick': `${design.signBarThickness ?? 1}px`,
+        // Font
+        fontFamily: design.fontFamily || 'Inter',
+    } as React.CSSProperties), [design, isDark]);
+
     const handleSave = async () => {
         if (!template) return;
         setIsSaving(true);
@@ -72,8 +96,6 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
             </div>
         );
     }
-
-    const design = template.design || DEFAULT_DOCUMENT_DESIGN;
 
     return (
         <div className={cn(
@@ -174,8 +196,21 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                     )}>
                          <DesignSettingsPanel 
                             isDark={isDark}
-                            meta={{ design: template.design } as any}
-                            updateMeta={(patch) => setTemplate({ ...template, design: { ...template.design, ...patch.design } })}
+                            meta={{ 
+                                design: template.design,
+                                logoUrl: (template as any).logo_url || '',
+                                documentTitle: template.name
+                            } as any}
+                            updateMeta={(patch) => {
+                                setTemplate(prev => {
+                                    if (!prev) return prev;
+                                    const next = { ...prev };
+                                    if (patch.design) next.design = { ...(prev.design || {}), ...patch.design };
+                                    if (patch.logoUrl !== undefined) (next as any).logo_url = patch.logoUrl;
+                                    if (patch.documentTitle !== undefined) next.name = patch.documentTitle;
+                                    return next;
+                                });
+                            }}
                             onUploadLogo={() => alert('Logo upload in templates coming soon')}
                             onUploadBackground={() => alert('Background upload in templates coming soon')}
                         />
@@ -183,86 +218,128 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                 )}
 
                 {/* Main: Canvas */}
-                <div className="flex-1 overflow-y-auto bg-black/10 flex flex-col items-center py-12 px-6">
+                <div 
+                    className="flex-1 overflow-y-auto flex flex-col items-center py-12 px-6 transition-all duration-300"
+                    style={{ 
+                        backgroundColor: (template.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
+                        backgroundImage: template.design?.backgroundImage ? `url(${template.design.backgroundImage})` : 'none',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundAttachment: 'fixed',
+                    }}
+                >
                     {/* Mobile/Desktop Toggle */}
                     {isPreview && (
-                        <div className="mb-8 flex bg-black/20 p-1 rounded-2xl border border-white/5 shadow-2xl shrink-0">
-                            <button onClick={() => setPreviewMode('desktop')} className={cn("p-3 rounded-xl transition-all", previewMode === 'desktop' ? "bg-white/10 text-white shadow-inner" : "text-white/40 hover:text-white/60")}>
-                                <Monitor size={20} />
+                        <div className={cn(
+                            "mb-8 flex h-[32px] p-0.5 gap-0.5 rounded-[8px] shrink-0 transition-all",
+                            isDark ? "bg-[#2a2a2a]" : "bg-[#f0f0f0]"
+                        )}>
+                            <button 
+                                onClick={() => setPreviewMode('desktop')} 
+                                className={cn(
+                                    "px-3 h-full rounded-[6px] transition-all flex items-center justify-center", 
+                                    previewMode === 'desktop' 
+                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black shadow-sm"
+                                        : isDark ? "text-white/20 hover:text-white/40" : "text-black/20 hover:text-black/40"
+                                )}
+                            >
+                                <Monitor size={14} strokeWidth={2.5} />
                             </button>
-                            <button onClick={() => setPreviewMode('mobile')} className={cn("p-3 rounded-xl transition-all", previewMode === 'mobile' ? "bg-white/10 text-white shadow-inner" : "text-white/40 hover:text-white/60")}>
-                                <Smartphone size={20} />
+                            <button 
+                                onClick={() => setPreviewMode('mobile')} 
+                                className={cn(
+                                    "px-3 h-full rounded-[6px] transition-all flex items-center justify-center", 
+                                    previewMode === 'mobile' 
+                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black shadow-sm"
+                                        : isDark ? "text-white/20 hover:text-white/40" : "text-black/20 hover:text-black/40"
+                                )}
+                            >
+                                <Smartphone size={14} strokeWidth={2.5} />
                             </button>
                         </div>
                     )}
 
-                    <div className={cn(
-                        "transition-all duration-500 ease-in-out",
-                        isPreview && previewMode === 'mobile' ? "w-[375px] h-[812px] overflow-y-auto border-[8px] border-[#1a1a1a] rounded-[3rem] shadow-2xl bg-white" : "w-full max-w-[850px]"
-                    )}>
+                    <div 
+                        className={cn(
+                            "transition-all duration-500 ease-in-out",
+                            isPreview && previewMode === 'mobile' ? "w-[375px] h-[812px] overflow-y-auto border-[8px] border-[#1a1a1a] rounded-[3rem] shadow-2xl bg-white" : "w-full max-w-[850px]"
+                        )}
+                        style={designVars}
+                    >
                         {template.entity_type === 'proposal' ? (
                             <ProposalDocument 
                                 meta={{ design: template.design } as any}
                                 blocks={template.blocks}
                                 totals={{ subtotal: 0, discAmt: 0, taxAmt: 0, total: 0 }}
-                                isPreview={true} 
+                                isPreview={isPreview} 
                                 isDark={isDark}
                                 isMobile={isPreview && previewMode === 'mobile'}
                                 updateBlock={(blockId: string, patch: any) => {
-                                    setTemplate({
-                                        ...template,
-                                        blocks: template.blocks.map(b => b.id === blockId ? { ...b, ...patch } : b)
-                                    });
+                                    setTemplate(prev => prev ? {
+                                        ...prev,
+                                        blocks: prev.blocks.map(b => b.id === blockId ? { ...b, ...patch } : b)
+                                    } : prev);
                                 }}
                                 removeBlock={(blockId: string) => {
-                                    setTemplate({
-                                        ...template,
-                                        blocks: template.blocks.filter(b => b.id !== blockId)
-                                    });
+                                    setTemplate(prev => prev ? {
+                                        ...prev,
+                                        blocks: prev.blocks.filter(b => b.id !== blockId)
+                                    } : prev);
                                 }}
                                 addBlock={(type: any, afterId?: string) => {
-                                    const newBlock = { id: `tb-${Math.random()}`, type };
-                                    const idx = afterId ? template.blocks.findIndex(b => b.id === afterId) : -1;
-                                    const newBlocks = [...template.blocks];
-                                    newBlocks.splice(idx + 1, 0, newBlock);
-                                    setTemplate({ ...template, blocks: newBlocks });
+                                    setTemplate(prev => {
+                                        if (!prev) return prev;
+                                        const newBlock = { id: `tb-${Math.random()}`, type };
+                                        const idx = afterId ? prev.blocks.findIndex((b: any) => b.id === afterId) : -1;
+                                        const newBlocks = [...prev.blocks];
+                                        newBlocks.splice(idx + 1, 0, newBlock);
+                                        return { ...prev, blocks: newBlocks };
+                                    });
                                 }}
                                 openInsertMenu={null}
                                 setOpenInsertMenu={() => {}}
-                                setBlocks={(blocks: any) => setTemplate({ ...template, blocks })}
+                                setBlocks={(blocks: any) => setTemplate(prev => prev ? { ...prev, blocks } : prev)}
                                 updateMeta={() => {}}
                                 currency="USD"
+                                setImageUploadOpen={() => {}}
+                                setUploadTarget={() => {}}
+                                isSaveTemplateModalOpen={false}
+                                setIsSaveTemplateModalOpen={() => {}}
+                                addTemplate={() => Promise.resolve(null)}
                             />
                         ) : (
                             <InvoiceDocument 
                                 meta={{ design: template.design } as any}
                                 blocks={template.blocks}
                                 totals={{ subtotal: 0, discAmt: 0, taxAmt: 0, total: 0 }}
-                                isPreview={true}
+                                isPreview={isPreview}
                                 isDark={isDark}
                                 isMobile={isPreview && previewMode === 'mobile'}
                                 updateBlock={(blockId: string, patch: any) => {
-                                    setTemplate({
-                                        ...template,
-                                        blocks: template.blocks.map(b => b.id === blockId ? { ...b, ...patch } : b)
-                                    });
+                                    setTemplate(prev => prev ? {
+                                        ...prev,
+                                        blocks: prev.blocks.map(b => b.id === blockId ? { ...b, ...patch } : b)
+                                    } : prev);
                                 }}
                                 removeBlock={(blockId: string) => {
-                                    setTemplate({
-                                        ...template,
-                                        blocks: template.blocks.filter(b => b.id !== blockId)
-                                    });
+                                    setTemplate(prev => prev ? {
+                                        ...prev,
+                                        blocks: prev.blocks.filter(b => b.id !== blockId)
+                                    } : prev);
                                 }}
                                 addBlock={(type: any, afterId?: string) => {
-                                    const newBlock = { id: `tb-${Math.random()}`, type };
-                                    const idx = afterId ? template.blocks.findIndex(b => b.id === afterId) : -1;
-                                    const newBlocks = [...template.blocks];
-                                    newBlocks.splice(idx + 1, 0, newBlock);
-                                    setTemplate({ ...template, blocks: newBlocks });
+                                    setTemplate(prev => {
+                                        if (!prev) return prev;
+                                        const newBlock = { id: `tb-${Math.random()}`, type };
+                                        const idx = afterId ? prev.blocks.findIndex((b: any) => b.id === afterId) : -1;
+                                        const newBlocks = [...prev.blocks];
+                                        newBlocks.splice(idx + 1, 0, newBlock);
+                                        return { ...prev, blocks: newBlocks };
+                                    });
                                 }}
                                 openInsertMenu={null}
                                 setOpenInsertMenu={() => {}}
-                                setBlocks={(blocks: any) => setTemplate({ ...template, blocks })}
+                                setBlocks={(blocks: any) => setTemplate(prev => prev ? { ...prev, blocks } : prev)}
                                 updateMeta={() => {}}
                             />
                         )}

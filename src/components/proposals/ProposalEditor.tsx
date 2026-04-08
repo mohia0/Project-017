@@ -27,6 +27,7 @@ import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useClientStore } from '@/store/useClientStore';
+import DatePicker from '@/components/ui/DatePicker';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ContentBlock } from './blocks/ContentBlock';
@@ -71,6 +72,7 @@ interface BlockData {
     signerName?: string;
     signerRole?: string;
     signed?: boolean;
+    signatureImage?: string;
 }
 
 interface ProposalMeta {
@@ -330,17 +332,15 @@ export default function ProposalEditor({ id }: { id?: string }) {
             )}>
                 {/* Left: Editable Title & Status Indicator */}
                 <div className="flex items-center gap-4 flex-1">
-                    <Tooltip content="Back to list" side="bottom" delay={0.1}>
-                        <button
-                            onClick={() => router.push('/proposals')}
-                            className={cn(
-                                "flex items-center justify-center w-8 h-8 rounded-[8px] transition-all",
-                                isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]"
-                            )}
-                        >
-                            <ArrowLeft size={16} />
-                        </button>
-                    </Tooltip>
+                    <button
+                        onClick={() => router.push('/proposals')}
+                        className={cn(
+                            "flex items-center justify-center w-8 h-8 rounded-[8px] transition-all",
+                            isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]"
+                        )}
+                    >
+                        <ArrowLeft size={16} />
+                    </button>
                     <div className="flex items-center gap-2">
                         <div className={cn(
                             "flex items-center gap-2 text-[13px] font-medium",
@@ -443,55 +443,48 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     </button>
 
                     {isPreview && (
-                        <div className={cn(
-                            "flex items-center rounded-xl h-[32px] p-1 gap-1",
-                            isDark ? "bg-white/[0.04]" : "bg-[#111]/[0.03]"
-                        )}>
+                        <div className="flex items-center gap-1 ml-1">
                             <button
                                 onClick={() => setPreviewMode('desktop')}
                                 className={cn(
-                                    "flex items-center justify-center w-[28px] h-full rounded-[8px] transition-all",
+                                    "p-1.5 rounded-[6px] transition-colors",
                                     previewMode === 'desktop'
-                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
-                                        : isDark ? "text-white/20 hover:text-white/40" : "text-[#aaa] hover:text-[#666]"
+                                        ? (isDark ? "bg-white/10 text-white" : "bg-black/5 text-black")
+                                        : (isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60")
                                 )}
                             >
-                                <Monitor size={13} strokeWidth={2.5} />
+                                <Monitor size={14} />
                             </button>
                             <button
                                 onClick={() => setPreviewMode('mobile')}
                                 className={cn(
-                                    "flex items-center justify-center w-[28px] h-full rounded-[8px] transition-all",
+                                    "p-1.5 rounded-[6px] transition-colors",
                                     previewMode === 'mobile'
-                                        ? isDark ? "bg-[#4dbf39] text-black" : "bg-white text-black"
-                                        : isDark ? "text-white/20 hover:text-white/40" : "text-[#aaa] hover:text-[#666]"
+                                        ? (isDark ? "bg-white/10 text-white" : "bg-black/5 text-black")
+                                        : (isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60")
                                 )}
                             >
-                                <Smartphone size={13} strokeWidth={2.5} />
+                                <Smartphone size={14} />
                             </button>
                         </div>
                     )}
 
-                    <Tooltip content="Copy share link" side="bottom" delay={0.1}>
-                        <button
-                            onClick={copyLink}
-                            className={cn(
-                                "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
-                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
-                            )}
-                        >
-                            {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
-                        </button>
-                    </Tooltip>
+                    <button
+                        onClick={copyLink}
+                        className={cn(
+                            "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                        )}
+                    >
+                        {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
+                    </button>
 
                     {/* Send Email equivalent */}
-                    <Tooltip content="Send to client" side="bottom" delay={0.1}>
-                        <button
-                            className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
-                        >
-                            <Send size={14} />
-                        </button>
-                    </Tooltip>
+                    <button
+                        className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
+                    >
+                        <Send size={14} />
+                    </button>
 
                     {/* Actions dropdown (ProposalDropDown equivalent) */}
                     <div className="relative ml-1" ref={actionsRef}>
@@ -540,7 +533,16 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
             <div className="flex-1 flex overflow-hidden relative">
                 {/* ── LEFT: CANVAS ── */}
-                <div className="flex-1 overflow-auto relative w-full bg-[#101010]/5 dark:bg-black/20">
+                <div 
+                    className="flex-1 overflow-auto relative w-full"
+                    style={{ 
+                        backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
+                        backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundAttachment: 'fixed',
+                    }}
+                >
                     <div className={cn(
                         "flex flex-col items-center min-h-full",
                         isMobilePreview ? "py-8 px-4" : "py-10 px-6"
@@ -550,6 +552,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 type="proposal"
                                 status={meta.status as any}
                                 inline={true}
+                                design={meta.design}
                                 onAccept={() => setIsSignModalOpen(true)}
                                 onDecline={() => updateMeta({ status: 'Declined' as any })}
                                 onDownloadPDF={() => console.log('Download PDF pressed')}
@@ -583,7 +586,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     {/* Scrollable content */}
                                     <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0"
                                          style={{ 
-                                             backgroundColor: (meta.design?.backgroundColor) || '#ffffff',
+                                             backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
                                              backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
                                              backgroundSize: 'cover',
                                              backgroundPosition: 'center',
@@ -594,6 +597,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                             status={meta.status as any}
                                             isMobile={true}
                                             inline={true}
+                                            design={meta.design}
                                             onAccept={() => setIsSignModalOpen(true)}
                                             onDecline={() => updateMeta({ status: 'Declined' as any })}
                                             onDownloadPDF={() => console.log('Download PDF pressed')}
@@ -784,14 +788,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         icon={<Calendar size={11} className="opacity-50" />}
                                         hasInfo
                                     >
-                                        <input
-                                            type="date"
+                                        <DatePicker
                                             value={meta.issueDate}
-                                            onChange={e => updateMeta({ issueDate: e.target.value })}
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium",
-                                                isDark ? "text-[#ccc]" : "text-[#333]"
-                                            )}
+                                            onChange={v => updateMeta({ issueDate: v })}
+                                            isDark={isDark}
+                                            align="right"
                                         />
                                     </MetaField>
 
@@ -801,14 +802,12 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         icon={<Calendar size={11} className="opacity-50" />}
                                         hasInfo
                                     >
-                                        <input
-                                            type="date"
+                                        <DatePicker
                                             value={meta.expirationDate}
-                                            onChange={e => updateMeta({ expirationDate: e.target.value })}
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium",
-                                                isDark ? "text-[#ccc]" : "text-[#333]"
-                                            )}
+                                            onChange={v => updateMeta({ expirationDate: v })}
+                                            isDark={isDark}
+                                            placeholder="Add expiration"
+                                            align="right"
                                         />
                                     </MetaField>
 
@@ -886,6 +885,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         if (b.type === 'signature') {
                             updateBlock(b.id, { 
                                 signerName: signature.name, 
+                                signatureImage: signature.image,
                                 signed: true 
                             });
                         }
@@ -935,24 +935,26 @@ export function ProposalDocument({
     };
 
     const design = meta.design || DEFAULT_DOCUMENT_DESIGN;
+    // Documents are always rendered in light mode regardless of app theme
     const documentStyle = React.useMemo(() => ({
         fontFamily: design.fontFamily || 'Inter',
         color: '#111111',
-        backgroundColor: design.backgroundColor || '#ffffff',
-        backgroundImage: design.backgroundImage ? `url(${design.backgroundImage})` : 'none',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundColor: 'transparent',
         paddingTop: 'var(--block-margin-top)',
         paddingBottom: 'var(--block-margin-bottom)',
+        '--document-bg': '#ffffff',
         '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
         '--block-margin-top': `${design.marginTop ?? 24}px`,
         '--block-border-radius': `${design.borderRadius ?? 16}px`,
+        '--block-button-radius': `${Math.max(0, (design.borderRadius ?? 16) - 4)}px`,
         '--sign-bar-color': design.signBarColor || '#000000',
         '--sign-bar-thick': `${design.signBarThickness ?? 1}px`,
         '--table-border-radius': `${design.tableBorderRadius ?? 8}px`,
-        '--table-header-bg': design.tableHeaderBg || '#fafafa',
+        '--table-header-bg': design.tableHeaderBg || '#f9f9f9',
         '--table-border-color': design.tableBorderColor || '#ebebeb',
         '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
+        '--table-font-size': `${design.tableFontSize ?? 12}px`,
+        '--table-cell-padding': `${design.tableCellPadding ?? 12}px`,
         '--primary-color': design.primaryColor || '#4dbf39',
         '--primary': design.primaryColor || '#4dbf39',
     } as React.CSSProperties), [design]);
@@ -961,9 +963,9 @@ export function ProposalDocument({
         <div 
             style={{ ...documentStyle, borderRadius: `${design.borderRadius ?? 16}px` }} 
             className={cn(
-                "w-full transition-all duration-300 relative",
-                isMobile ? "max-w-full px-4" : "max-w-[850px] shadow-sm",
-                !isMobile && "min-h-[1100px] py-10 px-12"
+                "w-full transition-all duration-300 relative bg-[var(--document-bg)]",
+                isMobile ? "max-w-full px-6 py-6" : "max-w-[850px] shadow-sm",
+                !isMobile && "min-h-[1100px] py-16 px-12"
             )}
         >
             {/* Blocks */}
@@ -986,7 +988,7 @@ export function ProposalDocument({
                             <React.Fragment key={block.id}>
                                 <SortableBlock
                                     block={block}
-                                    isDark={isDark}
+                                    isDark={false}
                                     isPreview={isPreview}
                                     updateBlock={updateBlock}
                                     removeBlock={removeBlock}
@@ -1411,22 +1413,23 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
         updateBlock(block.id, { rows: rows.filter((r: PricingRow) => r.id !== rowId) });
     };
 
-    const th = "text-[10px] font-bold uppercase tracking-wider pb-2 text-left text-black/40";
-    const td = "py-2 text-[12px] text-black/80";
+    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black/40");
+    const td = cn("py-2", isDark ? "text-white/80" : "text-black/80");
 
     return (
         <div 
-            className="bg-white overflow-hidden" 
+            className={cn("overflow-hidden transition-all duration-300", isDark ? "bg-transparent text-white/90" : "bg-white text-black")} 
             style={{ 
                 borderRadius: 'var(--table-border-radius)', 
                 borderColor: 'var(--table-border-color)',
                 borderWidth: 'var(--table-stroke-width)',
-                borderStyle: 'solid'
+                borderStyle: 'solid',
+                fontSize: 'var(--table-font-size)'
             }}
         >
             <table className="w-full">
                 <thead style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderBottomWidth: 'var(--table-stroke-width)', borderBottomStyle: 'solid' }}>
-                    <tr>
+                    <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
                         <th className={cn(th, "px-4 py-2 w-full")}>Item</th>
                         {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
                         <th className={cn(th, "px-3 py-2 text-right w-24")}>Amount</th>
@@ -1434,7 +1437,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                         {!isPreview && <th className="w-8" />}
                     </tr>
                 </thead>
-                <tbody className="divide-y" style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)' }}>
+                <tbody className="divide-y" style={{ borderColor: 'var(--table-border-color)' }}>
                     <style dangerouslySetInnerHTML={{ __html: `
                         .divide-y > * + * {
                             border-top-width: var(--table-stroke-width) !important;
@@ -1442,65 +1445,69 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                         }
                     ` }} />
                     {rows.map((row: PricingRow) => (
-                        <tr key={row.id} className="group/row">
-                            <td className={cn(td, "px-4")}>
+                        <tr key={row.id} className="group/row transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.01]">
+                            <td className={cn(td, "px-4")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
                                 {isPreview
                                     ? (
                                         <div className="flex flex-col">
-                                            <div className="font-bold text-[16px]">{row.title || row.description || 'Item'}</div>
-                                            {(row.title && row.description) && <div className={cn("text-[11px] mt-0.5", isDark ? "text-[#888]" : "text-[#666]")}>{row.description}</div>}
+                                            <div className="font-bold" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || row.description || 'Item'}</div>
+                                            {(row.title && row.description) && <div className={cn("mt-0.5 opacity-60")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>{row.description}</div>}
                                         </div>
                                     )
                                     : (
-                                        <div className="flex flex-col gap-1 py-1">
+                                        <div className="flex flex-col gap-1">
                                             <input
                                                 value={row.title || ''}
                                                 onChange={e => updateRow(row.id, { title: e.target.value })}
                                                 placeholder={row.description ? "Item title..." : "Item Name..."}
-                                                className="w-full bg-transparent outline-none font-bold text-[16px] text-black placeholder:text-black/20"
+                                                className={cn("w-full bg-transparent outline-none font-bold", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
+                                                style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}
                                             />
                                             <input
                                                 value={row.description}
                                                 onChange={e => updateRow(row.id, { description: e.target.value })}
                                                 placeholder="Description (optional)..."
-                                                className="w-full bg-transparent outline-none text-[11px] text-black/50 placeholder:text-black/10"
+                                                className={cn("w-full bg-transparent outline-none opacity-60", isDark ? "text-white placeholder:text-white/10" : "text-black placeholder:text-black/10")}
+                                                style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
                                             />
                                         </div>
                                     )
                                 }
                             </td>
                             {!hideQty && (
-                                <td className={cn(td, "px-3 text-right align-top pt-3")}>
+                                <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
                                     {isPreview
                                         ? row.qty
                                         : <input
                                             type="number"
                                             value={row.qty}
                                             onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
-                                            className={cn("w-12 text-right bg-transparent outline-none text-[12px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                            className={cn("w-12 text-right bg-transparent outline-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                            style={{ fontSize: 'var(--table-font-size)' }}
                                         />
                                     }
                                 </td>
                             )}
-                            <td className={cn(td, "px-3 text-right align-top pt-3")}>
+                            <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
                                 {isPreview
                                     ? fmt(row.rate, currency)
                                     : <input
                                         type="number"
                                         value={row.rate}
                                         onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
-                                        className="w-20 text-right bg-transparent outline-none text-[12px] text-black/80"
+                                        className={cn("w-20 text-right bg-transparent outline-none font-medium", isDark ? "text-white/80" : "text-black/80")}
+                                        style={{ fontSize: 'var(--table-font-size)' }}
                                     />
                                 }
                             </td>
-                            {!hideQty && <td className={cn(td, "px-4 text-right font-semibold align-top pt-3")}>{fmt(row.qty * row.rate, currency)}</td>}
+                            {!hideQty && <td className={cn(td, "px-4 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}>{fmt(row.qty * row.rate, currency)}</td>}
                             {!isPreview && (
                                 <td className="w-0 relative p-0 border-0">
                                     <button
                                         onClick={() => removeRow(row.id)}
                                         className={cn(
                                             "absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 p-2 rounded-full transition-all hover:bg-red-500/10 hover:text-red-500 animate-in fade-in duration-200",
-                                            "text-[#aaa] hover:text-red-500"
+                                            isDark ? "text-[#aaa] hover:text-red-500 bg-[#333] shadow-sm border border-white/5" : "text-[#ccc] hover:text-red-500 bg-white shadow-sm border border-black/5"
                                         )}
                                         title="Delete row"
                                     >
@@ -1513,45 +1520,37 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                 </tbody>
             </table>
 
-            {/* Totals */}
-            <div className="px-4 py-3 space-y-1 border-t" style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)' }}>
+            {/* Totals Section */}
+            <div className="px-4 py-3 space-y-1 border-t" style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)' }}>
                 {!isPreview && (
                     <div className="flex justify-between items-center mb-2">
                         <button
                             onClick={addRow}
-                            className={cn("flex items-center gap-1.5 text-[11px] font-medium transition-colors", isDark ? "text-[#555] hover:text-[#888]" : "text-[#bbb] hover:text-[#888]")}
+                            className={cn("flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 border border-dashed transition-all", isDark ? "border-white/10 text-white/40 hover:border-white/20 hover:text-white/60" : "border-black/10 text-black/40 hover:border-black/20 hover:text-black/60")}
+                            style={{ borderRadius: 'var(--block-button-radius)' }}
                         >
-                            <Plus size={11} /> Add line
+                            <Plus size={11} /> ADD ITEM
                         </button>
-                        <label className={cn("flex items-center gap-2 text-[11px] font-medium cursor-pointer transition-colors", isDark ? "text-[#888] hover:text-[#ccc]" : "text-[#666] hover:text-[#111]")}>
-                            <div className={cn(
-                                "relative w-[26px] h-[14px] rounded-full transition-colors border",
-                                hideQty 
-                                    ? "bg-[#4dbf39] border-[#4dbf39]" 
-                                    : (isDark ? "bg-white/10 border-white/5" : "bg-black/10 border-black/5")
-                            )}>
-                                <div className={cn(
-                                    "absolute top-px left-px w-[10px] h-[10px] rounded-full bg-white transition-transform",
-                                    hideQty ? "translate-x-[12px]" : "translate-x-0"
-                                )} />
-                            </div>
+                        <label className={cn("flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider cursor-pointer opacity-40 hover:opacity-100 transition-opacity")}>
                             <input 
                                 type="checkbox" 
                                 checked={hideQty} 
                                 onChange={e => updateBlock(block.id, { hideQty: e.target.checked })} 
-                                className="hidden" 
+                                className="rounded border-gray-300 text-[#4dbf39] focus:ring-[#4dbf39]" 
                             />
                             Hide QTY
                         </label>
                     </div>
                 )}
-                <div className={cn("flex justify-between text-[11px]", isDark ? "text-[#666]" : "text-[#aaa]")}>
-                    <span>Subtotal</span>
-                    <span>{fmt(subtotal, currency)}</span>
-                </div>
-                {/* Discount row - Hide in preview if 0 */}
+                {(!isPreview || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
+                    <div className={cn("flex justify-between font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                        <span>Subtotal</span>
+                        <span>{fmt(subtotal, currency)}</span>
+                    </div>
+                )}
+                {/* Discount row */}
                 {(!isPreview || (block.discountRate || 0) > 0) && (
-                    <div className={cn("flex justify-between items-center text-[11px]", isDark ? "text-[#666]" : "text-[#aaa]")}>
+                    <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
                         <div className="flex items-center gap-2">
                             <span>Discount</span>
                             {!isPreview && (
@@ -1559,7 +1558,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                                     type="number"
                                     value={block.discountRate || 0}
                                     onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
-                                    className={cn("w-10 text-[11px] bg-transparent outline-none border-b", isDark ? "border-[#333] text-[#888]" : "border-[#e0e0e0] text-[#888]")}
+                                    className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
                                 />
                             )}
                             {(!isPreview || (block.discountRate || 0) > 0) && <span>%</span>}
@@ -1568,9 +1567,9 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                     </div>
                 )}
 
-                {/* Tax row - Hide in preview if 0 */}
+                {/* Tax row */}
                 {(!isPreview || (block.taxRate || 0) > 0) && (
-                    <div className={cn("flex justify-between items-center text-[11px]", isDark ? "text-[#666]" : "text-[#aaa]")}>
+                    <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
                         <div className="flex items-center gap-2">
                             <span>Tax</span>
                             {!isPreview && (
@@ -1578,7 +1577,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                                     type="number"
                                     value={block.taxRate || 0}
                                     onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
-                                    className={cn("w-10 text-[11px] bg-transparent outline-none border-b", isDark ? "border-[#333] text-[#888]" : "border-[#e0e0e0] text-[#888]")}
+                                    className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
                                 />
                             )}
                             {(!isPreview || (block.taxRate || 0) > 0) && <span>%</span>}
@@ -1586,7 +1585,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                         <span>{fmt(taxAmt, currency)}</span>
                     </div>
                 )}
-                <div className={cn("flex justify-between font-bold text-[13px] pt-1.5 border-t", isDark ? "border-[#2a2a2a] text-white" : "border-[#e8e8e8] text-[#111]")}>
+                <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
                     <span>Total</span>
                     <span>{fmt(total, currency)}</span>
                 </div>
@@ -1599,46 +1598,83 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
 function SignatureBlock({ block, isDark, isPreview, updateBlock }: any) {
     return (
         <div className={cn(
-            "my-4 rounded-xl border p-5",
-            isDark ? "border-[#2a2a2a] bg-[#1a1a1a]" : "border-[#ebebeb] bg-[#fafafa]"
-        )}>
-            <div className={cn("text-[10px] font-bold uppercase tracking-widest mb-3", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                Signature
+            "my-4 border p-6 transition-all",
+            isDark ? "border-white/5 bg-white/[0.02]" : "border-black/5 bg-black/[0.01]"
+        )}
+        style={{ borderRadius: 'var(--block-border-radius)' }}
+        >
+            <div className={cn("text-[10px] font-bold uppercase tracking-[0.2em] mb-6 opacity-40", isDark ? "text-white" : "text-black")}>
+                Authorized Signature
             </div>
-            <div className="flex items-end gap-6">
+            <div className="flex flex-col md:flex-row md:items-end gap-8">
                 <div className="flex-1">
-                    <div className={cn(
-                        "h-14 rounded-lg border-2 border-dashed flex items-center justify-center text-[11px] mb-2",
-                        isDark ? "border-[#333] text-[#555]" : "border-[#e0e0e0] text-[#ccc]"
-                    )}>
-                        {block.signed ? '✓ Signed' : 'Signature here'}
+                    <div 
+                        className="h-16 flex items-center justify-center relative mb-2"
+                        style={{ borderBottom: `var(--sign-bar-thick) solid var(--sign-bar-color)` }}
+                    >
+                        {block.signed ? (
+                            <div className="flex flex-col items-center animate-in zoom-in duration-300 w-full h-full max-h-16 justify-center">
+                                {block.signatureImage ? (
+                                    <img 
+                                        src={block.signatureImage} 
+                                        className={cn("max-h-12 w-auto", isDark ? "invert brightness-200" : "")} 
+                                        alt="Signature" 
+                                    />
+                                ) : (
+                                    <span className={cn("font-['Dancing_Script',_cursive] text-2xl", isDark ? "text-white" : "text-black")}>
+                                        {block.signerName || 'Signature'}
+                                    </span>
+                                )}
+                                <span className={cn("text-[8px] opacity-30 uppercase tracking-tighter mt-0.5 italic shrink-0", isDark ? "text-white" : "text-black")}>Electronically Signed</span>
+                            </div>
+                        ) : (
+                            <span className="text-[11px] opacity-20 italic">Awaiting signature...</span>
+                        )}
                     </div>
+                    
                     {!isPreview && (
-                        <input
-                            value={block.signerName || ''}
-                            onChange={e => updateBlock(block.id, { signerName: e.target.value })}
-                            placeholder="Signer name"
-                            className={cn("w-full bg-transparent outline-none text-[12px] border-b pb-0.5", isDark ? "border-[#333] text-[#ccc] placeholder:text-[#444]" : "border-[#e0e0e0] text-[#333] placeholder:text-[#ccc]")}
-                        />
-                    )}
-                    {block.signerName && isPreview && (
-                        <div className={cn("text-[12px] font-medium border-t pt-1", isDark ? "text-[#aaa] border-[#333]" : "text-[#555] border-[#e0e0e0]")}>
-                            {block.signerName}
+                        <div className="space-y-3">
+                            <input
+                                value={block.signerName || ''}
+                                onChange={e => updateBlock(block.id, { signerName: e.target.value })}
+                                placeholder="Full Name"
+                                className={cn("w-full bg-transparent outline-none text-[13px] font-semibold border-b pb-1 transition-colors", 
+                                    isDark ? "border-white/10 text-white placeholder:text-white/20 focus:border-[#4dbf39]" : "border-black/10 text-black placeholder:text-black/20 focus:border-[#4dbf39]")}
+                            />
+                            <input
+                                value={block.signerRole || ''}
+                                onChange={e => updateBlock(block.id, { signerRole: e.target.value })}
+                                placeholder="Role / Title"
+                                className={cn("w-full bg-transparent outline-none text-[11px] opacity-40 border-b pb-1 transition-colors", 
+                                    isDark ? "border-white/10 text-white focus:border-[#4dbf39]" : "border-black/10 text-black focus:border-[#4dbf39]")}
+                            />
                         </div>
                     )}
-                    <div className={cn("text-[10px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>{block.signerRole}</div>
+                    
+                    {isPreview && (
+                        <div className="flex flex-col">
+                            <span className={cn("text-[13px] font-bold", isDark ? "text-white" : "text-black")}>
+                                {block.signerName || 'Pending'}
+                            </span>
+                            <span className={cn("text-[11px] opacity-40 mt-0.5", isDark ? "text-white" : "text-black")}>
+                                {block.signerRole || 'Client'}
+                            </span>
+                        </div>
+                    )}
                 </div>
+                
                 {!isPreview && (
                     <button
                         onClick={() => updateBlock(block.id, { signed: !block.signed })}
                         className={cn(
-                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all",
+                            "px-4 py-2 text-[12px] font-bold transition-all active:scale-95 shadow-sm border",
                             block.signed
-                                ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                                : isDark ? "bg-[#2a2a2a] text-[#888] hover:bg-[#333]" : "bg-white border border-[#e0e0e0] text-[#888] hover:border-[#ccc]"
+                                ? "bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600"
+                                : isDark ? "bg-white/5 text-white/60 border-white/5 hover:bg-white/10" : "bg-white text-black/60 border-black/5 hover:bg-black/5"
                         )}
+                        style={{ borderRadius: 'var(--block-button-radius)' }}
                     >
-                        {block.signed ? '✓ Signed' : 'Mark signed'}
+                        {block.signed ? '✓ SIGNED' : 'MARK SIGNED'}
                     </button>
                 )}
             </div>
@@ -1743,12 +1779,13 @@ function InsertZone({
                 <button
                     onClick={(e) => { e.stopPropagation(); onOpen(); }}
                     className={cn(
-                        "mx-2 w-5 h-5 flex items-center justify-center rounded-full border transition-all shrink-0 shadow-sm",
+                        "mx-2 w-5 h-5 flex items-center justify-center border transition-all shrink-0 shadow-sm",
                         isOpen
                             ? isDark ? "bg-[var(--primary-color)] border-[var(--primary-color)] text-white" : "bg-[var(--primary-color)] border-[var(--primary-color)] text-white"
                             : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
                                      : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
                     )}
+                    style={{ borderRadius: 'var(--block-button-radius)' }}
                 >
                     <Plus size={12} strokeWidth={2.5} />
                 </button>

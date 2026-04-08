@@ -5,7 +5,21 @@ import { cn } from '@/lib/utils';
 import { Upload, X, RotateCcw, ChevronDown } from 'lucide-react';
 import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import { ColorisInput } from './ColorisInput';
-import { Tooltip } from './Tooltip';
+
+// ── Utility: dynamically inject a Google Fonts <link> for a given family ──
+const LOADED_FONTS = new Set<string>();
+function loadGoogleFont(family: string) {
+    if (!family || LOADED_FONTS.has(family)) return;
+    LOADED_FONTS.add(family);
+    const encoded = encodeURIComponent(family);
+    const id = `gfont-${encoded}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${encoded}:wght@400;500;600;700;800;900&display=swap`;
+    document.head.appendChild(link);
+}
 
 interface DesignSettingsPanelProps {
     isDark: boolean;
@@ -47,16 +61,34 @@ export function MetaField({ label, children, isDark, icon, onReset }: any) {
 }
 
 export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadBackground }: DesignSettingsPanelProps) {
+    // Always read latest design so we don't get stale closures on rapid changes
+    const metaRef = React.useRef(meta);
+    React.useEffect(() => { metaRef.current = meta; }, [meta]);
+
     const design = meta.design || {} as Partial<DocumentDesign>;
+
+    // Always read freshest design to avoid stale spread when sliders fire rapidly
+    const updateDesign = React.useCallback((patch: Partial<DocumentDesign>) => {
+        const currentDesign = metaRef.current.design || {};
+        updateMeta({ design: { ...currentDesign, ...patch } });
+    }, [updateMeta]);
+
+    // Preload default font on mount
+    React.useEffect(() => {
+        loadGoogleFont(design.fontFamily || 'Inter');
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Load font whenever selection changes
+    const handleFontChange = React.useCallback((family: string) => {
+        loadGoogleFont(family);
+        updateDesign({ fontFamily: family });
+    }, [updateDesign]);
 
     const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
     const toggle = (section: string) => setCollapsed(prev => ({ ...prev, [section]: !prev[section] }));
 
-    const updateDesign = (patch: Partial<DocumentDesign>) => {
-        updateMeta({ design: { ...design, ...patch } });
-    };
-
     const SectionHeader = ({ id, label }: { id: string, label: string }) => (
+
         <button 
             onClick={() => toggle(id)}
             className={cn(
@@ -75,6 +107,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
 
     return (
         <div className="space-y-4 pt-2">
+            {/* ── BRANDING ── */}
             <div>
                 <SectionHeader id="branding" label="Branding" />
                 {!collapsed['branding'] && (
@@ -152,6 +185,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 )}
             </div>
 
+            {/* ── SPACING & CORNERS ── */}
             <div>
                 <SectionHeader id="spacing" label="Spacing & Corners" />
                 {!collapsed['spacing'] && (
@@ -191,11 +225,11 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             onReset={() => updateDesign({ borderRadius: DEFAULT_DOCUMENT_DESIGN.borderRadius })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Block Corners</span>
+                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Global Roundness</span>
                                 <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.borderRadius ?? 16}px</span>
                             </div>
                             <input 
-                                type="range" min="0" max="32" step="2" 
+                                type="range" min="0" max="40" step="2" 
                                 value={design.borderRadius ?? 16} 
                                 onChange={e => updateDesign({ borderRadius: Number(e.target.value) })}
                                 className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
@@ -205,6 +239,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 )}
             </div>
 
+            {/* ── TYPOGRAPHY & COLORS ── */}
             <div>
                 <SectionHeader id="typo" label="Typography & Colors" />
                 {!collapsed['typo'] && (
@@ -212,17 +247,49 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                         <MetaField 
                             label="Font" 
                             isDark={isDark}
-                            onReset={() => updateDesign({ fontFamily: DEFAULT_DOCUMENT_DESIGN.fontFamily })}
+                            onReset={() => {
+                                loadGoogleFont(DEFAULT_DOCUMENT_DESIGN.fontFamily);
+                                updateDesign({ fontFamily: DEFAULT_DOCUMENT_DESIGN.fontFamily });
+                            }}
                         >
                             <select 
                                 value={design.fontFamily || 'Inter'} 
-                                onChange={e => updateDesign({ fontFamily: e.target.value })}
+                                onChange={e => handleFontChange(e.target.value)}
                                 className={cn("w-full text-[12px] bg-transparent outline-none appearance-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                style={{ fontFamily: design.fontFamily || 'Inter' }}
                             >
-                                {['Inter', 'Outfit', 'Playfair', 'IBM Plex Mono'].map(font => (
-                                    <option key={font} value={font}>{font}</option>
+                                {[
+                                    { label: 'Inter',          value: 'Inter' },
+                                    { label: 'Outfit',         value: 'Outfit' },
+                                    { label: 'Poppins',        value: 'Poppins' },
+                                    { label: 'Lato',           value: 'Lato' },
+                                    { label: 'Roboto',         value: 'Roboto' },
+                                    { label: 'Playfair Display', value: 'Playfair Display' },
+                                    { label: 'IBM Plex Mono',  value: 'IBM Plex Mono' },
+                                    { label: 'Josefin Sans',   value: 'Josefin Sans' },
+                                    { label: 'Raleway',        value: 'Raleway' },
+                                    { label: 'DM Sans',        value: 'DM Sans' },
+                                ].map(({ label, value }) => (
+                                    <option key={value} value={value}>{label}</option>
                                 ))}
                             </select>
+                        </MetaField>
+
+                        <MetaField 
+                            label="Brand / Primary Color" 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ primaryColor: DEFAULT_DOCUMENT_DESIGN.primaryColor })}
+                        >
+                            <div className="flex flex-col gap-2">
+                                <ColorisInput 
+                                    value={design.primaryColor || '#4dbf39'} 
+                                    onChange={val => updateDesign({ primaryColor: val })}
+                                    className="w-full"
+                                />
+                                <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
+                                    Affects insert buttons, active states & toggles.
+                                </p>
+                            </div>
                         </MetaField>
                         
                         <MetaField 
@@ -238,36 +305,6 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 />
                                 <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
                                     This affects the base background behind the document blocks.
-                                </p>
-                            </div>
-                        </MetaField>
-
-                        <MetaField 
-                            label="Primary Accent Color" 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ primaryColor: DEFAULT_DOCUMENT_DESIGN.primaryColor })}
-                        >
-                            <div className="flex flex-col gap-3 pt-1">
-                                <div className="flex items-center gap-2.5">
-                                    {['#111111', '#2563eb', '#16a34a', '#dc2626', '#d97706', '#9333ea'].map(color => (
-                                        <button
-                                            key={color}
-                                            onClick={() => updateDesign({ primaryColor: color })}
-                                            style={{ background: color }}
-                                            className={cn(
-                                                "w-6 h-6 rounded-full border-2 transition-all shadow-sm",
-                                                (design.primaryColor || '#4dbf39') === color ? "border-[#4dbf39] scale-110" : "border-transparent"
-                                            )}
-                                        />
-                                    ))}
-                                </div>
-                                <ColorisInput 
-                                    value={design.primaryColor || '#4dbf39'} 
-                                    onChange={val => updateDesign({ primaryColor: val })}
-                                    className="w-full"
-                                />
-                                <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
-                                    This controls the color of buttons and primary design accents.
                                 </p>
                             </div>
                         </MetaField>
@@ -310,6 +347,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 )}
             </div>
 
+            {/* ── TABLE STYLING ── */}
             <div>
                 <SectionHeader id="table" label="Table Styling" />
                 {!collapsed['table'] && (
@@ -326,7 +364,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 type="range" min="0" max="32" 
                                 value={design.tableBorderRadius ?? 8} 
                                 onChange={e => updateDesign({ tableBorderRadius: Number(e.target.value) })}
-                                className={cn("w-full h-1.5 rounded-full appearance-none outline-none", isDark ? "bg-[#1f1f1f] accent-[#aaa]" : "bg-[#f0f0f0] accent-[#666]")}
+                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
                             />
                         </MetaField>
 
@@ -369,49 +407,127 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
                             />
                         </MetaField>
+
+                        <MetaField 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ tableFontSize: DEFAULT_DOCUMENT_DESIGN.tableFontSize })}
+                        >
+                            <div className="flex items-center justify-between mb-1.5 px-0.5">
+                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Font Size</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.tableFontSize ?? 12}px</span>
+                            </div>
+                            <input 
+                                type="range" min="8" max="20" step="1" 
+                                value={design.tableFontSize ?? 12} 
+                                onChange={e => updateDesign({ tableFontSize: Number(e.target.value) })}
+                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                            />
+                        </MetaField>
+
+                        <MetaField 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ tableCellPadding: DEFAULT_DOCUMENT_DESIGN.tableCellPadding })}
+                        >
+                            <div className="flex items-center justify-between mb-1.5 px-0.5">
+                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Row Spacing</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.tableCellPadding ?? 12}px</span>
+                            </div>
+                            <input 
+                                type="range" min="4" max="32" step="2" 
+                                value={design.tableCellPadding ?? 12} 
+                                onChange={e => updateDesign({ tableCellPadding: Number(e.target.value) })}
+                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                            />
+                        </MetaField>
                     </div>
                 )}
             </div>
 
+            {/* ── SIGNATURE BLOCK ── */}
             <div>
-                <SectionHeader id="sign" label="Signature Bar" />
-                {!collapsed['sign'] && (
+                <SectionHeader id="signature" label="Signature Block" />
+                {!collapsed['signature'] && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <MetaField 
+                            label="Line Color" 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ signBarColor: DEFAULT_DOCUMENT_DESIGN.signBarColor })}
+                        >
+                            <ColorisInput 
+                                value={design.signBarColor || (isDark ? '#ffffff' : '#000000')} 
+                                onChange={val => updateDesign({ signBarColor: val })}
+                                className="w-full"
+                            />
+                        </MetaField>
+
                         <MetaField 
                             isDark={isDark}
                             onReset={() => updateDesign({ signBarThickness: DEFAULT_DOCUMENT_DESIGN.signBarThickness })}
                         >
                             <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Thickness</span>
+                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Line Thickness</span>
                                 <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.signBarThickness ?? 1}px</span>
                             </div>
                             <input 
-                                type="range" min="1" max="8" step="1" 
+                                type="range" min="1" max="6" step="1" 
                                 value={design.signBarThickness ?? 1} 
                                 onChange={e => updateDesign({ signBarThickness: Number(e.target.value) })}
                                 className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
                             />
                         </MetaField>
-                        
+                    </div>
+                )}
+            </div>
+
+            {/* ── ACTION BAR ── */}
+            <div>
+                <SectionHeader id="actionbar" label="Action Bar" />
+                {!collapsed['actionbar'] && (
+                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                         <MetaField 
-                            label="Bar Color" 
+                            label="Action Button Color" 
                             isDark={isDark}
-                            onReset={() => updateDesign({ signBarColor: DEFAULT_DOCUMENT_DESIGN.signBarColor })}
+                            onReset={() => updateDesign({ actionButtonColor: DEFAULT_DOCUMENT_DESIGN.actionButtonColor })}
                         >
-                            <div className="flex items-center gap-3 pt-1">
-                                {['#111111', '#2563eb', '#16a34a', '#dc2626', '#d97706', '#9333ea'].map(color => (
-                                    <button
-                                        key={color}
-                                        onClick={() => updateDesign({ signBarColor: color })}
-                                        style={{ background: color }}
-                                        className={cn(
-                                            "w-6 h-6 rounded-full border-2 transition-transform shadow-sm",
-                                            (design.signBarColor || '#111111') === color ? "border-[#4dbf39] scale-110" : "border-transparent"
-                                        )}
-                                    />
-                                ))}
-                            </div>
+                            <ColorisInput 
+                                value={design.actionButtonColor || '#111111'} 
+                                onChange={val => updateDesign({ actionButtonColor: val })}
+                                className="w-full"
+                            />
                         </MetaField>
+
+                        <MetaField 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ actionButtonMarginTop: DEFAULT_DOCUMENT_DESIGN.actionButtonMarginTop })}
+                        >
+                            <div className="flex items-center justify-between mb-1.5 px-0.5">
+                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Action Bar Spacing (Top)</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.actionButtonMarginTop ?? 16}px</span>
+                            </div>
+                            <input 
+                                type="range" min="0" max="64" step="4" 
+                                value={design.actionButtonMarginTop ?? 16} 
+                                onChange={e => updateDesign({ actionButtonMarginTop: Number(e.target.value) })}
+                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                            />
+                        </MetaField>
+
+                        <MetaField 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ actionButtonMarginBottom: DEFAULT_DOCUMENT_DESIGN.actionButtonMarginBottom })}
+                        >
+                            <div className="flex items-center justify-between mb-1.5 px-0.5">
+                                <span className={cn("text-[10.5px] font-medium", isDark ? "text-[#aaa]" : "text-[#666]")}>Action Bar Spacing (Bottom)</span>
+                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.actionButtonMarginBottom ?? 16}px</span>
+                            </div>
+                            <input 
+                                type="range" min="0" max="64" step="4" 
+                                value={design.actionButtonMarginBottom ?? 16} 
+                                onChange={e => updateDesign({ actionButtonMarginBottom: Number(e.target.value) })}
+                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                            />
+                        </MetaField>
+
                     </div>
                 )}
             </div>

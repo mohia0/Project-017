@@ -15,7 +15,12 @@ export interface LineItem {
     discount: number;
 }
 
-export function PricingBlock({ id, data, updateData }: { id: string, data: any, updateData: (id: string, data: any) => void }) {
+export function PricingBlock({ 
+    id, data, updateData, isDark, isPreview 
+}: { 
+    id: string, data: any, updateData: (id: string, data: any) => void, isDark: boolean, isPreview: boolean 
+}) {
+    const [hovered, setHovered] = useState<string>('');
 
     // State for items and specific block settings
     const [items, setItems] = useState<LineItem[]>(data.items || [
@@ -74,26 +79,61 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
 
 
             {/* Main Table Design from Screenshot 2 */}
-            <div className="w-full bg-white border border-[#e2e2e2] rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
-                <div className="flex px-6 py-4 border-b border-[#f0f0f0]">
+            <div 
+                className={cn(
+                    "w-full overflow-hidden transition-all duration-300 border-collapse",
+                    isDark ? "bg-[#1a1a1a]" : "bg-white"
+                )}
+                style={{ 
+                    borderRadius: 'var(--table-border-radius)',
+                    borderColor: 'var(--table-border-color)',
+                    borderWidth: 'var(--table-stroke-width)',
+                    borderStyle: 'solid',
+                    fontSize: 'var(--table-font-size)'
+                }}
+            >
+                <div 
+                    className="flex px-6 py-4 border-b transition-all"
+                    style={{ 
+                        backgroundColor: 'var(--table-header-bg)',
+                        borderColor: 'var(--table-border-color)',
+                        borderBottomWidth: 'var(--table-stroke-width)'
+                    }}
+                >
                     <div className="flex-1" />
-                    <div className="flex items-center gap-8 text-[11px] font-bold text-[#999] uppercase tracking-wider">
+                    <div className="flex items-center gap-8 text-[11px] font-bold text-[#999] uppercase tracking-wider" style={{ opacity: 0.6 }}>
                         <div className="w-12 text-center">Tax</div>
                         <div className="w-16 text-center">Discount</div>
                         <div className="w-24 text-right pr-2">Total</div>
                     </div>
                 </div>
 
-                <div className="divide-y divide-[#f0f0f0]">
+                <div className="divide-y" style={{ borderColor: 'var(--table-border-color)' }}>
+                    <style dangerouslySetInnerHTML={{ __html: `
+                        .divide-y > * + * {
+                            border-top-width: var(--table-stroke-width) !important;
+                            border-color: var(--table-border-color) !important;
+                        }
+                    ` }} />
                     {items.map((item) => (
-                        <div key={item.id} className="group/item flex items-center gap-4 px-4 py-5 hover:bg-[#fafafa] transition-colors relative">
-                            {/* Row Drag Handle (Visual only for now) */}
-                            <div className="p-1 text-[#eee] group-hover/item:text-[#ccc] transition-colors cursor-grab">
+                        <div 
+                            key={item.id} 
+                            className="group/item flex items-center gap-4 px-4 py-5 transition-colors relative"
+                            style={{ 
+                                paddingTop: 'var(--table-cell-padding)', 
+                                paddingBottom: 'var(--table-cell-padding)',
+                                backgroundColor: hovered === item.id ? (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)') : 'transparent'
+                            }}
+                            onMouseEnter={() => setHovered(item.id)}
+                            onMouseLeave={() => setHovered('')}
+                        >
+                            {/* Row Drag Handle */}
+                            <div className={cn("p-1 transition-colors cursor-grab", isDark ? "text-white/10 group-hover/item:text-white/30" : "text-black/5 group-hover/item:text-black/20")}>
                                 <svg width="12" height="18" viewBox="0 0 12 18" fill="currentColor"><circle cx="2" cy="2" r="1.5" /><circle cx="2" cy="9" r="1.5" /><circle cx="2" cy="16" r="1.5" /><circle cx="10" cy="2" r="1.5" /><circle cx="10" cy="9" r="1.5" /><circle cx="10" cy="16" r="1.5" /></svg>
                             </div>
 
                             {/* Item Image Placeholder */}
-                            <div className="w-10 h-10 rounded-lg bg-[#f9f9f9] border border-[#e2e2e2] flex items-center justify-center text-[#ccc]">
+                            <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center transition-all", isDark ? "bg-white/5 border-white/10 text-white/20" : "bg-black/5 border-black/10 text-black/20")} style={{ borderWidth: 'var(--table-stroke-width)', borderStyle: 'solid' }}>
                                 <ImageIcon size={20} strokeWidth={1.5} />
                             </div>
 
@@ -101,13 +141,15 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                 <input
                                     value={item.name}
                                     onChange={(e) => updateItem(item.id, 'name', e.target.value)}
-                                    className="w-full font-bold text-[#111] bg-transparent border-none p-0 focus:ring-0 text-[14px]"
+                                    className={cn("w-full font-bold bg-transparent border-none p-0 focus:ring-0", isDark ? "text-white" : "text-[#111]")}
+                                    style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}
                                     placeholder="Item Title"
                                 />
                                 <input
                                     value={item.description}
                                     onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                                    className="w-full text-[13px] text-[#666] bg-transparent border-none p-0 focus:ring-0"
+                                    className={cn("w-full bg-transparent border-none p-0 focus:ring-0", isDark ? "text-white/60" : "text-[#666]")}
+                                    style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
                                     placeholder="Add a description..."
                                 />
                             </div>
@@ -118,22 +160,22 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                                         type="number"
                                         value={item.tax}
                                         onChange={(e) => updateItem(item.id, 'tax', parseFloat(e.target.value) || 0)}
-                                        className="w-full text-center text-sm font-medium bg-transparent border-none p-0 focus:ring-0 text-[#111]"
+                                        className={cn("w-full text-center font-medium bg-transparent border-none p-0 focus:ring-0", isDark ? "text-white" : "text-[#111]")}
                                     />
-                                    <span className="text-sm text-[#999]">%</span>
+                                    <span className="text-[12px] opacity-40">%</span>
                                 </div>
                                 <div className="w-16 flex items-center justify-center">
                                     <input
                                         type="number"
                                         value={item.discount}
                                         onChange={(e) => updateItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
-                                        className="w-full text-center text-sm font-medium bg-transparent border-none p-0 focus:ring-0 text-[#111]"
+                                        className={cn("w-full text-center font-medium bg-transparent border-none p-0 focus:ring-0", isDark ? "text-white" : "text-[#111]")}
                                     />
                                 </div>
                                 <div className={cn(
-                                    "w-24 text-right pr-2 transition-all",
-                                    settings.hideQuantity ? "font-black text-[15px] text-[#000]" : "font-bold text-[#111]"
-                                )}>
+                                    "w-24 text-right pr-2 transition-all font-black",
+                                    isDark ? "text-white" : "text-black"
+                                )} style={{ fontSize: 'calc(var(--table-font-size) + 1px)' }}>
                                     {formatCurrency(item.qty * item.rate)}
                                 </div>
                             </div>
@@ -141,12 +183,19 @@ export function PricingBlock({ id, data, updateData }: { id: string, data: any, 
                     ))}
                 </div>
 
-                <div className="p-4 bg-[#fcfcfc] border-t border-[#f0f0f0]">
+                <div 
+                    className="p-4 border-t transition-all"
+                    style={{ 
+                        backgroundColor: 'var(--table-header-bg)', 
+                        borderColor: 'var(--table-border-color)',
+                        borderTopWidth: 'var(--table-stroke-width)'
+                    }}
+                >
                     <button
                         onClick={addItem}
-                        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-[#999] hover:text-[#111] hover:bg-[#f0f0f0] rounded-lg transition-all"
+                        className={cn("flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all rounded-lg", isDark ? "text-white/40 hover:text-white hover:bg-white/5" : "text-black/40 hover:text-black hover:bg-black/5")}
                     >
-                        <div className="w-5 h-5 rounded-md border border-[#ddd] flex items-center justify-center">
+                        <div className={cn("w-5 h-5 rounded-md border flex items-center justify-center", isDark ? "border-white/10" : "border-black/10")}>
                             <Plus size={12} />
                         </div>
                         Add item

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, PenLine, Upload, Type } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, PenLine, Upload, Type, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 
@@ -21,6 +21,84 @@ export function AcceptSignModal({
 
     const [activeTab, setActiveTab] = useState<'type' | 'draw' | 'upload'>('type');
     const [fullName, setFullName] = useState('');
+    const [signatureImage, setSignatureImage] = useState<string | null>(null);
+    
+    // Drawing refs
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const isDrawing = useRef(false);
+    const lastPos = useRef({ x: 0, y: 0 });
+
+    // Handle initial canvas setup and resizing
+    useEffect(() => {
+        if (activeTab === 'draw' && canvasRef.current) {
+            const canvas = canvasRef.current;
+            const parent = canvas.parentElement;
+            if (parent) {
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.strokeStyle = isDark ? '#ffffff' : '#000000';
+                    ctx.lineWidth = 2.5;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                }
+            }
+        }
+    }, [activeTab, isDark, isOpen]);
+
+    const getCoord = (e: any) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return { x: 0, y: 0 };
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    };
+
+    const startDrawing = (e: any) => {
+        isDrawing.current = true;
+        const pos = getCoord(e);
+        lastPos.current = pos;
+        const ctx = canvasRef.current?.getContext('2d');
+        if (ctx) {
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+    };
+
+    const draw = (e: any) => {
+        if (!isDrawing.current) return;
+        if (e.cancelable) e.preventDefault();
+        
+        const pos = getCoord(e);
+        const ctx = canvasRef.current?.getContext('2d');
+        if (ctx) {
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            lastPos.current = pos;
+        }
+    };
+
+    const stopDrawing = () => {
+        if (!isDrawing.current) return;
+        isDrawing.current = false;
+        if (canvasRef.current) {
+            setSignatureImage(canvasRef.current.toDataURL());
+        }
+    };
+
+    const clearCanvas = () => {
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (canvas && ctx) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            setSignatureImage(null);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -117,9 +195,36 @@ export function AcceptSignModal({
                             )}
 
                             {activeTab === 'draw' && (
-                                <span className={cn("text-[13px] font-medium", isDark ? "text-[#666]" : "text-[#999]")}>
-                                    Draw your signature here
-                                </span>
+                                <div className="relative w-full h-full cursor-crosshair">
+                                    <canvas 
+                                        ref={canvasRef}
+                                        onMouseDown={startDrawing}
+                                        onMouseMove={draw}
+                                        onMouseUp={stopDrawing}
+                                        onMouseLeave={stopDrawing}
+                                        onTouchStart={startDrawing}
+                                        onTouchMove={draw}
+                                        onTouchEnd={stopDrawing}
+                                        className="w-full h-full touch-none"
+                                    />
+                                    <button 
+                                        onClick={clearCanvas}
+                                        className={cn(
+                                            "absolute top-2 right-2 p-1.5 rounded-full transition-all opacity-40 hover:opacity-100",
+                                            isDark ? "bg-white/10 text-white" : "bg-black/5 text-black"
+                                        )}
+                                        title="Clear drawing"
+                                    >
+                                        <RotateCcw size={12} />
+                                    </button>
+                                    {!signatureImage && (
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20 transition-opacity">
+                                            <span className={cn("text-[12px] font-medium tracking-wide uppercase", isDark ? "text-white" : "text-black")}>
+                                                Use mouse or finger to sign
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                             )}
 
                             {activeTab === 'upload' && (
@@ -147,14 +252,19 @@ export function AcceptSignModal({
                     </button>
                     <button 
                         onClick={() => {
-                            if (!fullName && activeTab === 'type') return;
-                            onAccept({ type: activeTab, name: fullName });
+                            if (activeTab === 'type' && !fullName) return;
+                            if (activeTab === 'draw' && !signatureImage) return;
+                            onAccept({ 
+                                type: activeTab, 
+                                name: fullName, 
+                                image: signatureImage 
+                            });
                             onClose();
                         }}
-                        disabled={!fullName && activeTab === 'type'}
+                        disabled={(activeTab === 'type' && !fullName) || (activeTab === 'draw' && !signatureImage)}
                         className={cn(
                             "px-6 py-2 rounded-[8px] text-[13px] font-semibold transition-all",
-                            (!fullName && activeTab === 'type')
+                            ((activeTab === 'type' && !fullName) || (activeTab === 'draw' && !signatureImage))
                                 ? isDark ? "bg-[#333] text-[#555] cursor-not-allowed" : "bg-[#e5e5e5] text-[#999] cursor-not-allowed"
                                 : isDark ? "bg-white text-black hover:bg-[#ddd]" : "bg-black text-white hover:bg-[#222]"
                         )}

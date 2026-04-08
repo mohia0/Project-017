@@ -11,6 +11,7 @@ import { useClientStore } from '@/store/useClientStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useRouter } from 'next/navigation';
+import DatePicker from '@/components/ui/DatePicker';
 
 type EntityType = 'Client' | 'Proposal' | 'Invoice';
 
@@ -168,7 +169,7 @@ export default function CreateEntryModal() {
     const [pClient, setPClient] = useState('');
     const [pClientId, setPClientId] = useState<string | null>(null);
     const [pIssueDate, setPIssueDate] = useState(() => new Date().toISOString().split('T')[0]);
-    const [pExpiry, setPExpiry] = useState('');
+    const [pExpiry, setPExpiry] = useState(() => new Date().toISOString().split('T')[0]);
 
     // Invoice state
     const [iTitle, setITitle] = useState(generateInvoiceId);
@@ -362,10 +363,10 @@ export default function CreateEntryModal() {
                                         />
                                         <div className="grid grid-cols-2 gap-3">
                                             <Field label="Issue date" icon={<Calendar size={11} />} isDark={isDark}>
-                                                <TextInput value={pIssueDate} onChange={setPIssueDate} type="date" isDark={isDark} />
+                                                <DatePicker value={pIssueDate} onChange={setPIssueDate} isDark={isDark} />
                                             </Field>
                                             <Field label="Expiration date" icon={<Calendar size={11} />} isDark={isDark}>
-                                                <TextInput value={pExpiry} onChange={setPExpiry} type="date" isDark={isDark} />
+                                                <DatePicker value={pExpiry} onChange={setPExpiry} isDark={isDark} placeholder="Add expiration" align="right" />
                                             </Field>
                                         </div>
                                     </div>
@@ -385,10 +386,10 @@ export default function CreateEntryModal() {
                                         />
                                         <div className="grid grid-cols-2 gap-3">
                                             <Field label="Issue date" icon={<Calendar size={11} />} isDark={isDark}>
-                                                <TextInput value={iIssueDate} onChange={setIIssueDate} type="date" isDark={isDark} />
+                                                <DatePicker value={iIssueDate} onChange={setIIssueDate} isDark={isDark} />
                                             </Field>
                                             <Field label="Due date" icon={<Calendar size={11} />} isDark={isDark}>
-                                                <TextInput value={iDueDate} onChange={setIDueDate} type="date" isDark={isDark} />
+                                                <DatePicker value={iDueDate} onChange={setIDueDate} isDark={isDark} align="right" />
                                             </Field>
                                         </div>
                                     </div>

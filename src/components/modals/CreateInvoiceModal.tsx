@@ -7,6 +7,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useRouter } from 'next/navigation';
+import DatePicker from '@/components/ui/DatePicker';
 
 interface Props {
     open: boolean;
@@ -190,20 +191,19 @@ export function CreateInvoiceModal({ open, onClose }: Props) {
                     <div className="grid grid-cols-2 gap-2.5">
                         <div className={cn(field, "flex flex-col gap-0.5")}>
                             <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Issue date</span>
-                            <input
-                                type="date"
+                            <DatePicker
                                 value={issueDate}
-                                onChange={e => setIssueDate(e.target.value)}
-                                className="bg-transparent outline-none text-[13px] w-full"
+                                onChange={setIssueDate}
+                                isDark={isDark}
                             />
                         </div>
                         <div className={cn(field, "flex flex-col gap-0.5")}>
                             <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Due date</span>
-                            <input
-                                type="date"
+                            <DatePicker
                                 value={dueDate}
-                                onChange={e => setDueDate(e.target.value)}
-                                className="bg-transparent outline-none text-[13px] w-full"
+                                onChange={setDueDate}
+                                isDark={isDark}
+                                align="right"
                             />
                         </div>
                     </div>

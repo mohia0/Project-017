@@ -89,8 +89,8 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate }: {
                 "w-full h-9 rounded-xl flex items-center transition-colors relative",
                 isExpanded ? "justify-start gap-3 px-3" : "justify-center px-1.5",
                 isActive
-                    ? "bg-white/10 text-white shadow-sm"
-                    : "text-[#6b6b6b] hover:text-white hover:bg-white/5"
+                    ? "text-white"
+                    : "text-white/30 hover:text-white hover:bg-white/[0.03]"
             )}
         >
             <Icon size={16} strokeWidth={1.75} className={cn("shrink-0 transition-transform", isActive && "scale-110")} />
@@ -104,10 +104,6 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate }: {
             </div>
         </Link>
     );
-
-    if (!isExpanded) {
-        return <Tooltip content={item.label} side="right" delay={0.1}>{content}</Tooltip>;
-    }
 
     return content;
 }
@@ -230,28 +226,24 @@ export default function LeftSystemMenu() {
                     </div>
                 ) : (
                     <>
-                        <Tooltip content="Edit Menu" side="right" delay={0.1}>
-                            <button
-                                onClick={() => {
-                                    setIsEditing(true);
-                                    if (!isLeftMenuExpanded) toggleLeftMenu();
-                                }}
-                                className="w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-[#4a4a4a] hover:text-white hover:bg-white/5"
-                            >
-                                <Settings size={14} strokeWidth={2} />
-                            </button>
-                        </Tooltip>
+                        <button
+                            onClick={() => {
+                                setIsEditing(true);
+                                if (!isLeftMenuExpanded) toggleLeftMenu();
+                            }}
+                            className="w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-white/30 hover:text-white hover:bg-white/[0.03]"
+                        >
+                            <Settings size={14} strokeWidth={2} />
+                        </button>
 
-                        <Tooltip content={isLeftMenuExpanded ? "Collapse" : "Expand"} side="right" delay={0.1}>
-                            <button
-                                onClick={toggleLeftMenu}
-                                className="w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-[#4a4a4a] hover:text-white hover:bg-white/5"
-                            >
-                                {isLeftMenuExpanded
-                                    ? <ChevronLeft size={14} strokeWidth={2} />
-                                    : <ChevronRight size={14} strokeWidth={2} />}
-                            </button>
-                        </Tooltip>
+                        <button
+                            onClick={toggleLeftMenu}
+                            className="w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-white/30 hover:text-white hover:bg-white/[0.03]"
+                        >
+                            {isLeftMenuExpanded
+                                ? <ChevronLeft size={14} strokeWidth={2} />
+                                : <ChevronRight size={14} strokeWidth={2} />}
+                        </button>
                     </>
                 )}
             </div>

@@ -6,6 +6,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { BlockProps } from './SectionBlockWrapper';
+import DatePicker from '@/components/ui/DatePicker';
 
 export function SignatureBlock({ id, data, updateData, removeBlock, addBlockAfter }: BlockProps) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -18,7 +19,7 @@ export function SignatureBlock({ id, data, updateData, removeBlock, addBlockAfte
         transition,
     };
 
-    const isSigned = signedName.length > 0;
+    const isSigned = signedName.length > 0 || data.signatureImage;
 
     return (
         <div
@@ -61,8 +62,12 @@ export function SignatureBlock({ id, data, updateData, removeBlock, addBlockAfte
 
                 <div className="space-y-6">
                     <div className="border-b border-dashed border-[#ccc] pb-2 relative">
-                        {isSigned ? (
-                            <div className="font-['Caveat',cursive] text-4xl text-[#111] h-12 flex items-end px-2">
+                        {data.signatureImage ? (
+                            <div className="h-12 flex items-end px-2 pt-1 pb-1">
+                                <img src={data.signatureImage} className="max-h-full invert-0 grayscale" alt="Signature" />
+                            </div>
+                        ) : isSigned ? (
+                            <div className="font-['Brush_Script_MT',cursive] text-4xl text-[#111] h-12 flex items-end px-2">
                                 {signedName}
                             </div>
                         ) : (
@@ -88,15 +93,15 @@ export function SignatureBlock({ id, data, updateData, removeBlock, addBlockAfte
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-[#666] uppercase tracking-wider mb-2">Date</label>
-                            <input
-                                type="date"
-                                value={signedDate}
-                                onChange={(e) => {
-                                    setSignedDate(e.target.value);
-                                    updateData(id, { ...data, signedDate: e.target.value });
-                                }}
-                                className="w-full text-sm bg-white border border-[#e2e2e2] rounded-lg px-3 py-2 outline-none focus:border-[#111] transition-colors"
-                            />
+                            <div className="border border-[#e2e2e2] rounded-lg px-3 py-2 bg-white">
+                                <DatePicker
+                                    value={signedDate}
+                                    onChange={(v) => {
+                                        setSignedDate(v);
+                                        updateData(id, { ...data, signedDate: v });
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

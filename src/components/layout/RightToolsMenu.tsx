@@ -22,74 +22,64 @@ export default function RightToolsMenu() {
         )}>
             {/* Top: Create button */}
             <div className="flex flex-col items-center pt-1.5 pb-3 w-full">
-                <Tooltip content="Create new" side="left" delay={0.1}>
-                    <button
-                        onClick={() => setCreateModalOpen(true)}
-                        className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black"
-                    >
-                        <Plus size={16} strokeWidth={2.5} />
-                    </button>
-                </Tooltip>
+                <button
+                    onClick={() => setCreateModalOpen(true)}
+                    className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black"
+                >
+                    <Plus size={16} strokeWidth={2.5} />
+                </button>
             </div>
 
             {/* Middle: Tool icons */}
             <div className="flex flex-col items-center gap-1 py-3 flex-1 w-full px-2">
-                <Tooltip content="Notifications" side="left" delay={0.1}>
-                    <button
-                        onClick={toggleNotifications}
-                        className={cn(
-                            "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
-                            notificationsOpen
-                                ? isDark
-                                    ? "bg-white/10 text-white"
-                                    : "bg-[#f0f0f0] text-[#111]"
-                                : isDark
-                                    ? "text-[#6b6b6b] hover:text-white hover:bg-white/5"
-                                    : "text-[#888] hover:text-[#111] hover:bg-[#f0f0f0]"
-                        )}
-                    >
-                        <Bell size={16} strokeWidth={1.75} />
-                    </button>
-                </Tooltip>
+                <button
+                    onClick={toggleNotifications}
+                    className={cn(
+                        "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
+                        notificationsOpen
+                            ? isDark
+                                ? "bg-white/10 text-white"
+                                : "bg-[#f0f0f0] text-[#111]"
+                            : isDark
+                                ? "text-[#6b6b6b] hover:text-white hover:bg-white/5"
+                                : "text-[#888] hover:text-[#111] hover:bg-[#f0f0f0]"
+                    )}
+                >
+                    <Bell size={16} strokeWidth={1.75} />
+                </button>
             </div>
 
             {/* Bottom: templates + theme toggle + avatar */}
             <div className="flex flex-col items-center gap-2 pt-3 pb-1.5 w-full px-2">
-                <Tooltip content="Templates" side="left" delay={0.1}>
-                    <button
-                        onClick={() => router.push('/templates')}
-                        className={cn(
-                            "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
-                            isTemplatesMode
-                                ? isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#111]"
-                                : isDark ? "text-[#6b6b6b] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-[#111] hover:bg-[#f0f0f0]"
-                        )}
-                    >
-                        <LayoutTemplate size={14} strokeWidth={2} />
-                    </button>
-                </Tooltip>
+                <button
+                    onClick={() => router.push('/templates')}
+                    className={cn(
+                        "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
+                        isTemplatesMode
+                            ? isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#111]"
+                            : isDark ? "text-[#6b6b6b] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-[#111] hover:bg-[#f0f0f0]"
+                    )}
+                >
+                    <LayoutTemplate size={14} strokeWidth={2} />
+                </button>
 
-                <Tooltip content={isDark ? "Light Mode" : "Dark Mode"} side="left" delay={0.1}>
-                    <button
-                        onClick={toggleTheme}
-                        className={cn(
-                            "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
-                            isDark ? "text-[#6b6b6b] hover:text-[#efca00] hover:bg-white/5" : "bg-[#f0f0f0] text-[#fa6e34] hover:text-[#ff804b]"
-                        )}
-                    >
-                        {isDark ? <Moon size={14} strokeWidth={1.75} /> : <Sun size={14} strokeWidth={1.75} />}
-                    </button>
-                </Tooltip>
+                <button
+                    onClick={toggleTheme}
+                    className={cn(
+                        "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
+                        isDark ? "text-[#6b6b6b] hover:text-[#efca00] hover:bg-white/5" : "bg-[#f0f0f0] text-[#fa6e34] hover:text-[#ff804b]"
+                    )}
+                >
+                    {isDark ? <Moon size={14} strokeWidth={1.75} /> : <Sun size={14} strokeWidth={1.75} />}
+                </button>
 
                 {/* User avatar */}
-                <Tooltip content="Account Settings" side="left" delay={0.1}>
-                    <div className={cn(
-                        "w-8 h-8 rounded-[10px] flex items-center justify-center cursor-pointer transition-colors select-none",
-                        isDark ? "bg-[#2a2a2a] text-white/60 hover:bg-[#333]" : "bg-[#f0f0f0] text-[#666] hover:bg-[#e8e8e8]"
-                    )}>
-                        <span className="text-[10px] font-semibold">MH</span>
-                    </div>
-                </Tooltip>
+                <div className={cn(
+                    "w-8 h-8 rounded-[10px] flex items-center justify-center cursor-pointer transition-colors select-none",
+                    isDark ? "bg-[#2a2a2a] text-white/60 hover:bg-[#333]" : "bg-[#f0f0f0] text-[#666] hover:bg-[#e8e8e8]"
+                )}>
+                    <span className="text-[10px] font-semibold">MH</span>
+                </div>
             </div>
         </nav>
     );

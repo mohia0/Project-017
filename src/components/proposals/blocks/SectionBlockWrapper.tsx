@@ -45,9 +45,11 @@ export function SectionBlockWrapper({
         opacity: isDragging ? 0.4 : 1,
         paddingTop: 'var(--block-margin-top)',
         paddingBottom: 'var(--block-margin-bottom)',
-        borderRadius: isFirst ? 'var(--block-border-radius) var(--block-border-radius) 0 0' : 
-                      isLast ? '0 0 var(--block-border-radius) var(--block-border-radius)' : '0',
-        backgroundColor: '#ffffff',
+        borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : '0',
+        borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : '0',
+        borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : '0',
+        borderBottomRightRadius: isLast ? 'var(--block-border-radius)' : '0',
+        backgroundColor: 'var(--document-bg, #ffffff)',
     };
 
     if (isPreview) {
@@ -55,9 +57,11 @@ export function SectionBlockWrapper({
             <div style={{ 
                 paddingTop: 'var(--block-margin-top)', 
                 paddingBottom: 'var(--block-margin-bottom)',
-                borderRadius: isFirst ? 'var(--block-border-radius) var(--block-border-radius) 0 0' : 
-                              isLast ? '0 0 var(--block-border-radius) var(--block-border-radius)' : '0',
-                backgroundColor: '#ffffff',
+                borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : '0',
+                borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : '0',
+                borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : '0',
+                borderBottomRightRadius: isLast ? 'var(--block-border-radius)' : '0',
+                backgroundColor: 'var(--document-bg, #ffffff)',
             }}>
                 {children}
             </div>
@@ -94,22 +98,24 @@ export function SectionBlockWrapper({
 
                     <span className="w-px h-3 bg-white/10 mx-1" />
 
-                    <Tooltip content="Duplicate" side="top" delay={0.1}>
-                        <button
-                            onClick={() => onDuplicate?.(id)}
-                            className="p-1.5 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
-                        >
-                            <Copy size={13} strokeWidth={2.5} />
-                        </button>
-                    </Tooltip>
-                    <Tooltip content="Delete" side="top" delay={0.1}>
-                        <button
-                            onClick={() => onDelete(id)}
-                            className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                        >
-                            <Trash2 size={13} strokeWidth={2.5} />
-                        </button>
-                    </Tooltip>
+                    <button
+                        onClick={() => onDuplicate?.(id)}
+                        className={cn(
+                            "p-2 rounded-lg transition-all",
+                            isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
+                        )}
+                    >
+                        <Copy size={13} />
+                    </button>
+                    <button
+                        onClick={() => onDelete(id)}
+                        className={cn(
+                            "p-2 rounded-lg transition-all",
+                            isDark ? "hover:bg-red-500/20 text-red-400" : "hover:bg-red-50 text-red-500"
+                        )}
+                    >
+                        <Trash2 size={13} />
+                    </button>
                 </div>
             )}
 
