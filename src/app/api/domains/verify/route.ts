@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { supabaseService } from '@/lib/supabase-service';
 import { supabase } from '@/lib/supabase'; // user might only have normal client, we'll use normal client first if service is absent
 
 export async function POST(req: Request) {
