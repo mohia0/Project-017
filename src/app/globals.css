@@ -4,24 +4,24 @@
   --color-brand: #333333;
   --color-brand-light: #f5f5f5;
   --color-brand-dark: #111111;
-  --color-border: #e2e2e2;
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #fdfdfd;
-  --color-bg-tertiary: #f9f9f9;
-  --color-text-primary: #171717;
-  --color-text-secondary: #666666;
+
+  /* Unified border scale */
+  --color-border: #e4e4e4;        /* main borders — header, panels, dividers */
+  --color-border-subtle: #eeeeee; /* subtle card/field borders */
+  --color-border-strong: #d8d8d8; /* strong borders — insert zones, hover */
+
+  /* Neutral surface scale */
+  --color-bg-primary: #ffffff;    /* white — cards, panels, top bar */
+  --color-bg-secondary: #f7f7f7;  /* canvas / secondary surfaces */
+  --color-bg-tertiary: #f0f0f0;   /* button backgrounds */
+  --color-bg-pressed: #e8e8e8;    /* button hover / pressed */
+
+  --color-text-primary: #111111;
+  --color-text-secondary: #555555;
   --color-text-tertiary: #999999;
-  
-  /* Extracted SaaS Colors */
-  --color-primary: var(--primary);
-  --color-primary-light: var(--primary-light);
-  --color-primary-dark: var(--primary-dark);
-  --color-font-sub: var(--font-sub);
-  --color-section-border: var(--section-border);
-  --color-inner-bg: var(--inner-background);
 
   --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.03);
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
 @layer base {

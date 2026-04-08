@@ -15,7 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className={cn(
             "flex h-screen w-full overflow-hidden p-2.5 gap-2.5",
-            isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f1f1f9] text-[#111]"
+            isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f0f0f0] text-[#111]"
         )}>
             {/* LEFT — compact icon sidebar */}
             <LeftSystemMenu />

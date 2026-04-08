@@ -308,7 +308,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
             {/* ── TOP BAR (SaaS PageHeader Match) ── */}
             <div className={cn(
                 "flex items-center px-6 py-4 border-b shrink-0 transition-colors",
-                isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#d2d2eb]"
+                isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 {/* Left: Editable Title & Status Indicator */}
                 <div className="flex items-center gap-4 flex-1">
@@ -316,7 +316,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         onClick={() => router.push('/proposals')}
                         className={cn(
                             "flex items-center justify-center w-8 h-8 rounded-[8px] transition-all",
-                            isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f1f1f9]"
+                            isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]"
                         )}
                     >
                         <ArrowLeft size={16} />
@@ -364,8 +364,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         </button>
                         {showStatusMenu && (
                             <div className={cn(
-                                "absolute right-0 top-full mt-1.5 w-40 rounded-[10px] shadow-xl py-1 z-50",
-                                isDark ? "bg-[#0c0c0c]" : "bg-white border-[#d2d2eb]"
+                                "absolute right-0 top-full mt-1.5 w-40 rounded-[10px] shadow-xl py-1 z-50 border",
+                                isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]"
                             )}>
                                 {Object.keys(STATUS_STYLE).map(s => (
                                     <button
@@ -403,7 +403,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 ? "bg-[#4dbf39] text-black hover:bg-[#59d044]"
                                 : isDark 
                                     ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" 
-                                    : "bg-[#f1f1f9] text-[#555] hover:bg-[#e2e2ef] hover:text-[#111]"
+                                    : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
                         )}
                     >
                         {isPreview ? <PenLine size={14} /> : <Eye size={14} />}
@@ -414,7 +414,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     {isPreview && (
                         <div className={cn(
                             "flex items-center rounded-[8px] h-[32px] p-[3px]",
-                            isDark ? "bg-white/[0.03]" : "border-[#e0e0e0] bg-[#f5f5f5]"
+                            isDark ? "bg-white/[0.03]" : "bg-[#f0f0f0]"
                         )}>
                             <button
                                 onClick={() => setPreviewMode('desktop')}
@@ -448,7 +448,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         title={copied ? "Copied!" : "Copy link"}
                         className={cn(
                             "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
-                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f1f1f9] text-[#555] hover:bg-[#e2e2ef] hover:text-[#111]"
+                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
                         )}
                     >
                         {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
@@ -468,7 +468,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             onClick={() => setShowActionsMenu(s => !s)}
                             className={cn(
                                 "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
-                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f1f1f9] text-[#555] hover:bg-[#e2e2ef] hover:text-[#111]"
+                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
                             )}
                         >
                             <MoreHorizontal size={14} />
@@ -507,7 +507,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 {/* ── LEFT: CANVAS ── */}
                 <div className={cn(
                     "flex-1 overflow-auto relative w-full",
-                    isDark ? "bg-[#080808]" : "bg-[#f2f2f2]"
+                    isDark ? "bg-[#080808]" : "bg-[#f7f7f7]"
                 )}>
                     <div className={cn(
                         "flex flex-col items-center min-h-full",
@@ -614,8 +614,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 {/* ── RIGHT: METADATA PANEL ── */}
                 {!isPreview && (
                     <div className={cn(
-                        "w-[240px] shrink-0 flex flex-col overflow-hidden",
-                        isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]"
+                        "w-[240px] shrink-0 flex flex-col overflow-hidden border-l",
+                        isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#f7f7f7] border-[#e4e4e4]"
                     )}>
                         <div className="flex items-center shrink-0 py-1">
                             {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => (
@@ -1579,7 +1579,7 @@ function MetaField({
     return (
         <div className={cn(
             "rounded-lg border px-3 py-2.5 transition-colors",
-            isDark ? "border-[#252525] bg-[#1f1f1f] hover:border-[#333]" : "border-[#ebebeb] bg-white hover:border-[#ddd]"
+            isDark ? "border-[#252525] bg-[#1f1f1f] hover:border-[#333]" : "border-[#eeeeee] bg-white hover:border-[#e4e4e4]"
         )}>
             <div className="flex items-center justify-between mb-1">
                 <div className={cn("flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#bbb]")}>
@@ -1602,7 +1602,7 @@ function CollapsibleSection({ label, isDark }: { label: string; isDark: boolean 
     return (
         <div className={cn(
             "rounded-lg border overflow-hidden",
-            isDark ? "border-[#252525]" : "border-[#ebebeb]"
+            isDark ? "border-[#252525]" : "border-[#eeeeee]"
         )}>
             <button
                 onClick={() => setOpen(v => !v)}

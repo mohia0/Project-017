@@ -16,7 +16,7 @@ export default function RightToolsMenu() {
             rightPanel ? "rounded-r-2xl rounded-l-none border-l" : "rounded-2xl",
             isDark 
                 ? cn("bg-[#141414]", rightPanel && "border-[#222]") 
-                : cn("bg-[#fff]", rightPanel && "border-[#ebebeb]")
+                : cn("bg-[#fff]", rightPanel && "border-[#e4e4e4]")
         )}>
             {/* Top: Create button */}
             <div className="flex flex-col items-center pt-1.5 pb-3 w-full">
@@ -39,10 +39,10 @@ export default function RightToolsMenu() {
                         notificationsOpen
                             ? isDark
                                 ? "bg-white/10 text-white"
-                                : "bg-[#ebebf5] text-[#111]"
+                                : "bg-[#f0f0f0] text-[#111]"
                             : isDark
                                 ? "text-[#6b6b6b] hover:text-white hover:bg-white/5"
-                                : "text-[#888] hover:text-[#111] hover:bg-[#f1f1f9]"
+                                : "text-[#888] hover:text-[#111] hover:bg-[#f0f0f0]"
                     )}
                 >
                     <Bell size={16} strokeWidth={1.75} />
@@ -56,7 +56,7 @@ export default function RightToolsMenu() {
                     title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
                     className={cn(
                         "w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors",
-                        isDark ? "text-[#6b6b6b] hover:text-[#efca00] hover:bg-white/5" : "bg-[#f1f1f9] text-[#fa6e34] hover:text-[#ff804b]"
+                        isDark ? "text-[#6b6b6b] hover:text-[#efca00] hover:bg-white/5" : "bg-[#f0f0f0] text-[#fa6e34] hover:text-[#ff804b]"
                     )}
                 >
                     {isDark ? <Moon size={14} strokeWidth={1.75} /> : <Sun size={14} strokeWidth={1.75} />}
@@ -65,7 +65,7 @@ export default function RightToolsMenu() {
                 {/* User avatar */}
                 <div className={cn(
                     "w-8 h-8 rounded-[10px] flex items-center justify-center cursor-pointer transition-colors select-none",
-                    isDark ? "bg-[#2a2a2a] text-white/60 hover:bg-[#333]" : "bg-[#f1f1f9] text-[#666] hover:bg-[#eaeaef]"
+                    isDark ? "bg-[#2a2a2a] text-white/60 hover:bg-[#333]" : "bg-[#f0f0f0] text-[#666] hover:bg-[#e8e8e8]"
                 )}>
                     <span className="text-[10px] font-semibold">MH</span>
                 </div>

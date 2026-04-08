@@ -21,7 +21,7 @@ function PanelHeader({ title, isDark, onClose }: { title: string; isDark: boolea
     return (
         <div className={cn(
             "flex items-center justify-between px-4 py-3 border-b shrink-0",
-            isDark ? "border-[#222]" : "border-[#ebebeb]"
+            isDark ? "border-[#222]" : "border-[#e4e4e4]"
         )}>
             <span className={cn("text-[13px] font-semibold", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>{title}</span>
             <button
@@ -53,7 +53,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
             {/* Footer */}
             <div className={cn(
                 "flex items-center gap-3 px-4 py-3 border-t shrink-0",
-                isDark ? "border-white/[0.01]" : "border-[#ebebeb]"
+                isDark ? "border-white/[0.01]" : "border-[#e4e4e4]"
             )}>
                 <div className={cn(
                     "flex items-center gap-1.5 flex-1 rounded-lg px-3 py-1.5",
@@ -153,7 +153,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
     );
 
     const name = form.contact_person || form.company_name || '';
-    const border = isDark ? "border-[#252525]" : "border-[#ebebeb]";
+    const border = isDark ? "border-[#252525]" : "border-[#e4e4e4]";
 
     return (
         <>
@@ -226,7 +226,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
             </div>
 
             {/* Footer delete */}
-            <div className={cn("px-4 py-3 border-t shrink-0", isDark ? "border-[#252525]" : "border-[#ebebeb]")}>
+            <div className={cn("px-4 py-3 border-t shrink-0", isDark ? "border-[#252525]" : "border-[#e4e4e4]")}>
                 {showDelete ? (
                     <div className="flex items-center gap-2">
                         <span className={cn("text-[11px] flex-1", isDark ? "text-[#666]" : "text-[#999]")}>Delete this contact?</span>
