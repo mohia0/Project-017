@@ -21,7 +21,7 @@ const DEFAULT_PAYMENTS: Omit<WorkspacePayments, 'workspace_id'> = {
 
 export default function PaymentsSettingsPage() {
     const { activeWorkspaceId } = useUIStore();
-    const { payments, fetchPayments, updatePayments, isLoading } = useSettingsStore();
+    const { payments, fetchPayments, updatePayments, isLoading, hasFetched } = useSettingsStore();
 
     const [formData, setFormData] = useState<Omit<WorkspacePayments, 'workspace_id'>>(DEFAULT_PAYMENTS);
     const [isSaving, setIsSaving] = useState(false);
@@ -74,7 +74,7 @@ export default function PaymentsSettingsPage() {
         setIsSaving(false);
     };
 
-    if (isLoading && !payments) {
+    if (!hasFetched.payments) {
         return <div className="animate-pulse">Loading payments data...</div>;
     }
 

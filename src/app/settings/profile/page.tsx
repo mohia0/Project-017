@@ -10,7 +10,7 @@ import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
 
 export default function ProfileSettingsPage() {
-    const { profile, fetchProfile, updateProfile, isLoading } = useSettingsStore();
+    const { profile, fetchProfile, updateProfile, isLoading, hasFetched } = useSettingsStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
 
@@ -61,7 +61,7 @@ export default function ProfileSettingsPage() {
         setIsSaving(false);
     };
 
-    if (isLoading && !profile) {
+    if (!hasFetched.profile) {
         return <div className="animate-pulse">Loading profile...</div>;
     }
 

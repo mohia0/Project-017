@@ -53,16 +53,29 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
             {/* Header Actions */}
-            <div className={cn("px-4 py-2 flex items-center justify-between border-b shrink-0", isDark ? "border-[#252525]" : "border-[#f0f0f0]")}>
-                <span className={cn("text-[11px] font-semibold", isDark ? "text-[#888]" : "text-[#999]")}>
-                    {notifications.filter(n => !n.read).length} Unread
-                </span>
-                <button 
-                    onClick={markAllAsRead}
-                    className={cn("text-[10px] font-medium hover:underline", isDark ? "text-[#ccc]" : "text-[#666]")}
-                >
-                    Mark all as read
-                </button>
+            <div className={cn("px-4 py-2.5 flex items-center justify-between border-b shrink-0", isDark ? "border-[#252525]" : "border-[#f0f0f0]")}>
+                <div className="flex items-center gap-2">
+                    <span className={cn("text-[11px] font-bold tracking-tight uppercase", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                        {notifications.filter(n => !n.read).length} Unread
+                    </span>
+                </div>
+                {notifications.some(n => !n.read) && (
+                    <button 
+                        onClick={markAllAsRead}
+                        className={cn(
+                            "flex items-center gap-1.5 px-2 py-1 rounded-md transition-all active:scale-95 group",
+                            isDark 
+                                ? "hover:bg-white/[0.03] text-[#666] hover:text-white" 
+                                : "hover:bg-black/[0.03] text-[#999] hover:text-black"
+                        )}
+                    >
+                        <Check size={11} strokeWidth={3} className={cn(
+                            "transition-colors",
+                            isDark ? "text-[#444] group-hover:text-emerald-500/80" : "text-[#ccc] group-hover:text-emerald-600/80"
+                        )} />
+                        <span className="text-[10px] font-semibold">Mark all as read</span>
+                    </button>
+                )}
             </div>
 
             <div className="flex-1 overflow-y-auto w-full">

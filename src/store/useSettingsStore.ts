@@ -97,6 +97,7 @@ interface SettingsState {
   emailTemplates: EmailTemplate[];
   fetchEmailTemplates: (workspaceId: string) => Promise<void>;
   updateEmailTemplate: (workspaceId: string, templateKey: string, data: Partial<EmailTemplate>) => Promise<void>;
+  hasFetched: Record<string, boolean>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -110,11 +111,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   emailConfig: null,
   emailTemplates: [],
 
+  hasFetched: {},
+
   fetchProfile: async () => {
     set({ isLoading: true });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      set({ profile: null, isLoading: false });
+      set({ profile: null, isLoading: false, hasFetched: { ...get().hasFetched, profile: true } });
       return;
     }
 
@@ -128,7 +131,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } else {
       set({ profile: (data && data.length > 0) ? data[0] : null });
     }
-    set({ isLoading: false });
+    set({ isLoading: false, hasFetched: { ...get().hasFetched, profile: true } });
   },
 
   updateProfile: async (updates) => {
@@ -159,10 +162,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     if (error && error.code !== 'PGRST116') {
       set({ error: error.message });
     } else {
-      // If none found, we'll keep it null and rely on defaults
       set({ branding: data || null });
     }
-    set({ isLoading: false });
+    set({ isLoading: false, hasFetched: { ...get().hasFetched, branding: true } });
   },
 
   updateBranding: async (workspaceId, updates) => {
@@ -192,7 +194,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } else {
         set({ payments: data || null });
     }
-    set({ isLoading: false });
+    set({ isLoading: false, hasFetched: { ...get().hasFetched, payments: true } });
   },
 
   updatePayments: async (workspaceId, updates) => {
@@ -221,7 +223,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } else {
       set({ domains: data || [] });
     }
-    set({ isLoading: false });
+    set({ isLoading: false, hasFetched: { ...get().hasFetched, domains: true } });
   },
 
   addDomain: async (workspaceId, domain) => {
@@ -271,7 +273,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } else {
       set({ emailConfig: data || null });
     }
-    set({ isLoading: false });
+    set({ isLoading: false, hasFetched: { ...get().hasFetched, emailConfig: true } });
   },
 
   fetchEmailTemplates: async (workspaceId) => {
@@ -286,7 +288,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } else {
       set({ emailTemplates: data || [] });
     }
-    set({ isLoading: false });
+    set({ isLoading: false, hasFetched: { ...get().hasFetched, emailTemplates: true } });
   },
 
   updateEmailTemplate: async (workspaceId, templateKey, updates) => {

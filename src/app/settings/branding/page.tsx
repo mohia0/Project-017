@@ -18,7 +18,7 @@ const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
 
 export default function BrandingSettingsPage() {
     const { activeWorkspaceId } = useUIStore();
-    const { branding, fetchBranding, updateBranding, isLoading } = useSettingsStore();
+    const { branding, fetchBranding, updateBranding, isLoading, hasFetched } = useSettingsStore();
 
     const [formData, setFormData] = useState<Omit<WorkspaceBranding, 'workspace_id'>>(DEFAULT_BRANDING);
     const [isSaving, setIsSaving] = useState(false);
@@ -65,7 +65,7 @@ export default function BrandingSettingsPage() {
         setIsSaving(false);
     };
 
-    if (isLoading && !branding) {
+    if (!hasFetched.branding) {
         return <div className="animate-pulse">Loading branding data...</div>;
     }
 

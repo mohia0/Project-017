@@ -39,8 +39,8 @@ function AccordionSection({ title, children, defaultOpen = false }: { title: str
 
 export default function WorkspaceSettingsPage() {
     const router = useRouter();
-    const { workspaces, updateWorkspace, deleteWorkspace, isLoading } = useWorkspaceStore();
-    const { domains, fetchDomains } = useSettingsStore();
+    const { workspaces, updateWorkspace, deleteWorkspace, hasFetched: hasFetchedWorkspace } = useWorkspaceStore();
+    const { domains, fetchDomains, hasFetched: hasFetchedDomains } = useSettingsStore();
     const { activeWorkspaceId } = useUIStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
@@ -61,9 +61,8 @@ export default function WorkspaceSettingsPage() {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         if (activeWorkspaceId) fetchDomains(activeWorkspaceId);
-        const t = setTimeout(() => setMounted(true), 80);
-        return () => clearTimeout(t);
     }, [activeWorkspaceId, fetchDomains]);
 
     useEffect(() => {
@@ -134,7 +133,7 @@ export default function WorkspaceSettingsPage() {
         }
     };
 
-    if (isLoading || !mounted) {
+    if (!hasFetchedWorkspace || !hasFetchedDomains.domains || !mounted) {
         return (
             <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto py-8 animate-pulse">
                 <div className={cn("h-48 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />

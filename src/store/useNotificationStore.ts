@@ -99,10 +99,13 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             }, (payload) => {
                 const newNotification = payload.new as AppNotification;
                 
-                // Add to local state
+                // Add to local state and trigger toast
                 set(state => ({
                     notifications: [newNotification, ...state.notifications]
                 }));
+
+                const { gooeyToast } = require('goey-toast');
+                gooeyToast.success(newNotification.message);
             })
             .subscribe();
     },

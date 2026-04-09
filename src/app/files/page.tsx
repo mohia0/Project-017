@@ -16,8 +16,26 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { formatDistanceToNow } from 'date-fns';
 import { gooeyToast } from 'goey-toast';
 import { supabase } from '@/lib/supabase';
+
+// ─── Shared Components ────────────────────────────────────────────────────────
+
+const ProgressContent = ({ progress, isDark }: { progress: number; isDark: boolean }) => (
+    <div className="w-full min-w-[180px] mt-1.5">
+        <div className={cn("h-1 w-full rounded-full overflow-hidden", isDark ? "bg-white/10" : "bg-black/5")}>
+            <div 
+                className="h-full bg-[#4dbf39] transition-all duration-300 ease-out" 
+                style={{ width: `${progress}%` }}
+            />
+        </div>
+        <div className="flex justify-between items-center mt-1.5">
+            <span className={cn("text-[10px] font-medium uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#aaa]")}>Uploading...</span>
+            <span className={cn("text-[10px] font-bold tabular-nums", isDark ? "text-[#4dbf39]/80" : "text-[#4dbf39]")}>{Math.round(progress)}%</span>
+        </div>
+    </div>
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -473,7 +491,34 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
 }) {
     const [uploads, setUploads] = useState<UploadFile[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [toastId, setToastId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Sync progress to global notification
+    useEffect(() => {
+        const activeUploads = uploads.filter(u => u.status === 'uploading' || u.status === 'done' || u.status === 'error');
+        if (activeUploads.length === 0) return;
+
+        const totalSize = activeUploads.reduce((acc, u) => acc + u.file.size, 0);
+        if (totalSize === 0) return;
+        
+        const totalLoaded = activeUploads.reduce((acc, u) => acc + (u.file.size * (u.progress / 100)), 0);
+        const overallProgress = (totalLoaded / totalSize) * 100;
+
+        if (uploads.some(u => u.status === 'uploading')) {
+            if (!toastId) {
+                const id = gooeyToast(`Uploading ${activeUploads.length} files...`, {
+                    description: <ProgressContent progress={overallProgress} isDark={isDark} />,
+                    duration: Infinity
+                });
+                setToastId(id);
+            } else {
+                gooeyToast.update(toastId, {
+                    description: <ProgressContent progress={overallProgress} isDark={isDark} />
+                });
+            }
+        }
+    }, [uploads, toastId, isDark]);
 
     const addFiles = (fileList: FileList | null) => {
         if (!fileList) return;
@@ -569,12 +614,14 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
             }, 150);
         });
         gooeyToast.promise(addPromise, {
+            id: toastId || undefined,
             loading: 'Adding to library…',
             success: (msg) => msg,
             error: (err: unknown) => (err as { message?: string })?.message || String(err),
+            description: undefined
         });
         onClose();
-    }, [currentFolderId, onUploaded, onClose]);
+    }, [currentFolderId, onUploaded, onClose, toastId]);
 
     // Auto-confirm: pass the LATEST uploads snapshot directly — no stale closure.
     useEffect(() => {
@@ -1214,67 +1261,90 @@ export default function FilesPage() {
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
 
-        const uploadPromise = new Promise<void>(async (resolve, reject) => {
-            try {
-                const newItems: FileItem[] = [];
-                
-                await Promise.all(files.map(async (file) => {
-                    return new Promise<void>((subResolve, subReject) => {
-                        const xhr = new XMLHttpRequest();
-                        xhr.open("POST", "/api/upload", true);
-                        
-                        xhr.onload = () => {
-                            if (xhr.status === 200) {
-                                const resp = JSON.parse(xhr.responseText);
-                                newItems.push({
-                                    id: `file-${Date.now()}-${Math.random()}`,
-                                    name: file.name,
-                                    type: detectType(file.name),
-                                    parentId: currentFolderId,
-                                    size: file.size,
-                                    downloadUrl: resp.url,
-                                    createdAt: new Date().toISOString(),
-                                    modifiedAt: new Date().toISOString(),
-                                });
-                                subResolve();
-                            } else {
-                                subReject(new Error(`Failed to upload ${file.name}`));
-                            }
-                        };
-                        xhr.onerror = () => subReject(new Error("Network error during upload"));
-                        const formData = new FormData();
-                        formData.append("file", file);
-                        xhr.send(formData);
-                    });
-                }));
+        // Initialize toast
+        const toastId = gooeyToast(`Preparing ${files.length} file${files.length !== 1 ? 's' : ''}...`, {
+            description: <ProgressContent progress={0} isDark={isDark} />,
+            duration: Infinity
+        });
 
-                const dbItems = newItems.map(i => ({
-                    id: i.id, 
-                    name: i.name, 
-                    type: i.type, 
-                    parent_id: i.parentId, 
-                    size: i.size, 
-                    download_url: i.downloadUrl, 
-                    created_at: i.createdAt, 
-                    modified_at: i.modifiedAt,
-                    workspace_id: activeWorkspaceId
-                }));
-                const { error: dbErr } = await supabase.from('files').insert(dbItems);
-                if (dbErr) throw dbErr;
+        const progresses = new Array(files.length).fill(0);
 
-                setItems(prev => [...prev, ...newItems]);
-                resolve();
-            } catch (err: any) {
-                reject(err);
+        const updateOverallProgress = () => {
+            const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+            if (totalSize === 0) {
+                // Fallback to simple average if sizes are 0 (unlikely)
+                const total = progresses.reduce((a, b) => a + b, 0);
+                const average = total / files.length;
+                gooeyToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} /> });
+                return;
             }
-        });
+            const totalLoaded = files.reduce((acc, f, i) => acc + (f.size * (progresses[i] / 100)), 0);
+            const overallProgress = (totalLoaded / totalSize) * 100;
+            gooeyToast.update(toastId, {
+                description: <ProgressContent progress={overallProgress} isDark={isDark} />
+            });
+        };
 
-        gooeyToast.promise(uploadPromise, {
-            loading: `Uploading ${files.length} file${files.length !== 1 ? 's' : ''}...`,
-            success: 'Upload successful',
-            error: (err: unknown) => (err as { message?: string })?.message || 'Upload failed',
-        });
-    }, [currentFolderId, setItems]);
+        try {
+            const newItems: FileItem[] = [];
+            
+            await Promise.all(files.map(async (file, idx) => {
+                return new Promise<void>((subResolve, subReject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", "/api/upload", true);
+                    
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable) {
+                            progresses[idx] = (event.loaded / event.total) * 100;
+                            updateOverallProgress();
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status === 200) {
+                            const resp = JSON.parse(xhr.responseText);
+                            newItems.push({
+                                id: `file-${Date.now()}-${Math.random()}`,
+                                name: file.name,
+                                type: detectType(file.name),
+                                parentId: currentFolderId,
+                                size: file.size,
+                                downloadUrl: resp.url,
+                                createdAt: new Date().toISOString(),
+                                modifiedAt: new Date().toISOString(),
+                            });
+                            subResolve();
+                        } else {
+                            subReject(new Error(`Failed to upload ${file.name}`));
+                        }
+                    };
+                    xhr.onerror = () => subReject(new Error("Network error during upload"));
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    xhr.send(formData);
+                });
+            }));
+
+            const dbItems = newItems.map(i => ({
+                id: i.id, 
+                name: i.name, 
+                type: i.type, 
+                parent_id: i.parentId, 
+                size: i.size, 
+                download_url: i.downloadUrl, 
+                created_at: i.createdAt, 
+                modified_at: i.modifiedAt,
+                workspace_id: activeWorkspaceId
+            }));
+            const { error: dbErr } = await supabase.from('files').insert(dbItems);
+            if (dbErr) throw dbErr;
+
+            setItems(prev => [...prev, ...newItems]);
+            gooeyToast.success('Upload complete', { id: toastId, description: undefined, duration: 3000 });
+        } catch (err: any) {
+            gooeyToast.error((err as { message?: string })?.message || 'Upload failed', { id: toastId, description: undefined });
+        }
+    }, [currentFolderId, activeWorkspaceId, setItems, isDark]);
 
     // CRUD
     // CRUD
@@ -1425,6 +1495,23 @@ export default function FilesPage() {
         }
     };
 
+    const handleDownload = useCallback((item: FileItem) => {
+        if (!item.downloadUrl) {
+            gooeyToast.error("No download URL available for this file");
+            return;
+        }
+        
+        gooeyToast.info(`Downloading "${item.name}"…`);
+        
+        // Trigger download via hidden link
+        const link = document.createElement('a');
+        link.href = item.downloadUrl;
+        link.download = item.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }, []);
+
     const handleCtxAction = (action: string, itemId: string | null) => {
         if (action === 'newFolder') setNewDialog('folder');
         else if (action === 'newLink') setNewDialog('link');
@@ -1444,7 +1531,7 @@ export default function FilesPage() {
             else if (action === 'lock') toggleLock(itemId);
             else if (action === 'unlock') toggleLock(itemId);
             else if (action === 'copyLink') copyDownloadLink(itemId);
-            else if (action === 'download') gooeyToast.info(`Downloading "${item?.name}"…`);
+            else if (action === 'download' && item) handleDownload(item);
             else if (action.startsWith('color-')) recolorItem(itemId, action.replace('color-', ''));
         }
     };
@@ -1837,6 +1924,14 @@ export default function FilesPage() {
                                                             title="Rename">
                                                             <Pencil size={11} strokeWidth={2}/>
                                                         </button>
+                                                        {item.type !== 'folder' && item.downloadUrl && (
+                                                            <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
+                                                                className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
+                                                                    isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}
+                                                                    title="Download">
+                                                                <Download size={11} strokeWidth={2}/>
+                                                            </button>
+                                                        )}
                                                         {(item.downloadUrl || item.url) && (
                                                             <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
                                                                 className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
@@ -1932,6 +2027,14 @@ export default function FilesPage() {
                                                         title={item.starred ? 'Unstar' : 'Star'}>
                                                         <Star size={11} fill={item.starred ? 'currentColor' : 'none'}/>
                                                     </button>
+                                                    {/* Download */}
+                                                    {item.type !== 'folder' && item.downloadUrl && (
+                                                        <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
+                                                            className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', isDark ? 'text-[#555] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-[#f0f0f0]')}
+                                                            title="Download">
+                                                            <Download size={11}/>
+                                                        </button>
+                                                    )}
                                                     {/* Copy link */}
                                                     {(item.downloadUrl || item.url) && (
                                                         <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
@@ -1999,7 +2102,7 @@ export default function FilesPage() {
                     item={previewItem}
                     isDark={isDark}
                     onClose={() => setPreviewItem(null)}
-                    onDownload={() => { gooeyToast.info(`Downloading "${previewItem.name}"…`); }}
+                    onDownload={() => handleDownload(previewItem)}
                     onStar={() => { toggleStar(previewItem.id); setPreviewItem(p => p ? { ...p, starred: !p.starred } : null); }}
                     onDelete={() => { deleteItems([previewItem.id]); setPreviewItem(null); }}
                 />

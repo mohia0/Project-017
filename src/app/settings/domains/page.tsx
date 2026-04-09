@@ -108,7 +108,7 @@ export default function DomainsSettingsPage() {
     const { activeWorkspaceId } = useUIStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { domains, fetchDomains } = useSettingsStore();
+    const { domains, fetchDomains, hasFetched } = useSettingsStore();
     const [newDomain, setNewDomain] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [domainToDelete, setDomainToDelete] = useState<string | null>(null);
@@ -117,6 +117,7 @@ export default function DomainsSettingsPage() {
     const [verifyMessages, setVerifyMessages] = useState<Record<string, { type: 'error' | 'success', text: string }>>({});
 
     useEffect(() => {
+        setMounted(true);
         if (activeWorkspaceId) {
             fetchDomains(activeWorkspaceId);
             
@@ -131,16 +132,13 @@ export default function DomainsSettingsPage() {
                 })
                 .subscribe();
 
-            const t = setTimeout(() => setMounted(true), 80);
-                
             return () => {
                 supabase.removeChannel(channel);
-                clearTimeout(t);
             };
         }
     }, [activeWorkspaceId, fetchDomains]);
 
-    if (!activeWorkspaceId || !mounted) {
+    if (!activeWorkspaceId || !mounted || !hasFetched.domains) {
         return (
             <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 animate-pulse">
                 <div className={cn("h-24 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />

@@ -152,3 +152,31 @@ button {
   }
 }
 
+@media print {
+  /* Hide UI elements */
+  nav, header, button, .sidebar, .no-print, .actions-menu, .client-action-bar, [role="button"] {
+    display: none !important;
+  }
+
+  /* Make sure the page background is white */
+  body, html {
+    background-color: white !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Target the document container to remove shadows, margins, and max-widths */
+  .max-w-\[850px\] {
+    max-width: 100% !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide the action bar inside preview */
+  .pointer-events-none {
+    display: none !important;
+  }
+}
