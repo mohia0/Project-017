@@ -381,13 +381,12 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                         <p className={`text-[10px] mt-1 ${muted} opacity-60`}>Download the file to inspect its contents.</p>
                     </div>
                     {item.downloadUrl && (
-                        <a
-                            href={item.downloadUrl}
-                            download={item.name}
+                        <button
+                            onClick={onDownload}
                             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-lg shadow-[#4dbf39]/20 active:scale-95"
                         >
                             <Download size={13}/> Download {ext}
-                        </a>
+                        </button>
                     )}
                 </div>
             );
@@ -1254,6 +1253,31 @@ export default function FilesPage() {
         setDraggedId(null); setDragOver(null);
     };
 
+    const addFilesToDb = useCallback(async (newFiles: FileItem[]) => {
+        if (!activeWorkspaceId) return;
+        
+        const dbItems = newFiles.map(i => ({
+            id: i.id,
+            name: i.name,
+            type: i.type,
+            parent_id: i.parentId,
+            size: i.size,
+            download_url: i.downloadUrl,
+            workspace_id: activeWorkspaceId,
+            created_at: i.createdAt,
+            modified_at: i.modifiedAt,
+            url: i.downloadUrl
+        }));
+        
+        const { error } = await supabase.from('files').insert(dbItems);
+        if (error) {
+            console.error("Database error during file insertion:", error);
+            throw error;
+        }
+        
+        setItems(prev => [...prev, ...newFiles]);
+    }, [activeWorkspaceId]);
+
     // Native OS file drag-and-drop upload
     const handleNativeFileDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
@@ -1261,18 +1285,16 @@ export default function FilesPage() {
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
 
-        // Initialize toast
-        const toastId = gooeyToast(`Preparing ${files.length} file${files.length !== 1 ? 's' : ''}...`, {
+        // Initialize progress toast
+        const toastId = gooeyToast(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}...`, {
             description: <ProgressContent progress={0} isDark={isDark} />,
             duration: Infinity
         });
-
         const progresses = new Array(files.length).fill(0);
 
         const updateOverallProgress = () => {
             const totalSize = files.reduce((acc, f) => acc + f.size, 0);
             if (totalSize === 0) {
-                // Fallback to simple average if sizes are 0 (unlikely)
                 const total = progresses.reduce((a, b) => a + b, 0);
                 const average = total / files.length;
                 gooeyToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} /> });
@@ -1324,27 +1346,12 @@ export default function FilesPage() {
                     xhr.send(formData);
                 });
             }));
-
-            const dbItems = newItems.map(i => ({
-                id: i.id, 
-                name: i.name, 
-                type: i.type, 
-                parent_id: i.parentId, 
-                size: i.size, 
-                download_url: i.downloadUrl, 
-                created_at: i.createdAt, 
-                modified_at: i.modifiedAt,
-                workspace_id: activeWorkspaceId
-            }));
-            const { error: dbErr } = await supabase.from('files').insert(dbItems);
-            if (dbErr) throw dbErr;
-
-            setItems(prev => [...prev, ...newItems]);
+            await addFilesToDb(newItems);
             gooeyToast.success('Upload complete', { id: toastId, description: undefined, duration: 3000 });
         } catch (err: any) {
             gooeyToast.error((err as { message?: string })?.message || 'Upload failed', { id: toastId, description: undefined });
         }
-    }, [currentFolderId, activeWorkspaceId, setItems, isDark]);
+    }, [currentFolderId, addFilesToDb, isDark]);
 
     // CRUD
     // CRUD
@@ -2092,7 +2099,7 @@ export default function FilesPage() {
                     isDark={isDark}
                     onClose={() => setShowUpload(false)}
                     currentFolderId={currentFolderId}
-                    onUploaded={newFiles => setItems(prev => [...prev, ...newFiles])}
+                    onUploaded={addFilesToDb}
                 />
             )}
 
