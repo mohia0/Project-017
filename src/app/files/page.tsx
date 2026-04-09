@@ -529,7 +529,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
 }) {
     const [uploads, setUploads] = useState<UploadFile[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
-    const [toastId, setToastId] = useState<string | null>(null);
+    const [toastId, setToastId] = useState<string | number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Sync progress to global notification
@@ -653,7 +653,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
             }, 150);
         });
         gooeyToast.promise(addPromise, {
-            id: toastId || undefined,
+            id: toastId ?? undefined,
             loading: 'Adding to library…',
             success: (msg) => msg,
             error: (err: unknown) => (err as { message?: string })?.message || String(err),
