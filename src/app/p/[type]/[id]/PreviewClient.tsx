@@ -80,7 +80,14 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 {
                     loading: `${actionLabel}...`,
                     success: successMessage,
-                    error: (err) => `Error: ${err.message}`
+                    error: (err: any) => {
+                        console.error('Update failed detailed error:', err);
+                        // If it's a structured error from our API
+                        if (err.message && err.code) {
+                            return `Error: ${err.message} (${err.code})`;
+                        }
+                        return `Error: ${err.message || 'Update failed'}`;
+                    }
                 }
             );
         } catch (e) {

@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { gooeyToast } from 'goey-toast';
+import { supabase } from '@/lib/supabase';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,28 +52,7 @@ interface UploadFile {
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
 const SEED_ITEMS: FileItem[] = [
-    { id: 'root', name: 'Root', type: 'folder', parentId: null, createdAt: '2024-01-01', modifiedAt: '2024-01-01' },
-    { id: 'folder-assets', name: 'Assets', type: 'folder', parentId: 'root', color: '#4dbf39', createdAt: '2024-01-02', modifiedAt: '2024-03-10', starred: true },
-    { id: 'folder-docs', name: 'Documents', type: 'folder', parentId: 'root', color: '#3b82f6', createdAt: '2024-01-02', modifiedAt: '2024-04-01' },
-    { id: 'folder-media', name: 'Media', type: 'folder', parentId: 'root', color: '#f59e0b', createdAt: '2024-01-02', modifiedAt: '2024-03-20' },
-    { id: 'folder-projects', name: 'Projects', type: 'folder', parentId: 'root', color: '#8b5cf6', createdAt: '2024-01-02', modifiedAt: '2024-04-05', starred: true },
-    { id: 'folder-brand', name: 'Brand Kit', type: 'folder', parentId: 'folder-assets', color: '#ec4899', createdAt: '2024-02-01', modifiedAt: '2024-03-15' },
-    { id: 'folder-icons', name: 'Icons', type: 'folder', parentId: 'folder-assets', createdAt: '2024-02-01', modifiedAt: '2024-02-20' },
-    { id: 'file-logo', name: 'logo-primary.svg', type: 'image', parentId: 'folder-brand', size: 24576, downloadUrl: 'https://example.com/files/logo-primary.svg', createdAt: '2024-02-15', modifiedAt: '2024-03-01' },
-    { id: 'file-logo-dark', name: 'logo-dark.svg', type: 'image', parentId: 'folder-brand', size: 18432, downloadUrl: 'https://example.com/files/logo-dark.svg', createdAt: '2024-02-15', modifiedAt: '2024-03-01' },
-    { id: 'file-spec', name: 'brand-spec.pdf', type: 'doc', parentId: 'folder-brand', size: 2097152, downloadUrl: 'https://example.com/files/brand-spec.pdf', createdAt: '2024-02-20', modifiedAt: '2024-02-20' },
-    { id: 'file-proposal', name: 'proposal-template.docx', type: 'doc', parentId: 'folder-docs', size: 524288, downloadUrl: 'https://example.com/files/proposal-template.docx', createdAt: '2024-03-01', modifiedAt: '2024-04-01', starred: true },
-    { id: 'file-contract', name: 'client-contract.pdf', type: 'doc', parentId: 'folder-docs', size: 786432, downloadUrl: 'https://example.com/files/client-contract.pdf', createdAt: '2024-03-05', modifiedAt: '2024-03-05', starred: true },
-    { id: 'file-invoice-tpl', name: 'invoice-template.xlsx', type: 'doc', parentId: 'folder-docs', size: 102400, downloadUrl: 'https://example.com/files/invoice-template.xlsx', createdAt: '2024-03-10', modifiedAt: '2024-03-10' },
-    { id: 'file-hero', name: 'hero-banner.jpg', type: 'image', parentId: 'folder-media', size: 4194304, downloadUrl: 'https://example.com/files/hero-banner.jpg', createdAt: '2024-03-15', modifiedAt: '2024-03-15' },
-    { id: 'file-promo', name: 'promo-video.mp4', type: 'video', parentId: 'folder-media', size: 52428800, downloadUrl: 'https://example.com/files/promo-video.mp4', createdAt: '2024-03-20', modifiedAt: '2024-03-20' },
-    { id: 'file-jingle', name: 'brand-jingle.mp3', type: 'audio', parentId: 'folder-media', size: 3145728, downloadUrl: 'https://example.com/files/brand-jingle.mp3', createdAt: '2024-03-22', modifiedAt: '2024-03-22' },
-    { id: 'file-code', name: 'api-integration.ts', type: 'code', parentId: 'folder-projects', size: 8192, downloadUrl: 'https://example.com/files/api-integration.ts', createdAt: '2024-04-01', modifiedAt: '2024-04-05' },
-    { id: 'file-readme', name: 'README.md', type: 'doc', parentId: 'folder-projects', size: 4096, downloadUrl: 'https://example.com/files/README.md', createdAt: '2024-04-01', modifiedAt: '2024-04-04' },
-    { id: 'file-archive', name: 'backups.zip', type: 'archive', parentId: 'folder-projects', size: 104857600, downloadUrl: 'https://example.com/files/backups.zip', createdAt: '2024-04-02', modifiedAt: '2024-04-02', locked: true },
-    { id: 'link-figma', name: 'Figma Design System', type: 'link', parentId: 'folder-assets', url: 'https://figma.com/file/example', createdAt: '2024-02-10', modifiedAt: '2024-02-10', starred: true },
-    { id: 'link-notion', name: 'Notion Workspace', type: 'link', parentId: 'root', url: 'https://notion.so/workspace', createdAt: '2024-01-15', modifiedAt: '2024-01-15' },
-    { id: 'link-drive', name: 'Google Drive', type: 'link', parentId: 'root', url: 'https://drive.google.com', createdAt: '2024-01-16', modifiedAt: '2024-01-16' },
+    { id: 'root', name: 'Root', type: 'folder', parentId: null, createdAt: new Date().toISOString(), modifiedAt: new Date().toISOString() },
 ];
 
 // ─── File type detector ───────────────────────────────────────────────────────
@@ -784,6 +764,7 @@ function TreeNode({
     onDragOver: (id: string | null) => void; onDrop: (targetId: string) => void;
     onContextMenu: (e: React.MouseEvent, itemId: string) => void;
 }) {
+    if (!item) return null;
     const children = items.filter(i => i.parentId === item.id && i.type === 'folder');
     const isExpanded = expandedIds.has(item.id);
     const isActive = currentFolderId === item.id;
@@ -1039,10 +1020,8 @@ export default function FilesPage() {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
 
-    const [items, setItems] = useLocalStorage<FileItem[]>({
-        key: 'minimal-crm-files',
-        defaultValue: SEED_ITEMS,
-    });
+    const [items, setItems] = useState<FileItem[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [currentFolderId, setCurrentFolderId] = useState('root');
     const [view, setView] = useState<ViewMode>('grid');
     const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -1063,6 +1042,49 @@ export default function FilesPage() {
     const [previewItem, setPreviewItem] = useState<FileItem | null>(null);
     const [deleteWarning, setDeleteWarning] = useState<string[] | null>(null);
     const [globalDragOver, setGlobalDragOver] = useState(false);
+
+    // Sync files from Supabase
+    useEffect(() => {
+        const loadFiles = async () => {
+            const { data, error } = await supabase.from('file_items').select('*');
+            if (error) {
+                gooeyToast.error('Failed to load files');
+            } else {
+                // If user has no files, seed a 'root' folder for them
+                if (data.length === 0) {
+                    const rootFolder: FileItem = {
+                        id: 'root',
+                        name: 'Root',
+                        type: 'folder',
+                        parentId: null,
+                        createdAt: new Date().toISOString(),
+                        modifiedAt: new Date().toISOString()
+                    };
+                    const { error: insertErr } = await supabase.from('file_items').insert([rootFolder]);
+                    if (!insertErr) setItems([rootFolder]);
+                } else {
+                    // Map snake_case from DB to camelCase for the frontend if necessary
+                    // (Assuming DB columns match frontend names for now or we map them)
+                    const mappedData: FileItem[] = data.map((i: any) => ({
+                        id: i.id,
+                        name: i.name,
+                        type: i.type,
+                        parentId: i.parent_id,
+                        size: i.size,
+                        starred: i.starred,
+                        downloadUrl: i.download_url,
+                        color: i.color,
+                        createdAt: i.created_at,
+                        modifiedAt: i.modified_at,
+                        locked: i.locked
+                    }));
+                    setItems(mappedData);
+                }
+            }
+            setIsLoading(false);
+        };
+        loadFiles();
+    }, []);
 
     // Persistence: Sidebar
     useEffect(() => {
@@ -1144,12 +1166,18 @@ export default function FilesPage() {
     }, []);
 
     // D&D (items within file manager)
-    const handleDrop = (targetId: string) => {
+    const handleDrop = async (targetId: string) => {
         if (!draggedId || draggedId === targetId) { setDraggedId(null); setDragOver(null); return; }
         const target = items.find(i => i.id === targetId);
         if (!target || target.type !== 'folder') return;
-        setItems(prev => prev.map(i => i.id === draggedId ? { ...i, parentId: targetId } : i));
-        gooeyToast.success(`Moved to "${target.name}"`);
+        
+        const { error } = await supabase.from('file_items').update({ parent_id: targetId, modified_at: new Date().toISOString() }).eq('id', draggedId);
+        if (!error) {
+            setItems(prev => prev.map(i => i.id === draggedId ? { ...i, parentId: targetId } : i));
+            gooeyToast.success(`Moved to "${target.name}"`);
+        } else {
+            gooeyToast.error('Move failed');
+        }
         setDraggedId(null); setDragOver(null);
     };
 
@@ -1160,67 +1188,137 @@ export default function FilesPage() {
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
 
-        const uploadPromise = async () => {
-            const newItems: FileItem[] = [];
-            for (const file of files) {
-                const formData = new FormData();
-                formData.append('file', file);
-                const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                if (!res.ok) {
-                    let msg = `Failed to upload ${file.name}`;
-                    try { const e = await res.json(); msg = e.details || e.error || msg; } catch {}
-                    throw new Error(msg);
-                }
-                const data = await res.json();
-                newItems.push({
-                    id: `file-${Date.now()}-${Math.random()}`,
-                    name: file.name,
-                    type: detectType(file.name),
-                    parentId: currentFolderId,
-                    size: file.size,
-                    downloadUrl: data.url,
-                    createdAt: new Date().toISOString(),
-                    modifiedAt: new Date().toISOString(),
-                });
-            }
-            setItems(prev => [...prev, ...newItems]);
-            return `${files.length} file${files.length !== 1 ? 's' : ''} uploaded`;
+        // Initialize progress tracking
+        const fileProgress: Record<string, number> = {};
+        files.forEach((_, i) => fileProgress[i] = 0);
+        
+        const toastId = `upload-${Date.now()}`;
+        gooeyToast.loading(`Preparing ${files.length} file${files.length !== 1 ? 's' : ''}...`, { id: toastId });
+
+        const updateToast = () => {
+            const totalProgress = Math.round(Object.values(fileProgress).reduce((a, b) => a + b, 0) / files.length);
+            gooeyToast.loading(
+                <div className="flex flex-col gap-1.5 min-w-[180px]">
+                    <div className="flex items-center justify-between gap-4">
+                        <span className="font-semibold text-[11px]">Uploading {files.length} files...</span>
+                        <span className="text-[10px] font-bold tabular-nums opacity-60">{totalProgress}%</span>
+                    </div>
+                    <div className="h-1 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+                        <div 
+                            className="h-full bg-[#4dbf39] transition-all duration-300" 
+                            style={{ width: `${totalProgress}%` }}
+                        />
+                    </div>
+                </div>,
+                { id: toastId }
+            );
         };
 
-        gooeyToast.promise(uploadPromise(), {
-            loading: `Uploading ${files.length} file${files.length !== 1 ? 's' : ''}…`,
-            success: (msg) => msg as string,
-            error: (err: any) => err?.message || 'Upload failed',
-        });
+        try {
+            const newItems: FileItem[] = [];
+            
+            // Upload files in parallel
+            await Promise.all(files.map(async (file, i) => {
+                return new Promise<void>((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", "/api/upload", true);
+                    
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable) {
+                            fileProgress[i] = (event.loaded / event.total) * 100;
+                            updateToast();
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        if (xhr.status === 200) {
+                            const resp = JSON.parse(xhr.responseText);
+                            newItems.push({
+                                id: `file-${Date.now()}-${Math.random()}`,
+                                name: file.name,
+                                type: detectType(file.name),
+                                parentId: currentFolderId,
+                                size: file.size,
+                                downloadUrl: resp.url,
+                                createdAt: new Date().toISOString(),
+                                modifiedAt: new Date().toISOString(),
+                            });
+                            fileProgress[i] = 100;
+                            updateToast();
+                            resolve();
+                        } else {
+                            reject(new Error(`Failed to upload ${file.name}`));
+                        }
+                    };
+
+                    xhr.onerror = () => reject(new Error("Network error"));
+                    
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    xhr.send(formData);
+                });
+            }));
+
+            // Save metadata to Supabase
+            const dbItems = newItems.map(i => ({
+                id: i.id,
+                name: i.name,
+                type: i.type,
+                parent_id: i.parentId,
+                size: i.size,
+                download_url: i.downloadUrl,
+                created_at: i.createdAt,
+                modified_at: i.modifiedAt
+            }));
+            const { error: dbErr } = await supabase.from('file_items').insert(dbItems);
+            if (dbErr) throw dbErr;
+
+            setItems(prev => [...prev, ...newItems]);
+            gooeyToast.success(`${files.length} file${files.length !== 1 ? 's' : ''} uploaded successfully`, { id: toastId });
+        } catch (error: any) {
+            gooeyToast.error(error.message || "Upload failed", { id: toastId });
+        }
     }, [currentFolderId, setItems]);
 
     // CRUD
-    const createFolder = (name: string) => {
+    // CRUD
+    const createFolder = async (name: string) => {
         const newItem: FileItem = { id: `folder-${Date.now()}`, name, type: 'folder', parentId: currentFolderId, createdAt: new Date().toISOString(), modifiedAt: new Date().toISOString() };
-        setItems(prev => [...prev, newItem]);
-        gooeyToast.success(`"${name}" created`);
-        setNewDialog(null);
+        const { error } = await supabase.from('file_items').insert([{ ...newItem, parent_id: currentFolderId }]);
+        if (!error) {
+            setItems(prev => [...prev, newItem]);
+            gooeyToast.success(`"${name}" created`);
+            setNewDialog(null);
+        }
     };
-    const createLink = (name: string, url?: string) => {
+    const createLink = async (name: string, url?: string) => {
         const newItem: FileItem = { id: `link-${Date.now()}`, name, type: 'link', url, parentId: currentFolderId, createdAt: new Date().toISOString(), modifiedAt: new Date().toISOString() };
-        setItems(prev => [...prev, newItem]);
-        gooeyToast.success(`Link "${name}" added`);
-        setNewDialog(null);
+        const { error } = await supabase.from('file_items').insert([{ ...newItem, parent_id: currentFolderId }]);
+        if (!error) {
+            setItems(prev => [...prev, newItem]);
+            gooeyToast.success(`Link "${name}" added`);
+            setNewDialog(null);
+        }
     };
-    const renameItem = (id: string, newName: string) => {
-        const old = items.find(i => i.id === id);
-        setItems(prev => prev.map(i => i.id === id ? { ...i, name: newName, modifiedAt: new Date().toISOString() } : i));
-        if (old && old.name !== newName) gooeyToast('Renamed', { duration: 1500 });
-        setRenamingId(null);
+    const renameItem = async (id: string, newName: string) => {
+        const { error } = await supabase.from('file_items').update({ name: newName, modified_at: new Date().toISOString() }).eq('id', id);
+        if (!error) {
+            setItems(prev => prev.map(i => i.id === id ? { ...i, name: newName, modifiedAt: new Date().toISOString() } : i));
+            setRenamingId(null);
+        }
     };
-    const deleteItems = (ids: string[]) => {
+    const deleteItems = async (ids: string[]) => {
         const toDelete = new Set<string>(ids);
         const addChildren = (id: string) => items.filter(i => i.parentId === id).forEach(child => { toDelete.add(child.id); addChildren(child.id); });
         ids.forEach(addChildren);
-        setItems(prev => prev.filter(i => !toDelete.has(i.id)));
-        setSelectedIds(new Set());
-        setDeleteWarning(null);
-        gooeyToast.error(`${ids.length} item${ids.length !== 1 ? 's' : ''} deleted`);
+        
+        const { error } = await supabase.from('file_items').delete().in('id', Array.from(toDelete));
+        if (!error) {
+            setItems(prev => prev.filter(i => !toDelete.has(i.id)));
+            setSelectedIds(new Set());
+            setDeleteWarning(null);
+            gooeyToast.error(`${ids.length} item${ids.length !== 1 ? 's' : ''} deleted`);
+        }
     };
 
     const requestDelete = (ids: string[]) => {
@@ -1230,23 +1328,40 @@ export default function FilesPage() {
             deleteItems(ids); // single item: delete directly
         }
     };
-    const duplicateItems = (ids: string[]) => {
-        const clones = ids.map(id => { const src = items.find(i => i.id === id)!; return { ...src, id: `${src.id}-copy-${Date.now()}`, name: `${src.name} (copy)` }; });
-        setItems(prev => [...prev, ...clones]);
-        gooeyToast.success(ids.length === 1 ? `Duplicated` : `${ids.length} items duplicated`, { duration: 2000 });
+    const duplicateItems = async (ids: string[]) => {
+        const clones = ids.map(id => { 
+            const src = items.find(i => i.id === id)!; 
+            return { ...src, id: `${src.id}-copy-${Date.now()}`, name: `${src.name} (copy)`, createdAt: new Date().toISOString(), modifiedAt: new Date().toISOString() }; 
+        });
+        const dbClones = clones.map(c => ({
+            id: c.id, name: c.name, type: c.type, parent_id: c.parentId, size: c.size, download_url: c.downloadUrl, starred: c.starred, color: c.color
+        }));
+        const { error } = await supabase.from('file_items').insert(dbClones);
+        if (!error) {
+            setItems(prev => [...prev, ...clones]);
+            gooeyToast.success(ids.length === 1 ? `Duplicated` : `${ids.length} items duplicated`, { duration: 2000 });
+        }
     };
-    const toggleStar = (id: string) => {
+    const toggleStar = async (id: string) => {
         const item = items.find(i => i.id === id);
-        setItems(prev => prev.map(i => i.id === id ? { ...i, starred: !i.starred } : i));
-        if (item) {
-            if (!item.starred) gooeyToast.success('★ Starred', { duration: 1500 });
+        if (!item) return;
+        const newState = !item.starred;
+        const { error } = await supabase.from('file_items').update({ starred: newState }).eq('id', id);
+        if (!error) {
+            setItems(prev => prev.map(i => i.id === id ? { ...i, starred: newState } : i));
+            if (newState) gooeyToast.success('★ Starred', { duration: 1500 });
             else gooeyToast('Unstarred', { duration: 1200 });
         }
     };
-    const toggleLock = (id: string) => {
+    const toggleLock = async (id: string) => {
         const item = items.find(i => i.id === id);
-        setItems(prev => prev.map(i => i.id === id ? { ...i, locked: !i.locked } : i));
-        if (item) gooeyToast(item.locked ? '🔓 Unlocked' : '🔒 Locked', { duration: 1500 });
+        if (!item) return;
+        const newState = !item.locked;
+        const { error } = await supabase.from('file_items').update({ locked: newState }).eq('id', id);
+        if (!error) {
+            setItems(prev => prev.map(i => i.id === id ? { ...i, locked: newState } : i));
+            gooeyToast(newState ? '🔒 Locked' : '🔓 Unlocked', { duration: 1500 });
+        }
     };
     const copyDownloadLink = (itemId: string) => {
         const item = items.find(i => i.id === itemId);
@@ -1259,9 +1374,12 @@ export default function FilesPage() {
         });
     };
 
-    const recolorItem = (id: string, color: string) => {
-        setItems(prev => prev.map(i => i.id === id ? { ...i, color } : i));
-        gooeyToast('Color updated', { duration: 1200 });
+    const recolorItem = async (id: string, color: string) => {
+        const { error } = await supabase.from('file_items').update({ color }).eq('id', id);
+        if (!error) {
+            setItems(prev => prev.map(i => i.id === id ? { ...i, color } : i));
+            gooeyToast('Color updated', { duration: 1200 });
+        }
     };
 
     const handleCtxAction = (action: string, itemId: string | null) => {
@@ -1394,13 +1512,21 @@ export default function FilesPage() {
                                 <PanelLeftClose size={12}/>
                             </button>
                         </div>
-                        <TreeNode
-                            item={items.find(i => i.id === 'root')!} items={items} depth={0}
-                            currentFolderId={currentFolderId} onNavigate={navigate} isDark={isDark}
-                            expandedIds={expandedIds} toggleExpand={toggleExpand} dragOver={dragOver}
-                            onDragOver={setDragOver} onDrop={handleDrop}
-                            onContextMenu={(e, itemId) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, itemId }); }}
-                        />
+                        {isLoading ? (
+                            <div className="px-2 py-4 space-y-3 animate-pulse">
+                                {[1,2,3].map(i => (
+                                    <div key={i} className={cn('h-3 w-3/4 rounded-full', isDark ? 'bg-white/5' : 'bg-black/5')}/>
+                                ))}
+                            </div>
+                        ) : items.find(i => i.id === 'root') ? (
+                            <TreeNode
+                                item={items.find(i => i.id === 'root')!} items={items} depth={0}
+                                currentFolderId={currentFolderId} onNavigate={navigate} isDark={isDark}
+                                expandedIds={expandedIds} toggleExpand={toggleExpand} dragOver={dragOver}
+                                onDragOver={setDragOver} onDrop={handleDrop}
+                                onContextMenu={(e, itemId) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, itemId }); }}
+                            />
+                        ) : null}
                         {/* Quick Links */}
                         {items.filter(i => i.type === 'link').length > 0 && (
                             <>

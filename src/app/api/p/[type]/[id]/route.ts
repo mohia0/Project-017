@@ -55,6 +55,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
 
         const tableName = type === 'proposal' ? 'proposals' : 'invoices';
         
+        // Safety check for Service Key
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY === 'placeholder_key') {
+            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing or using placeholder');
+            // We can try to proceed, but it will likely fail with 401 if RLS is on.
+            // Better to return a clear error.
+        }
+
         const updateData: any = {};
         
         // Allowed field: status
@@ -93,7 +100,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
 
         if (error) {
             console.error('Supabase Update Error:', error);
-            return NextResponse.json({ error: 'Failed to update document', details: error }, { status: 500 });
+            // Return more detailed error info to help debug
+            return NextResponse.json({ 
+                error: 'Failed to update document', 
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+            }, { status: 500 });
         }
 
         return NextResponse.json({ success: true, updateData });
