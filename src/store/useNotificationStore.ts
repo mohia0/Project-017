@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from './useUIStore';
+import { gooeyToast } from 'goey-toast';
 
 export interface AppNotification {
     id: string;
@@ -90,7 +91,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             supabase.removeChannel(subscription);
         }
 
-        subscription = supabase.channel('public:notifications')
+        subscription = supabase.channel(`notifications:${workspaceId}`)
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
@@ -104,10 +105,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                     notifications: [newNotification, ...state.notifications]
                 }));
 
-                const { gooeyToast } = require('goey-toast');
-                gooeyToast.success(newNotification.message);
+                // Trigger pure visual toast
+                gooeyToast.success(newNotification.message, {
+                    duration: 4000,
+                });
             })
-            .subscribe();
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('Successfully subscribed to notifications for workspace:', workspaceId);
+                }
+            });
     },
 
     unsubscribe: () => {

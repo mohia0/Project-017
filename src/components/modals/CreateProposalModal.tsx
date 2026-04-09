@@ -120,7 +120,7 @@ export function CreateProposalModal({ open, onClose }: Props) {
                 <div className="px-5 pb-5 flex flex-col gap-2.5">
                     {/* Proposal title */}
                     <div className={cn(field, "flex flex-col gap-0.5")}>
-                        <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Proposal title</span>
+                        <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Name</span>
                         <input
                             value={title}
                             onChange={e => setTitle(e.target.value)}

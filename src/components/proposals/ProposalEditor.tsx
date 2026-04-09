@@ -419,7 +419,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 "text-[13px] font-semibold bg-transparent outline-none transition-all w-full min-w-0",
                                 isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300"
                             )}
-                            placeholder="Untitled Proposal"
+                            placeholder="Name"
                         />
                     </div>
                 </div>
@@ -818,7 +818,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     </MetaField>
 
                                     <MetaField
-                                        label="Project"
+                                        label="Name"
                                         isDark={isDark}
                                         icon={<FileText size={11} className="opacity-50" />}
                                         hasInfo

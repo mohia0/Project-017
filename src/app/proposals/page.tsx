@@ -358,7 +358,7 @@ export default function ProposalsPage() {
     /* ... existing state ... */
     const [colWidths, setColWidths] = useState({
         select: 44,
-        id: 80,
+        name: 180,
         status: 160,
         issue: 180,
         due: 180,
@@ -392,7 +392,7 @@ export default function ProposalsPage() {
         document.removeEventListener('mouseup', handleResizeEnd);
     };
 
-    const gridTemplate = `${colWidths.select}px ${colWidths.id}px ${colWidths.status}px ${colWidths.issue}px ${colWidths.due}px ${colWidths.client}px minmax(${colWidths.amount}px, 1fr)`;
+    const gridTemplate = `${colWidths.select}px ${colWidths.client}px ${colWidths.name}px ${colWidths.status}px ${colWidths.issue}px ${colWidths.due}px minmax(${colWidths.amount}px, 1fr)`;
     const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'All'>('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -632,9 +632,13 @@ export default function ProposalsPage() {
                             </div>
                             <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
                         </div>
+                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                            Client
+                            <div onMouseDown={(e) => handleResizeStart('client', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+                        </div>
                         <div className="relative px-4 py-2 flex items-center border-r last:border-r-0" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                            ID
-                            <div onMouseDown={(e) => handleResizeStart('id', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[2px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+                            Name
+                            <div onMouseDown={(e) => handleResizeStart('name', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[2px] cursor-col-resize hover:bg-blue-400 transition-colors" />
                         </div>
                         <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
                             Status
@@ -648,10 +652,6 @@ export default function ProposalsPage() {
                             Expiration date
                             <div onMouseDown={(e) => handleResizeStart('due', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
                         </div>
-                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                            Client
-                            <div onMouseDown={(e) => handleResizeStart('client', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
-                        </div>
                         <div className="relative px-4 py-2 flex items-center justify-end">
                             Total: {fmt$(stats[statusFilter]?.amount ?? 0)}
                         </div>
@@ -661,11 +661,11 @@ export default function ProposalsPage() {
                         <div className="flex flex-col">{Array.from({ length: 6 }).map((_, i) => (
                             <div key={i} className={cn("grid px-0 border-b items-center h-[45px]", isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")} style={{ gridTemplateColumns: gridTemplate }}>
                                 <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
+                                <div className="px-4 flex items-center gap-1.5"><div className={cn("w-3 h-3 rounded-full animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /><div className={cn("h-3 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
                                 <div className="px-4"><div className={cn("h-3 w-10 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
                                 <div className="px-4"><div className={cn("h-5 w-16 rounded-[4px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
                                 <div className="px-4"><div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
                                 <div className="px-4"><div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
-                                <div className="px-4 flex items-center gap-1.5"><div className={cn("w-3 h-3 rounded-full animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /><div className={cn("h-3 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
                                 <div className="px-4 flex justify-end pr-5"><div className={cn("h-3 w-12 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
                             </div>
                         ))}</div>
@@ -692,8 +692,17 @@ export default function ProposalsPage() {
                                         <div className="flex items-center justify-center px-0 py-3 self-stretch" onClick={e => toggleRow(p.id, e)}>
                                             <Chk checked={isSelected} isDark={isDark} />
                                         </div>
-                                        <div className={cn("flex items-center px-4 py-3 font-bold", isDark ? "text-white" : "text-black")}>
-                                            {p.id?.slice(-6).toUpperCase() ?? '—'}
+                                        <div className={cn("flex items-stretch", isDark ? "text-[#888]" : "text-[#666]")}>
+                                            <ClientCell
+                                                currentName={p.client_name}
+                                                currentId={p.client_id}
+                                                onClientChange={(id, name) => updateProposal(p.id, { client_id: id, client_name: name })}
+                                                isDark={isDark}
+                                                variant="table"
+                                            />
+                                        </div>
+                                        <div className={cn("flex items-center px-4 py-3 font-bold truncate", isDark ? "text-white" : "text-black")}>
+                                            {p.title || (p.id?.slice(-8).toUpperCase() ?? '—')}
                                         </div>
                                         <div className="flex items-center px-4 py-3">
                                             <StatusCell status={p.status} onStatusChange={(s) => updateProposal(p.id, { status: s })} isDark={isDark} />
@@ -704,15 +713,6 @@ export default function ProposalsPage() {
                                         </div>
                                         <div className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
                                             {p.due_date ? <span>{fmtDate(p.due_date)} <span className="text-[10px] opacity-50">({timeAgo(p.due_date)})</span></span> : '—'}
-                                        </div>
-                                        <div className={cn("flex items-stretch", isDark ? "text-[#888]" : "text-[#666]")}>
-                                            <ClientCell
-                                                currentName={p.client_name}
-                                                currentId={p.client_id}
-                                                onClientChange={(id, name) => updateProposal(p.id, { client_id: id, client_name: name })}
-                                                isDark={isDark}
-                                                variant="table"
-                                            />
                                         </div>
                                         <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5", isDark ? "text-[#ccc]" : "text-[#333]")}>
                                             {fmt$(Number(p.amount || 0))}

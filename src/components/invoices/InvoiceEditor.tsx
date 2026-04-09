@@ -379,7 +379,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 "text-[13px] font-semibold bg-transparent outline-none transition-all min-w-[150px]",
                                 isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300"
                             )}
-                            placeholder="Untitled Invoice"
+                            placeholder="Name"
                         />
                     </div>
                 </div>
@@ -706,7 +706,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         />
                                     </MetaField>
                                     <MetaField 
-                                        label="Project" 
+                                        label="Name" 
                                         isDark={isDark} 
                                         icon={<FileText size={11} className="opacity-50" />}
                                         onReset={() => updateMeta({ projectName: '' })}
@@ -714,7 +714,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         <input 
                                             value={meta.projectName} 
                                             onChange={e => updateMeta({ projectName: e.target.value })} 
-                                            placeholder="Set project..." 
+                                            placeholder="Set name..." 
                                             className={cn(
                                                 "w-full bg-transparent outline-none text-[12px] font-medium",
                                                 isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"

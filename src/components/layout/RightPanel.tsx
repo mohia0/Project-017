@@ -13,6 +13,7 @@ import { useCompanyStore } from '@/store/useCompanyStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { formatDistanceToNow } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 /* ─── Shared helpers ─── */
 function getInitials(name: string) {
@@ -41,6 +42,8 @@ function PanelHeader({ title, isDark, onClose }: { title: string; isDark: boolea
 
 /* ─── Notifications Panel ─── */
 function NotificationsPanel({ isDark }: { isDark: boolean }) {
+    const router = useRouter();
+    const { toggleNotifications } = useUIStore();
     const { notifications, fetchNotifications, subscribe, unsubscribe, markAsRead, markAllAsRead } = useNotificationStore();
     const [filterUnread, setFilterUnread] = useState(false);
 
@@ -96,6 +99,10 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                 key={notif.id}
                                 onClick={() => {
                                     if (!notif.read) markAsRead(notif.id);
+                                    if (notif.link) {
+                                        router.push(notif.link);
+                                        toggleNotifications();
+                                    }
                                 }}
                                 className={cn(
                                     "flex items-start gap-3 px-4 py-3 border-b last:border-0 transition-colors cursor-pointer relative",
