@@ -343,29 +343,35 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
         }
 
         if (item.type === 'archive') {
-            const fakeContents = [
-                { name: 'database_backup_2024-04-02.sql', size: 48 * 1024 * 1024 },
-                { name: 'uploads/', size: 0 },
-                { name: 'uploads/images/', size: 0 },
-                { name: 'uploads/images/hero-banner.jpg', size: 4194304 },
-                { name: 'uploads/docs/contract.pdf', size: 786432 },
-                { name: 'config.env.backup', size: 2048 },
-                { name: 'README.txt', size: 1024 },
-            ];
+            const ext = item.name.split('.').pop()?.toUpperCase() || 'Archive';
             return (
-                <div className="flex-1 overflow-auto p-5">
-                    <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-[#222]' : 'border-[#e8e8e8]'}`}>
-                        <div className={`px-4 py-2.5 flex items-center gap-2 border-b ${isDark ? 'bg-[#1a1a1a] border-[#222] text-[#555]' : 'bg-[#fafafa] border-[#ebebeb] text-[#aaa]'} text-[9.5px] font-bold uppercase tracking-widest`}>
-                            <Package size={11}/> Archive Contents · {fakeContents.length} entries
+                <div className="flex-1 flex flex-col items-center justify-center gap-5 p-8">
+                    <div className={`w-24 h-24 rounded-3xl flex items-center justify-center shadow-xl relative ${isDark ? 'bg-[#1a1a1a]' : 'bg-[#f5f5f5]'}`}>
+                        <FileArchive size={40} className={isDark ? 'text-[#444]' : 'text-[#bbb]'}/>
+                        <div className="absolute -bottom-2 -right-2 px-2 py-0.5 rounded-md text-[9px] font-black text-white tracking-wider" style={{ background: '#6b7280' }}>
+                            {ext}
                         </div>
-                        {fakeContents.map((entry, i) => (
-                            <div key={i} className={`flex items-center gap-3 px-4 py-2.5 text-[12px] ${i !== 0 ? (isDark ? 'border-t border-[#1e1e1e]' : 'border-t border-[#f5f5f5]') : ''} ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-[#fafafa]'} transition-colors`}>
-                                {entry.name.endsWith('/') ? <Folder size={13} className="text-amber-400 shrink-0"/> : <File size={13} className={`shrink-0 ${isDark ? 'text-[#444]' : 'text-[#ccc]'}`}/>}
-                                <span className={`flex-1 font-mono ${isDark ? 'text-[#aaa]' : 'text-[#555]'}`}>{entry.name}</span>
-                                <span className={`tabular-nums text-[11px] ${muted}`}>{entry.size ? formatBytes(entry.size) : '—'}</span>
-                            </div>
-                        ))}
                     </div>
+                    <div className="text-center">
+                        <p className={`text-[15px] font-bold ${isDark ? 'text-[#ccc]' : 'text-[#444]'}`}>{item.name}</p>
+                        <p className={`text-[11px] mt-1 ${muted}`}>{formatBytes(item.size)} · Compressed Archive</p>
+                    </div>
+                    <div className={`rounded-2xl border px-5 py-4 text-center max-w-xs ${isDark ? 'bg-[#1a1a1a] border-[#252525]' : 'bg-[#fafafa] border-[#ebebeb]'}`}>
+                        <Package size={16} className={`mx-auto mb-2 ${isDark ? 'text-[#444]' : 'text-[#bbb]'}`}/>
+                        <p className={`text-[11px] font-medium ${isDark ? 'text-[#666]' : 'text-[#999]'}`}>
+                            Archive contents cannot be previewed in the browser.
+                        </p>
+                        <p className={`text-[10px] mt-1 ${muted} opacity-60`}>Download the file to inspect its contents.</p>
+                    </div>
+                    {item.downloadUrl && (
+                        <a
+                            href={item.downloadUrl}
+                            download={item.name}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-lg shadow-[#4dbf39]/20 active:scale-95"
+                        >
+                            <Download size={13}/> Download {ext}
+                        </a>
+                    )}
                 </div>
             );
         }

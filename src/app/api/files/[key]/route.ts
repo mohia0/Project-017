@@ -13,14 +13,15 @@ const s3Client = new S3Client({
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { key: string } }
+    { params }: { params: Promise<{ key: string }> }
 ) {
     try {
-        const key = decodeURIComponent(params.key);
+        const { key } = await params;
+        const decodedKey = decodeURIComponent(key);
 
         const command = new GetObjectCommand({
             Bucket: process.env.B2_BUCKET_NAME,
-            Key: key,
+            Key: decodedKey,
         });
 
         // Generate a presigned URL valid for 1 hour
