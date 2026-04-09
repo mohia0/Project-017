@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
+import { useUIStore } from './useUIStore';
 
 interface AuthState {
     user: User | null;
@@ -36,6 +37,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     signOut: async () => {
         await supabase.auth.signOut();
         set({ session: null, user: null });
-        // Can optionally clear workspace UI data here
+        
+        // Clear workspace UI and persisted preferences to prevent leakage
+        useUIStore.getState().setActiveWorkspaceId(null);
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('ui-storage');
+        }
     }
 }));

@@ -121,13 +121,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', user.id)
-      .single();
+      .eq('id', user.id);
 
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       set({ error: error.message });
     } else {
-      set({ profile: data });
+      set({ profile: (data && data.length > 0) ? data[0] : null });
     }
     set({ isLoading: false });
   },

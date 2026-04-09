@@ -343,7 +343,13 @@ export default function ProposalEditor({ id }: { id?: string }) {
         
         // Remove signatures if we are invalidating them
         const nb = blocks.map((b: any) => 
-            b.type === 'signature' ? { ...b, signed: false, signatureImage: undefined } : b
+            b.type === 'signature' ? { 
+                ...b, 
+                signed: false, 
+                signatureImage: null, 
+                signedAt: null,
+                signerName: '' 
+            } : b
         );
         setBlocks(nb);
         updateMeta({ status: pendingStatusChange as any });

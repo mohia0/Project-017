@@ -297,6 +297,18 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
     const confirmStatusChange = () => {
         if (!pendingStatusChange) return;
+
+        // Remove signatures if we are invalidating them
+        const nb = blocks.map((b: any) => 
+            b.type === 'signature' ? { 
+                ...b, 
+                signed: false, 
+                signatureImage: null, 
+                signedAt: null,
+                signerName: '' 
+            } : b
+        );
+        setBlocks(nb);
         updateMeta({ status: pendingStatusChange as any });
         setPendingStatusChange(null);
     };

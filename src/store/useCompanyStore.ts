@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { useUIStore } from './useUIStore';
 
 export interface Company {
     id: string;
@@ -30,10 +31,17 @@ export const useCompanyStore = create<CompanyState>((set) => ({
     error: null,
 
     fetchCompanies: async () => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) {
+            set({ companies: [], isLoading: false });
+            return;
+        }
+
         set({ isLoading: true, error: null });
         const { data, error } = await supabase
             .from('companies')
             .select('*')
+            .eq('workspace_id', workspaceId)
             .order('created_at', { ascending: false });
         if (error) {
             set({ error: error.message, isLoading: false });
@@ -43,9 +51,12 @@ export const useCompanyStore = create<CompanyState>((set) => ({
     },
 
     addCompany: async (company) => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) return null;
+
         const { data, error } = await supabase
             .from('companies')
-            .insert(company)
+            .insert({ ...company, workspace_id: workspaceId })
             .select()
             .single();
         if (error) {

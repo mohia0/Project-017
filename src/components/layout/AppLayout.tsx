@@ -12,6 +12,7 @@ import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { useMenuStore } from '@/store/useMenuStore';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
@@ -45,23 +46,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { theme } = useUIStore();
     const { user, isLoading } = useAuthStore();
     const { fetchMenu } = useMenuStore();
+    const { fetchWorkspaces, workspaces, isLoading: wsLoading, hasFetched: wsFetched } = useWorkspaceStore();
     const isDark = theme === 'dark';
     const pathname = usePathname();
     const router = useRouter();
     const isPublicPreview = pathname?.startsWith('/p/');
     const isAuthRoute = pathname === '/login';
+    const isOnboarding = pathname === '/onboarding';
     const isMobile = useIsMobile();
 
-    // Fetch nav menu on mount
+    // Fetch workspaces and nav menu on mount
     useEffect(() => {
-        fetchMenu();
-    }, [fetchMenu]);
+        if (user) {
+            fetchWorkspaces();
+            fetchMenu();
+        }
+    }, [user, fetchWorkspaces, fetchMenu]);
 
     useEffect(() => {
-        if (!isLoading && !user && !isAuthRoute && !isPublicPreview) {
+        if (!isLoading && !user && !isAuthRoute && !isPublicPreview && !isOnboarding) {
             router.push('/login');
+        } else if (user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview) {
+            router.push('/onboarding');
         }
-    }, [user, isLoading, isAuthRoute, isPublicPreview, router]);
+    }, [user, isLoading, wsFetched, workspaces, isAuthRoute, isPublicPreview, isOnboarding, router]);
 
     // Don't render until we know auth state, unless we are already on auth route
     if (isLoading && !isAuthRoute) {
@@ -75,7 +83,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         );
     }
 
-    if (isAuthRoute || isPublicPreview) {
+    if (isAuthRoute || isPublicPreview || isOnboarding) {
         return (
             <div className={cn(
                 "flex h-screen w-full overflow-hidden",

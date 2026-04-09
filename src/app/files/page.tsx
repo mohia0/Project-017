@@ -571,7 +571,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
         gooeyToast.promise(addPromise, {
             loading: 'Adding to library…',
             success: (msg) => msg,
-            error: (err: any) => err?.message || String(err),
+            error: (err: unknown) => (err as { message?: string })?.message || String(err),
         });
         onClose();
     }, [currentFolderId, onUploaded, onClose]);
@@ -1017,7 +1017,7 @@ type SortDir = 'asc' | 'desc';
 type FilterType = 'all' | 'folder' | 'file' | 'image' | 'video' | 'audio' | 'doc' | 'code' | 'link' | 'archive' | 'starred';
 
 export default function FilesPage() {
-    const { theme } = useUIStore();
+    const { theme, activeWorkspaceId } = useUIStore();
     const isDark = theme === 'dark';
 
     const [items, setItems] = useState<FileItem[]>([]);
@@ -1046,29 +1046,44 @@ export default function FilesPage() {
 
     // Sync files from Supabase
     useEffect(() => {
+        if (!activeWorkspaceId) return;
+        
         const loadFiles = async () => {
-            const { data, error } = await supabase.from('file_items').select('*');
+            setIsLoading(true);
+            const { data, error } = await supabase
+                .from('files')
+                .select('*')
+                .eq('workspace_id', activeWorkspaceId);
+                
             if (error) {
                 if (!errorShown.current) {
-                    gooeyToast.error('Database connection failed. Please ensure the "file_items" table exists in Supabase.');
+                    gooeyToast.error(`Database error: ${error.message}`);
                     errorShown.current = true;
                 }
             } else {
-                // If user has no files, seed a 'root' folder for them
+                // If user has no files, seed a 'root' folder for this WORKSPACE
                 if (data.length === 0) {
-                    const rootFolder: FileItem = {
+                    const rootFolder = {
                         id: 'root',
                         name: 'Root',
                         type: 'folder',
-                        parentId: null,
-                        createdAt: new Date().toISOString(),
-                        modifiedAt: new Date().toISOString()
+                        parent_id: null,
+                        workspace_id: activeWorkspaceId,
+                        created_at: new Date().toISOString(),
+                        modified_at: new Date().toISOString()
                     };
-                    const { error: insertErr } = await supabase.from('file_items').insert([rootFolder]);
-                    if (!insertErr) setItems([rootFolder]);
+                    const { error: insertErr } = await supabase.from('files').insert([rootFolder]);
+                    if (!insertErr) {
+                        setItems([{
+                            id: rootFolder.id,
+                            name: rootFolder.name,
+                            type: rootFolder.type as ItemType,
+                            parentId: rootFolder.parent_id,
+                            createdAt: rootFolder.created_at,
+                            modifiedAt: rootFolder.modified_at
+                        }]);
+                    }
                 } else {
-                    // Map snake_case from DB to camelCase for the frontend if necessary
-                    // (Assuming DB columns match frontend names for now or we map them)
                     const mappedData: FileItem[] = data.map((i: any) => ({
                         id: i.id,
                         name: i.name,
@@ -1076,6 +1091,8 @@ export default function FilesPage() {
                         parentId: i.parent_id,
                         size: i.size,
                         starred: i.starred,
+                        url: i.url,
+                        tags: i.tags,
                         downloadUrl: i.download_url,
                         color: i.color,
                         createdAt: i.created_at,
@@ -1088,7 +1105,7 @@ export default function FilesPage() {
             setIsLoading(false);
         };
         loadFiles();
-    }, []);
+    }, [activeWorkspaceId]);
 
     // Persistence: Sidebar
     useEffect(() => {
@@ -1175,7 +1192,12 @@ export default function FilesPage() {
         const target = items.find(i => i.id === targetId);
         if (!target || target.type !== 'folder') return;
         
-        const { error } = await supabase.from('file_items').update({ parent_id: targetId, modified_at: new Date().toISOString() }).eq('id', draggedId);
+        const { error } = await supabase
+            .from('files')
+            .update({ parent_id: targetId, modified_at: new Date().toISOString() })
+            .eq('id', draggedId)
+            .eq('workspace_id', activeWorkspaceId);
+            
         if (!error) {
             setItems(prev => prev.map(i => i.id === draggedId ? { ...i, parentId: targetId } : i));
             gooeyToast.success(`Moved to "${target.name}"`);
@@ -1227,11 +1249,17 @@ export default function FilesPage() {
                 }));
 
                 const dbItems = newItems.map(i => ({
-                    id: i.id, name: i.name, type: i.type, parent_id: i.parentId, 
-                    size: i.size, download_url: i.downloadUrl, 
-                    created_at: i.createdAt, modified_at: i.modifiedAt
+                    id: i.id, 
+                    name: i.name, 
+                    type: i.type, 
+                    parent_id: i.parentId, 
+                    size: i.size, 
+                    download_url: i.downloadUrl, 
+                    created_at: i.createdAt, 
+                    modified_at: i.modifiedAt,
+                    workspace_id: activeWorkspaceId
                 }));
-                const { error: dbErr } = await supabase.from('file_items').insert(dbItems);
+                const { error: dbErr } = await supabase.from('files').insert(dbItems);
                 if (dbErr) throw dbErr;
 
                 setItems(prev => [...prev, ...newItems]);
@@ -1244,7 +1272,7 @@ export default function FilesPage() {
         gooeyToast.promise(uploadPromise, {
             loading: `Uploading ${files.length} file${files.length !== 1 ? 's' : ''}...`,
             success: 'Upload successful',
-            error: (err: any) => err?.message || 'Upload failed',
+            error: (err: unknown) => (err as { message?: string })?.message || 'Upload failed',
         });
     }, [currentFolderId, setItems]);
 
@@ -1252,7 +1280,15 @@ export default function FilesPage() {
     // CRUD
     const createFolder = async (name: string) => {
         const newItem: FileItem = { id: `folder-${Date.now()}`, name, type: 'folder', parentId: currentFolderId, createdAt: new Date().toISOString(), modifiedAt: new Date().toISOString() };
-        const { error } = await supabase.from('file_items').insert([{ ...newItem, parent_id: currentFolderId }]);
+        const { error } = await supabase.from('files').insert([{ 
+            id: newItem.id,
+            name: newItem.name,
+            type: newItem.type,
+            parent_id: currentFolderId,
+            workspace_id: activeWorkspaceId,
+            created_at: newItem.createdAt,
+            modified_at: newItem.modifiedAt
+        }]);
         if (!error) {
             setItems(prev => [...prev, newItem]);
             gooeyToast.success(`"${name}" created`);
@@ -1261,7 +1297,16 @@ export default function FilesPage() {
     };
     const createLink = async (name: string, url?: string) => {
         const newItem: FileItem = { id: `link-${Date.now()}`, name, type: 'link', url, parentId: currentFolderId, createdAt: new Date().toISOString(), modifiedAt: new Date().toISOString() };
-        const { error } = await supabase.from('file_items').insert([{ ...newItem, parent_id: currentFolderId }]);
+        const { error } = await supabase.from('files').insert([{ 
+            id: newItem.id,
+            name: newItem.name,
+            type: newItem.type,
+            url: newItem.url,
+            parent_id: currentFolderId,
+            workspace_id: activeWorkspaceId,
+            created_at: newItem.createdAt,
+            modified_at: newItem.modifiedAt
+        }]);
         if (!error) {
             setItems(prev => [...prev, newItem]);
             gooeyToast.success(`Link "${name}" added`);
@@ -1269,7 +1314,11 @@ export default function FilesPage() {
         }
     };
     const renameItem = async (id: string, newName: string) => {
-        const { error } = await supabase.from('file_items').update({ name: newName, modified_at: new Date().toISOString() }).eq('id', id);
+        const { error } = await supabase
+            .from('files')
+            .update({ name: newName, modified_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('workspace_id', activeWorkspaceId);
         if (!error) {
             setItems(prev => prev.map(i => i.id === id ? { ...i, name: newName, modifiedAt: new Date().toISOString() } : i));
             setRenamingId(null);
@@ -1280,7 +1329,11 @@ export default function FilesPage() {
         const addChildren = (id: string) => items.filter(i => i.parentId === id).forEach(child => { toDelete.add(child.id); addChildren(child.id); });
         ids.forEach(addChildren);
         
-        const { error } = await supabase.from('file_items').delete().in('id', Array.from(toDelete));
+        const { error } = await supabase
+            .from('files')
+            .delete()
+            .in('id', Array.from(toDelete))
+            .eq('workspace_id', activeWorkspaceId);
         if (!error) {
             setItems(prev => prev.filter(i => !toDelete.has(i.id)));
             setSelectedIds(new Set());
@@ -1302,9 +1355,19 @@ export default function FilesPage() {
             return { ...src, id: `${src.id}-copy-${Date.now()}`, name: `${src.name} (copy)`, createdAt: new Date().toISOString(), modifiedAt: new Date().toISOString() }; 
         });
         const dbClones = clones.map(c => ({
-            id: c.id, name: c.name, type: c.type, parent_id: c.parentId, size: c.size, download_url: c.downloadUrl, starred: c.starred, color: c.color
+            id: c.id, 
+            name: c.name, 
+            type: c.type, 
+            parent_id: c.parentId, 
+            size: c.size, 
+            download_url: c.downloadUrl, 
+            starred: c.starred, 
+            color: c.color,
+            workspace_id: activeWorkspaceId,
+            created_at: c.createdAt,
+            modified_at: c.modifiedAt
         }));
-        const { error } = await supabase.from('file_items').insert(dbClones);
+        const { error } = await supabase.from('files').insert(dbClones);
         if (!error) {
             setItems(prev => [...prev, ...clones]);
             gooeyToast.success(ids.length === 1 ? `Duplicated` : `${ids.length} items duplicated`, { duration: 2000 });
@@ -1314,7 +1377,11 @@ export default function FilesPage() {
         const item = items.find(i => i.id === id);
         if (!item) return;
         const newState = !item.starred;
-        const { error } = await supabase.from('file_items').update({ starred: newState }).eq('id', id);
+        const { error } = await supabase
+            .from('files')
+            .update({ starred: newState })
+            .eq('id', id)
+            .eq('workspace_id', activeWorkspaceId);
         if (!error) {
             setItems(prev => prev.map(i => i.id === id ? { ...i, starred: newState } : i));
             if (newState) gooeyToast.success('★ Starred', { duration: 1500 });
@@ -1325,7 +1392,11 @@ export default function FilesPage() {
         const item = items.find(i => i.id === id);
         if (!item) return;
         const newState = !item.locked;
-        const { error } = await supabase.from('file_items').update({ locked: newState }).eq('id', id);
+        const { error } = await supabase
+            .from('files')
+            .update({ locked: newState })
+            .eq('id', id)
+            .eq('workspace_id', activeWorkspaceId);
         if (!error) {
             setItems(prev => prev.map(i => i.id === id ? { ...i, locked: newState } : i));
             gooeyToast(newState ? '🔒 Locked' : '🔓 Unlocked', { duration: 1500 });
@@ -1343,7 +1414,11 @@ export default function FilesPage() {
     };
 
     const recolorItem = async (id: string, color: string) => {
-        const { error } = await supabase.from('file_items').update({ color }).eq('id', id);
+        const { error } = await supabase
+            .from('files')
+            .update({ color })
+            .eq('id', id)
+            .eq('workspace_id', activeWorkspaceId);
         if (!error) {
             setItems(prev => prev.map(i => i.id === id ? { ...i, color } : i));
             gooeyToast('Color updated', { duration: 1200 });

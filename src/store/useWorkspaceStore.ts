@@ -16,10 +16,10 @@ export interface Workspace {
     working_hours?: any;
     additional_details?: any;
 }
-
 interface WorkspaceState {
     workspaces: Workspace[];
     isLoading: boolean;
+    hasFetched: boolean;
     error: string | null;
     fetchWorkspaces: () => Promise<void>;
     createWorkspace: (name: string) => Promise<Workspace | null>;
@@ -30,6 +30,7 @@ interface WorkspaceState {
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     workspaces: [],
     isLoading: false,
+    hasFetched: false,
     error: null,
 
     fetchWorkspaces: async () => {
@@ -38,7 +39,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-            set({ workspaces: [], isLoading: false });
+            set({ workspaces: [], isLoading: false, hasFetched: true });
             return;
         }
 
@@ -48,19 +49,26 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         const { data, error } = await supabase
             .from('workspaces')
             .select('*')
+            .eq('owner_id', user.id)
             .order('created_at', { ascending: false });
 
         if (error) {
-            set({ error: error.message, isLoading: false });
+            set({ error: error.message, isLoading: false, hasFetched: true });
             return;
         }
 
         const workspaces = data as Workspace[];
-        set({ workspaces, isLoading: false });
+        set({ workspaces, isLoading: false, hasFetched: true });
 
-        // Auto-select first workspace if none active
+        // Validate that the active workspace belongs to the user
         const { activeWorkspaceId, setActiveWorkspaceId } = useUIStore.getState();
-        if (!activeWorkspaceId && workspaces.length > 0) {
+        const validWorkspaceIds = workspaces.map(w => w.id);
+
+        if (activeWorkspaceId && !validWorkspaceIds.includes(activeWorkspaceId)) {
+            // Stale active workspace from local storage (previous user session)
+            setActiveWorkspaceId(workspaces.length > 0 ? workspaces[0].id : null);
+        } else if (!activeWorkspaceId && workspaces.length > 0) {
+            // Auto-select first workspace if none active
             setActiveWorkspaceId(workspaces[0].id);
         }
     },

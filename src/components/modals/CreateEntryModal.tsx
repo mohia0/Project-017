@@ -194,13 +194,17 @@ export default function CreateEntryModal() {
         setLoading(true);
         try {
             if (tab === 'Client') {
-                await addClient({
+                const client = await addClient({
                     contact_person: cName,
                     email: cEmail,
                     phone: cPhone,
                     company_name: cCompany,
                     address: '', tax_number: '', notes: ''
                 });
+                if (!client) {
+                    gooeyToast.error("Failed to create contact.");
+                    return;
+                }
                 setCreateModalOpen(false);
             } else if (tab === 'Proposal') {
                 const p = await addProposal({
@@ -214,8 +218,12 @@ export default function CreateEntryModal() {
                     notes: '',
                     blocks: []
                 });
+                if (!p) {
+                    gooeyToast.error("Failed to create proposal.");
+                    return;
+                }
                 setCreateModalOpen(false);
-                if (p) router.push(`/proposals/${p.id}`);
+                router.push(`/proposals/${p.id}`);
             } else {
                 const inv = await addInvoice({
                     title: iTitle,
@@ -228,11 +236,16 @@ export default function CreateEntryModal() {
                     notes: '',
                     blocks: []
                 });
+                if (!inv) {
+                    gooeyToast.error("Failed to create invoice.");
+                    return;
+                }
                 setCreateModalOpen(false);
-                if (inv) router.push(`/invoices/${inv.id}`);
+                router.push(`/invoices/${inv.id}`);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
+            gooeyToast.error(err?.message || "An unexpected error occurred");
         } finally {
             setLoading(false);
         }
