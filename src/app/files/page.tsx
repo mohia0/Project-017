@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useLocalStorage } from '@mantine/hooks';
 import {
     Folder, FolderOpen, FolderPlus, File, FileText, FileImage, FileVideo,
     FileAudio, FileCode, FileArchive, Link2, Search, Upload, Download,
@@ -124,6 +125,30 @@ function getItemIcon(type: ItemType, size = 16, color?: string) {
         case 'link': return <Link2 size={size} className={cls} style={{ color: '#06b6d4' }} />;
         default: return <File size={size} className={cls} style={{ color: '#9ca3af' }} />;
     }
+}
+
+// ─── Image Thumbnail (handles load errors gracefully) ────────────────────────
+
+function ImageThumb({ src, alt, isDark, fallback }: {
+    src: string; alt: string; isDark: boolean; fallback: React.ReactNode;
+}) {
+    const [failed, setFailed] = useState(false);
+    if (failed) return (
+        <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105', isDark ? 'bg-white/[0.03]' : 'bg-[#f5f5f5]')}>
+            {fallback}
+        </div>
+    );
+    return (
+        <div className="w-full h-[80px] rounded-xl overflow-hidden transition-transform group-hover:scale-[1.02]" style={{ background: isDark ? '#1a1a1a' : '#f0f0f0' }}>
+            <img
+                src={src}
+                alt={alt}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={() => setFailed(true)}
+            />
+        </div>
+    );
 }
 
 // ─── File Preview Modal ──────────────────────────────────────────────────────
@@ -510,9 +535,9 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
 
     const allDone = uploads.length > 0 && uploads.every(u => u.status === 'done' || u.status === 'error');
 
-    const confirmUpload = () => {
-        const done = uploads.filter(u => u.status === 'done');
-        const errors = uploads.filter(u => u.status === 'error');
+    const confirmUpload = useCallback((currentUploads: UploadFile[]) => {
+        const done = currentUploads.filter(u => u.status === 'done');
+        const errors = currentUploads.filter(u => u.status === 'error');
         const newItems: FileItem[] = done.map(u => ({
             id: `file-${Date.now()}-${Math.random()}`,
             name: u.file.name,
@@ -524,7 +549,6 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
             modifiedAt: new Date().toISOString(),
         }));
         onUploaded(newItems);
-        // Use promise toast to show a clean finish state
         const addPromise = new Promise<string>((resolve, reject) => {
             setTimeout(() => {
                 if (errors.length === 0) {
@@ -540,7 +564,16 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
             error: (err: any) => err?.message || String(err),
         });
         onClose();
-    };
+    }, [currentFolderId, onUploaded, onClose]);
+
+    // Auto-confirm: pass the LATEST uploads snapshot directly — no stale closure.
+    useEffect(() => {
+        if (uploads.length > 0 && uploads.every(u => u.status === 'done')) {
+            const snapshot = uploads; // capture current reference
+            const t = setTimeout(() => confirmUpload(snapshot), 600);
+            return () => clearTimeout(t);
+        }
+    }, [uploads, confirmUpload]);
 
     const panelBg = isDark ? 'bg-[#161616] border-[#2a2a2a]' : 'bg-white border-[#e5e5e5]';
     const dropZoneBg = isDragOver
@@ -673,7 +706,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                 {/* Footer actions */}
                 <div className={cn('flex items-center gap-2 px-5 py-4 border-t', isDark ? 'border-[#242424]' : 'border-[#f0f0f0]')}>
                     {allDone ? (
-                        <button onClick={confirmUpload} className="flex-1 h-10 rounded-xl text-[12px] font-bold bg-[#4dbf39] hover:bg-[#59d044] text-black transition-all active:scale-[0.98] shadow-lg shadow-[#4dbf39]/20">
+                        <button onClick={confirmUpload.bind(null, uploads)} className="flex-1 h-10 rounded-xl text-[12px] font-bold bg-[#4dbf39] hover:bg-[#59d044] text-black transition-all active:scale-[0.98] shadow-lg shadow-[#4dbf39]/20">
                             Add to Library
                         </button>
                     ) : (
@@ -971,7 +1004,10 @@ export default function FilesPage() {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
 
-    const [items, setItems] = useState<FileItem[]>(SEED_ITEMS);
+    const [items, setItems] = useLocalStorage<FileItem[]>({
+        key: 'minimal-crm-files',
+        defaultValue: SEED_ITEMS,
+    });
     const [currentFolderId, setCurrentFolderId] = useState('root');
     const [view, setView] = useState<ViewMode>('grid');
     const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -990,6 +1026,8 @@ export default function FilesPage() {
     const [histIdx, setHistIdx] = useState(0);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [previewItem, setPreviewItem] = useState<FileItem | null>(null);
+    const [deleteWarning, setDeleteWarning] = useState<string[] | null>(null);
+    const [globalDragOver, setGlobalDragOver] = useState(false);
 
     // Persistence: Sidebar
     useEffect(() => {
@@ -1000,6 +1038,19 @@ export default function FilesPage() {
     useEffect(() => {
         localStorage.setItem('fm_sidebar_expanded', sidebarOpen.toString());
     }, [sidebarOpen]);
+
+    // Migrate old direct Backblaze URLs to proxy URLs
+    useEffect(() => {
+        setItems(prev => prev.map(item => {
+            if (item.downloadUrl && item.downloadUrl.includes('backblazeb2.com')) {
+                const parts = item.downloadUrl.split('/');
+                const key = parts[parts.length - 1];
+                return { ...item, downloadUrl: `/api/files/${key}` };
+            }
+            return item;
+        }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const openPreview = (item: FileItem) => {
         if (item.type === 'folder') { navigate(item.id); return; }
@@ -1057,16 +1108,52 @@ export default function FilesPage() {
         setExpandedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
     }, []);
 
-    // D&D
+    // D&D (items within file manager)
     const handleDrop = (targetId: string) => {
         if (!draggedId || draggedId === targetId) { setDraggedId(null); setDragOver(null); return; }
         const target = items.find(i => i.id === targetId);
         if (!target || target.type !== 'folder') return;
-        const itemToMove = items.find(i => i.id === draggedId);
         setItems(prev => prev.map(i => i.id === draggedId ? { ...i, parentId: targetId } : i));
         gooeyToast.success(`Moved to "${target.name}"`);
         setDraggedId(null); setDragOver(null);
     };
+
+    // Native OS file drag-and-drop upload
+    const handleNativeFileDrop = useCallback(async (e: React.DragEvent) => {
+        e.preventDefault();
+        setGlobalDragOver(false);
+        const files = Array.from(e.dataTransfer.files);
+        if (files.length === 0) return;
+
+        const uploadPromise = async () => {
+            const newItems: FileItem[] = [];
+            for (const file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                if (!res.ok) throw new Error(`Failed to upload ${file.name}`);
+                const data = await res.json();
+                newItems.push({
+                    id: `file-${Date.now()}-${Math.random()}`,
+                    name: file.name,
+                    type: detectType(file.name),
+                    parentId: currentFolderId,
+                    size: file.size,
+                    downloadUrl: data.url,
+                    createdAt: new Date().toISOString(),
+                    modifiedAt: new Date().toISOString(),
+                });
+            }
+            setItems(prev => [...prev, ...newItems]);
+            return `${files.length} file${files.length !== 1 ? 's' : ''} uploaded`;
+        };
+
+        gooeyToast.promise(uploadPromise(), {
+            loading: `Uploading ${files.length} file${files.length !== 1 ? 's' : ''}…`,
+            success: (msg) => msg as string,
+            error: (err: any) => err?.message || 'Upload failed',
+        });
+    }, [currentFolderId, setItems]);
 
     // CRUD
     const createFolder = (name: string) => {
@@ -1093,7 +1180,16 @@ export default function FilesPage() {
         ids.forEach(addChildren);
         setItems(prev => prev.filter(i => !toDelete.has(i.id)));
         setSelectedIds(new Set());
+        setDeleteWarning(null);
         gooeyToast.error(`${ids.length} item${ids.length !== 1 ? 's' : ''} deleted`);
+    };
+
+    const requestDelete = (ids: string[]) => {
+        if (ids.length > 1) {
+            setDeleteWarning(ids); // show warning for bulk
+        } else {
+            deleteItems(ids); // single item: delete directly
+        }
     };
     const duplicateItems = (ids: string[]) => {
         const clones = ids.map(id => { const src = items.find(i => i.id === id)!; return { ...src, id: `${src.id}-copy-${Date.now()}`, name: `${src.name} (copy)` }; });
@@ -1357,7 +1453,7 @@ export default function FilesPage() {
                                     className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
                                     <Copy size={11}/>
                                 </button>
-                                <button onClick={() => deleteItems(Array.from(selectedIds))} title="Delete"
+                                <button onClick={() => requestDelete(Array.from(selectedIds))} title="Delete"
                                     className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
                                     <Trash2 size={11}/>
                                 </button>
@@ -1379,11 +1475,41 @@ export default function FilesPage() {
                     </div>
 
                     {/* Content Area */}
-                    <div className={cn('flex-1 overflow-auto', gridBg)}
+                    <div className={cn('flex-1 overflow-auto relative', gridBg)}
                         onClick={clearSelection}
                         onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, itemId: null }); }}
-                        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOver(currentFolderId); }}
-                        onDrop={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; handleDrop(currentFolderId); }}>
+                        onDragOver={e => {
+                            e.preventDefault();
+                            // native file drag from OS
+                            if (e.dataTransfer.types.includes('Files')) {
+                                setGlobalDragOver(true);
+                                e.dataTransfer.dropEffect = 'copy';
+                            } else {
+                                e.dataTransfer.dropEffect = 'move';
+                                setDragOver(currentFolderId);
+                            }
+                        }}
+                        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setGlobalDragOver(false); }}
+                        onDrop={e => {
+                            if (e.dataTransfer.types.includes('Files') && e.dataTransfer.files.length > 0) {
+                                handleNativeFileDrop(e);
+                            } else {
+                                e.preventDefault();
+                                handleDrop(currentFolderId);
+                            }
+                        }}>
+
+                        {/* Native drag overlay */}
+                        {globalDragOver && (
+                            <div className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center gap-3"
+                                style={{ background: isDark ? 'rgba(77,191,57,0.08)' : 'rgba(77,191,57,0.06)', border: '2px dashed #4dbf39', borderRadius: 16 }}>
+                                <div className="w-16 h-16 rounded-3xl flex items-center justify-center" style={{ background: 'rgba(77,191,57,0.15)' }}>
+                                    <CloudUpload size={32} className="text-[#4dbf39]"/>
+                                </div>
+                                <p className="text-[15px] font-bold text-[#4dbf39]">Drop to upload</p>
+                                <p className={cn('text-[11px]', isDark ? 'text-[#555]' : 'text-[#aaa]')}>Files will be uploaded to this folder</p>
+                            </div>
+                        )}
 
                         {currentChildren.length === 0 ? (
                             <div className={cn('flex flex-col items-center justify-center h-full gap-4', muted)}>
@@ -1458,12 +1584,27 @@ export default function FilesPage() {
                                                 )}
                                             </div>
 
-                                            {/* Icon */}
+                                            {/* Icon / Thumbnail */}
                                             <div className="relative w-full flex items-center justify-center py-2 mt-1">
-                                                <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105',
-                                                    isDark ? 'bg-white/[0.03]' : 'bg-[#f5f5f5]')}>
-                                                    {getItemIcon(item.type, 22, item.color)}
-                                                </div>
+                                                {item.type === 'image' && item.downloadUrl && !item.downloadUrl.includes('example.com') ? (
+                                                    <ImageThumb
+                                                        src={item.downloadUrl}
+                                                        alt={item.name}
+                                                        isDark={isDark}
+                                                        fallback={getItemIcon(item.type, 22, item.color)}
+                                                    />
+                                                ) : item.type === 'doc' && item.name.toLowerCase().endsWith('.pdf') ? (
+                                                    <div className="w-12 h-14 rounded-xl flex flex-col items-center justify-center gap-1 transition-transform group-hover:scale-105 shadow-sm"
+                                                        style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+                                                        <FileText size={18} className="text-white"/>
+                                                        <span className="text-[8px] font-bold text-white/80 uppercase tracking-wider">PDF</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105',
+                                                        isDark ? 'bg-white/[0.03]' : 'bg-[#f5f5f5]')}>
+                                                        {getItemIcon(item.type, 22, item.color)}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Name & Meta */}
@@ -1654,6 +1795,38 @@ export default function FilesPage() {
                     onStar={() => { toggleStar(previewItem.id); setPreviewItem(p => p ? { ...p, starred: !p.starred } : null); }}
                     onDelete={() => { deleteItems([previewItem.id]); setPreviewItem(null); }}
                 />
+            )}
+            {/* ── Bulk Delete Warning ── */}
+            {deleteWarning && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className={cn('rounded-2xl border shadow-2xl p-6 w-[380px]', isDark ? 'bg-[#181818] border-[#2e2e2e]' : 'bg-white border-[#e5e5e5]')}>
+                        <div className="flex items-start gap-4 mb-5">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)' }}>
+                                <Trash2 size={20} className="text-red-500"/>
+                            </div>
+                            <div>
+                                <h3 className="text-[15px] font-bold">Delete {deleteWarning.length} items?</h3>
+                                <p className={cn('text-[12px] mt-1.5 leading-relaxed', isDark ? 'text-[#666]' : 'text-[#999]')}>
+                                    This will permanently delete <strong className={isDark ? 'text-[#aaa]' : 'text-[#555]'}>{deleteWarning.length} selected items</strong> and all their contents. This action cannot be undone.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => deleteItems(deleteWarning)}
+                                className="flex-1 h-10 rounded-xl text-[12px] font-bold bg-red-500 hover:bg-red-600 text-white transition-all active:scale-[0.98] shadow-lg shadow-red-500/20"
+                            >
+                                Delete {deleteWarning.length} items
+                            </button>
+                            <button
+                                onClick={() => setDeleteWarning(null)}
+                                className={cn('h-10 px-5 rounded-xl text-[12px] font-medium transition-colors border', isDark ? 'border-[#2e2e2e] text-[#666] hover:text-white hover:bg-white/5' : 'border-[#e5e5e5] text-[#888] hover:text-[#333] hover:bg-[#f5f5f5]')}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

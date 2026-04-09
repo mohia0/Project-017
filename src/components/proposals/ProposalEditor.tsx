@@ -1759,42 +1759,47 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
 function SignatureBlock({ block, isDark, isPreview, updateBlock }: any) {
     return (
         <div className={cn(
-            "my-4 border p-6 transition-all",
+            "my-4 border p-5 transition-all w-full max-w-[320px]",
             isDark ? "border-white/5 bg-white/[0.02]" : "border-black/5 bg-black/[0.01]"
         )}
         style={{ borderRadius: 'var(--block-border-radius)' }}
         >
-            <div className={cn("text-[10px] font-bold uppercase tracking-[0.2em] mb-6 opacity-40", isDark ? "text-white" : "text-black")}>
+            <div className={cn("text-[9px] font-bold uppercase tracking-[0.2em] mb-4 opacity-40", isDark ? "text-white" : "text-black")}>
                 Authorized Signature
             </div>
-            <div className="flex flex-col md:flex-row md:items-end gap-8">
+            <div className="flex flex-col gap-4">
                 <div className="flex-1">
                     <div 
-                        className="h-16 flex items-center justify-center relative mb-2"
+                        className="h-14 flex items-end justify-start relative mb-2 pb-1"
                         style={{ borderBottom: `var(--sign-bar-thick) solid var(--sign-bar-color)` }}
                     >
                         {block.signed ? (
-                            <div className="flex flex-col items-center animate-in zoom-in duration-300 w-full h-full max-h-16 justify-center">
+                            <div className="flex flex-col items-start animate-in zoom-in duration-300 w-full justify-end relative">
                                 {block.signatureImage ? (
                                     <img 
                                         src={block.signatureImage} 
-                                        className={cn("max-h-12 w-auto", isDark ? "invert brightness-200" : "")} 
+                                        className={cn("max-h-12 w-auto object-contain", isDark ? "invert brightness-200" : "")} 
                                         alt="Signature" 
                                     />
                                 ) : (
-                                    <span className={cn("font-['Dancing_Script',_cursive] text-2xl", isDark ? "text-white" : "text-black")}>
+                                    <span 
+                                        className={cn("text-3xl w-full truncate leading-none pb-1", isDark ? "text-white" : "text-black")}
+                                        style={{ fontFamily: '"Brush Script MT", cursive, serif' }}
+                                    >
                                         {block.signerName || 'Signature'}
                                     </span>
                                 )}
-                                <span className={cn("text-[8px] opacity-30 uppercase tracking-tighter mt-0.5 italic shrink-0", isDark ? "text-white" : "text-black")}>Electronically Signed</span>
+                                <span className={cn("absolute -bottom-[22px] right-0 text-[8px] opacity-30 uppercase tracking-tighter italic shrink-0", isDark ? "text-white" : "text-black")}>
+                                    Electronically Signed
+                                </span>
                             </div>
                         ) : (
-                            <span className="text-[11px] opacity-20 italic">Awaiting signature...</span>
+                            <span className="text-[11px] opacity-20 italic pb-1">Awaiting signature...</span>
                         )}
                     </div>
                     
                     {!isPreview && (
-                        <div className="space-y-3">
+                        <div className="space-y-3 mt-4">
                             <input
                                 value={block.signerName || ''}
                                 onChange={e => updateBlock(block.id, { signerName: e.target.value })}
@@ -1813,7 +1818,7 @@ function SignatureBlock({ block, isDark, isPreview, updateBlock }: any) {
                     )}
                     
                     {isPreview && (
-                        <div className="flex flex-col">
+                        <div className="flex flex-col mt-3">
                             <span className={cn("text-[13px] font-bold", isDark ? "text-white" : "text-black")}>
                                 {block.signerName || 'Pending'}
                             </span>
@@ -1828,7 +1833,7 @@ function SignatureBlock({ block, isDark, isPreview, updateBlock }: any) {
                     <button
                         onClick={() => updateBlock(block.id, { signed: !block.signed })}
                         className={cn(
-                            "px-4 py-2 text-[12px] font-bold transition-all active:scale-95 shadow-sm border",
+                            "px-4 py-2 w-full text-[12px] font-bold transition-all active:scale-95 shadow-sm border",
                             block.signed
                                 ? "bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600"
                                 : isDark ? "bg-white/5 text-white/60 border-white/5 hover:bg-white/10" : "bg-white text-black/60 border-black/5 hover:bg-black/5"

@@ -21,6 +21,9 @@ interface ClientActionBarProps {
     className?: string;
     amountDue?: string | number;
     paidAt?: string;
+    paidBy?: string;
+    signedBy?: string;
+    signedAt?: string;
     design?: Partial<DocumentDesign>;
 }
 
@@ -48,6 +51,9 @@ export function ClientActionBar({
     className,
     amountDue,
     paidAt,
+    paidBy,
+    signedBy,
+    signedAt,
     design = {}
 }: ClientActionBarProps & { onPay?: () => void }) {
     const { theme } = useUIStore();
@@ -148,7 +154,9 @@ export function ClientActionBar({
                     {status === 'Paid' ? (
                         <>
                             <Check size={16} strokeWidth={2.5} className="text-emerald-500" />
-                            <span className="text-[13px] font-semibold">Invoice paid on {paidAt || 'today'}</span>
+                            <span className="text-[13px] font-semibold">
+                                Invoice paid{paidAt ? ` on ${paidAt}` : ''}{paidBy ? ` by ${paidBy}` : ''}
+                            </span>
                         </>
                     ) : (
                         <div className="flex flex-row items-baseline gap-2">
@@ -238,7 +246,9 @@ export function ClientActionBar({
                     style={parentRadiusStyle}
                 >
                     <Check size={isMobile ? 14 : 16} strokeWidth={2.5} />
-                    <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>{displayType} manually approved</span>
+                    <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
+                        {signedBy ? `${displayType} signed by ${signedBy}${signedAt ? ` on ${signedAt}` : ''}` : `${displayType} manually approved`}
+                    </span>
                 </div>
 
                 {/* Right Action Icons Pill */}

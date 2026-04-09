@@ -34,11 +34,10 @@ export async function POST(req: NextRequest) {
 
         await s3Client.send(command);
 
-        // Construct the public URL for the file
-        // B2 S3 virtual-hosted style URL: https://bucket-name.s3.region.backblazeb2.com/path
-        const endpointRaw = process.env.B2_ENDPOINT || "https://s3.us-east-005.backblazeb2.com";
-        const endpointObj = new URL(endpointRaw);
-        const fileUrl = `https://${process.env.B2_BUCKET_NAME}.${endpointObj.hostname}/${fileName}`;
+        // Return a proxy URL through our own domain — works for private buckets,
+        // and links look like https://yourdomain.com/api/files/filename.png
+        const origin = req.nextUrl.origin;
+        const fileUrl = `${origin}/api/files/${encodeURIComponent(fileName)}`;
 
         return NextResponse.json({ 
             success: true, 
