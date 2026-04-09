@@ -426,7 +426,7 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
 }
 
 /* ─── Main RightPanel export ─── */
-export default function RightPanel() {
+export default function RightPanel({ mobileMode = false }: { mobileMode?: boolean }) {
     const { rightPanel, closeRightPanel, theme } = useUIStore();
     const isDark = theme === 'dark';
 
@@ -436,6 +436,24 @@ export default function RightPanel() {
         company: 'Company',
     };
 
+    /* Mobile: render panel content directly (drawer handles the container) */
+    if (mobileMode) {
+        if (!rightPanel) return null;
+        return (
+            <div className="flex flex-col h-full overflow-hidden">
+                <PanelHeader
+                    title={titles[rightPanel.type] || 'Details'}
+                    isDark={isDark}
+                    onClose={closeRightPanel}
+                />
+                {rightPanel.type === 'notifications' && <NotificationsPanel isDark={isDark} />}
+                {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
+                {rightPanel.type === 'company' && <CompanyPanel id={rightPanel.id} isDark={isDark} />}
+            </div>
+        );
+    }
+
+    /* Desktop: animated width slide-in */
     return (
         <AnimatePresence mode="wait">
             {rightPanel && (

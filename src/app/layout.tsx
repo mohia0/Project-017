@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import '@mantine/core/styles.css';
 import AppLayout from '@/components/layout/AppLayout';
@@ -11,6 +11,18 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.svg',
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#141414' },
+  ],
 };
 
 export default function RootLayout({

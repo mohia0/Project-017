@@ -170,7 +170,14 @@ function KpiCard({ label, value, subValue, change, icon, iconBg, isDark }: KpiPr
                     )}>
                         {isPositive ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
                         {Math.abs(change!).toFixed(1)}%
-   /* ─── Income Heatmap (full-width calendar style) ─────────────────── */
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/* ─── Income Heatmap (full-width calendar style) ─────────────────── */
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_NAMES_FULL = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -232,131 +239,116 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
         return grid;
     }
 
-    const CELL = 12; // px — cell size
-    const GAP  = 2;  // px — gap between cells
+    const CELL = 8;  // Slightly larger than 7
+    const GAP_X = 4; // More horizontal spacing to fill width intuitively
+    const GAP_Y = 3; // Minimal vertical spacing to prevent height breakage
 
     return (
-        <div className={cn("rounded-[10px] border p-6",
+        <div className={cn("rounded-[10px] border p-4 flex flex-col h-full",
             isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]")}>
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <div className={cn("text-[14px] font-bold", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
-                        Income Heatmap
-                    </div>
-                    <p className={cn("text-[11px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                        Review your daily revenue consistency across the year.
-                    </p>
+            <div className="flex items-center justify-between mb-4">
+                <div className={cn("text-[12px] font-semibold", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
+                    Income Heatmap
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                     <button onClick={() => onYearChange(year - 1)}
-                        className={cn("w-7 h-7 rounded-[8px] flex items-center justify-center transition-all",
-                            isDark ? "bg-white/5 text-[#555] hover:text-[#aaa] hover:bg-white/10" : "bg-[#f5f5f5] text-[#ccc] hover:text-[#555] hover:bg-[#ebebeb]")}>
-                        <ChevronLeft size={14} />
+                        className={cn("w-5 h-5 rounded flex items-center justify-center transition-colors",
+                            isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#555] hover:bg-[#f5f5f5]")}>
+                        <ChevronLeft size={12} />
                     </button>
-                    <span className={cn("text-[14px] font-bold w-12 text-center tabular-nums",
-                        isDark ? "text-[#ccc]" : "text-[#333]")}>{year}</span>
+                    <span className={cn("text-[10px] font-bold w-10 text-center tabular-nums",
+                        isDark ? "text-[#888]" : "text-[#666]")}>{year}</span>
                     <button onClick={() => onYearChange(year + 1)}
-                        className={cn("w-7 h-7 rounded-[8px] flex items-center justify-center transition-all",
-                            isDark ? "bg-white/5 text-[#555] hover:text-[#aaa] hover:bg-white/10" : "bg-[#f5f5f5] text-[#ccc] hover:text-[#555] hover:bg-[#ebebeb]")}>
-                        <ChevronRight size={14} />
+                        className={cn("w-5 h-5 rounded flex items-center justify-center transition-colors",
+                            isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#555] hover:bg-[#f5f5f5]")}>
+                        <ChevronRight size={12} />
                     </button>
                 </div>
             </div>
 
-            {/* Calendar grid — 4 rows × 3 months for a more "Calendar" feel */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-6">
-                {Array.from({ length: 12 }, (_, monthIdx) => {
-                    const weeks = buildMonthWeeks(monthIdx, year);
-                    return (
-                        <div key={monthIdx} className="flex flex-col">
-                            {/* Month label */}
-                            <div className={cn("text-[11px] font-bold mb-2 flex items-center gap-2",
-                                isDark ? "text-[#ccc]" : "text-[#444]")}>
-                                <div className="w-1 h-3 rounded-full bg-green-500" />
-                                {MONTH_NAMES_FULL[monthIdx]}
-                            </div>
-                            
-                            <div className="flex gap-2">
-                                {/* DOW labels */}
-                                <div className="flex flex-col" style={{ gap: GAP }}>
-                                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-                                        <div key={i} style={{ height: CELL, lineHeight: `${CELL}px` }}
-                                            className={cn("text-[8px] text-right pr-1 font-medium",
-                                                isDark ? "text-[#333]" : "text-[#ddd]")}>
-                                            {i % 2 === 0 ? d : ''}
-                                        </div>
-                                    ))}
-                                </div>
-                                
-                                {/* Weeks */}
-                                <div className="flex" style={{ gap: GAP }}>
-                                    {weeks.map((col, wIdx) => (
-                                        <div key={wIdx} className="flex flex-col" style={{ gap: GAP }}>
-                                            {col.map((cell, rIdx) => {
-                                                if (cell.day === null) {
-                                                    return <div key={rIdx} style={{ width: CELL, height: CELL }} />;
-                                                }
-                                                const dDate = new Date(year, monthIdx, cell.day);
-                                                const isFuture = dDate > today;
-                                                const isToday = dDate.toDateString() === today.toDateString();
-                                                
-                                                const label = cell.val > 0
-                                                    ? `${MONTH_NAMES_FULL[monthIdx]} ${cell.day}: ${fmt$(cell.val)}`
-                                                    : `${MONTH_NAMES_FULL[monthIdx]} ${cell.day}`;
+            {/* Grid — 2 rows × 6 months */}
+            <div className="flex-1 flex flex-col justify-center gap-3">
+                {[0, 1].map(rowIdx => (
+                    <div key={rowIdx} className="grid grid-cols-6 gap-1 lg:gap-2">
+                        {Array.from({ length: 6 }).map((_, colIdx) => {
+                            const monthIdx = rowIdx * 6 + colIdx;
+                            const weeks = buildMonthWeeks(monthIdx, year);
+                            return (
+                                <div key={monthIdx} className="flex flex-col gap-1.5 w-full items-center">
+                                    <div className="w-full flex items-start">
+                                        <span className={cn("text-[9px] font-bold uppercase tracking-wider",
+                                            isDark ? "text-[#444]" : "text-[#ccc]")}>
+                                            {MONTH_NAMES[monthIdx]}
+                                        </span>
+                                    </div>
+                                    <div className="flex w-full" style={{ gap: GAP_X }}>
+                                        {weeks.map((col, wIdx) => (
+                                            <div key={wIdx} className="flex flex-col" style={{ gap: GAP_Y }}>
+                                                {col.map((cell, rIdx) => {
+                                                    if (cell.day === null) {
+                                                        return (
+                                                            <div key={rIdx} 
+                                                                className="rounded-[2px]" 
+                                                                style={{ 
+                                                                    width: CELL, 
+                                                                    height: CELL, 
+                                                                    backgroundColor: isDark ? '#1e1e1e' : '#f0f0f0',
+                                                                    opacity: 0.1 
+                                                                }} 
+                                                            />
+                                                        );
+                                                    }
                                                     
-                                                return (
-                                                    <div
-                                                        key={rIdx}
-                                                        title={label}
-                                                        className={cn(
-                                                            "rounded-[3px] transition-all hover:scale-125 cursor-default relative",
-                                                            isToday && "ring-1 ring-blue-500 ring-offset-1 ring-offset-transparent"
-                                                        )}
-                                                        style={Object.assign({
-                                                            width: CELL,
-                                                            height: CELL,
-                                                            backgroundColor: isFuture
-                                                                ? (isDark ? '#1e1e1e' : '#f9f9f9')
-                                                                : cellColor(cell.val),
-                                                            opacity: isFuture ? 0.25 : 1,
-                                                        }, cell.val > 0 ? {
-                                                            boxShadow: isDark ? '0 0 8px rgba(34, 197, 94, 0.1)' : 'none'
-                                                        } : {})}
-                                                    />
-                                                );
-                                            })}
-                                        </div>
-                                    ))}
+                                                    const isToday = year === today.getFullYear() && monthIdx === today.getMonth() && cell.day === today.getDate();
+                                                    // use start of day for comparison to avoid exact time mismatches
+                                                    const dateObj = new Date(year, monthIdx, cell.day);
+                                                    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                                    const isFuture = dateObj > todayStart;
+                                                    
+                                                    return (
+                                                        <div
+                                                            key={rIdx}
+                                                            title={cell.val > 0 ? `${MONTH_NAMES[monthIdx]} ${cell.day}: ${fmt$(cell.val)}` : isToday ? "Today" : undefined}
+                                                            className="rounded-[2px] cursor-default"
+                                                            style={{
+                                                                width: CELL,
+                                                                height: CELL,
+                                                                backgroundColor: isFuture
+                                                                    ? (isDark ? '#1e1e1e' : '#f9f9f9')
+                                                                    : cellColor(cell.val),
+                                                                opacity: isFuture ? 0.2 : 1,
+                                                                boxShadow: isToday ? `0 0 0 1px ${isDark ? '#aaa' : '#666'}` : undefined
+                                                            }}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    );
-                })}
+                            );
+                        })}
+                    </div>
+                ))}
             </div>
 
-
-            {/* Legend + total */}
-            <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center gap-1.5">
-                    <span className={cn("text-[9px]", isDark ? "text-[#444]" : "text-[#ccc]")}>No income</span>
-                    {[0, 0.15, 0.35, 0.6, 1].map((v, i) => (
-                        <div key={i}
-                            className="rounded-[2px]"
-                            style={{ width: 10, height: 10, backgroundColor: cellColor(v * maxVal) }}
-                        />
+            {/* Total only (minimal legend) */}
+            <div className="mt-3 pt-3 border-t border-dashed border-gray-100 flex items-center justify-between">
+                 <div className="flex items-center gap-1">
+                    {[0, 0.2, 0.4, 0.7, 1].map((v, i) => (
+                        <div key={i} className="rounded-[1px]" style={{ width: 6, height: 6, backgroundColor: cellColor(v * maxVal) }} />
                     ))}
-                    <span className={cn("text-[9px]", isDark ? "text-[#444]" : "text-[#ccc]")}>More</span>
                 </div>
-                <span className={cn("text-[10px] font-semibold tabular-nums",
-                    isDark ? "text-[#555]" : "text-[#bbb]")}>
-                    Annual total: {fmt$(flat.reduce((a, b) => a + b, 0))}
+                <span className={cn("text-[10px] font-bold tabular-nums", isDark ? "text-[#444]" : "text-[#bbb]")}>
+                    Annual Total: {fmt$(flat.reduce((a, b) => a + b, 0))}
                 </span>
             </div>
         </div>
     );
 }
+
 
 /* ─── Status Row Item ────────────────────────────────────────────── */
 function StatusRow({ label, count, amount, icon, iconColor, barColor, isDark }: {
@@ -391,12 +383,14 @@ export default function DashboardPage() {
     const { invoices, fetchInvoices } = useInvoiceStore();
     const { proposals, fetchProposals } = useProposalStore();
     const { user } = useAuthStore();
+    const { profile, fetchProfile } = useSettingsStore();
     const isDark = theme === 'dark';
 
     const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
 
     useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
     useEffect(() => { fetchProposals(); }, [fetchProposals]);
+    useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
     /* ── Date boundaries (memoized so they don't recreate Date objects every render) ── */
     const { now, y, m, last30Start, last30End, prior30Start, prior30End } = useMemo(() => {
@@ -543,9 +537,9 @@ export default function DashboardPage() {
             "flex flex-col h-full overflow-hidden font-sans text-[13px]",
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]"
         )}>
-            {/* ── Page header ── */}
+            {/* ── Page header — hidden on mobile (MobileTopBar handles it) ── */}
             <div className={cn(
-                "flex items-center justify-between px-5 py-3 shrink-0",
+                "hidden md:flex items-center justify-between px-5 py-3 shrink-0",
                 isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white"
             )}>
                 <div>
@@ -558,10 +552,10 @@ export default function DashboardPage() {
 
             {/* ── Content ── */}
             <div className="flex-1 overflow-auto">
-                <div className="p-4 flex flex-col gap-3">
+                <div className="p-3 md:p-4 flex flex-col gap-3">
 
                     {/* ── Row 1: KPI Cards ── */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <KpiCard
                             label="Paid Invoices (3 Months)"
                             value={fmt$(invoiceStats.paidLast3Amount)}
@@ -601,7 +595,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* ── Row 2: Charts ── */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Invoice chart */}
                         <div className={cn("rounded-[10px] border p-4",
                             isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]")}>
@@ -635,8 +629,8 @@ export default function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* ── Row 3: Breakdowns (side by side) ── */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* ── Row 3: Breakdowns + Heatmap (Combined) ── */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_2fr] gap-3">
 
                         {/* Invoice breakdown */}
                         <div className={cn("rounded-[10px] border p-4",
@@ -673,15 +667,16 @@ export default function DashboardPage() {
                             <StatusRow label="Cancelled" count={proposalStats.cancelled.count} amount={proposalStats.cancelled.amount}
                                 icon={<Ban size={12} />} iconColor="#94a3b8" barColor="#94a3b8" isDark={isDark} />
                         </div>
-                    </div>
 
-                    {/* ── Row 4: Full-width Income Heatmap ── */}
-                    <IncomeHeatmap
-                        heatmapData={heatmapData}
-                        year={heatmapYear}
-                        onYearChange={setHeatmapYear}
-                        isDark={isDark}
-                    />
+                        {/* Income Heatmap (Fits in the 3rd 2fr column) */}
+                        <IncomeHeatmap
+                            heatmapData={heatmapData}
+                            year={heatmapYear}
+                            onYearChange={setHeatmapYear}
+                            isDark={isDark}
+                        />
+
+                    </div>
 
                 </div>
             </div>

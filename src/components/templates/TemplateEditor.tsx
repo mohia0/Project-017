@@ -24,6 +24,7 @@ import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import DatePicker from '@/components/ui/DatePicker';
 import { STATUS_COLORS } from '@/lib/statusConfig';
+import { gooeyToast } from 'goey-toast';
 
 interface TemplateEditorProps {
     id: string;
@@ -90,6 +91,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
         
         if (success) {
             setSaveStatus('saved');
+            gooeyToast('Template saved', { duration: 1200 });
             setTimeout(() => setSaveStatus('idle'), 2000);
         }
         setIsSaving(false);

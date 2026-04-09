@@ -43,6 +43,7 @@ interface UploadFile {
     progress: number;         // 0–100
     status: 'pending' | 'uploading' | 'done' | 'error';
     type: ItemType;
+    fileUrl?: string;
 }
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -462,24 +463,48 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
         const pendingIds = uploads.filter(u => u.status === 'pending').map(u => u.id);
         if (pendingIds.length === 0) return;
 
-        // Simulate progressive upload for each file
         pendingIds.forEach(id => {
+            const uploadObj = uploads.find(u => u.id === id);
+            if (!uploadObj) return;
+
             setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'uploading' } : u));
 
-            let progress = 0;
-            const speed = 8 + Math.random() * 15; // random speed
-            const interval = setInterval(() => {
-                progress += speed + Math.random() * 5;
-                const clamped = Math.min(Math.round(progress), 100);
-                setUploads(prev => prev.map(u => u.id === id ? { ...u, progress: clamped } : u));
-                if (clamped >= 100) {
-                    clearInterval(interval);
-                    // small delay before marking done
-                    setTimeout(() => {
-                        setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'done', progress: 100 } : u));
-                    }, 200);
+            const formData = new FormData();
+            formData.append("file", uploadObj.file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/upload", true);
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    const progress = Math.round((event.loaded / event.total) * 100);
+                    setUploads(prev => prev.map(u => u.id === id ? { ...u, progress } : u));
                 }
-            }, 120);
+            };
+
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    try {
+                        const resp = JSON.parse(xhr.responseText);
+                        setUploads(prev => prev.map(u => u.id === id ? { 
+                            ...u, 
+                            status: 'done', 
+                            progress: 100,
+                            fileUrl: resp.url
+                        } : u));
+                    } catch {
+                        setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error' } : u));
+                    }
+                } else {
+                    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error' } : u));
+                }
+            };
+
+            xhr.onerror = () => {
+                setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error' } : u));
+            };
+
+            xhr.send(formData);
         });
     };
 
@@ -494,7 +519,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
             type: u.type,
             parentId: currentFolderId,
             size: u.file.size,
-            downloadUrl: `https://cdn.example.com/files/${u.file.name}`,
+            downloadUrl: u.fileUrl || `https://cdn.example.com/files/${u.file.name}`,
             createdAt: new Date().toISOString(),
             modifiedAt: new Date().toISOString(),
         }));

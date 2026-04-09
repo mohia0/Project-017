@@ -38,6 +38,7 @@ import { useTemplateStore } from '@/store/useTemplateStore';
 import { BankTransferModal } from '@/components/modals/BankTransferModal';
 import ImageUploadModal from '../modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { gooeyToast } from 'goey-toast';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -240,6 +241,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             meta: debouncedMeta
         }).then(() => {
             setSaveStatus('saved');
+            gooeyToast('Changes saved', { duration: 1200 });
             setTimeout(() => setSaveStatus('idle'), 2500);
         });
     }, [debouncedMeta, debouncedBlocks, id, isLoaded, updateInvoice]);

@@ -493,8 +493,8 @@ export default function InvoicesPage() {
         <div className={cn("flex flex-col h-full overflow-hidden font-sans text-[13px]",
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]")}>
 
-            {/* ── Page header ── */}
-            <div className={cn("flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
+            {/* ── Page header — hidden on mobile (MobileTopBar handles it) ── */}
+            <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Invoices</h1>
                 <button onClick={() => setShowCreateModal(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors">
@@ -503,7 +503,7 @@ export default function InvoicesPage() {
             </div>
 
             {/* ── Toolbar ── */}
-            <div className={cn("flex items-center gap-0 px-4 py-1.5 shrink-0", isDark ? "border-b border-[#252525]" : "")}>
+            <div className={cn("flex items-center gap-0 px-3 md:px-4 py-1.5 shrink-0 overflow-x-auto no-scrollbar", isDark ? "border-b border-[#252525]" : "")}>
                 {/* Search */}
                 <div className="relative mr-2">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" size={11} />

@@ -143,8 +143,8 @@ export default function ClientsPage() {
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]"
         )}>
 
-            {/* ── Page header ── */}
-            <div className={cn("flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
+            {/* ── Page header — hidden on mobile (MobileTopBar handles it) ── */}
+            <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Contacts</h1>
                 <button
                     onClick={() => tab === 'companies' ? setIsCompanyModalOpen(true) : setIsContactEditorOpen(true)}
@@ -156,7 +156,7 @@ export default function ClientsPage() {
             </div>
 
             {/* ── Toolbar ── */}
-            <div className={cn("flex items-center gap-0 px-4 py-1.5 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-[#f7f7f7]")}>
+            <div className={cn("flex items-center gap-0 px-3 md:px-4 py-1.5 shrink-0 overflow-x-auto no-scrollbar", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-[#f7f7f7]")}>
                 {(['people', 'companies'] as Tab[]).map(t => (
                     <button
                         key={t}

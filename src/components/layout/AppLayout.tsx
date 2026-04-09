@@ -11,8 +11,11 @@ import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useTemplateStore } from '@/store/useTemplateStore';
+import { useMenuStore } from '@/store/useMenuStore';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { MobileTopBar, MobileBottomNav, MobileRightPanelDrawer } from './MobileNav';
 
 function WorkspaceDataSync() {
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
@@ -32,10 +35,17 @@ function WorkspaceDataSync() {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { theme } = useUIStore();
     const { user, isLoading } = useAuthStore();
+    const { fetchMenu } = useMenuStore();
     const isDark = theme === 'dark';
     const pathname = usePathname();
     const router = useRouter();
     const isAuthRoute = pathname === '/login';
+    const isMobile = useIsMobile();
+
+    // Fetch nav menu on mount
+    useEffect(() => {
+        fetchMenu();
+    }, [fetchMenu]);
 
     useEffect(() => {
         if (!isLoading && !user && !isAuthRoute) {
@@ -66,6 +76,41 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         );
     }
 
+    /* ─── MOBILE LAYOUT ─────────────────────────────────────────── */
+    if (isMobile) {
+        return (
+            <div className={cn(
+                "flex flex-col h-screen w-full overflow-hidden",
+                isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f0f0f0] text-[#111]"
+            )}>
+                {/* Top bar */}
+                <MobileTopBar />
+
+                {/* Main content — scrollable, padded bottom for bottom nav */}
+                <main className={cn(
+                    "flex-1 flex flex-col overflow-hidden",
+                    isDark ? "bg-[#141414]" : "bg-white"
+                )}>
+                    <WorkspaceDataSync />
+                    {/* Inner scroll area with bottom padding for nav bar */}
+                    <div className="flex-1 overflow-hidden flex flex-col pb-[68px]">
+                        {children}
+                    </div>
+                </main>
+
+                {/* Right panel as bottom drawer on mobile */}
+                <MobileRightPanelDrawer />
+
+                {/* Bottom navigation */}
+                <MobileBottomNav />
+
+                {/* Global Modals */}
+                <CreateEntryModal />
+            </div>
+        );
+    }
+
+    /* ─── DESKTOP LAYOUT ─────────────────────────────────────────── */
     return (
         <div className={cn(
             "flex h-screen w-full overflow-hidden p-2.5 gap-2.5",

@@ -62,8 +62,16 @@
   }
 
   html, body {
-    @apply h-full w-full overflow-hidden bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] antialiased;
+    height: 100%;
+    height: 100dvh;
+    width: 100%;
+    overflow: hidden;
+    @apply bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] antialiased;
     font-family: 'Inter', system-ui, sans-serif;
+    /* Mobile rendering improvements */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
   }
 }
 
@@ -80,4 +88,67 @@
 
 button {
   transition: all 0.15s ease-out;
+  /* Improve tap targets on mobile */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
+
+/* ─── Hide scrollbar utility ────────────────────────────────────── */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Mobile-safe scrolling ───────────────────────────────────────── */
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Slide-in animation for mobile drawers */
+  @keyframes slide-in-from-bottom {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  .animate-in {
+    animation-fill-mode: both;
+    animation-duration: 300ms;
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .slide-in-from-bottom {
+    animation-name: slide-in-from-bottom;
+  }
+
+  .fade-in {
+    animation-name: fade-in;
+  }
+
+  .duration-300 {
+    animation-duration: 300ms;
+  }
+
+  /* Mobile scroll improvements */
+  .overflow-y-auto, .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+

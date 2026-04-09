@@ -39,6 +39,7 @@ import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
 import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { gooeyToast } from 'goey-toast';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -265,6 +266,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
             meta: debouncedMeta
         }).then(() => {
             setSaveStatus('saved');
+            gooeyToast('Changes saved', { duration: 1200 });
             setTimeout(() => setSaveStatus('idle'), 2500);
         });
     }, [debouncedMeta, debouncedBlocks, id, isLoaded, updateProposal]);
