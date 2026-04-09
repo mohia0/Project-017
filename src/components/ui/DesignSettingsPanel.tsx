@@ -497,7 +497,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 type="range" min="0" max="8" step="1" 
                                 value={design.tableStrokeWidth ?? 1} 
                                 onChange={e => updateDesign({ tableStrokeWidth: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                className="w-full accent-primary h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
                             />
                         </MetaField>
 
@@ -513,7 +513,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 type="range" min="8" max="20" step="1" 
                                 value={design.tableFontSize ?? 12} 
                                 onChange={e => updateDesign({ tableFontSize: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                className="w-full accent-primary h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
                             />
                         </MetaField>
 
@@ -529,7 +529,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 type="range" min="4" max="32" step="2" 
                                 value={design.tableCellPadding ?? 12} 
                                 onChange={e => updateDesign({ tableCellPadding: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                className="w-full accent-primary h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
                             />
                         </MetaField>
                     </div>

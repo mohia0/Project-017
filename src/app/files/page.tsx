@@ -30,7 +30,7 @@ const ProgressContent = ({ progress, isDark }: { progress: number; isDark: boole
             <div className={cn("h-1 w-full rounded-full overflow-hidden", isDark ? "bg-white/10" : "bg-black/5")}>
                 <div 
                     className={cn(
-                        "h-full bg-[#4dbf39] transition-all duration-300 ease-out",
+                        "h-full bg-primary transition-all duration-300 ease-out",
                         isComplete && "opacity-80"
                     )} 
                     style={{ width: `${progress}%` }}
@@ -39,15 +39,15 @@ const ProgressContent = ({ progress, isDark }: { progress: number; isDark: boole
             <div className="flex justify-between items-center mt-2">
                 <div className="flex items-center gap-1.5">
                     {isComplete ? (
-                        <RefreshCw size={10} className="animate-spin text-[#4dbf39]" />
+                        <RefreshCw size={10} className="animate-spin text-primary" />
                     ) : (
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#4dbf39] animate-pulse" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                     )}
                     <span className={cn("text-[10px] font-medium uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#aaa]")}>
                         {isComplete ? 'Finalizing library...' : 'Uploading files...'}
                     </span>
                 </div>
-                <span className={cn("text-[10px] font-bold tabular-nums", isDark ? "text-[#4dbf39]/80" : "text-[#4dbf39]")}>
+                <span className={cn("text-[10px] font-bold tabular-nums", isDark ? "text-primary/80" : "text-primary")}>
                     {Math.round(progress)}%
                 </span>
             </div>
@@ -240,7 +240,7 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                     </div>
                     {/* Zoom controls (vertical on the left) */}
                     <div className={`absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 px-1.5 py-3 rounded-full border shadow-xl backdrop-blur-md ${isDark ? 'bg-[#1a1a1a]/90 border-[#333]' : 'bg-white/90 border-[#e5e5e5]'}`}>
-                        <button onClick={() => setImgZoom(z => Math.min(4, z + 0.25))} className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-white/10 text-[#888] hover:text-[#4dbf39]' : 'hover:bg-[#f0f0f0] text-[#666] hover:text-[#4dbf39]'}`} title="Zoom In"><ZoomIn size={14}/></button>
+                        <button onClick={() => setImgZoom(z => Math.min(4, z + 0.25))} className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-white/10 text-[#888] hover:text-primary' : 'hover:bg-[#f0f0f0] text-[#666] hover:text-primary'}`} title="Zoom In"><ZoomIn size={14}/></button>
                         <span className={`text-[9px] font-black tabular-nums h-6 flex items-center justify-center ${isDark ? 'text-[#444]' : 'text-[#bbb]'}`}>{Math.round(imgZoom * 100)}%</span>
                         <button onClick={() => setImgZoom(z => Math.max(0.25, z - 0.25))} className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-white/10 text-[#888] hover:text-red-400' : 'hover:bg-[#f0f0f0] text-[#666] hover:text-red-400'}`} title="Zoom Out"><ZoomOut size={14}/></button>
                         
@@ -402,7 +402,7 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                     {item.downloadUrl && (
                         <button
                             onClick={onDownload}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-lg shadow-[#4dbf39]/20 active:scale-95"
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all bg-primary hover:bg-primary-hover text-black shadow-lg shadow-primary/20 active:scale-95"
                         >
                             <Download size={13}/> Download {ext}
                         </button>
@@ -644,7 +644,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
 
     const panelBg = isDark ? 'bg-[#161616] border-[#2a2a2a]' : 'bg-white border-[#e5e5e5]';
     const dropZoneBg = isDragOver
-        ? isDark ? 'border-[#4dbf39] bg-[#4dbf39]/5' : 'border-[#4dbf39] bg-[#4dbf39]/5'
+        ? isDark ? 'border-primary bg-primary/5' : 'border-primary bg-primary/5'
         : isDark ? 'border-[#2a2a2a] hover:border-[#383838]' : 'border-[#e0e0e0] hover:border-[#ccc]';
     const itemBg = isDark ? 'bg-[#1e1e1e] border-[#2a2a2a]' : 'bg-[#fafafa] border-[#eeeeee]';
 
@@ -658,7 +658,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                 <div className={cn('flex items-center justify-between px-5 py-4 border-b', isDark ? 'border-[#242424]' : 'border-[#f0f0f0]')}>
                     <div className="flex items-center gap-3">
                         <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center', isDark ? 'bg-white/5' : 'bg-[#f5f5f5]')}>
-                            <CloudUpload size={16} className="text-[#4dbf39]"/>
+                            <CloudUpload size={16} className="text-primary"/>
                         </div>
                         <div>
                             <h2 className="text-[14px] font-bold">Upload Files</h2>
@@ -679,8 +679,8 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                         onDragLeave={() => setIsDragOver(false)}
                         onDrop={e => { e.preventDefault(); setIsDragOver(false); addFiles(e.dataTransfer.files); }}
                     >
-                        <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center transition-all', isDragOver ? 'bg-[#4dbf39]/15 scale-110' : isDark ? 'bg-white/5' : 'bg-[#f5f5f5]')}>
-                            <CloudUpload size={26} className={isDragOver ? 'text-[#4dbf39]' : isDark ? 'text-[#444]' : 'text-[#bbb]'}/>
+                        <div className={cn('w-14 h-14 rounded-2xl flex items-center justify-center transition-all', isDragOver ? 'bg-primary/15 scale-110' : isDark ? 'bg-white/5' : 'bg-[#f5f5f5]')}>
+                            <CloudUpload size={26} className={isDragOver ? 'text-primary' : isDark ? 'text-[#444]' : 'text-[#bbb]'}/>
                         </div>
                         <div className="text-center">
                             <p className={cn('text-[13px] font-semibold', isDark ? 'text-[#ccc]' : 'text-[#444]')}>
@@ -735,7 +735,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                                             <span className={cn('text-[12px] font-medium truncate', isDark ? 'text-[#ccc]' : 'text-[#333]')}>{upload.file.name}</span>
                                             <div className="flex items-center gap-1.5 shrink-0">
                                                 <span className={cn('text-[10px] tabular-nums', isDark ? 'text-[#555]' : 'text-[#bbb]')}>{formatBytes(upload.file.size)}</span>
-                                                {upload.status === 'done' && <FileCheck2 size={13} className="text-[#4dbf39]"/>}
+                                                {upload.status === 'done' && <FileCheck2 size={13} className="text-primary"/>}
                                                 {upload.status === 'error' && <AlertTriangle size={13} className="text-red-500"/>}
                                                 {upload.status === 'pending' && (
                                                     <button onClick={() => removeUpload(upload.id)} className={cn('w-4 h-4 flex items-center justify-center rounded transition-colors', isDark ? 'text-[#444] hover:text-red-400' : 'text-[#ccc] hover:text-red-500')}>
@@ -748,9 +748,9 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                                         <div className={cn('h-1 rounded-full overflow-hidden', isDark ? 'bg-white/5' : 'bg-[#eeeeee]')}>
                                             <div
                                                 className={cn('h-full rounded-full transition-all duration-300 ease-out',
-                                                    upload.status === 'done' ? 'bg-[#4dbf39]'
+                                                    upload.status === 'done' ? 'bg-primary'
                                                     : upload.status === 'error' ? 'bg-red-500'
-                                                    : 'bg-[#4dbf39]'
+                                                    : 'bg-primary'
                                                 )}
                                                 style={{ width: `${upload.progress}%` }}
                                             />
@@ -778,7 +778,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                 {/* Footer actions */}
                 <div className={cn('flex items-center gap-2 px-5 py-4 border-t', isDark ? 'border-[#242424]' : 'border-[#f0f0f0]')}>
                     {allDone ? (
-                        <button onClick={confirmUpload.bind(null, uploads)} className="flex-1 h-10 rounded-xl text-[12px] font-bold bg-[#4dbf39] hover:bg-[#59d044] text-black transition-all active:scale-[0.98] shadow-lg shadow-[#4dbf39]/20">
+                        <button onClick={confirmUpload.bind(null, uploads)} className="flex-1 h-10 rounded-xl text-[12px] font-bold bg-primary hover:bg-primary-hover text-black transition-all active:scale-[0.98] shadow-lg shadow-primary/20">
                             Add to Library
                         </button>
                     ) : (
@@ -788,8 +788,8 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                             className={cn(
                                 'flex-1 h-10 rounded-xl text-[12px] font-bold transition-all active:scale-[0.98]',
                                 uploads.length > 0 && uploads.some(u => u.status === 'pending')
-                                    ? 'bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-lg shadow-[#4dbf39]/20'
-                                    : 'bg-[#4dbf39]/30 text-black/40 cursor-not-allowed'
+                                    ? 'bg-primary hover:bg-primary-hover text-black shadow-lg shadow-primary/20'
+                                    : 'bg-primary/30 text-black/40 cursor-not-allowed'
                             )}
                         >
                             {uploads.some(u => u.status === 'uploading') ? (
@@ -835,7 +835,7 @@ function TreeNode({
                     isActive
                         ? isDark ? 'bg-white/8 text-white' : 'bg-[#f0f0f0] text-[#111]'
                         : isDark ? 'hover:bg-white/5 text-[#888]' : 'hover:bg-[#f5f5f5] text-[#666]',
-                    isDragTarget && (isDark ? 'bg-white/10 ring-1 ring-[#4dbf39]/40' : 'bg-[#4dbf39]/10 ring-1 ring-[#4dbf39]/30'),
+                    isDragTarget && (isDark ? 'bg-white/10 ring-1 ring-primary/40' : 'bg-primary/10 ring-1 ring-primary/30'),
                 )}
                 style={{ paddingLeft: `${depth * 12 + 4}px` }}
                 onClick={() => onNavigate(item.id)}
@@ -906,7 +906,7 @@ function RenameInput({ value, onConfirm, onCancel, isDark }: { value: string; on
             onKeyDown={e => { if (e.key === 'Enter') onConfirm(val); if (e.key === 'Escape') onCancel(); }}
             onClick={e => e.stopPropagation()}
             className={cn('text-[12px] font-medium px-1.5 py-0.5 rounded border outline-none w-full min-w-0',
-                isDark ? 'bg-[#1f1f1f] border-[#4dbf39]/40 text-white' : 'bg-white border-[#4dbf39]/50 text-[#111]')}
+                isDark ? 'bg-[#1f1f1f] border-primary/40 text-white' : 'bg-white border-primary/50 text-[#111]')}
         />
     );
 }
@@ -944,7 +944,7 @@ function ContextMenu({ menu, items, isDark, onAction, onClose }: {
         <button key={action} onClick={() => { onAction(action, menu.itemId); onClose(); }}
             className={cn('w-full flex items-center gap-2.5 px-3 py-1.5 text-[12px] font-medium text-left transition-colors rounded-lg',
                 danger ? isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'
-                : accent ? 'text-[#4dbf39] hover:bg-[#4dbf39]/10'
+                : accent ? 'text-primary hover:bg-primary/10'
                 : isDark ? 'text-[#ccc] hover:bg-white/5 hover:text-white' : 'text-[#444] hover:bg-[#f5f5f5] hover:text-[#111]'
             )}>
             {icon} {label}
@@ -967,7 +967,7 @@ function ContextMenu({ menu, items, isDark, onAction, onClose }: {
                                 <div className="flex items-center justify-between mb-2">
                                     <p className={cn('text-[9px] font-bold uppercase tracking-widest', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Folder Color</p>
                                     <button onClick={() => { onAction('color-null', menu.itemId); onClose(); }} 
-                                        className={cn('text-[9px] font-bold hover:text-[#4dbf39] transition-colors', isDark ? 'text-[#333]' : 'text-[#ccc]')}>
+                                        className={cn('text-[9px] font-bold hover:text-primary transition-colors', isDark ? 'text-[#333]' : 'text-[#ccc]')}>
                                         Default
                                     </button>
                                 </div>
@@ -978,7 +978,7 @@ function ContextMenu({ menu, items, isDark, onAction, onClose }: {
                                     ].map(c => (
                                         <button key={c} onClick={() => { onAction(`color-${c}`, menu.itemId); onClose(); }}
                                             className={cn('w-4.5 h-4.5 rounded-full transition-all hover:scale-125 border border-white/10 shadow-sm', 
-                                                item.color === c ? 'ring-2 ring-[#4dbf39] ring-offset-1 ring-offset-transparent scale-110' : 'opacity-80')}
+                                                item.color === c ? 'ring-2 ring-primary ring-offset-1 ring-offset-transparent scale-110' : 'opacity-80')}
                                             style={{ backgroundColor: c }}
                                         />
                                     ))}
@@ -1026,8 +1026,8 @@ function NewItemDialog({ type, isDark, onConfirm, onCancel }: {
 
     const panelBg = isDark ? 'bg-[#1a1a1a] border-[#2c2c2c]' : 'bg-white border-[#e8e8e8]';
     const inputCls = cn('w-full px-3 py-2 text-[12px] rounded-lg border outline-none transition-colors',
-        isDark ? 'bg-[#111] border-[#2e2e2e] text-white placeholder:text-[#444] focus:border-[#4dbf39]/40'
-               : 'bg-[#fafafa] border-[#e5e5e5] text-[#111] placeholder:text-[#bbb] focus:border-[#4dbf39]/50');
+        isDark ? 'bg-[#111] border-[#2e2e2e] text-white placeholder:text-[#444] focus:border-primary/40'
+               : 'bg-[#fafafa] border-[#e5e5e5] text-[#111] placeholder:text-[#bbb] focus:border-primary/50');
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -1053,7 +1053,7 @@ function NewItemDialog({ type, isDark, onConfirm, onCancel }: {
                 </div>
                 <div className="flex gap-2 mt-5">
                     <button onClick={() => onConfirm(name, url)}
-                        className="flex-1 h-9 rounded-xl text-[12px] font-bold bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors active:scale-95">
+                        className="flex-1 h-9 rounded-xl text-[12px] font-bold bg-primary hover:bg-primary-hover text-black transition-colors active:scale-95">
                         Create
                     </button>
                     <button onClick={onCancel} className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors border',
@@ -1709,7 +1709,7 @@ export default function FilesPage() {
                     {/* New */}
                     <div className="relative group">
                         <button onClick={() => setNewDialog('folder')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors">
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-black transition-colors">
                             <Plus size={13} strokeWidth={2.5}/> New
                         </button>
                     </div>
@@ -1769,8 +1769,8 @@ export default function FilesPage() {
                     <div className={cn('px-3 py-2 border-t', border)}>
                         <button onClick={() => setShowUpload(true)} className={cn(
                             'w-full flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-semibold transition-all border-2 border-dashed',
-                            isDark ? 'border-[#2a2a2a] text-[#555] hover:border-[#4dbf39]/40 hover:text-[#4dbf39] hover:bg-[#4dbf39]/5'
-                                   : 'border-[#e5e5e5] text-[#ccc] hover:border-[#4dbf39]/40 hover:text-[#4dbf39] hover:bg-[#4dbf39]/5'
+                            isDark ? 'border-[#2a2a2a] text-[#555] hover:border-primary/40 hover:text-primary hover:bg-primary/5'
+                                   : 'border-[#e5e5e5] text-[#ccc] hover:border-primary/40 hover:text-primary hover:bg-primary/5'
                         )}>
                             <Upload size={12}/> Upload Files
                         </button>
@@ -1783,7 +1783,7 @@ export default function FilesPage() {
                             <span className={cn('text-[10px] font-bold tabular-nums', isDark ? 'text-[#666]' : 'text-[#999]')}>{formatBytes(storageUsed)} / 10 GB</span>
                         </div>
                         <div className={cn('h-1.5 rounded-full overflow-hidden', isDark ? 'bg-white/5' : 'bg-[#f0f0f0]')}>
-                            <div className="h-full rounded-full bg-[#4dbf39] transition-all duration-500" style={{ width: `${storagePct}%` }}/>
+                            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${storagePct}%` }}/>
                         </div>
                         <p className={cn('text-[9.5px] mt-1', muted)}>{storagePct.toFixed(1)}% used</p>
                     </div>
@@ -1887,11 +1887,11 @@ export default function FilesPage() {
                         {/* Native drag overlay */}
                         {globalDragOver && (
                             <div className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center gap-3"
-                                style={{ background: isDark ? 'rgba(77,191,57,0.08)' : 'rgba(77,191,57,0.06)', border: '2px dashed #4dbf39', borderRadius: 16 }}>
-                                <div className="w-16 h-16 rounded-3xl flex items-center justify-center" style={{ background: 'rgba(77,191,57,0.15)' }}>
-                                    <CloudUpload size={32} className="text-[#4dbf39]"/>
+                                style={{ background: isDark ? 'rgba(var(--brand-primary-rgb),0.08)' : 'rgba(var(--brand-primary-rgb),0.06)', border: '2px dashed var(--brand-primary)', borderRadius: 16 }}>
+                                <div className="w-16 h-16 rounded-3xl flex items-center justify-center" style={{ background: 'rgba(var(--brand-primary-rgb),0.15)' }}>
+                                    <CloudUpload size={32} className="text-primary"/>
                                 </div>
-                                <p className="text-[15px] font-bold text-[#4dbf39]">Drop to upload</p>
+                                <p className="text-[15px] font-bold text-primary">Drop to upload</p>
                                 <p className={cn('text-[11px]', isDark ? 'text-[#555]' : 'text-[#aaa]')}>Files will be uploaded to this folder</p>
                             </div>
                         )}
@@ -1909,7 +1909,7 @@ export default function FilesPage() {
                                 </div>
                                 {!search && filter === 'all' && (
                                     <div className="flex items-center gap-2 mt-1">
-                                        <button onClick={() => setNewDialog('folder')} className="text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-[#4dbf39] text-black hover:bg-[#59d044] transition-colors">+ New Folder</button>
+                                        <button onClick={() => setNewDialog('folder')} className="text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-primary text-black hover:bg-primary-hover transition-colors">+ New Folder</button>
                                         <button onClick={() => setShowUpload(true)} className={cn('text-[11px] font-semibold px-3 py-1.5 rounded-[8px] transition-colors border', isDark ? 'border-[#2e2e2e] text-[#666] hover:text-white hover:bg-white/5' : 'border-[#e5e5e5] text-[#888] hover:text-[#333] hover:bg-[#f5f5f5]')}>Upload Files</button>
                                     </div>
                                 )}
@@ -1933,8 +1933,8 @@ export default function FilesPage() {
                                             onDoubleClick={() => { if (selectedIds.size > 0) return; if (item.type === 'folder') navigate(item.id); }}
                                             onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, itemId: item.id }); }}
                                             className={cn('relative flex flex-col items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all duration-150 group select-none', cardBg,
-                                                isSelected ? 'border-[#4dbf39]/40 bg-[#4dbf39]/5 ring-1 ring-[#4dbf39]/20'
-                                                : dragOver === item.id && item.type === 'folder' ? isDark ? 'border-[#4dbf39]/40 bg-[#4dbf39]/5' : 'border-[#4dbf39]/40 bg-[#4dbf39]/5'
+                                                isSelected ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20'
+                                                : dragOver === item.id && item.type === 'folder' ? isDark ? 'border-primary/40 bg-primary/5' : 'border-primary/40 bg-primary/5'
                                                 : isDark ? 'hover:border-[#2e2e2e] hover:bg-[#1d1d1d]' : 'hover:border-[#d8d8d8] hover:shadow-sm hover:shadow-black/5',
                                                 isDragging && 'opacity-40 scale-95')}>
 
@@ -2107,15 +2107,15 @@ export default function FilesPage() {
                                                 onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, itemId: item.id }); }}
                                                 className={cn('grid px-3 items-center group cursor-pointer transition-all select-none',
                                                     i !== 0 && (isDark ? 'border-t border-[#1e1e1e]' : 'border-t border-[#f5f5f5]'),
-                                                    isSelected ? isDark ? 'bg-[#4dbf39]/5' : 'bg-[#4dbf39]/5'
-                                                    : dragOver === item.id && item.type === 'folder' ? isDark ? 'bg-white/5' : 'bg-[#f0fdf4]'
+                                                    isSelected ? isDark ? 'bg-primary/5' : 'bg-primary/5'
+                                                    : dragOver === item.id && item.type === 'folder' ? isDark ? 'bg-white/5' : 'bg-primary/5'
                                                     : isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-[#fafafa]',
                                                     isDragging && 'opacity-40')}
                                                 style={{ gridTemplateColumns: '32px 32px 1fr 80px 120px 120px 100px', minHeight: '38px' }}>
 
                                                 <div className="flex items-center justify-center" onClick={e => { e.stopPropagation(); toggleSelect(item.id); }}>
                                                     <div className={cn('w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all',
-                                                        isSelected ? 'bg-[#4dbf39] border-[#4dbf39]' : isDark ? 'border-white/10 opacity-0 group-hover:opacity-100' : 'border-[#ccc] opacity-0 group-hover:opacity-100')}>
+                                                        isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/10 opacity-0 group-hover:opacity-100' : 'border-[#ccc] opacity-0 group-hover:opacity-100')}>
                                                         {isSelected && <Check size={9} strokeWidth={4} className="text-black"/>}
                                                     </div>
                                                 </div>
@@ -2201,12 +2201,12 @@ export default function FilesPage() {
                     <div className={cn('flex items-center justify-between px-4 py-1.5 border-t shrink-0 text-[10px]', isDark ? 'bg-[#0f0f0f] border-[#1e1e1e] text-[#444]' : 'bg-white border-[#f0f0f0] text-[#bbb]')}>
                         <div className="flex items-center gap-3">
                             <span>{currentChildren.length} item{currentChildren.length !== 1 ? 's' : ''}</span>
-                            {selectedIds.size > 0 && <span className="text-[#4dbf39] font-semibold">{selectedIds.size} selected</span>}
+                            {selectedIds.size > 0 && <span className="text-primary font-semibold">{selectedIds.size} selected</span>}
                             {search && <span>Searching: <em className={isDark ? 'text-[#666]' : 'text-[#aaa]'}>"{search}"</em></span>}
                         </div>
                         <div className="flex items-center gap-3">
                             <span>{formatBytes(currentChildren.reduce((a, i) => a + (i.size || 0), 0))}</span>
-                            {draggedId && <span className="text-[#4dbf39]">Drop to move</span>}
+                            {draggedId && <span className="text-primary">Drop to move</span>}
                         </div>
                     </div>
                 </div>

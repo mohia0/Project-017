@@ -31,7 +31,7 @@ export default function RightToolsMenu() {
             <div className="flex flex-col items-center pt-1.5 pb-3 w-full px-1">
                 <button
                     onClick={() => setCreateModalOpen(true)}
-                    className="w-9 h-9 rounded-[12px] flex items-center justify-center transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black group"
+                    className="w-9 h-9 rounded-[12px] flex items-center justify-center transition-all bg-primary hover:bg-primary-hover text-black group"
                 >
                     <Plus size={16} strokeWidth={2.5} className="transition-transform duration-300 group-hover:scale-125" />
                 </button>

@@ -209,7 +209,7 @@ export function ClientActionBar({
                             className={cn(
                                 "flex items-center font-bold transition-all active:scale-95 whitespace-nowrap",
                                 isMobile ? "gap-1 px-3 py-1.5 text-[11px]" : "gap-2 px-4 py-2 text-[13px] ml-1",
-                                isDark ? "bg-[#4dbf39] text-black hover:bg-[#59d044]" : "bg-black text-white hover:bg-[#222]"
+                                isDark ? "bg-primary text-black hover:bg-primary-hover" : "bg-black text-white hover:bg-[#222]"
                             )}
                             style={buttonRadiusStyle}
                         >

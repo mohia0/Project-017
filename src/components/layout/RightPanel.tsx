@@ -4,16 +4,19 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye, Search
+    Globe, Briefcase, Users, ChevronRight, Eye, Search, Image as ImageIcon
 } from 'lucide-react';
+import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
+import { useProposalStore } from '@/store/useProposalStore';
+import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { formatDistanceToNow } from 'date-fns';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 /* ─── Shared helpers ─── */
 function getInitials(name: string) {
@@ -99,7 +102,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                     >
                         <Check size={11} strokeWidth={3} className={cn(
                             "transition-colors",
-                            isDark ? "text-[#444] group-hover:text-emerald-500/80" : "text-[#ccc] group-hover:text-emerald-600/80"
+                            isDark ? "text-[#444] group-hover:text-primary" : "text-[#ccc] group-hover:text-primary"
                         )} />
                         <span className="text-[10px] font-semibold">Mark all as read</span>
                     </button>
@@ -138,7 +141,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                 )}
                             >
                                 {!notif.read && (
-                                    <div className="absolute left-2.5 top-5 w-1 h-1 rounded-full bg-blue-500" />
+                                    <div className="absolute left-2.5 top-5 w-1 h-1 rounded-full bg-primary" />
                                 )}
                                 <div className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5", 
                                     isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
@@ -191,7 +194,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                     <div className={cn(
                         "w-[26px] h-[14px] rounded-full relative transition-all duration-300",
                         filterUnread 
-                            ? "bg-[#4dbf39]" 
+                            ? "bg-primary" 
                             : (isDark ? "bg-white/10" : "bg-[#e5e5e5]")
                     )}>
                         <div className={cn(
@@ -240,7 +243,7 @@ function Field({
                                 isDark ? "text-white placeholder:text-[#444] border-[#333]" : "text-[#111] placeholder:text-[#ccc] border-[#e0e0e0]")} />
                 ) : isLink && value ? (
                     <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noopener noreferrer"
-                        className="text-[12px] text-[#3b82f6] hover:underline flex items-center gap-1 group">
+                        className="text-[12px] text-primary hover:underline flex items-center gap-1 group">
                         {value}<ExternalLink size={9} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                 ) : (
@@ -261,10 +264,15 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
-    const [form, setForm] = useState({ contact_person: '', company_name: '', email: '', phone: '', address: '', tax_number: '', notes: '' });
+    const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details');
+    const [form, setForm] = useState({ contact_person: '', company_name: '', email: '', phone: '', address: '', tax_number: '', notes: '', avatar_url: '' });
+
+    const { proposals } = useProposalStore();
+    const { invoices } = useInvoiceStore();
 
     useEffect(() => {
-        if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', tax_number: client.tax_number || '', notes: client.notes || '' });
+        if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', tax_number: client.tax_number || '', notes: client.notes || '', avatar_url: client.avatar_url || '' });
     }, [client]);
 
     const u = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -295,11 +303,21 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
         <>
             {/* Hero */}
             <div className={cn("flex items-center gap-3 px-4 py-4 border-b shrink-0", border)}>
-                <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center text-[12px] font-bold shrink-0",
-                    isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]"
-                )}>
-                    {getInitials(name)}
+                <div 
+                    onClick={() => setIsAvatarModalOpen(true)}
+                    className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center text-[12px] font-bold shrink-0 cursor-pointer overflow-hidden transition-all group relative",
+                        isDark ? "bg-white/8 text-[#888] hover:bg-white/12" : "bg-[#f0f0f0] text-[#777] hover:bg-[#e8e8e8]"
+                    )}
+                >
+                    {form.avatar_url ? (
+                        <img src={form.avatar_url} className="w-full h-full object-cover" />
+                    ) : (
+                        getInitials(name)
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <ImageIcon size={14} className="text-white" />
+                    </div>
                 </div>
                 <div className="min-w-0 flex-1">
                     {editing ? (
@@ -315,20 +333,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                 </div>
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
-                    {editing ? (
-                        <>
-                            <button onClick={() => { setEditing(false); if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', tax_number: client.tax_number || '', notes: client.notes || '' }); }}
-                                className={cn("text-[10px] px-2 py-1 rounded-lg font-medium transition-colors",
-                                    isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>
-                                Cancel
-                            </button>
-                            <button onClick={handleSave} disabled={saving}
-                                className={cn("flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-colors",
-                                    saved ? "bg-emerald-500 text-white" : "bg-[#4dbf39] hover:bg-[#59d044] text-black disabled:opacity-60")}>
-                                {saved ? <><Check size={10} />Saved</> : <><Save size={10} />{saving ? '...' : 'Save'}</>}
-                            </button>
-                        </>
-                    ) : (
+                    {!editing && (
                         <button onClick={() => setEditing(true)}
                             className={cn("w-7 h-7 rounded-lg flex items-center justify-center transition-colors",
                                 isDark ? "text-[#555] hover:text-[#ccc] hover:bg-white/5" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
@@ -338,32 +343,131 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                 </div>
             </div>
 
-            {/* Quick email */}
-            {form.email && !editing && (
-                <div className="px-4 pt-3">
-                    <a href={`mailto:${form.email}`}
-                        className={cn("flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-[11px] font-medium transition-colors group",
-                            isDark ? "bg-[#1a1a1a] border border-[#252525] text-[#4dbf39] hover:bg-[#1e1e1e]"
-                                : "bg-[#f0fdf4] border border-[#d1fad4] text-[#299b1a] hover:bg-[#e8fbe8]")}>
-                        <div className="flex items-center gap-1.5 min-w-0"><Mail size={11} /><span className="truncate">{form.email}</span></div>
-                        <ExternalLink size={9} className="shrink-0 opacity-40 group-hover:opacity-100" />
-                    </a>
+            {/* Tabs */}
+            {!editing && (
+                <div className={cn("flex px-4 pt-1 pb-[1px] gap-6")}>
+                    <button 
+                        onClick={() => setActiveTab('details')}
+                        className={cn("text-[10px] font-bold uppercase tracking-[0.1em] pb-2 transition-all relative",
+                            activeTab === 'details' 
+                                ? isDark ? "text-white" : "text-black"
+                                : isDark ? "text-[#333] hover:text-[#444]" : "text-[#ccc] hover:text-[#999]"
+                        )}
+                    >
+                        Details
+                        {activeTab === 'details' && <motion.div layoutId="contact-tab" className="absolute bottom-0 left-0 right-0 h-[1px] bg-primary" />}
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('documents')}
+                        className={cn("text-[10px] font-bold uppercase tracking-[0.1em] pb-2 transition-all relative",
+                            activeTab === 'documents' 
+                                ? isDark ? "text-white" : "text-black"
+                                : isDark ? "text-[#333] hover:text-[#444]" : "text-[#ccc] hover:text-[#999]"
+                        )}
+                    >
+                        Documents
+                        {activeTab === 'documents' && <motion.div layoutId="contact-tab" className="absolute bottom-0 left-0 right-0 h-[1px] bg-primary" />}
+                    </button>
                 </div>
             )}
 
-            {/* Fields */}
+            {/* Fields / Documents switching */}
             <div className="flex-1 overflow-y-auto py-1">
-                {editing && <Field label="Email" icon={<Mail size={11} />} value={form.email} editing onChange={u('email')} type="email" placeholder="email@example.com" isDark={isDark} />}
-                <Field label="Phone"   icon={<Phone size={11} />}    value={form.phone}      editing={editing} onChange={u('phone')}      placeholder="+1 234 567 890" isDark={isDark} />
-                {editing && <Field label="Company" icon={<Building2 size={11} />} value={form.company_name} editing onChange={u('company_name')} placeholder="Company name" isDark={isDark} />}
-                <Field label="Address" icon={<MapPin size={11} />}   value={form.address}    editing={editing} onChange={u('address')}    placeholder="Street, city"   isDark={isDark} />
-                <Field label="Tax/VAT" icon={<Hash size={11} />}     value={form.tax_number} editing={editing} onChange={u('tax_number')} placeholder="VAT123"         isDark={isDark} />
-                <Field label="Notes"   icon={<FileText size={11} />} value={form.notes}      editing={editing} onChange={u('notes')}      placeholder="Notes…"         isDark={isDark} textarea />
+                {activeTab === 'details' || editing ? (
+                    <>
+                        {/* Quick email */}
+                        {form.email && !editing && (
+                            <div className="px-3 pt-3 mb-2">
+                                <a href={`mailto:${form.email}`}
+                                    className={cn("flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-[11px] font-medium transition-colors group",
+                                        isDark ? "bg-[#1a1a1a] border border-[#252525] text-primary hover:bg-[#1e1e1e]"
+                                            : "bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15")}>
+                                    <div className="flex items-center gap-1.5 min-w-0"><Mail size={11} /><span className="truncate">{form.email}</span></div>
+                                    <ExternalLink size={9} className="shrink-0 opacity-40 group-hover:opacity-100" />
+                                </a>
+                            </div>
+                        )}
+                        {editing && <Field label="Email" icon={<Mail size={11} />} value={form.email} editing onChange={u('email')} type="email" placeholder="email@example.com" isDark={isDark} />}
+                        <Field label="Phone"   icon={<Phone size={11} />}    value={form.phone}      editing={editing} onChange={u('phone')}      placeholder="+1 234 567 890" isDark={isDark} />
+                        {editing && <Field label="Company" icon={<Building2 size={11} />} value={form.company_name} editing onChange={u('company_name')} placeholder="Company name" isDark={isDark} />}
+                        <Field label="Address" icon={<MapPin size={11} />}   value={form.address}    editing={editing} onChange={u('address')}    placeholder="Street, city"   isDark={isDark} />
+                        <Field label="Tax/VAT" icon={<Hash size={11} />}     value={form.tax_number} editing={editing} onChange={u('tax_number')} placeholder="VAT123"         isDark={isDark} />
+                        <Field label="Notes"   icon={<FileText size={11} />} value={form.notes}      editing={editing} onChange={u('notes')}      placeholder="Notes…"         isDark={isDark} textarea />
+                    </>
+                ) : (
+                    <div className="px-4 py-4 space-y-4">
+                        {/* Related Proposals */}
+                        <div>
+                            <h3 className={cn("text-[10px] font-bold uppercase tracking-wider mb-3", isDark ? "text-white/20" : "text-gray-400")}>Proposals</h3>
+                            <div className="space-y-1">
+                                {proposals.filter(p => p.client_id === client.id || p.client_name === client.contact_person).length > 0 ? (
+                                    proposals.filter(p => p.client_id === client.id || p.client_name === client.contact_person).map(p => (
+                                        <div key={p.id} className={cn("flex items-center justify-between p-2 rounded-lg text-[11px]", isDark ? "hover:bg-white/5" : "hover:bg-gray-50")}>
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <FileText size={12} className="text-primary" />
+                                                <span className={cn("truncate font-medium", isDark ? "text-white/70" : "text-gray-700")}>{p.title}</span>
+                                            </div>
+                                            <span className={cn("text-[10px] px-1.5 py-0.5 rounded uppercase font-bold", 
+                                                p.status === 'Accepted' ? "bg-primary/20 text-primary" : isDark ? "bg-white/5 text-white/30" : "bg-gray-100 text-gray-400")}>
+                                                {p.status}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className={cn("text-[11px] italic", isDark ? "text-white/10" : "text-gray-300")}>No proposals found.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Related Invoices */}
+                        <div>
+                            <h3 className={cn("text-[10px] font-bold uppercase tracking-wider mb-3", isDark ? "text-white/20" : "text-gray-400")}>Invoices</h3>
+                            <div className="space-y-1">
+                                {invoices.filter(i => i.client_id === client.id || i.client_name === client.contact_person).length > 0 ? (
+                                    invoices.filter(i => i.client_id === client.id || i.client_name === client.contact_person).map(i => (
+                                        <div key={i.id} className={cn("flex items-center justify-between p-2 rounded-lg text-[11px]", isDark ? "hover:bg-white/5" : "hover:bg-gray-50")}>
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <Hash size={12} className="text-primary" />
+                                                <span className={cn("truncate font-medium", isDark ? "text-white/70" : "text-gray-700")}>{i.title}</span>
+                                            </div>
+                                            <span className={cn("text-[10px] px-1.5 py-0.5 rounded uppercase font-bold", 
+                                                i.status === 'Paid' ? "bg-primary/20 text-primary" : isDark ? "bg-white/5 text-white/30" : "bg-gray-100 text-gray-400")}>
+                                                {i.status}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className={cn("text-[11px] italic", isDark ? "text-white/10" : "text-gray-300")}>No invoices found.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Footer delete */}
             <div className={cn("px-4 py-3 border-t shrink-0", isDark ? "border-[#252525]" : "border-[#e4e4e4]")}>
-                {showDelete ? (
+                {editing ? (
+                    <div className="flex items-center justify-between gap-4">
+                        <button onClick={() => setShowDelete(true)}
+                            className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                                isDark ? "text-[#444] hover:text-red-400 hover:bg-red-400/10" : "text-[#ccc] hover:text-red-500 hover:bg-red-50")}>
+                            <Trash2 size={13} />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => { setEditing(false); if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', tax_number: client.tax_number || '', notes: client.notes || '' }); }}
+                                className={cn("text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors",
+                                    isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>
+                                Cancel
+                            </button>
+                            <button onClick={handleSave} disabled={saving}
+                                className={cn("flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold rounded-lg transition-colors min-w-[80px] justify-center",
+                                    saved ? "bg-primary text-black" : "bg-primary hover:bg-primary-hover text-black disabled:opacity-60")}>
+                                {saved ? <><Check size={12} />Saved</> : <><Save size={12} />{saving ? '...' : 'Save'}</>}
+                            </button>
+                        </div>
+                    </div>
+                ) : showDelete ? (
                     <div className="flex items-center gap-2">
                         <span className={cn("text-[11px] flex-1", isDark ? "text-[#666]" : "text-[#999]")}>Delete this contact?</span>
                         <button onClick={() => setShowDelete(false)} className={cn("px-2 py-1 text-[11px] rounded-lg", isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>Cancel</button>
@@ -378,6 +482,15 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                     </button>
                 )}
             </div>
+            <ImageUploadModal
+                isOpen={isAvatarModalOpen}
+                onClose={() => setIsAvatarModalOpen(false)}
+                onUpload={(url) => {
+                    u('avatar_url')(url);
+                    if (client) updateClient(client.id, { avatar_url: url });
+                }}
+                title="Contact Photo"
+            />
         </>
     );
 }
@@ -396,10 +509,21 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
     const [saved, setSaved] = useState(false);
     const [showDelete, setShowDelete] = useState(false);
     const [showIndustry, setShowIndustry] = useState(false);
-    const [form, setForm] = useState({ name: '', industry: '', website: '', email: '', phone: '', address: '', tax_number: '', notes: '' });
+    const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+    const [form, setForm] = useState({ name: '', industry: '', website: '', email: '', phone: '', address: '', tax_number: '', notes: '', avatar_url: '' });
 
     useEffect(() => {
-        if (company) setForm({ name: company.name || '', industry: company.industry || '', website: company.website || '', email: company.email || '', phone: company.phone || '', address: company.address || '', tax_number: company.tax_number || '', notes: company.notes || '' });
+        if (company) setForm({ 
+            name: company.name || '', 
+            industry: company.industry || '', 
+            website: company.website || '', 
+            email: company.email || '', 
+            phone: company.phone || '', 
+            address: company.address || '', 
+            tax_number: company.tax_number || '', 
+            notes: company.notes || '',
+            avatar_url: company.avatar_url || ''
+        });
     }, [company]);
 
     const u = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -430,9 +554,21 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
         <>
             {/* Hero */}
             <div className={cn("flex items-center gap-3 px-4 py-4 border-b shrink-0", border)}>
-                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-[12px] font-bold shrink-0",
-                    isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]")}>
-                    {form.name.slice(0, 2).toUpperCase()}
+                <div 
+                    onClick={() => setIsAvatarModalOpen(true)}
+                    className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center text-[12px] font-bold shrink-0 cursor-pointer overflow-hidden transition-all group relative",
+                        isDark ? "bg-white/8 text-[#888] hover:bg-white/12" : "bg-[#f0f0f0] text-[#777] hover:bg-[#e8e8e8]"
+                    )}
+                >
+                    {form.avatar_url ? (
+                        <img src={form.avatar_url} className="w-full h-full object-cover" />
+                    ) : (
+                        form.name.slice(0, 2).toUpperCase()
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <ImageIcon size={14} className="text-white" />
+                    </div>
                 </div>
                 <div className="min-w-0 flex-1">
                     {editing ? (
@@ -474,20 +610,7 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
                     </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                    {editing ? (
-                        <>
-                            <button onClick={() => { setEditing(false); if (company) setForm({ name: company.name || '', industry: company.industry || '', website: company.website || '', email: company.email || '', phone: company.phone || '', address: company.address || '', tax_number: company.tax_number || '', notes: company.notes || '' }); }}
-                                className={cn("text-[10px] px-2 py-1 rounded-lg font-medium transition-colors",
-                                    isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>
-                                Cancel
-                            </button>
-                            <button onClick={handleSave} disabled={saving}
-                                className={cn("flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold rounded-lg transition-colors",
-                                    saved ? "bg-emerald-500 text-white" : "bg-[#4dbf39] hover:bg-[#59d044] text-black disabled:opacity-60")}>
-                                {saved ? <><Check size={10} />Saved</> : <><Save size={10} />{saving ? '...' : 'Save'}</>}
-                            </button>
-                        </>
-                    ) : (
+                    {!editing && (
                         <button onClick={() => setEditing(true)}
                             className={cn("w-7 h-7 rounded-lg flex items-center justify-center transition-colors",
                                 isDark ? "text-[#555] hover:text-[#ccc] hover:bg-white/5" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
@@ -542,7 +665,27 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
 
             {/* Footer delete */}
             <div className={cn("px-4 py-3 border-t shrink-0", isDark ? "border-[#252525]" : "border-[#ebebeb]")}>
-                {showDelete ? (
+                {editing ? (
+                    <div className="flex items-center justify-between gap-4">
+                        <button onClick={() => setShowDelete(true)}
+                            className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                                isDark ? "text-[#444] hover:text-red-400 hover:bg-red-400/10" : "text-[#ccc] hover:text-red-500 hover:bg-red-50")}>
+                            <Trash2 size={13} />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => { setEditing(false); if (company) setForm({ name: company.name || '', industry: company.industry || '', website: company.website || '', email: company.email || '', phone: company.phone || '', address: company.address || '', tax_number: company.tax_number || '', notes: company.notes || '' }); }}
+                                className={cn("text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors",
+                                    isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>
+                                Cancel
+                            </button>
+                            <button onClick={handleSave} disabled={saving}
+                                className={cn("flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold rounded-lg transition-colors min-w-[80px] justify-center",
+                                    saved ? "bg-primary text-black" : "bg-primary hover:bg-primary-hover text-black disabled:opacity-60")}>
+                                {saved ? <><Check size={12} />Saved</> : <><Save size={12} />{saving ? '...' : 'Save'}</>}
+                            </button>
+                        </div>
+                    </div>
+                ) : showDelete ? (
                     <div className="flex items-center gap-2">
                         <span className={cn("text-[11px] flex-1", isDark ? "text-[#666]" : "text-[#999]")}>Delete this company?</span>
                         <button onClick={() => setShowDelete(false)} className={cn("px-2 py-1 text-[11px] rounded-lg", isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>Cancel</button>
@@ -557,6 +700,15 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
                     </button>
                 )}
             </div>
+            <ImageUploadModal
+                isOpen={isAvatarModalOpen}
+                onClose={() => setIsAvatarModalOpen(false)}
+                onUpload={(url) => {
+                    u('avatar_url')(url);
+                    if (company) updateCompany(company.id, { avatar_url: url });
+                }}
+                title="Company Logo"
+            />
         </>
     );
 }
@@ -565,6 +717,14 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
 export default function RightPanel({ mobileMode = false }: { mobileMode?: boolean }) {
     const { rightPanel, closeRightPanel, theme } = useUIStore();
     const isDark = theme === 'dark';
+    const pathname = usePathname();
+
+    // Close contact/company panel when navigating to a new page
+    useEffect(() => {
+        if (rightPanel?.type === 'contact' || rightPanel?.type === 'company') {
+            closeRightPanel();
+        }
+    }, [pathname]);
 
     const titles: Record<string, string> = {
         notifications: 'Notifications',

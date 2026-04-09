@@ -40,6 +40,7 @@ import ImageUploadModal from '../modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
 import ClientEditor from '@/components/clients/ClientEditor';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { gooeyToast } from 'goey-toast';
 
 /* ═══════════════════════════════════════════════════════
@@ -445,7 +446,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         className={cn(
                             "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
                             isPreview
-                                ? "bg-[#4dbf39] text-black hover:bg-[#59d044]"
+                                ? "bg-primary text-black hover:bg-primary-hover"
                                 : isDark 
                                     ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" 
                                     : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
@@ -489,7 +490,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
                         )}
                     >
-                        {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
+                        {copied ? <Check size={14} className="text-primary" /> : <Link2 size={14} />}
                     </button>
 
                     <button
@@ -1005,8 +1006,8 @@ export function InvoiceDocument({
         '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
         '--table-font-size': `${design.tableFontSize ?? 12}px`,
         '--table-cell-padding': `${design.tableCellPadding ?? 12}px`,
-        '--primary-color': design.primaryColor || '#4dbf39',
-        '--primary': design.primaryColor || '#4dbf39',
+        '--primary-color': design.primaryColor || 'var(--brand-primary)',
+        '--primary': design.primaryColor || 'var(--brand-primary)',
         '--sign-bar-color': design.signBarColor || '#000000',
         '--sign-bar-thick': `${design.signBarThickness ?? 1}px`,
     } as React.CSSProperties), [design]);
@@ -1089,13 +1090,15 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
     updateMeta: (patch: Partial<InvoiceMeta>) => void;
 }) {
     switch (block.type) {
-        case 'header':
+        case 'header': {
+            const { branding } = useSettingsStore();
+            const logoToUse = meta.logoUrl || (isDark ? branding?.logo_light_url : branding?.logo_dark_url);
             return (
                 <div className="mb-4">
                     <div className="flex justify-between items-start mb-10">
-                        {meta.logoUrl ? (
+                        {logoToUse ? (
                             <img 
-                                src={meta.logoUrl} 
+                                src={logoToUse} 
                                 alt="Logo" 
                                 className="w-auto transition-all duration-300 ease-out" 
                                 style={{ height: `${meta.design?.logoSize ?? 64}px` }} 
@@ -1190,6 +1193,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                     </div>
                 </div>
             );
+        }
         case 'pricing': {
             const rows = block.rows || [];
             const hideQty = block.hideQty || false;

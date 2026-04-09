@@ -9,9 +9,10 @@ interface SettingsFieldProps {
     description?: string;
     children: React.ReactNode;
     layout?: 'horizontal' | 'vertical'; // default is vertical, but some fields look better horizontal
+    extra?: React.ReactNode;
 }
 
-export function SettingsField({ label, description, children, layout = 'vertical' }: SettingsFieldProps) {
+export function SettingsField({ label, description, children, layout = 'vertical', extra }: SettingsFieldProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
 
@@ -19,9 +20,12 @@ export function SettingsField({ label, description, children, layout = 'vertical
         return (
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex-1">
-                    <label className={cn("block text-sm font-semibold mb-1", isDark ? "text-white" : "text-black")}>
-                        {label}
-                    </label>
+                    <div className="flex items-center gap-2 mb-1">
+                        <label className={cn("block text-sm font-semibold", isDark ? "text-white" : "text-black")}>
+                            {label}
+                        </label>
+                        {extra}
+                    </div>
                     {description && (
                         <p className={cn("text-xs", isDark ? "text-white/50" : "text-black/50")}>
                             {description}
@@ -37,9 +41,12 @@ export function SettingsField({ label, description, children, layout = 'vertical
 
     return (
         <div className="w-full">
-            <label className={cn("block text-sm font-semibold mb-1.5", isDark ? "text-white" : "text-black")}>
-                {label}
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+                <label className={cn("block text-sm font-semibold", isDark ? "text-white" : "text-black")}>
+                    {label}
+                </label>
+                {extra}
+            </div>
             {description && (
                 <p className={cn("text-[13px] mb-2.5", isDark ? "text-white/50" : "text-black/50")}>
                     {description}

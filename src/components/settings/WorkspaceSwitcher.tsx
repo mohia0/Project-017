@@ -154,12 +154,12 @@ export default function WorkspaceSwitcher() {
                                         <div className="flex flex-col min-w-0">
                                             <span className="text-[12px] font-medium text-white/90 truncate">{ws.name}</span>
                                             {activeWorkspaceId === ws.id && (
-                                                <span className="text-[10px] text-[#4dbf39]">Active</span>
+                                                <span className="text-[10px] text-primary">Active</span>
                                             )}
                                         </div>
                                     </div>
                                     {activeWorkspaceId === ws.id && (
-                                        <Check size={14} className="text-[#4dbf39] shrink-0 ml-2" />
+                                        <Check size={14} className="text-primary shrink-0 ml-2" />
                                     )}
                                 </button>
                             ))}
@@ -175,10 +175,10 @@ export default function WorkspaceSwitcher() {
                                     placeholder="Workspace name..."
                                     value={newWorkspaceName}
                                     onChange={e => setNewWorkspaceName(e.target.value)}
-                                    className="bg-black/20 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-white focus:outline-none focus:border-[#4dbf39]/50 w-full"
+                                    className="bg-black/20 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-white focus:outline-none focus:border-primary/50 w-full"
                                 />
                                 <div className="flex gap-1">
-                                    <button type="submit" disabled={!newWorkspaceName.trim()} className="flex-1 bg-[#4dbf39] text-black text-[11px] font-semibold py-1.5 rounded-md disabled:opacity-50">
+                                    <button type="submit" disabled={!newWorkspaceName.trim()} className="flex-1 bg-primary text-black text-[11px] font-semibold py-1.5 rounded-md disabled:opacity-50">
                                         Create
                                     </button>
                                     <button type="button" onClick={() => setIsCreating(false)} className="flex-1 bg-white/5 text-white/70 hover:text-white text-[11px] font-semibold py-1.5 rounded-md">

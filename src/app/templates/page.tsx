@@ -109,7 +109,7 @@ export default function TemplatesPage() {
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={() => {/* Open a "New Template" modal or redirect */}}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[10px] bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[10px] bg-primary hover:bg-primary-hover text-black transition-colors"
                     >
                         <Plus size={13} strokeWidth={2.5} /> New Template
                     </button>
@@ -178,7 +178,7 @@ export default function TemplatesPage() {
                             {filteredTemplates.map(template => (
                                 <div key={template.id} className={cn(
                                     "flex flex-col rounded-2xl border transition-all duration-300 relative group overflow-hidden cursor-default",
-                                    isDark ? "bg-[#1a1a1a] border-white/5 hover:border-[#4dbf39]/40" : "bg-white border-black/5 hover:border-[#4dbf39]/40 hover:shadow-xl hover:shadow-black/5"
+                                    isDark ? "bg-[#1a1a1a] border-white/5 hover:border-primary/40" : "bg-white border-black/5 hover:border-primary/40 hover:shadow-xl hover:shadow-black/5"
                                 )}>
                                     {/* Template Preview Header/Placeholder */}
                                     <div className={cn(
@@ -202,7 +202,7 @@ export default function TemplatesPage() {
                                                 {template.entity_type}
                                             </span>
                                             {template.is_default && (
-                                                <span className="px-2 py-0.5 text-[9px] uppercase font-bold tracking-widest rounded-md shadow-lg bg-[#4dbf39] text-black border border-[#4dbf39]/50">
+                                                <span className="px-2 py-0.5 text-[9px] uppercase font-bold tracking-widest rounded-md shadow-lg bg-primary text-black border border-primary/50">
                                                     Default
                                                 </span>
                                             )}
@@ -228,7 +228,7 @@ export default function TemplatesPage() {
                                                 disabled={isCreating}
                                                 className={cn(
                                                     "flex-1 h-9 rounded-xl text-[12px] font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2",
-                                                    isDark ? "bg-[#4dbf39] text-black hover:bg-[#5cd646]" : "bg-black text-white hover:bg-black/80"
+                                                    isDark ? "bg-primary text-black hover:bg-primary-hover" : "bg-black text-white hover:bg-black/80"
                                                 )}
                                             >
                                                 {isCreating ? <RotateCcw size={13} className="animate-spin" /> : <Plus size={13} strokeWidth={2.5} />}

@@ -12,6 +12,7 @@ export interface Company {
     address?: string;
     tax_number?: string;
     notes?: string;
+    avatar_url?: string;
     created_at: string;
 }
 

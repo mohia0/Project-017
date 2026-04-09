@@ -34,18 +34,50 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
 
         setUploading(true);
         setError(null);
-        setTab('upload'); // Switch to upload tab to show progress
+        setTab('upload');
 
-        // Simulation of upload – in a real app, this would go to Supabase Storage
-        // For this demo, we use FileReader to get a base64 string
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const result = e.target?.result as string;
-            onUpload(result);
+        try {
+            const { supabase } = await import('@/lib/supabase');
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+            const filePath = `avatars/${fileName}`;
+
+            // Upload to Supabase Storage
+            const { error: uploadError, data } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                // Try creating bucket if it doesn't exist
+                if (uploadError.message.includes('bucket not found')) {
+                    const { error: bucketError } = await supabase.storage.createBucket('avatars', {
+                        public: true
+                    });
+                    if (bucketError) throw bucketError;
+                    
+                    // Retry upload
+                    const { error: retryError } = await supabase.storage
+                        .from('avatars')
+                        .upload(filePath, file);
+                    if (retryError) throw retryError;
+                } else {
+                    throw uploadError;
+                }
+            }
+
+            // Get Public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            onUpload(publicUrl);
             setUploading(false);
             onClose();
-        };
-        reader.readAsDataURL(file);
+        } catch (err: any) {
+            console.error("Upload error:", err);
+            setError(err.message || "Failed to upload image");
+            setUploading(false);
+        }
     }, [onUpload, onClose]);
 
     const handleDrag = (e: React.DragEvent) => {

@@ -136,8 +136,8 @@ function TbBtn({ label, icon, active, hasArrow, onClick, isDark }: {
 function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
     return (
         <div className={cn("w-[13px] h-[13px] rounded-[3px] border flex items-center justify-center transition-all shrink-0",
-            checked ? "bg-[#4dbf39] border-[#4dbf39]"
-                : indeterminate ? "bg-[#4dbf39]/40 border-[#4dbf39]/60"
+            checked ? "bg-primary border-primary"
+                : indeterminate ? "bg-primary/40 border-primary/60"
                     : isDark ? "border-[#3a3a3a] bg-transparent" : "border-[#d0d0d0] bg-white")}>
             {(checked || indeterminate) && (
                 <svg width="7" height="5" viewBox="0 0 8 6" fill="none">
@@ -176,7 +176,7 @@ function DItem({ label, icon, active, onClick, isDark }: { label: string; icon?:
                 : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")}>
             {icon && <span className="opacity-60">{icon}</span>}
             <span className="flex-1">{label}</span>
-            {active && <Check size={11} className={isDark ? "text-[#4dbf39]" : "text-[#4dbf39]"} />}
+            {active && <Check size={11} className="text-primary" />}
         </button>
     );
 }
@@ -267,7 +267,7 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
                                                 isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                             )}
                                         >
-                                            <span className={cn("font-medium", isDark ? "text-[#ccc]" : sSc.badgeText)}>
+                                            <span className={cn("font-medium", isDark ? "" : sSc.badgeText)} style={isDark ? { color: sSc.bar } : {}}>
                                                 {s}
                                             </span>
                                             {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
@@ -323,7 +323,7 @@ function StatusCell({ status, onStatusChange, isDark }: { status: ProposalStatus
                                     isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                 )}
                             >
-                                <span className={cn("font-medium", isDark ? "text-[#ccc]" : sSc.badgeText)}>
+                                <span className={cn("font-medium", isDark ? "" : sSc.badgeText)} style={isDark ? { color: sSc.bar } : {}}>
                                     {s}
                                 </span>
                                 {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
@@ -357,10 +357,16 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
         return clients.filter(c => c.company_name.toLowerCase().includes(search.toLowerCase()));
     }, [clients, search]);
 
+    const activeClient = useMemo(() => clients.find(c => c.id === currentId), [clients, currentId]);
+
     const display = (
         <div className={cn("flex items-center gap-1.5",
             variant === 'card' ? cn("px-2 py-1 rounded-[6px]", isDark ? "bg-white/10" : "bg-[#f5f5f5]") : "truncate")}>
-            <User size={variant === 'card' ? 10 : 11} className={cn("opacity-40 shrink-0", isDark ? "text-[#aaa]" : "text-[#777]")} />
+            {activeClient?.avatar_url ? (
+                <img src={activeClient.avatar_url} className={cn("rounded-full object-cover shrink-0", variant === 'card' ? "w-4 h-4" : "w-5 h-5")} />
+            ) : (
+                <User size={variant === 'card' ? 10 : 11} className={cn("opacity-40 shrink-0", isDark ? "text-[#aaa]" : "text-[#777]")} />
+            )}
             <span className="truncate">{currentName || '—'}</span>
         </div>
     );
@@ -368,7 +374,7 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
     const handleCreateClient = async (data: any) => {
         const client = await addClient(data);
         if (client) {
-            onClientChange(client.id, client.company_name || client.contact_person);
+            onClientChange(client.id, client.contact_person || client.company_name);
             setIsClientEditorOpen(false);
             setOpen(false);
             gooeyToast.success('Contact created and selected');
@@ -411,12 +417,12 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
                     ) : (
                         <>
                             {filtered.map(c => (
-                                <button key={c.id} onClick={(e) => { e.stopPropagation(); onClientChange(c.id, c.company_name); setOpen(false); }}
+                                <button key={c.id} onClick={(e) => { e.stopPropagation(); onClientChange(c.id, c.contact_person || c.company_name); setOpen(false); }}
                                     className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
                                         c.id === currentId ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                     )}
                                 >
-                                    <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#444]")}>{c.company_name}</span>
+                                    <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#444]")}>{c.contact_person || c.company_name}</span>
                                     {c.id === currentId && <Check size={12} className="opacity-40" />}
                                 </button>
                             ))}
@@ -770,7 +776,7 @@ export default function ProposalsPage() {
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Proposals</h1>
                 <button onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors">
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-black transition-colors">
                     <Plus size={13} strokeWidth={2.5} /> New Proposal
                 </button>
             </div>
@@ -803,7 +809,7 @@ export default function ProposalsPage() {
                             className={cn(
                                 "w-[34px] h-[34px] rounded-[8px] flex items-center justify-center border transition-all",
                                 filterOpen || dateFilter !== 'all'
-                                    ? "bg-[#4dbf39]/15 border-[#4dbf39]/40 text-[#4dbf39]"
+                                    ? "bg-primary/15 border-primary/40 text-primary"
                                     : isDark ? "bg-white/[0.05] border-white/10 text-[#888]" : "bg-[#f5f5f5] border-transparent text-[#888]"
                             )}
                         >
@@ -827,7 +833,7 @@ export default function ProposalsPage() {
                     {/* New Proposal (mobile only in toolbar) */}
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] font-bold rounded-[8px] bg-[#4dbf39] text-black active:scale-95 transition-all"
+                        className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] font-bold rounded-[8px] bg-primary text-black active:scale-95 transition-all"
                     >
                         <Plus size={13} strokeWidth={2.5} /> New
                     </button>
@@ -1012,7 +1018,7 @@ export default function ProposalsPage() {
                                 ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p>
                                 : <>
                                     <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
-                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-black bg-[#4dbf39] rounded-lg hover:bg-[#59d044] transition-colors">+ New Proposal</button>
+                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-black bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Proposal</button>
                                 </>}
                         </div>
                     ) : (
@@ -1109,7 +1115,7 @@ export default function ProposalsPage() {
                                 ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p>
                                 : <>
                                     <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
-                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-black bg-[#4dbf39] rounded-lg hover:bg-[#59d044] transition-colors">+ New Proposal</button>
+                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-black bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Proposal</button>
                                 </>}
                         </div>
                     ) : (
@@ -1245,7 +1251,7 @@ export default function ProposalsPage() {
                                 ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p>
                                 : <>
                                     <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
-                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-black bg-[#4dbf39] rounded-lg hover:bg-[#59d044] transition-colors">+ New Proposal</button>
+                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-black bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Proposal</button>
                                 </>}
                         </div>
                     ) : (

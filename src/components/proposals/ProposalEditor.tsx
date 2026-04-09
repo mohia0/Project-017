@@ -29,6 +29,7 @@ import { useProposalStore } from '@/store/useProposalStore';
 import { useClientStore } from '@/store/useClientStore';
 import DatePicker from '@/components/ui/DatePicker';
 import { useTemplateStore } from '@/store/useTemplateStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ContentBlock } from './blocks/ContentBlock';
 import { SectionBlockWrapper } from './blocks/SectionBlockWrapper';
@@ -502,7 +503,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         className={cn(
                             "flex items-center gap-1.5 px-2.5 md:px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
                             isPreview
-                                ? "bg-[#4dbf39] text-black hover:bg-[#59d044]"
+                                ? "bg-primary text-black hover:bg-primary-hover"
                                 : isDark 
                                     ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" 
                                     : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
@@ -548,12 +549,12 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
                         )}
                     >
-                        {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
+                        {copied ? <Check size={14} className="text-primary" /> : <Link2 size={14} />}
                     </button>
 
                     {/* Send — always visible */}
                     <button
-                        className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
+                        className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-primary hover:bg-primary-hover text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
                     >
                         <Send size={14} />
                     </button>
@@ -1203,8 +1204,8 @@ export function ProposalDocument({
         '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
         '--table-font-size': `${design.tableFontSize ?? 12}px`,
         '--table-cell-padding': `${design.tableCellPadding ?? 12}px`,
-        '--primary-color': design.primaryColor || '#4dbf39',
-        '--primary': design.primaryColor || '#4dbf39',
+        '--primary-color': design.primaryColor || 'var(--brand-primary)',
+        '--primary': design.primaryColor || 'var(--brand-primary)',
     } as React.CSSProperties), [design]);
 
     return (
@@ -1428,14 +1429,17 @@ function BlockRenderer({
 
 /* ─── Header Block ─── */
 function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
+    const { branding } = useSettingsStore();
+    const logoToUse = meta.logoUrl || (isDark ? branding?.logo_light_url : branding?.logo_dark_url);
+
     return (
         <div className="mb-4">
             <div className="flex justify-between items-start mb-10">
                 <div className="space-y-4">
                     {/* Branding Logo */}
-                    {meta.logoUrl ? (
+                    {logoToUse ? (
                         <img 
-                            src={meta.logoUrl} 
+                            src={logoToUse} 
                             alt="Logo" 
                             className="w-auto transition-all duration-300 ease-out" 
                             style={{ height: `${meta.design?.logoSize ?? 64}px` }} 
