@@ -529,35 +529,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
 }) {
     const [uploads, setUploads] = useState<UploadFile[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
-    const [toastId, setToastId] = useState<string | number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    // Sync progress to global notification
-    useEffect(() => {
-        const activeUploads = uploads.filter(u => u.status === 'uploading' || u.status === 'done' || u.status === 'error');
-        if (activeUploads.length === 0) return;
-
-        const totalSize = activeUploads.reduce((acc, u) => acc + u.file.size, 0);
-        if (totalSize === 0) return;
-        
-        const totalLoaded = activeUploads.reduce((acc, u) => acc + (u.file.size * (u.progress / 100)), 0);
-        const overallProgress = (totalLoaded / totalSize) * 100;
-
-        if (uploads.some(u => u.status === 'uploading' || u.status === 'done')) {
-            const isActuallyUploading = uploads.some(u => u.status === 'uploading');
-            if (!toastId) {
-                const id = gooeyToast(isActuallyUploading ? `Uploading ${activeUploads.length} files...` : 'Processing files...', {
-                    description: <ProgressContent progress={overallProgress} isDark={isDark} />,
-                    duration: Infinity
-                });
-                setToastId(id);
-            } else {
-                gooeyToast.update(toastId, {
-                    description: <ProgressContent progress={overallProgress} isDark={isDark} />
-                });
-            }
-        }
-    }, [uploads, toastId, isDark]);
 
     const addFiles = (fileList: FileList | null) => {
         if (!fileList) return;
@@ -659,7 +631,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
             description: undefined
         });
         onClose();
-    }, [currentFolderId, onUploaded, onClose, toastId]);
+    }, [currentFolderId, onUploaded, onClose]);
 
     // Auto-confirm: pass the LATEST uploads snapshot directly — no stale closure.
     useEffect(() => {

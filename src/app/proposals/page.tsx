@@ -11,16 +11,81 @@ import {
     ArrowUpDown, Archive, Upload, Download, Plus, User, Filter,
     Calendar, Check, X, ArchiveRestore, ChevronsUpDown,
     Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
-    FileJson, FileSpreadsheet
+    FileJson, FileSpreadsheet, Link2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { CreateProposalModal } from '@/components/modals/CreateProposalModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import ClientEditor from '@/components/clients/ClientEditor';
 import { gooeyToast } from 'goey-toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    horizontalListSortingStrategy,
+    useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_ORDER: ProposalStatus[] = ['Draft', 'Pending', 'Accepted', 'Overdue', 'Declined', 'Cancelled'];
+
+function SortableHeader({ id, children, onResizeStart, isDark, width }: { 
+    id: string; 
+    children: React.ReactNode; 
+    onResizeStart?: (e: React.MouseEvent) => void;
+    isDark: boolean;
+    width: number;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        width: `${width}px`,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 20 : 1,
+    };
+
+    return (
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            className={cn(
+                "relative px-4 py-2 flex items-center border-r select-none group/header",
+                isDragging ? "bg-blue-500/10" : "",
+                isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]"
+            )}
+        >
+            <div {...attributes} {...listeners} className="flex-1 cursor-grab active:cursor-grabbing truncate">
+                {children}
+            </div>
+            {onResizeStart && (
+                <div 
+                    onMouseDown={onResizeStart} 
+                    className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors z-10" 
+                />
+            )}
+        </div>
+    );
+}
 
 function fmt$(val: number) {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(val);
@@ -277,7 +342,8 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
 }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
-    const { clients, fetchClients } = useClientStore();
+    const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
+    const { clients, fetchClients, addClient } = useClientStore();
 
     useEffect(() => {
         if (open) {
@@ -298,6 +364,16 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
             <span className="truncate">{currentName || '—'}</span>
         </div>
     );
+
+    const handleCreateClient = async (data: any) => {
+        const client = await addClient(data);
+        if (client) {
+            onClientChange(client.id, client.company_name || client.contact_person);
+            setIsClientEditorOpen(false);
+            setOpen(false);
+            gooeyToast.success('Contact created and selected');
+        }
+    };
 
     return (
         <div className={cn("relative", variant === 'table' && "w-full h-full flex")}>
@@ -328,24 +404,49 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
                     </div>
                 </div>
                 <div className="py-1 max-h-[180px] overflow-y-auto">
-                    {filtered.length === 0 ? (
+                    {filtered.length === 0 && !search ? (
                         <div className="px-3 py-4 text-center opacity-40 text-[11px]">
-                            {search ? 'No results' : 'No clients found'}
+                            No clients found
                         </div>
                     ) : (
-                        filtered.map(c => (
-                            <button key={c.id} onClick={(e) => { e.stopPropagation(); onClientChange(c.id, c.company_name); setOpen(false); }}
-                                className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
-                                    c.id === currentId ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
+                        <>
+                            {filtered.map(c => (
+                                <button key={c.id} onClick={(e) => { e.stopPropagation(); onClientChange(c.id, c.company_name); setOpen(false); }}
+                                    className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
+                                        c.id === currentId ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
+                                    )}
+                                >
+                                    <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#444]")}>{c.company_name}</span>
+                                    {c.id === currentId && <Check size={12} className="opacity-40" />}
+                                </button>
+                            ))}
+                            <div className={cn("mt-1 border-t", isDark ? "border-white/5" : "border-black/5")} />
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setIsClientEditorOpen(true); }}
+                                className={cn(
+                                    "w-full flex items-center gap-2 px-3.5 py-2.5 text-[12px] font-bold transition-colors text-left",
+                                    isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-black/[0.02]"
                                 )}
                             >
-                                <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#444]")}>{c.company_name}</span>
-                                {c.id === currentId && <Check size={12} className="opacity-40" />}
+                                <Plus size={14} strokeWidth={2.5} />
+                                {search ? `Create "${search}"` : 'Create new contact'}
                             </button>
-                        ))
+                        </>
                     )}
                 </div>
             </Dropdown>
+
+            {isClientEditorOpen && (
+                <ClientEditor
+                    onClose={() => setIsClientEditorOpen(false)}
+                    onSave={handleCreateClient}
+                    initialData={{
+                        contact_person: '',
+                        company_name: search,
+                        email: ''
+                    }}
+                />
+            )}
         </div>
     );
 }
@@ -414,16 +515,69 @@ export default function ProposalsPage() {
     const [view, setView] = useState<'table' | 'cards'>('table');
     const [importExportOpen, setImportExportOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [pendingStatusChange, setPendingStatusChange] = useState<{ id: string, status: ProposalStatus } | null>(null);
+
+    const handleStatusChangeRequest = (id: string, newStatus: ProposalStatus) => {
+        const p = proposals.find(prod => prod.id === id);
+        if (p && (p.status === 'Accepted' || p.status === 'Declined')) {
+            setPendingStatusChange({ id, status: newStatus });
+        } else {
+            updateProposal(id, { status: newStatus });
+        }
+    };
+
+    const confirmStatusChange = () => {
+        if (!pendingStatusChange) return;
+        const p = proposals.find(prod => prod.id === pendingStatusChange.id);
+        if (p) {
+            const nb = Array.isArray(p.blocks) ? p.blocks.map((b: any) => 
+                b.type === 'signature' ? { 
+                    ...b, 
+                    signed: false, 
+                    signatureImage: null, 
+                    signedAt: null,
+                    signerName: '' 
+                } : b
+            ) : p.blocks;
+
+            updateProposal(p.id, { 
+                status: pendingStatusChange.status,
+                blocks: nb 
+            });
+        }
+        setPendingStatusChange(null);
+    };
     /* ... existing state ... */
-    const [colWidths, setColWidths] = useState({
-        select: 44,
-        name: 180,
-        status: 160,
-        issue: 180,
-        due: 180,
-        client: 180,
-        amount: 300
+    const [colWidths, setColWidths] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('proposal_col_widths');
+            if (saved) return JSON.parse(saved);
+        }
+        return {
+            select: 44,
+            name: 240,
+            status: 160,
+            issue: 180,
+            due: 180,
+            client: 180,
+            amount: 220
+        };
     });
+    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('proposal_col_order');
+            if (saved) return JSON.parse(saved);
+        }
+        return ['name', 'client', 'status', 'issue', 'due'];
+    });
+
+    useEffect(() => {
+        localStorage.setItem('proposal_col_widths', JSON.stringify(colWidths));
+    }, [colWidths]);
+
+    useEffect(() => {
+        localStorage.setItem('proposal_col_order', JSON.stringify(columnOrder));
+    }, [columnOrder]);
 
     const isResizing = useRef<string | null>(null);
     const startX = useRef<number>(0);
@@ -451,7 +605,23 @@ export default function ProposalsPage() {
         document.removeEventListener('mouseup', handleResizeEnd);
     };
 
-    const gridTemplate = `${colWidths.select}px ${colWidths.client}px ${colWidths.name}px ${colWidths.status}px ${colWidths.issue}px ${colWidths.due}px minmax(${colWidths.amount}px, 1fr)`;
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setColumnOrder((items) => {
+                const oldIndex = items.indexOf(active.id as string);
+                const newIndex = items.indexOf(over.id as string);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+    };
+
+    const gridTemplate = `${colWidths.select}px ${columnOrder.map(c => `${colWidths[c as keyof typeof colWidths]}px`).join(' ')} minmax(${colWidths.amount}px, 1fr)`;
     const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'All'>('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -876,40 +1046,50 @@ export default function ProposalsPage() {
             ) : view === 'table' ? (
                 <div className="flex-1 overflow-auto" style={{ backgroundColor: isDark ? '#141414' : '#f7f7f7' }}>
                     {/* Header */}
-                    <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-10",
-                        isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
-                        style={{ gridTemplateColumns: gridTemplate }}>
-                        
-                        <div className="relative px-0 py-2 flex items-center justify-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                            <div className="cursor-pointer" onClick={toggleAll}>
-                                <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                    <DndContext 
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-10",
+                            isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
+                            style={{ gridTemplateColumns: gridTemplate }}>
+                            
+                            <div className="relative px-0 py-2 flex items-center justify-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                                <div className="cursor-pointer" onClick={toggleAll}>
+                                    <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                                </div>
+                                <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
                             </div>
-                            <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+
+                            <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+                                {columnOrder.map(colId => {
+                                    let label = '';
+                                    if (colId === 'client') label = 'Client';
+                                    if (colId === 'name') label = 'Name';
+                                    if (colId === 'status') label = 'Status';
+                                    if (colId === 'issue') label = 'Issue date';
+                                    if (colId === 'due') label = 'Expiration date';
+
+                                    return (
+                                        <SortableHeader 
+                                            key={colId} 
+                                            id={colId} 
+                                            isDark={isDark} 
+                                            width={colWidths[colId as keyof typeof colWidths]}
+                                            onResizeStart={(e) => handleResizeStart(colId as keyof typeof colWidths, e)}
+                                        >
+                                            {label}
+                                        </SortableHeader>
+                                    );
+                                })}
+                            </SortableContext>
+
+                            <div className="relative px-4 py-2 flex items-center justify-end">
+                                Total: {fmt$(stats[statusFilter]?.amount ?? 0)}
+                            </div>
                         </div>
-                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                            Client
-                            <div onMouseDown={(e) => handleResizeStart('client', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
-                        </div>
-                        <div className="relative px-4 py-2 flex items-center border-r last:border-r-0" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                            Name
-                            <div onMouseDown={(e) => handleResizeStart('name', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[2px] cursor-col-resize hover:bg-blue-400 transition-colors" />
-                        </div>
-                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                            Status
-                            <div onMouseDown={(e) => handleResizeStart('status', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
-                        </div>
-                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                            Issue date
-                            <div onMouseDown={(e) => handleResizeStart('issue', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
-                        </div>
-                        <div className="relative px-4 py-2 flex items-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                            Expiration date
-                            <div onMouseDown={(e) => handleResizeStart('due', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
-                        </div>
-                        <div className="relative px-4 py-2 flex items-center justify-end">
-                            Total: {fmt$(stats[statusFilter]?.amount ?? 0)}
-                        </div>
-                    </div>
+                    </DndContext>
 
                     {isLoading ? (
                         <div className="flex flex-col">{Array.from({ length: 6 }).map((_, i) => (
@@ -946,31 +1126,58 @@ export default function ProposalsPage() {
                                         <div className="flex items-center justify-center px-0 py-3 self-stretch" onClick={e => toggleRow(p.id, e)}>
                                             <Chk checked={isSelected} isDark={isDark} />
                                         </div>
-                                        <div className={cn("flex items-stretch", isDark ? "text-[#888]" : "text-[#666]")}>
-                                            <ClientCell
-                                                currentName={p.client_name}
-                                                currentId={p.client_id}
-                                                onClientChange={(id, name) => updateProposal(p.id, { client_id: id, client_name: name })}
-                                                isDark={isDark}
-                                                variant="table"
-                                            />
-                                        </div>
-                                        <div className={cn("flex items-center px-4 py-3 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
-                                            <span className="truncate">{p.title || 'New Proposal'}</span>
-                                        </div>
-                                        <div className="flex items-center px-4 py-3">
-                                            <StatusCell status={p.status} onStatusChange={(s) => updateProposal(p.id, { status: s })} isDark={isDark} />
-                                        </div>
-                                        <div className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
-                                            <span>{fmtDate(p.issue_date)}</span>
-                                            <span className="text-[10px] opacity-50">({timeAgo(p.issue_date)})</span>
-                                        </div>
-                                        <div className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
-                                            {p.due_date ? <span>{fmtDate(p.due_date)} <span className="text-[10px] opacity-50">({timeAgo(p.due_date)})</span></span> : '—'}
-                                        </div>
-                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5", isDark ? "text-[#ccc]" : "text-[#333]")}>
-                                            {fmt$(Number(p.amount || 0))}
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+
+                                        {columnOrder.map(colId => {
+                                            if (colId === 'client') return (
+                                                <div key={colId} className={cn("flex items-stretch", isDark ? "text-[#888]" : "text-[#666]")}>
+                                                    <ClientCell
+                                                        currentName={p.client_name}
+                                                        currentId={p.client_id}
+                                                        onClientChange={(id, name) => updateProposal(p.id, { client_id: id, client_name: name })}
+                                                        isDark={isDark}
+                                                        variant="table"
+                                                    />
+                                                </div>
+                                            );
+                                            if (colId === 'name') return (
+                                                <div key={colId} className={cn("flex items-center px-4 py-3 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
+                                                    <span className="truncate">{p.title || 'New Proposal'}</span>
+                                                </div>
+                                            );
+                                            if (colId === 'status') return (
+                                                <div key={colId} className="flex items-center px-4 py-3">
+                                                    <StatusCell status={p.status} onStatusChange={(s) => handleStatusChangeRequest(p.id, s)} isDark={isDark} />
+                                                </div>
+                                            );
+                                            if (colId === 'issue') return (
+                                                <div key={colId} className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                    <span>{fmtDate(p.issue_date)}</span>
+                                                    <span className="text-[10px] opacity-50">({timeAgo(p.issue_date)})</span>
+                                                </div>
+                                            );
+                                            if (colId === 'due') return (
+                                                <div key={colId} className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                    {p.due_date ? <span>{fmtDate(p.due_date)} <span className="text-[10px] opacity-50">({timeAgo(p.due_date)})</span></span> : '—'}
+                                                </div>
+                                            );
+                                            return null;
+                                        })}
+
+                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 relative overflow-hidden", isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                            <span className="transition-transform group-hover:-translate-x-[90px] duration-300">
+                                                {fmt$(Number(p.amount || 0))}
+                                            </span>
+                                            <div className="absolute right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
+                                                <button onClick={e => { 
+                                                        e.stopPropagation(); 
+                                                        const url = window.location.origin + '/p/proposal/' + p.id;
+                                                        navigator.clipboard.writeText(url);
+                                                        gooeyToast.success('Link copied');
+                                                    }} title="Copy Link"
+                                                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
+                                                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
+                                                    <Link2 size={11} />
+                                                </button>
                                                 <button onClick={e => { e.stopPropagation(); handleArchive(p.id); }} title={archivedIds.has(p.id) ? 'Unarchive' : 'Archive'}
                                                     className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
                                                         isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
@@ -1047,7 +1254,7 @@ export default function ProposalsPage() {
                                 <ProposalCard key={p.id} p={p}
                                     onOpen={() => router.push(`/proposals/${p.id}`)}
                                     onArchive={() => handleArchive(p.id)}
-                                    onStatusChange={(s) => updateProposal(p.id, { status: s })}
+                                    onStatusChange={(s) => handleStatusChangeRequest(p.id, s)}
                                     onClientChange={(id, name) => updateProposal(p.id, { client_id: id, client_name: name })}
                                     isSelected={selectedIds.has(p.id)}
                                     onToggle={() => {
@@ -1087,6 +1294,15 @@ export default function ProposalsPage() {
                     }
                     setDeletingId(null);
                 }}
+            />
+            <DeleteConfirmModal
+                open={!!pendingStatusChange}
+                isDark={isDark}
+                title="Invalidate Signature?"
+                description={`Changing the status to "${pendingStatusChange?.status}" will invalidate and remove the client's existing signature. Are you sure you want to proceed?`}
+                actionLabel="Proceed"
+                onClose={() => setPendingStatusChange(null)}
+                onConfirm={confirmStatusChange}
             />
         </div>
     );

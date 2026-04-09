@@ -39,6 +39,7 @@ import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
 import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import ClientEditor from '@/components/clients/ClientEditor';
 import { gooeyToast } from 'goey-toast';
 
 /* ═══════════════════════════════════════════════════════
@@ -135,6 +136,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [rightTab, setRightTab] = useState<RightPanelTab>('details');
     const [mobileBottomPanelOpen, setMobileBottomPanelOpen] = useState(false);
+    const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showStatusMenu, setShowStatusMenu] = useState(false);
     const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -214,6 +216,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
         return () => clearInterval(interval);
     }, [id, fetchProposals]);
 
+    const lastSyncedStatusRef = useRef<ProposalMeta['status'] | null>(null);
+
     // Enhanced sync effect: allows status and signatures to update even after load
     React.useEffect(() => {
         if (!id) return;
@@ -235,10 +239,12 @@ export default function ProposalEditor({ id }: { id?: string }) {
             if (proposal.blocks && Array.isArray(proposal.blocks) && proposal.blocks.length > 0) {
                 setBlocks(proposal.blocks);
             }
+            lastSyncedStatusRef.current = proposal.status as any;
             setIsLoaded(true);
         } else {
             // Background Sync: Only update specific fields that the client might change (Status, Signatures)
-            if (proposal.status !== meta.status) {
+            if (proposal.status !== lastSyncedStatusRef.current) {
+                lastSyncedStatusRef.current = proposal.status as any;
                 setMeta(prev => ({ ...prev, status: proposal.status as any }));
             }
             
@@ -258,7 +264,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 });
             }
         }
-    }, [id, proposals, isLoaded, meta.status]);
+    }, [id, proposals, isLoaded]); // Removed meta.status from dependencies to prevent circular overwrite
 
     // Auto-save effect
     const isFirstRender = useRef(true);
@@ -354,6 +360,21 @@ export default function ProposalEditor({ id }: { id?: string }) {
         setBlocks(nb);
         updateMeta({ status: pendingStatusChange as any });
         setPendingStatusChange(null);
+    };
+
+    const handleCreateClient = async (data: any) => {
+        const client = await useClientStore.getState().addClient(data);
+        if (client) {
+            updateMeta({
+                clientName: client.company_name || client.contact_person,
+                clientEmail: client.email || '',
+                clientPhone: client.phone || '',
+                clientAddress: client.address || ''
+            });
+            setIsClientEditorOpen(false);
+            setClientDropdownOpen(false);
+            gooeyToast.success('Contact created and selected');
+        }
     };
 
     /* ── Copy link ── */
@@ -776,42 +797,61 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                     isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
                                                 )}
                                             />
-                                            {clientDropdownOpen && clients.filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()) || (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase()))).length > 0 && (
+                                            {clientDropdownOpen && (
                                                 <div className={cn(
                                                     "absolute top-full left-0 w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-b-lg border border-t-0 shadow-xl overflow-hidden z-50 max-h-[220px] overflow-y-auto",
                                                     isDark ? "bg-[#1f1f1f] border-[#252525]" : "bg-white border-[#ebebeb]"
                                                 )}>
-                                                    {clients
-                                                        .filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()) || (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase())))
-                                                        .map(c => (
+                                                    {clients.filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()) || (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase()))).length === 0 && !meta.clientName ? (
+                                                        <div className={cn("px-4 py-3 text-[11px] opacity-40 text-center", isDark ? "text-white" : "text-black")}>No clients found</div>
+                                                    ) : (
+                                                        <>
+                                                            {clients
+                                                                .filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()) || (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase())))
+                                                                .map(c => (
+                                                                    <button
+                                                                        key={c.id}
+                                                                        onMouseDown={(e) => {
+                                                                            e.preventDefault();
+                                                                            updateMeta({ 
+                                                                                clientName: c.company_name || c.contact_person,
+                                                                                clientEmail: c.email || '',
+                                                                                clientPhone: c.phone || '',
+                                                                                clientAddress: c.address || ''
+                                                                            });
+                                                                            setClientDropdownOpen(false);
+                                                                        }}
+                                                                        className={cn(
+                                                                            "w-full text-left px-3 py-2 text-[12px] transition-colors border-b last:border-0",
+                                                                            isDark ? "hover:bg-[#2a2a2a] border-[#252525]" : "hover:bg-[#f5f5f5] border-[#f0f0f0]"
+                                                                        )}
+                                                                    >
+                                                                        <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                                                            {c.company_name}
+                                                                        </div>
+                                                                        {c.contact_person && (
+                                                                            <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")}>
+                                                                                {c.contact_person}
+                                                                            </div>
+                                                                        )}
+                                                                    </button>
+                                                                ))}
+                                                            <div className={cn("border-t", isDark ? "border-white/5" : "border-black/5")} />
                                                             <button
-                                                                key={c.id}
                                                                 onMouseDown={(e) => {
                                                                     e.preventDefault();
-                                                                    updateMeta({ 
-                                                                        clientName: c.company_name || c.contact_person,
-                                                                        clientEmail: c.email || '',
-                                                                        clientPhone: c.phone || '',
-                                                                        clientAddress: c.address || ''
-                                                                    });
-                                                                    setClientDropdownOpen(false);
+                                                                    setIsClientEditorOpen(true);
                                                                 }}
                                                                 className={cn(
-                                                                    "w-full text-left px-3 py-2 text-[12px] transition-colors border-b last:border-0",
-                                                                    isDark ? "hover:bg-[#2a2a2a] border-[#252525]" : "hover:bg-[#f5f5f5] border-[#f0f0f0]"
+                                                                    "w-full text-left px-3 py-2.5 text-[11px] font-bold transition-colors flex items-center gap-2",
+                                                                    isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-black/5"
                                                                 )}
                                                             >
-                                                                <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")}>
-                                                                    {c.company_name}
-                                                                </div>
-                                                                {c.contact_person && (
-                                                                    <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")}>
-                                                                        {c.contact_person}
-                                                                    </div>
-                                                                )}
+                                                                <Plus size={14} strokeWidth={3} />
+                                                                {meta.clientName ? `Create "${meta.clientName}"` : 'Create new contact'}
                                                             </button>
-                                                        ))
-                                                    }
+                                                        </>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -1103,6 +1143,18 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 description={`Changing the status to "${pendingStatusChange}" will invalidate and remove the client's existing signature. Are you sure you want to proceed?`}
                 isDark={isDark}
             />
+
+            {isClientEditorOpen && (
+                <ClientEditor
+                    onClose={() => setIsClientEditorOpen(false)}
+                    onSave={handleCreateClient}
+                    initialData={{
+                        contact_person: meta.clientName,
+                        company_name: '',
+                        email: ''
+                    }}
+                />
+            )}
         </div>
     );
 }

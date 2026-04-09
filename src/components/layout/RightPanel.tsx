@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye
+    Globe, Briefcase, Users, ChevronRight, Eye, Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -137,31 +137,41 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
 
             {/* Footer */}
             <div className={cn(
-                "flex items-center gap-3 px-4 py-3 border-t shrink-0",
-                isDark ? "border-white/[0.01]" : "border-[#e4e4e4]"
+                "flex items-center justify-between px-4 py-3 border-t shrink-0 gap-4",
+                isDark ? "border-[#252525]" : "border-[#f0f0f0]"
             )}>
                 <div className={cn(
-                    "flex items-center gap-1.5 flex-1 rounded-lg px-3 py-1.5",
+                    "flex items-center gap-1.5 flex-1 rounded-full px-3 py-1.5 transition-colors",
                     isDark ? "bg-white/5" : "bg-[#f5f5f5]"
                 )}>
-                    <X size={10} className={isDark ? "text-[#555]" : "text-[#ccc]"} />
-                    <span className={cn("text-[11px]", isDark ? "text-[#555]" : "text-[#aaa]")}>Search</span>
+                    <Search size={10} className={isDark ? "text-[#555]" : "text-[#aaa]"} />
+                    <span className={cn("text-[11px] font-medium", isDark ? "text-[#555]" : "text-[#aaa]")}>Search</span>
                 </div>
-                <button 
+                
+                <div 
                     onClick={() => setFilterUnread(!filterUnread)}
-                    className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
-                        filterUnread 
-                            ? (isDark ? "bg-white/10 text-white" : "bg-black text-white shadow-sm")
-                            : (isDark ? "bg-white/5 text-[#444] hover:text-[#888]" : "bg-white border border-[#f0f0f0] text-[#aaa] hover:text-[#555]")
-                    )}
+                    className="flex items-center gap-2 cursor-pointer group select-none"
                 >
                     <div className={cn(
-                        "w-1.5 h-1.5 rounded-full transition-colors",
-                        filterUnread ? "bg-blue-400" : (isDark ? "bg-[#222]" : "bg-[#eee]")
-                    )} />
-                    Unread
-                </button>
+                        "w-[26px] h-[14px] rounded-full relative transition-all duration-300",
+                        filterUnread 
+                            ? "bg-[#4dbf39]" 
+                            : (isDark ? "bg-white/10" : "bg-[#e5e5e5]")
+                    )}>
+                        <div className={cn(
+                            "absolute top-[2px] w-[10px] h-[10px] rounded-full bg-white shadow-sm transition-all duration-300",
+                            filterUnread ? "translate-x-[14px]" : "translate-x-[2px]"
+                        )} />
+                    </div>
+                    <span className={cn(
+                        "text-[11px] font-bold transition-colors",
+                        filterUnread 
+                            ? (isDark ? "text-white" : "text-black")
+                            : (isDark ? "text-[#555] group-hover:text-[#888]" : "text-[#ccc] group-hover:text-[#777]")
+                    )}>
+                        Unread
+                    </span>
+                </div>
             </div>
         </div>
     );

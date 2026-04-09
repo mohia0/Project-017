@@ -8,6 +8,7 @@ import { useProposalStore } from '@/store/useProposalStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useRouter } from 'next/navigation';
 import DatePicker from '@/components/ui/DatePicker';
+import ClientEditor from '@/components/clients/ClientEditor';
 import { gooeyToast } from 'goey-toast';
 
 interface Props {
@@ -34,6 +35,7 @@ export function CreateProposalModal({ open, onClose }: Props) {
     const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [expiryDate, setExpiryDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
+    const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
     const clientRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => { fetchClients(); }, [fetchClients]);
@@ -76,6 +78,18 @@ export function CreateProposalModal({ open, onClose }: Props) {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCreateClient = async (data: any) => {
+        const client = await useClientStore.getState().addClient(data);
+        if (client) {
+            setSelectedClient(client.contact_person || client.company_name);
+            setSelectedClientId(client.id);
+            setIsClientEditorOpen(false);
+            setClientQuery('');
+            setShowClientDrop(false);
+            gooeyToast.success('Contact created and selected');
         }
     };
 
@@ -158,21 +172,36 @@ export function CreateProposalModal({ open, onClose }: Props) {
                                     />
                                 </div>
                                 <div className="max-h-40 overflow-auto">
-                                    {filteredClients.length === 0 ? (
+                                    {filteredClients.length === 0 && !clientQuery ? (
                                         <div className={cn("px-4 py-3 text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No clients found</div>
-                                    ) : filteredClients.map(c => (
-                                        <button
-                                            key={c.id}
-                                            onClick={() => { setSelectedClient(c.contact_person || c.company_name); setSelectedClientId(c.id); setClientQuery(''); setShowClientDrop(false); }}
-                                            className={cn(
-                                                "w-full text-left px-4 py-2.5 text-[13px] transition-colors",
-                                                isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
-                                            )}
-                                        >
-                                            <span className="font-medium">{c.contact_person}</span>
-                                            {c.company_name && <span className={cn("ml-2 text-[11px]", isDark ? "text-[#555]" : "text-[#aaa]")}>{c.company_name}</span>}
-                                        </button>
-                                    ))}
+                                    ) : (
+                                        <>
+                                            {filteredClients.map(c => (
+                                                <button
+                                                    key={c.id}
+                                                    onClick={() => { setSelectedClient(c.contact_person || c.company_name); setSelectedClientId(c.id); setClientQuery(''); setShowClientDrop(false); }}
+                                                    className={cn(
+                                                        "w-full text-left px-4 py-2.5 text-[13px] transition-colors",
+                                                        isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                                    )}
+                                                >
+                                                    <span className="font-medium">{c.contact_person}</span>
+                                                    {c.company_name && <span className={cn("ml-2 text-[11px]", isDark ? "text-[#555]" : "text-[#aaa]")}>{c.company_name}</span>}
+                                                </button>
+                                            ))}
+                                            <div className={cn("border-t", isDark ? "border-white/5" : "border-black/5")} />
+                                            <button
+                                                onClick={() => setIsClientEditorOpen(true)}
+                                                className={cn(
+                                                    "w-full text-left px-4 py-2.5 text-[13px] font-bold transition-colors flex items-center gap-2",
+                                                    isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-black/5"
+                                                )}
+                                            >
+                                                <Plus size={14} strokeWidth={3} />
+                                                {clientQuery ? `Create "${clientQuery}"` : 'Create new contact'}
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -256,6 +285,18 @@ export function CreateProposalModal({ open, onClose }: Props) {
                     </button>
                 </div>
             </div>
+
+            {isClientEditorOpen && (
+                <ClientEditor
+                    onClose={() => setIsClientEditorOpen(false)}
+                    onSave={handleCreateClient}
+                    initialData={{
+                        contact_person: clientQuery,
+                        company_name: '',
+                        email: ''
+                    }}
+                />
+            )}
         </div>
     );
 }

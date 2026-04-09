@@ -85,7 +85,7 @@ export function MobileTopBar() {
                     >
                         <Bell size={17} strokeWidth={1.75} />
                         {unreadCount > 0 && (
-                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 border border-white dark:border-[#141414] shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
                         )}
                     </button>
 

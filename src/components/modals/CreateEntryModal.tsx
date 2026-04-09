@@ -13,6 +13,7 @@ import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useRouter } from 'next/navigation';
 import DatePicker from '@/components/ui/DatePicker';
+import ClientEditor from '@/components/clients/ClientEditor';
 
 type EntityType = 'Client' | 'Proposal' | 'Invoice';
 
@@ -78,6 +79,7 @@ function ClientPicker({ isDark, selectedClient, selectedClientId, onSelect }: {
     const { clients } = useClientStore();
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
+    const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -91,6 +93,17 @@ function ClientPicker({ isDark, selectedClient, selectedClientId, onSelect }: {
     const filtered = clients.filter(c =>
         (c.contact_person + ' ' + c.company_name).toLowerCase().includes(query.toLowerCase())
     );
+
+    const handleCreateClient = async (data: any) => {
+        const client = await useClientStore.getState().addClient(data);
+        if (client) {
+            onSelect(client.contact_person || client.company_name, client.id);
+            setIsClientEditorOpen(false);
+            setQuery('');
+            setOpen(false);
+            gooeyToast.success('Contact created and selected');
+        }
+    };
 
     return (
         <div className="relative" ref={ref}>
@@ -127,23 +140,50 @@ function ClientPicker({ isDark, selectedClient, selectedClientId, onSelect }: {
                         />
                     </div>
                     <div className="max-h-44 overflow-auto">
-                        {filtered.length === 0 ? (
+                        {filtered.length === 0 && !query ? (
                             <div className={cn("px-4 py-3 text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No contacts found</div>
-                        ) : filtered.map(c => (
-                            <button
-                                key={c.id}
-                                onClick={() => { onSelect(c.contact_person || c.company_name, c.id); setQuery(''); setOpen(false); }}
-                                className={cn(
-                                    "w-full text-left px-4 py-2.5 text-[13px] transition-colors",
-                                    isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
-                                )}
-                            >
-                                <span className="font-medium">{c.contact_person}</span>
-                                {c.company_name && <span className={cn("ml-2 text-[11px]", isDark ? "text-[#555]" : "text-[#aaa]")}>{c.company_name}</span>}
-                            </button>
-                        ))}
+                        ) : (
+                            <>
+                                {filtered.map(c => (
+                                    <button
+                                        key={c.id}
+                                        onClick={() => { onSelect(c.contact_person || c.company_name, c.id); setQuery(''); setOpen(false); }}
+                                        className={cn(
+                                            "w-full text-left px-4 py-2.5 text-[13px] transition-colors",
+                                            isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                        )}
+                                    >
+                                        <span className="font-medium">{c.contact_person}</span>
+                                        {c.company_name && <span className={cn("ml-2 text-[11px]", isDark ? "text-[#555]" : "text-[#aaa]")}>{c.company_name}</span>}
+                                    </button>
+                                ))}
+                                <div className={cn("border-t", isDark ? "border-white/5" : "border-black/5")} />
+                                <button
+                                    onClick={() => setIsClientEditorOpen(true)}
+                                    className={cn(
+                                        "w-full text-left px-4 py-2.5 text-[13px] font-bold transition-colors flex items-center gap-2",
+                                        isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-black/5"
+                                    )}
+                                >
+                                    <Plus size={14} strokeWidth={3} />
+                                    {query ? `Create "${query}"` : 'Create new contact'}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
+            )}
+
+            {isClientEditorOpen && (
+                <ClientEditor
+                    onClose={() => setIsClientEditorOpen(false)}
+                    onSave={handleCreateClient}
+                    initialData={{
+                        contact_person: query,
+                        company_name: '',
+                        email: ''
+                    }}
+                />
             )}
         </div>
     );
