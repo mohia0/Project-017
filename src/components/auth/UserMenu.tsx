@@ -156,7 +156,7 @@ export default function UserMenu() {
                                 <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center">
                                     <LogOut size={14} strokeWidth={2.5} />
                                 </div>
-                                Terminate Session
+                                Sign Out
                             </button>
                         </div>
                     </div>

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import { Loader2, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -17,6 +17,9 @@ export default function LoginPage() {
     const [mode, setMode] = useState<'signin' | 'signup'>('signin');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [name, setName] = useState(''); // Adding name for full signup
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -40,6 +43,12 @@ export default function LoginPage() {
                 if (error) throw error;
             } else {
                 // Sign Up flow
+                if (password !== confirmPassword) {
+                    setError("Passwords do not match.");
+                    setLoading(false);
+                    return;
+                }
+
                 const { error } = await supabase.auth.signUp({ 
                     email, 
                     password,
@@ -55,6 +64,7 @@ export default function LoginPage() {
                 setSuccessMsg("We've sent a verification link. Please check your inbox to activate your account.");
                 setName('');
                 setPassword(''); // clear password field for security
+                setConfirmPassword('');
             }
         } catch (err: any) {
             // Make error messages more friendly if needed
@@ -156,21 +166,59 @@ export default function LoginPage() {
                             />
                         </div>
 
-                        <div className="flex flex-col">
+                        <div className="flex flex-col relative group">
                             <input 
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 required
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 className={cn(
-                                    "w-full h-12 px-4 rounded-xl text-[14px] font-medium transition-all focus:outline-none focus:ring-2",
+                                    "w-full h-12 px-4 pr-12 rounded-xl text-[14px] font-medium transition-all focus:outline-none focus:ring-2",
                                     isDark 
                                         ? "bg-[#141414] border border-white/10 hover:border-white/20 focus:border-white/30 focus:ring-white/10 placeholder:text-white/30" 
                                         : "bg-white border border-black/10 hover:border-black/20 focus:border-black/30 focus:ring-black/5 placeholder:text-black/40 shadow-sm"
                                 )}
                                 placeholder="••••••••"
                             />
+                            <button 
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className={cn(
+                                    "absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors",
+                                    isDark ? "text-white/20 hover:text-white/60 hover:bg-white/5" : "text-black/20 hover:text-black/60 hover:bg-black/5"
+                                )}
+                            >
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
                         </div>
+
+                        {mode === 'signup' && (
+                            <div className="flex flex-col relative group">
+                                <input 
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    required
+                                    value={confirmPassword}
+                                    onChange={e => setConfirmPassword(e.target.value)}
+                                    className={cn(
+                                        "w-full h-12 px-4 pr-12 rounded-xl text-[14px] font-medium transition-all focus:outline-none focus:ring-2",
+                                        isDark 
+                                            ? "bg-[#141414] border border-white/10 hover:border-white/20 focus:border-white/30 focus:ring-white/10 placeholder:text-white/30" 
+                                            : "bg-white border border-black/10 hover:border-black/20 focus:border-black/30 focus:ring-black/5 placeholder:text-black/40 shadow-sm"
+                                    )}
+                                    placeholder="Confirm password"
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className={cn(
+                                        "absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors",
+                                        isDark ? "text-white/20 hover:text-white/60 hover:bg-white/5" : "text-black/20 hover:text-black/60 hover:bg-black/5"
+                                    )}
+                                >
+                                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                        )}
 
                         {error && (
                             <div className="p-3 mt-1 rounded-xl bg-red-500/10 text-red-500 text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
