@@ -353,25 +353,26 @@ export default function ProposalEditor({ id }: { id?: string }) {
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-white text-[#111]"
         )}>
 
-            {/* ── TOP BAR (SaaS PageHeader Match) ── */}
+            {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative",
+                "flex items-center justify-between px-3 md:px-6 py-2.5 md:py-4 border-b shrink-0 transition-colors relative",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
-                {/* Left: Editable Title & Status Indicator */}
-                <div className="flex items-center gap-4 flex-1">
+                {/* Left: Back + Title */}
+                <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
                     <button
                         onClick={() => router.push('/proposals')}
                         className={cn(
-                            "flex items-center justify-center w-8 h-8 rounded-[8px] transition-all",
+                            "flex items-center justify-center w-8 h-8 shrink-0 rounded-[8px] transition-all",
                             isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]"
                         )}
                     >
                         <ArrowLeft size={16} />
                     </button>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        {/* Breadcrumb hidden on mobile */}
                         <div className={cn(
-                            "flex items-center gap-2 text-[13px] font-medium",
+                            "hidden md:flex items-center gap-2 text-[13px] font-medium shrink-0",
                             isDark ? "text-white/40" : "text-gray-400"
                         )}>
                             <span>Proposal</span>
@@ -382,7 +383,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             value={meta.projectName || ""}
                             onChange={(e) => updateMeta({ projectName: e.target.value })}
                             className={cn(
-                                "text-[13px] font-semibold bg-transparent outline-none transition-all min-w-[150px]",
+                                "text-[13px] font-semibold bg-transparent outline-none transition-all w-full min-w-0",
                                 isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300"
                             )}
                             placeholder="Untitled Proposal"
@@ -406,10 +407,10 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     )}
                 </div>
 
-                {/* Right: Actions (CopyLink, SendEmail, DropDown) */}
-                <div className="flex items-center gap-2">
-                    {/* Status badge */}
-                    <div className="relative flex items-center" ref={statusRef}>
+                {/* Right: Actions */}
+                <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+                    {/* Status badge — hidden on mobile (accessible via bottom panel) */}
+                    <div className="relative hidden md:flex items-center" ref={statusRef}>
                         <button
                             onClick={() => setShowStatusMenu(s => !s)}
                             className={cn(
@@ -446,8 +447,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         )}
                     </div>
 
-                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-1" />
+                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />
 
+                    {/* Preview toggle */}
                     <button
                         onClick={() => {
                             if (isPreview) {
@@ -458,7 +460,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             }
                         }}
                         className={cn(
-                            "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
+                            "flex items-center gap-1.5 px-2.5 md:px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
                             isPreview
                                 ? "bg-[#4dbf39] text-black hover:bg-[#59d044]"
                                 : isDark 
@@ -467,15 +469,16 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         )}
                     >
                         {isPreview ? <PenLine size={14} /> : <Eye size={14} />}
-                        {isPreview ? "Edit" : "Preview"}
+                        <span className="hidden sm:inline">{isPreview ? "Edit" : "Preview"}</span>
                     </button>
 
+                    {/* Desktop/mobile preview toggles (only when in preview) */}
                     {isPreview && (
-                        <div className="flex items-center gap-1 ml-1">
+                        <div className="flex items-center gap-1 ml-0.5">
                             <button
                                 onClick={() => setPreviewMode('desktop')}
                                 className={cn(
-                                    "p-1.5 rounded-[6px] transition-colors",
+                                    "p-1.5 rounded-[6px] transition-colors hidden md:flex",
                                     previewMode === 'desktop'
                                         ? (isDark ? "bg-white/10 text-white" : "bg-black/5 text-black")
                                         : (isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60")
@@ -486,7 +489,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             <button
                                 onClick={() => setPreviewMode('mobile')}
                                 className={cn(
-                                    "p-1.5 rounded-[6px] transition-colors",
+                                    "p-1.5 rounded-[6px] transition-colors hidden md:flex",
                                     previewMode === 'mobile'
                                         ? (isDark ? "bg-white/10 text-white" : "bg-black/5 text-black")
                                         : (isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60")
@@ -497,25 +500,26 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         </div>
                     )}
 
+                    {/* Copy link — hidden on mobile */}
                     <button
                         onClick={copyLink}
                         className={cn(
-                            "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                            "hidden md:flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
                             isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
                         )}
                     >
                         {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
                     </button>
 
-                    {/* Send Email equivalent */}
+                    {/* Send — always visible */}
                     <button
                         className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
                     >
                         <Send size={14} />
                     </button>
 
-                    {/* Actions dropdown (ProposalDropDown equivalent) */}
-                    <div className="relative ml-1" ref={actionsRef}>
+                    {/* Actions dropdown */}
+                    <div className="relative" ref={actionsRef}>
                         <button
                             onClick={() => setShowActionsMenu(s => !s)}
                             className={cn(
@@ -528,20 +532,18 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         {showActionsMenu && (
                             <div className={cn(
                                 "absolute right-0 top-full mt-1.5 w-48 rounded-[10px] shadow-xl py-1 z-50",
-                                isDark ? "bg-[#0c0c0c]" : "bg-white border-[#d2d2eb]"
+                                isDark ? "bg-[#0c0c0c] border border-[#222]" : "bg-white border border-[#d2d2eb]"
                             )}>
                                 {[
                                     { icon: LayoutTemplate, label: 'Save as Template', action: () => setIsSaveTemplateModalOpen(true) },
-                                    { icon: Download, label: 'Download PDF', action: () => console.log('Download') },
-                                    { icon: Copy,     label: 'Duplicate Proposal', action: () => console.log('Duplicate') },
-                                    { icon: Trash2,   label: 'Delete', action: () => console.log('Delete') },
+                                    { icon: Link2,          label: 'Copy Link',         action: copyLink },
+                                    { icon: Download,       label: 'Download PDF',      action: () => console.log('Download') },
+                                    { icon: Copy,           label: 'Duplicate',         action: () => console.log('Duplicate') },
+                                    { icon: Trash2,         label: 'Delete',            action: () => console.log('Delete') },
                                 ].map(({ icon: Icon, label, action }) => (
                                     <button
                                         key={label}
-                                        onClick={() => {
-                                            action();
-                                            setShowActionsMenu(false);
-                                        }}
+                                        onClick={() => { action(); setShowActionsMenu(false); }}
                                         className={cn(
                                             "w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors",
                                             label === 'Delete' 
@@ -562,7 +564,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
             <div className="flex-1 flex overflow-hidden relative">
                 {/* ── LEFT: CANVAS ── */}
                 <div 
-                    className="flex-1 overflow-auto relative w-full"
+                    className="flex-1 overflow-auto relative w-full pb-11 md:pb-0"
                     style={{ 
                         backgroundColor: isMobilePreview 
                             ? (isDark ? '#080808' : '#f7f7f7') 
@@ -780,11 +782,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                                     isDark ? "hover:bg-[#2a2a2a] border-[#252525]" : "hover:bg-[#f5f5f5] border-[#f0f0f0]"
                                                                 )}
                                                             >
-                                                                <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")})>
+                                                                <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")}>
                                                                     {c.company_name}
                                                                 </div>
                                                                 {c.contact_person && (
-                                                                    <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")})>
+                                                                    <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")}>
                                                                         {c.contact_person}
                                                                     </div>
                                                                 )}

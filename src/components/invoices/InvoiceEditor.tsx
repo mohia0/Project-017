@@ -67,6 +67,7 @@ interface BlockData {
     note?: string;
     hideQty?: boolean;
     url?: string;
+    backgroundColor?: string;
 }
 
 interface InvoiceMeta {
@@ -289,6 +290,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
         setPendingStatusChange(null);
     };
 
+    /* ── Copy link ── */
+    const copyLink = () => {
+        navigator.clipboard.writeText(window.location.origin + '/p/invoice/' + id);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+    };
+
     const totals = React.useMemo(() => {
         const pricingBlocks = blocks.filter(b => b.type === 'pricing');
         let subtotal = 0;
@@ -457,6 +465,16 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             </button>
                         </div>
                     )}
+
+                    <button
+                        onClick={copyLink}
+                        className={cn(
+                            "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                        )}
+                    >
+                        {copied ? <Check size={14} className="text-[#4dbf39]" /> : <Link2 size={14} />}
+                    </button>
 
                     <button
                         onClick={() => window.print()}

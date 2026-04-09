@@ -106,9 +106,6 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         setOpenInsertMenu={() => {}}
                         updateMeta={() => {}}
                         setBlocks={() => {}}
-                        currency={invoiceMeta.currency || 'USD'}
-                        setImageUploadOpen={() => {}}
-                        setUploadTarget={() => {}}
                     />
                 </div>
             </div>
