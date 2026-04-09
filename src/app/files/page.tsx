@@ -653,7 +653,6 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
             }, 150);
         });
         gooeyToast.promise(addPromise, {
-            id: toastId ?? undefined,
             loading: 'Adding to library…',
             success: (msg) => msg,
             error: (err: unknown) => (err as { message?: string })?.message || String(err),
