@@ -380,8 +380,9 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                             </div>
                         ) : (
                             <div 
-                                className="w-full max-w-[850px] rounded-2xl overflow-hidden transition-all duration-300"
+                                className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
                                 style={{ 
+                                    borderRadius: `${template.design?.borderRadius ?? 16}px`,
                                     backgroundColor: (template.design?.blockBackgroundColor) || '#ffffff',
                                     backgroundImage: template.design?.backgroundImage ? `url(${template.design.backgroundImage})` : 'none',
                                     backgroundSize: 'cover',

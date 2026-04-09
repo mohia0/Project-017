@@ -36,7 +36,7 @@ interface DesignSettingsPanelProps {
 
 export function MetaField({ label, children, isDark, icon, onReset }: any) {
     return (
-        <div className={cn("rounded-lg border px-3 py-2.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.02)] group/field", isDark ? "border-[#252525] bg-[#1f1f1f]" : "border-[#ebebeb] bg-white")}>
+        <div className={cn("rounded-lg border px-3 py-2.5 shadow-sm group/field", isDark ? "border-[#252525] bg-[#1f1f1f]" : "border-[#ebebeb] bg-white")}>
             {label && (
                 <div className="flex items-center justify-between mb-1">
                     <div className={cn("flex items-center gap-1.5 text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>

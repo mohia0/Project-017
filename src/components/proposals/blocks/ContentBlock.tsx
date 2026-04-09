@@ -10,11 +10,18 @@ export interface ContentBlockProps {
     id: string;
     data: any;
     updateData: (id: string, patch: any) => void;
+    backgroundColor?: string;
 }
 
-export function ContentBlock({ id, data, updateData }: ContentBlockProps) {
-    const { theme } = useUIStore();
-    const isDark = theme === 'dark';
+export function ContentBlock({ id, data, updateData, backgroundColor }: ContentBlockProps) {
+    // Determine if the background is dark to switch editor theme (for readable text)
+    // Common dark colors in our palette: #1a1f2e (Slate), #1e1e1e (Charcoal), #111827 (Ink)
+    const isDarkBg = backgroundColor && (
+        backgroundColor === '#1a1f2e' || 
+        backgroundColor === '#1e1e1e' || 
+        backgroundColor === '#111827' ||
+        backgroundColor.startsWith('var') // Document dark themes usually define this
+    );
 
     // Prefer saved BlockNote blocks; fall back to a blank paragraph if no content at all
     const editor = useCreateBlockNote({
@@ -34,18 +41,18 @@ export function ContentBlock({ id, data, updateData }: ContentBlockProps) {
         <div className="w-full max-w-full relative blocknote-editor">
             <BlockNoteView 
                 editor={editor} 
-                theme={isDark ? "dark" : "light"}
+                theme={isDarkBg ? "dark" : "light"}
                 onChange={onChange}
                 className="min-h-[50px]"
             />
 
             <style jsx global>{`
-                .blocknote-editor .bn-container {
+                .blocknote-editor .bn-container,
+                .blocknote-editor .bn-editor {
                     background: transparent !important;
                     padding: 0 !important;
                 }
                 .blocknote-editor .bn-editor {
-                    padding-inline: 0 !important;
                     min-height: 50px;
                 }
                 .bn-block-content[data-is-empty-and-focused] .bn-inline-content:before {

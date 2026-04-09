@@ -8,6 +8,7 @@ import { useClientStore } from '@/store/useClientStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useRouter } from 'next/navigation';
 import DatePicker from '@/components/ui/DatePicker';
+import { gooeyToast } from 'goey-toast';
 
 interface Props {
     open: boolean;
@@ -75,9 +76,10 @@ export function CreateInvoiceModal({ open, onClose }: Props) {
             });
             if (newInvoice) {
                 onClose();
+                gooeyToast.success('Invoice created');
                 router.push(`/invoices/${newInvoice.id}`);
             } else {
-                alert("Failed to create invoice. Please verify the database schema exists or check the console.");
+                gooeyToast.error('Failed to create invoice — check console');
             }
         } finally {
             setLoading(false);

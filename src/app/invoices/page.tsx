@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { CreateInvoiceModal } from '@/components/modals/CreateInvoiceModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { gooeyToast } from 'goey-toast';
 
 
 
@@ -445,31 +446,43 @@ export default function InvoicesPage() {
 
     const handleArchive = (id: string) => {
         const next = new Set(archivedIds);
-        next.has(id) ? next.delete(id) : next.add(id);
+        const isCurrentlyArchived = next.has(id);
+        isCurrentlyArchived ? next.delete(id) : next.add(id);
         setArchivedIds(next);
+        gooeyToast(isCurrentlyArchived ? 'Restored from archive' : 'Moved to archive', { duration: 2000 });
     };
     const handleBulkArchive = () => {
         const next = new Set(archivedIds);
         selectedIds.forEach(id => next.add(id));
         setArchivedIds(next);
+        const count = selectedIds.size;
         setSelectedIds(new Set());
+        gooeyToast(`${count} invoice${count !== 1 ? 's' : ''} archived`, { duration: 2500 });
     };
     const handleBulkDelete = async () => {
         setDeletingId('bulk');
     };
     const handleBulkDuplicate = async () => {
         const ids = Array.from(selectedIds);
-        for (const id of ids) {
-            const original = invoices.find(inv => inv.id === id);
-            if (original) {
-                const { id: _, created_at: __, ...payload } = original;
-                await addInvoice({
-                    ...payload,
-                    title: `${payload.title || 'Invoice'} (Copy)`,
-                    status: 'Draft'
-                });
+        const promise = (async () => {
+            for (const id of ids) {
+                const original = invoices.find(inv => inv.id === id);
+                if (original) {
+                    const { id: _, created_at: __, ...payload } = original;
+                    await addInvoice({
+                        ...payload,
+                        title: `${payload.title || 'Invoice'} (Copy)`,
+                        status: 'Draft'
+                    });
+                }
             }
-        }
+        })();
+        gooeyToast.promise(promise, {
+            loading: `Duplicating ${ids.length} invoice${ids.length !== 1 ? 's' : ''}…`,
+            success: `${ids.length} invoice${ids.length !== 1 ? 's' : ''} duplicated`,
+            error: 'Duplication failed',
+        });
+        await promise;
         setSelectedIds(new Set());
     };
 
@@ -810,12 +823,15 @@ export default function InvoicesPage() {
                 onConfirm={async () => {
                     if (deletingId === 'bulk') {
                         const ids = Array.from(selectedIds);
+                        const count = ids.length;
                         for (const id of ids) {
                             await deleteInvoice(id);
                         }
                         setSelectedIds(new Set());
+                        gooeyToast.error(`${count} invoice${count !== 1 ? 's' : ''} deleted`);
                     } else if (deletingId) {
                         deleteInvoice(deletingId);
+                        gooeyToast.error('Invoice deleted');
                     }
                     setDeletingId(null);
                 }}

@@ -8,6 +8,7 @@ import { useProposalStore } from '@/store/useProposalStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useRouter } from 'next/navigation';
 import DatePicker from '@/components/ui/DatePicker';
+import { gooeyToast } from 'goey-toast';
 
 interface Props {
     open: boolean;
@@ -68,9 +69,10 @@ export function CreateProposalModal({ open, onClose }: Props) {
             });
             if (newProposal) {
                 onClose();
+                gooeyToast.success('Proposal created');
                 router.push(`/proposals/${newProposal.id}`);
             } else {
-                alert(`Failed to create proposal. Database Error: ${useProposalStore.getState().error || 'Unknown error'}`);
+                gooeyToast.error(`Failed to create proposal — ${useProposalStore.getState().error || 'check console'}`);
             }
         } finally {
             setLoading(false);

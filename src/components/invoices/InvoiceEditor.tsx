@@ -600,8 +600,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 )}
                                 {/* Desktop canvas */}
                                 <div 
-                                    className="w-full max-w-[850px] rounded-2xl overflow-hidden transition-all duration-300"
+                                    className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
                                     style={{ 
+                                        borderRadius: `${meta.design?.borderRadius ?? 16}px`,
                                         backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
                                         backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
                                         backgroundSize: 'cover',
@@ -613,7 +614,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         meta={meta}
                                         blocks={blocks}
                                         totals={totals}
-                                        isDark={isDark}
+                                        isDark={false}
                                         isPreview={isPreview}
                                         isMobile={false}
                                         updateBlock={updateBlock}
@@ -917,7 +918,7 @@ export function InvoiceDocument({
         )}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blocks.map((b: any) => b.id)} strategy={verticalListSortingStrategy}>
-                    {!isPreview && <InsertZone idx={-1} isDark={false} isOpen={openInsertMenu === -1} onOpen={() => setOpenInsertMenu(-1)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} /> }
+                    {!isPreview && <InsertZone idx={-1} isDark={false} isOpen={openInsertMenu === -1} onOpen={() => setOpenInsertMenu(-1)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} isFirst={true} /> }
                     <div>
                         {blocks.map((block: any, idx: number) => (
                             <React.Fragment key={block.id}>
@@ -934,7 +935,7 @@ export function InvoiceDocument({
                                     isFirst={idx === 0}
                                     isLast={idx === blocks.length - 1}
                                 />
-                                {!isPreview && <InsertZone idx={idx} isDark={false} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} /> }
+                                {!isPreview && <InsertZone idx={idx} isDark={false} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} isLast={idx === blocks.length - 1} /> }
                             </React.Fragment>
                         ))}
                     </div>
@@ -960,7 +961,16 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
 }) {
     const { setNodeRef, transform, transition } = useSortable({ id: block.id });
     return (
-        <SectionBlockWrapper id={block.id} type={block.type} onDelete={removeBlock} isPreview={isPreview} isFirst={isFirst} isLast={isLast}>
+        <SectionBlockWrapper 
+            id={block.id} 
+            type={block.type} 
+            onDelete={removeBlock} 
+            isPreview={isPreview} 
+            isFirst={isFirst} 
+            isLast={isLast}
+            backgroundColor={block.backgroundColor}
+            onBackgroundColorChange={(color) => updateBlock(block.id, { backgroundColor: color })}
+        >
             <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
                 <BlockRenderer block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} meta={meta} updateMeta={updateMeta} />
             </div>
@@ -1343,6 +1353,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         id={block.id}
                         data={block}
                         updateData={updateBlock}
+                        backgroundColor={block.backgroundColor || meta.design?.blockBackgroundColor}
                     />
                 </div>
             );
@@ -1386,13 +1397,15 @@ function MetaField({
     );
 }
 
-function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd }: { 
+function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLast }: { 
     idx: number; 
     isDark: boolean; 
     isOpen: boolean; 
     onOpen: () => void; 
     onClose: () => void; 
     onAdd: (type: BlockType, afterId?: string) => void;
+    isFirst?: boolean;
+    isLast?: boolean;
 }) {
     const [hovered, setHovered] = useState(false);
     const visible = hovered || isOpen;
@@ -1406,6 +1419,10 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd }: {
                 marginRight: '-3rem',
                 paddingLeft: '3rem',
                 paddingRight: '3rem',
+                borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+                borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+                borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : undefined,
+                borderBottomRightRadius: isLast ? 'var(--block-border-radius)' : undefined,
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => { if (!isOpen) setHovered(false); }}

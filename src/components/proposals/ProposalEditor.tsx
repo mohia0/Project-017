@@ -663,8 +663,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         ) : (
                             /* Desktop canvas */
                             <div 
-                                className="w-full max-w-[850px] rounded-2xl overflow-hidden transition-all duration-300"
+                                className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
                                 style={{ 
+                                    borderRadius: `${meta.design?.borderRadius ?? 16}px`,
                                     backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
                                     backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
                                     backgroundSize: 'cover',
@@ -1058,6 +1059,7 @@ export function ProposalDocument({
                             onClose={() => setOpenInsertMenu(null)}
                             onAdd={(type) => addBlock(type)}
                             hasHeader={blocks.some((b: any) => b.type === 'header')}
+                            isFirst={true}
                         />
                     )}
 
@@ -1102,6 +1104,7 @@ export function ProposalDocument({
                                         onClose={() => setOpenInsertMenu(null)}
                                         onAdd={(type) => addBlock(type, block.id)}
                                         hasHeader={blocks.some((b: any) => b.type === 'header')}
+                                        isLast={idx === blocks.length - 1}
                                     />
                                 )}
                             </React.Fragment>
@@ -1196,7 +1199,7 @@ function BlockRenderer({
         case 'heading':
             return <HeadingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} />;
         case 'text':
-            return <TextBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} />;
+            return <TextBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} meta={meta} />;
         case 'pricing':
             return <PricingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} />;
         case 'signature':
@@ -1397,7 +1400,7 @@ function HeadingBlock({ block, isDark, isPreview, updateBlock }: any) {
 }
 
 /* ─── Text Block ─── */
-function TextBlock({ block, isDark, isPreview, updateBlock }: any) {
+function TextBlock({ block, isDark, isPreview, updateBlock, meta }: any) {
     const [mounted, setMounted] = React.useState(false);
     React.useEffect(() => { setMounted(true); }, []);
 
@@ -1421,6 +1424,7 @@ function TextBlock({ block, isDark, isPreview, updateBlock }: any) {
                 id={block.id}
                 data={block}
                 updateData={updateBlock}
+                backgroundColor={block.backgroundColor || meta.design?.blockBackgroundColor}
             />
         </div>
     );
@@ -1797,7 +1801,7 @@ function CollapsibleSection({ label, isDark }: { label: string; isDark: boolean 
    INSERT ZONE — smart dashed line between blocks
 ═══════════════════════════════════════════════════════ */
 function InsertZone({
-    idx, isDark, isOpen, onOpen, onClose, onAdd, hasHeader
+    idx, isDark, isOpen, onOpen, onClose, onAdd, hasHeader, isFirst, isLast
 }: {
     idx: number;
     isDark: boolean;
@@ -1806,6 +1810,8 @@ function InsertZone({
     onClose: () => void;
     onAdd: (type: BlockType) => void;
     hasHeader?: boolean;
+    isFirst?: boolean;
+    isLast?: boolean;
 }) {
     const [hovered, setHovered] = useState(false);
     const visible = hovered || isOpen;
@@ -1819,6 +1825,10 @@ function InsertZone({
                 marginRight: '-3rem',
                 paddingLeft: '3rem',
                 paddingRight: '3rem',
+                borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+                borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+                borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : undefined,
+                borderBottomRightRadius: isLast ? 'var(--block-border-radius)' : undefined,
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => { if (!isOpen) setHovered(false); }}

@@ -99,6 +99,10 @@ export function SectionBlockWrapper({
         right: '-3rem',
         backgroundColor: sectionBg,
         pointerEvents: 'none',
+        borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+        borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+        borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : undefined,
+        borderBottomRightRadius: isLast ? 'var(--block-border-radius)' : undefined,
     };
 
     if (isPreview) {
@@ -135,6 +139,10 @@ export function SectionBlockWrapper({
                     backgroundColor: sectionBg,
                     pointerEvents: 'none',
                     transition: 'background-color 0.2s',
+                    borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+                    borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+                    borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : undefined,
+                    borderBottomRightRadius: isLast ? 'var(--block-border-radius)' : undefined,
                 }}
             />
 
