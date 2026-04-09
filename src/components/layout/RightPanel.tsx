@@ -20,22 +20,41 @@ function getInitials(name: string) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 }
 
-function PanelHeader({ title, isDark, onClose }: { title: string; isDark: boolean; onClose: () => void }) {
+function PanelHeader({ title, isDark, onClose, onAction, actionIcon: ActionIcon }: { 
+    title: string; 
+    isDark: boolean; 
+    onClose: () => void;
+    onAction?: () => void;
+    actionIcon?: any;
+}) {
     return (
         <div className={cn(
             "flex items-center justify-between px-4 py-3 border-b shrink-0",
             isDark ? "border-[#222]" : "border-[#e4e4e4]"
         )}>
             <span className={cn("text-[13px] font-semibold", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>{title}</span>
-            <button
-                onClick={onClose}
-                className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center transition-colors",
-                    isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#aaa] hover:text-[#555] hover:bg-[#f0f0f0]"
+            <div className="flex items-center gap-1">
+                {onAction && ActionIcon && (
+                    <button
+                        onClick={onAction}
+                        className={cn(
+                            "w-6 h-6 rounded-md flex items-center justify-center transition-colors",
+                            isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#aaa] hover:text-[#555] hover:bg-[#f0f0f0]"
+                        )}
+                    >
+                        <ActionIcon size={13} strokeWidth={2} />
+                    </button>
                 )}
-            >
-                <X size={13} strokeWidth={2.5} />
-            </button>
+                <button
+                    onClick={onClose}
+                    className={cn(
+                        "w-6 h-6 rounded-md flex items-center justify-center transition-colors",
+                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#aaa] hover:text-[#555] hover:bg-[#f0f0f0]"
+                    )}
+                >
+                    <X size={13} strokeWidth={2.5} />
+                </button>
+            </div>
         </div>
     );
 }
@@ -46,12 +65,18 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
     const { toggleNotifications } = useUIStore();
     const { notifications, fetchNotifications, subscribe, unsubscribe, markAsRead, markAllAsRead } = useNotificationStore();
     const [filterUnread, setFilterUnread] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         fetchNotifications();
     }, [fetchNotifications]);
 
     const displayNotifications = filterUnread ? notifications.filter(n => !n.read) : notifications;
+    
+    const filteredNotifications = displayNotifications.filter(n => 
+        (n.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (n.message || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
@@ -82,7 +107,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
             </div>
 
             <div className="flex-1 overflow-y-auto w-full">
-                {displayNotifications.length === 0 ? (
+                {filteredNotifications.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3">
                         <div className={cn(
                             "w-10 h-10 rounded-full flex items-center justify-center",
@@ -90,11 +115,13 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                         )}>
                             <Bell size={18} strokeWidth={1.5} className={isDark ? "text-[#555]" : "text-[#bbb]"} />
                         </div>
-                        <p className={cn("text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No notifications yet</p>
+                        <p className={cn("text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                            {searchQuery ? 'No matching notifications' : 'No notifications yet'}
+                        </p>
                     </div>
                 ) : (
                     <div className="flex flex-col">
-                        {displayNotifications.map((notif) => (
+                        {filteredNotifications.map((notif) => (
                             <div 
                                 key={notif.id}
                                 onClick={() => {
@@ -107,7 +134,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                 className={cn(
                                     "flex items-start gap-3 px-4 py-3 border-b last:border-0 transition-colors cursor-pointer relative",
                                     isDark ? "border-[#252525] hover:bg-white/[0.02]" : "border-[#f0f0f0] hover:bg-[#f9f9f9]",
-                                    !notif.read && (isDark ? "bg-white/[0.04]" : "bg-blue-50/30")
+                                    !notif.read && (isDark ? "bg-white/[0.08]" : "bg-blue-500/[0.05]")
                                 )}
                             >
                                 {!notif.read && (
@@ -137,15 +164,24 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
 
             {/* Footer */}
             <div className={cn(
-                "flex items-center justify-between px-4 py-3 border-t shrink-0 gap-4",
+                "flex items-center justify-between px-4 py-2 border-t shrink-0 gap-4",
                 isDark ? "border-[#252525]" : "border-[#f0f0f0]"
             )}>
                 <div className={cn(
-                    "flex items-center gap-1.5 flex-1 rounded-full px-3 py-1.5 transition-colors",
+                    "flex items-center gap-1.5 flex-1 rounded-full px-3 py-0.5 transition-colors",
                     isDark ? "bg-white/5" : "bg-[#f5f5f5]"
                 )}>
                     <Search size={10} className={isDark ? "text-[#555]" : "text-[#aaa]"} />
-                    <span className={cn("text-[11px] font-medium", isDark ? "text-[#555]" : "text-[#aaa]")}>Search</span>
+                    <input 
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Search"
+                        className={cn(
+                            "text-[9px] font-semibold tracking-wide bg-transparent outline-none w-full p-0 leading-normal",
+                            isDark ? "text-[#ccc] placeholder:text-[#555]" : "text-[#111] placeholder:text-[#aaa]"
+                        )}
+                    />
                 </div>
                 
                 <div 
@@ -545,6 +581,8 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                     title={titles[rightPanel.type] || 'Details'}
                     isDark={isDark}
                     onClose={closeRightPanel}
+                    onAction={rightPanel.type === 'notifications' ? useNotificationStore.getState().clearAll : undefined}
+                    actionIcon={rightPanel.type === 'notifications' ? Trash2 : undefined}
                 />
                 {rightPanel.type === 'notifications' && <NotificationsPanel isDark={isDark} />}
                 {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
@@ -573,6 +611,8 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                             title={titles[rightPanel.type] || 'Details'}
                             isDark={isDark}
                             onClose={closeRightPanel}
+                            onAction={rightPanel.type === 'notifications' ? useNotificationStore.getState().clearAll : undefined}
+                            actionIcon={rightPanel.type === 'notifications' ? Trash2 : undefined}
                         />
 
                         {rightPanel.type === 'notifications' && <NotificationsPanel isDark={isDark} />}

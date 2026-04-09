@@ -79,8 +79,8 @@ export function MobileTopBar() {
                         className={cn(
                             "relative w-[36px] h-[36px] rounded-[10px] flex items-center justify-center transition-all active:scale-90",
                             isDark
-                                ? "bg-white/[0.06] text-[#888] hover:bg-white/10 hover:text-white"
-                                : "bg-[#f2f2f2] text-[#888] hover:bg-[#e8e8e8] hover:text-[#444]"
+                                ? "bg-transparent text-[#888] hover:bg-white/10 hover:text-white"
+                                : "bg-transparent text-[#888] hover:bg-black/[0.04] hover:text-[#444]"
                         )}
                     >
                         <Bell size={17} strokeWidth={1.75} />

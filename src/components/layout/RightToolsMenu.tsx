@@ -44,8 +44,8 @@ export default function RightToolsMenu() {
                     className={cn(
                         "w-9 h-9 rounded-[12px] flex items-center justify-center transition-all group",
                         isDark 
-                            ? (notificationsOpen ? "bg-white/10 text-white" : "bg-white/5 text-[#6b6b6b] hover:bg-white/10")
-                            : (notificationsOpen ? "bg-[#e4e4e4] text-[#111]" : "bg-[#f0f0f0] text-[#888] hover:bg-[#e8e8e8]")
+                            ? (notificationsOpen ? "bg-white/10 text-white" : "bg-transparent text-[#6b6b6b] hover:bg-white/5")
+                            : (notificationsOpen ? "bg-black/[0.04] text-[#111]" : "bg-transparent text-[#888] hover:bg-black/[0.04]")
                     )}
                 >
                     <div className="relative">

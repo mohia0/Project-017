@@ -21,6 +21,7 @@ interface NotificationState {
     markAllAsRead: () => Promise<void>;
     subscribe: () => void;
     unsubscribe: () => void;
+    clearAll: () => Promise<void>;
 }
 
 let subscription: any = null;
@@ -121,6 +122,23 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         if (subscription) {
             supabase.removeChannel(subscription);
             subscription = null;
+        }
+    },
+
+    clearAll: async () => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) return;
+
+        const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('workspace_id', workspaceId);
+
+        if (!error) {
+            set({ notifications: [] });
+            gooeyToast.success('Notifications cleared');
+        } else {
+            gooeyToast.error('Failed to clear notifications');
         }
     }
 }));

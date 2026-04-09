@@ -16,7 +16,7 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
         .eq('id', id)
         .single();
 
-    if (error || !document) {
+    if (error || !document || document.status === 'Draft') {
         return notFound();
     }
 
