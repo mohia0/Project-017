@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useUIStore } from '@/store/useUIStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { Plus, Moon, Sun, Bell, LayoutTemplate, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter, usePathname } from 'next/navigation';
@@ -16,6 +17,10 @@ export default function RightToolsMenu() {
     const isDark = theme === 'dark';
     const notificationsOpen = rightPanel?.type === 'notifications';
     const isTemplatesMode = pathname === '/templates';
+    
+    // Notifications state
+    const { notifications } = useNotificationStore();
+    const unreadCount = notifications.filter(n => !n.read).length;
 
     return (
         <nav className={cn(
@@ -43,7 +48,12 @@ export default function RightToolsMenu() {
                             : (notificationsOpen ? "bg-[#e4e4e4] text-[#111]" : "bg-[#f0f0f0] text-[#888] hover:bg-[#e8e8e8]")
                     )}
                 >
-                    <Bell size={16} strokeWidth={1.75} className="transition-transform duration-300 group-hover:scale-110 group-hover:text-current" />
+                    <div className="relative">
+                        <Bell size={16} strokeWidth={1.75} className="transition-transform duration-300 group-hover:scale-110 group-hover:text-current" />
+                        {unreadCount > 0 && (
+                            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-white dark:border-[#141414] shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+                        )}
+                    </div>
                 </button>
             </div>
 

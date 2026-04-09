@@ -65,14 +65,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
         // If they act to accept a proposal, maybe they passed a signature block update
         if (body.signatureData) {
             // Fetch current blocks to patch the signature block securely Without letting them overwrite everything
-            const { data: currData } = await supabaseService.from(tableName).select('blocks').eq('id', id).single();
-            if (currData && currData.blocks) {
+            const { data: currData, error: fetchErr } = await supabaseService.from(tableName).select('blocks').eq('id', id).single();
+            
+            if (fetchErr) {
+                console.error('Error fetching current blocks:', fetchErr);
+            } else if (currData && Array.isArray(currData.blocks)) {
                 updateData.blocks = currData.blocks.map((b: any) => 
                     b.type === 'signature' ? { 
                         ...b, 
                         signed: true, 
                         signerName: body.signatureData.name, 
-                        signatureImage: body.signatureData.image 
+                        signatureImage: body.signatureData.image,
+                        signedAt: new Date().toISOString()
                     } : b
                 );
             }

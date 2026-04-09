@@ -46,9 +46,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
 
     useEffect(() => {
         fetchNotifications();
-        subscribe();
-        return () => unsubscribe();
-    }, [fetchNotifications, subscribe, unsubscribe]);
+    }, [fetchNotifications]);
 
     const displayNotifications = filterUnread ? notifications.filter(n => !n.read) : notifications;
 

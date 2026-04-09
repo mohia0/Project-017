@@ -38,7 +38,7 @@ export function AcceptSignModal({
                 canvas.height = parent.clientHeight;
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
-                    ctx.strokeStyle = isDark ? '#ffffff' : '#000000';
+                    ctx.strokeStyle = '#000000'; // Always use black for signatures to ensure visibility on paper
                     ctx.lineWidth = 2.5;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -174,16 +174,16 @@ export function AcceptSignModal({
 
                         {/* Signature Working Area */}
                         <div className={cn(
-                            "h-[120px] flex items-center justify-center m-3 rounded-lg border border-dashed",
-                            isDark ? "border-[#444] bg-[#1a1a1a]" : "border-[#d2d2d2] bg-white",
+                            "h-[120px] flex items-center justify-center m-3 rounded-lg border border-dashed bg-white",
+                            isDark ? "border-[#444]" : "border-[#d2d2d2]",
                             /* Dotted background pattern */
-                            isDark ? "bg-[radial-gradient(#333_1px,transparent_1px)]" : "bg-[radial-gradient(#e5e5e5_1px,transparent_1px)]"
+                            "bg-[radial-gradient(#e5e5e5_1px,transparent_1px)]"
                         )} style={{ backgroundSize: '12px 12px' }}>
                             
                             {activeTab === 'type' && (
                                 <div className="text-center px-4 w-full">
                                     {fullName ? (
-                                        <div className="text-4xl font-serif text-black dark:text-white opacity-80" style={{ fontFamily: '"Brush Script MT", cursive, serif' }}>
+                                        <div className="text-4xl font-serif opacity-80 text-black" style={{ fontFamily: '"Brush Script MT", cursive, serif' }}>
                                             {fullName}
                                         </div>
                                     ) : (

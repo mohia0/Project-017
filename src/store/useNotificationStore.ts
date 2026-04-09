@@ -98,6 +98,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                 filter: `workspace_id=eq.${workspaceId}`
             }, (payload) => {
                 const newNotification = payload.new as AppNotification;
+                
+                // Add to local state
                 set(state => ({
                     notifications: [newNotification, ...state.notifications]
                 }));

@@ -45,6 +45,7 @@ interface UploadFile {
     status: 'pending' | 'uploading' | 'done' | 'error';
     type: ItemType;
     fileUrl?: string;
+    errorMessage?: string;
 }
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -133,17 +134,27 @@ function ImageThumb({ src, alt, isDark, fallback }: {
     src: string; alt: string; isDark: boolean; fallback: React.ReactNode;
 }) {
     const [failed, setFailed] = useState(false);
+    
     if (failed) return (
         <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105', isDark ? 'bg-white/[0.03]' : 'bg-[#f5f5f5]')}>
             {fallback}
         </div>
     );
+
     return (
-        <div className="w-full h-[80px] rounded-xl overflow-hidden transition-transform group-hover:scale-[1.02]" style={{ background: isDark ? '#1a1a1a' : '#f0f0f0' }}>
+        <div 
+            className="w-full h-[80px] rounded-xl overflow-hidden transition-transform group-hover:scale-[1.02] flex items-center justify-center relative p-1.5" 
+            style={{ 
+                background: isDark 
+                    ? 'linear-gradient(45deg, #161616 25%, #1a1a1a 25%, #1a1a1a 50%, #161616 50%, #161616 75%, #1a1a1a 75%, #1a1a1a 100%)' 
+                    : '#f9f9f9',
+                backgroundSize: '10px 10px'
+            }}
+        >
             <img
                 src={src}
                 alt={alt}
-                className="w-full h-full object-cover"
+                className="max-w-full max-h-full object-contain pointer-events-none select-none drop-shadow-sm"
                 loading="lazy"
                 onError={() => setFailed(true)}
             />
@@ -210,14 +221,22 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                             </div>
                         )}
                     </div>
-                    {/* Zoom controls */}
-                    <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1 px-3 py-1.5 rounded-full border shadow-xl backdrop-blur-md ${isDark ? 'bg-[#1a1a1a]/90 border-[#333]' : 'bg-white/90 border-[#e5e5e5]'}`}>
-                        <button onClick={() => setImgZoom(z => Math.max(0.25, z - 0.25))} className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-[#888]' : 'hover:bg-[#f0f0f0] text-[#666]'}`}><ZoomOut size={13}/></button>
-                        <span className={`text-[10px] font-bold tabular-nums w-10 text-center ${muted}`}>{Math.round(imgZoom * 100)}%</span>
-                        <button onClick={() => setImgZoom(z => Math.min(4, z + 0.25))} className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-[#888]' : 'hover:bg-[#f0f0f0] text-[#666]'}`}><ZoomIn size={13}/></button>
-                        <div className={`w-[1px] h-4 mx-1 ${isDark ? 'bg-[#333]' : 'bg-[#e0e0e0]'}`}/>
-                        <button onClick={() => setImgRotate(r => r + 90)} className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-[#888]' : 'hover:bg-[#f0f0f0] text-[#666]'}`}><RotateCw size={13}/></button>
-                        <button onClick={() => { setImgZoom(1); setImgRotate(0); }} className={`text-[9px] font-bold px-2 py-0.5 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-[#666]' : 'hover:bg-[#f0f0f0] text-[#bbb]'}`}>Reset</button>
+                    {/* Zoom controls (vertical on the left) */}
+                    <div className={`absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 px-1.5 py-3 rounded-full border shadow-xl backdrop-blur-md ${isDark ? 'bg-[#1a1a1a]/90 border-[#333]' : 'bg-white/90 border-[#e5e5e5]'}`}>
+                        <button onClick={() => setImgZoom(z => Math.min(4, z + 0.25))} className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-white/10 text-[#888] hover:text-[#4dbf39]' : 'hover:bg-[#f0f0f0] text-[#666] hover:text-[#4dbf39]'}`} title="Zoom In"><ZoomIn size={14}/></button>
+                        <span className={`text-[9px] font-black tabular-nums h-6 flex items-center justify-center ${isDark ? 'text-[#444]' : 'text-[#bbb]'}`}>{Math.round(imgZoom * 100)}%</span>
+                        <button onClick={() => setImgZoom(z => Math.max(0.25, z - 0.25))} className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-white/10 text-[#888] hover:text-red-400' : 'hover:bg-[#f0f0f0] text-[#666] hover:text-red-400'}`} title="Zoom Out"><ZoomOut size={14}/></button>
+                        
+                        <div className={`w-4 h-[1px] my-1 ${isDark ? 'bg-[#333]' : 'bg-[#e0e0e0]'}`}/>
+                        
+                        <button onClick={() => setImgRotate(r => r + 90)} className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${isDark ? 'hover:bg-white/10 text-[#888] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#666] hover:text-[#333]'}`} title="Rotate"><RotateCw size={14}/></button>
+                        <button 
+                            onClick={() => { setImgZoom(1); setImgRotate(0); }} 
+                            className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors text-[8px] font-black uppercase ${isDark ? 'hover:bg-white/10 text-[#444] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#ccc] hover:text-[#333]'}`}
+                            title="Reset"
+                        >
+                            RST
+                        </button>
                     </div>
                 </div>
             );
@@ -498,7 +517,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
             const uploadObj = uploads.find(u => u.id === id);
             if (!uploadObj) return;
 
-            setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'uploading' } : u));
+            setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'uploading', progress: 0 } : u));
 
             const formData = new FormData();
             formData.append("file", uploadObj.file);
@@ -517,22 +536,27 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                 if (xhr.status === 200) {
                     try {
                         const resp = JSON.parse(xhr.responseText);
-                        setUploads(prev => prev.map(u => u.id === id ? { 
-                            ...u, 
-                            status: 'done', 
+                        setUploads(prev => prev.map(u => u.id === id ? {
+                            ...u,
+                            status: 'done',
                             progress: 100,
                             fileUrl: resp.url
                         } : u));
                     } catch {
-                        setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error' } : u));
+                        setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: 'Invalid server response' } : u));
                     }
                 } else {
-                    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error' } : u));
+                    let errorMsg = 'Upload failed';
+                    try {
+                        const errBody = JSON.parse(xhr.responseText);
+                        errorMsg = errBody.details || errBody.error || errorMsg;
+                    } catch (e) {}
+                    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: errorMsg } : u));
                 }
             };
 
             xhr.onerror = () => {
-                setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error' } : u));
+                setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: 'Network error' } : u));
             };
 
             xhr.send(formData);
@@ -694,6 +718,11 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                                                 style={{ width: `${upload.progress}%` }}
                                             />
                                         </div>
+                                        {upload.status === 'error' && upload.errorMessage && (
+                                            <p className="text-[9px] text-red-400 mt-1 font-medium italic truncate">
+                                                {upload.errorMessage}
+                                            </p>
+                                        )}
                                         <div className="flex items-center justify-between mt-1">
                                             <span className={cn('text-[9.5px]', isDark ? 'text-[#444]' : 'text-[#bbb]')}>
                                                 {upload.status === 'pending' && 'Ready to upload'}
@@ -1137,7 +1166,11 @@ export default function FilesPage() {
                 const formData = new FormData();
                 formData.append('file', file);
                 const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                if (!res.ok) throw new Error(`Failed to upload ${file.name}`);
+                if (!res.ok) {
+                    let msg = `Failed to upload ${file.name}`;
+                    try { const e = await res.json(); msg = e.details || e.error || msg; } catch {}
+                    throw new Error(msg);
+                }
                 const data = await res.json();
                 newItems.push({
                     id: `file-${Date.now()}-${Math.random()}`,

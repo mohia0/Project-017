@@ -6,6 +6,7 @@ import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import { BankTransferModal } from '@/components/modals/BankTransferModal';
+import { gooeyToast } from 'goey-toast';
 
 export default function PreviewClient({ type, data }: { type: 'proposal' | 'invoice', data: any }) {
     const [liveData, setLiveData] = useState(data);
@@ -46,19 +47,42 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
 
     const handleUpdateStatus = async (status: string, signatureData?: any) => {
         if (isUpdating) return;
+        
+        const actionLabel = status === 'Accepted' ? 'Accepting' : 
+                           status === 'Declined' ? 'Declining' : 
+                           status === 'Paid' ? 'Marking as Paid' : 'Updating';
+
+        const successMessage = status === 'Accepted' ? 'Proposal Accepted & Signed!' : 
+                               status === 'Declined' ? 'Proposal Declined' : 
+                               status === 'Paid' ? 'Invoice marked as Paid' : 'Updated';
+
         try {
             setIsUpdating(true);
-            const res = await fetch(`/api/p/${type}/${data.id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status, signatureData })
-            });
-            if (res.ok) {
-                const updatedResponse = await res.json();
-                if (updatedResponse.success) {
-                    setLiveData((prev: any) => ({ ...prev, ...updatedResponse.updateData }));
+            await gooeyToast.promise(
+                (async () => {
+                    const res = await fetch(`/api/p/${type}/${data.id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status, signatureData })
+                    });
+                    
+                    if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(err.error || 'Failed to update');
+                    }
+
+                    const updatedResponse = await res.json();
+                    if (updatedResponse.success) {
+                        setLiveData((prev: any) => ({ ...prev, ...updatedResponse.updateData }));
+                    }
+                    return updatedResponse;
+                })(),
+                {
+                    loading: `${actionLabel}...`,
+                    success: successMessage,
+                    error: (err) => `Error: ${err.message}`
                 }
-            }
+            );
         } catch (e) {
             console.error('Failed to update document status', e);
         } finally {

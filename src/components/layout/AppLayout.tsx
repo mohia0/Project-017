@@ -12,6 +12,7 @@ import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { useMenuStore } from '@/store/useMenuStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -26,6 +27,14 @@ function WorkspaceDataSync() {
             useInvoiceStore.getState().fetchInvoices();
             useClientStore.getState().fetchClients();
             useTemplateStore.getState().fetchTemplates();
+            
+            // Notifications
+            useNotificationStore.getState().fetchNotifications();
+            useNotificationStore.getState().subscribe();
+            
+            return () => {
+                useNotificationStore.getState().unsubscribe();
+            };
         }
     }, [activeWorkspaceId]);
 

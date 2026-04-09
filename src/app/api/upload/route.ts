@@ -46,8 +46,20 @@ export async function POST(req: NextRequest) {
             size: file.size
         });
 
-    } catch (error) {
-        console.error("Upload error:", error);
-        return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    } catch (error: any) {
+        console.error("Upload error details:", {
+            message: error.message,
+            stack: error.stack,
+            code: error.code,
+            region: process.env.B2_REGION,
+            endpoint: process.env.B2_ENDPOINT,
+            bucket: process.env.B2_BUCKET_NAME ? 'set' : 'not set',
+            keys: process.env.B2_ACCESS_KEY_ID ? 'set' : 'not set'
+        });
+        return NextResponse.json({ 
+            error: "Upload failed", 
+            details: error.message,
+            code: error.code 
+        }, { status: 500 });
     }
 }

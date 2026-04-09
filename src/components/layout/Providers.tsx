@@ -17,7 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <MantineProvider theme={theme}>
             {children}
             <GooeyToaster
-                position="bottom-right"
+                position="top-center"
                 toastOptions={{
                     duration: 3500,
                     style: {

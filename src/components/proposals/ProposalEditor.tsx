@@ -202,7 +202,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
     ]);
     
     const [isLoaded, setIsLoaded] = useState(false);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const debouncedMeta = useDebounce(meta, 1000);
     const debouncedBlocks = useDebounce(blocks, 1000);
 
@@ -255,21 +254,24 @@ export default function ProposalEditor({ id }: { id?: string }) {
             return acc;
         }, 0);
 
-        setSaveStatus('saving');
-        updateProposal(id, {
-            title: debouncedMeta.projectName || 'New Proposal',
-            client_name: debouncedMeta.clientName,
-            status: debouncedMeta.status,
-            issue_date: debouncedMeta.issueDate,
-            due_date: debouncedMeta.expirationDate,
-            amount: totalAmount,
-            blocks: debouncedBlocks,
-            meta: debouncedMeta
-        }).then(() => {
-            setSaveStatus('saved');
-            gooeyToast('Changes saved', { duration: 1200 });
-            setTimeout(() => setSaveStatus('idle'), 2500);
-        });
+        // setSaveStatus('saving');
+        gooeyToast.promise(
+            updateProposal(id, {
+                title: debouncedMeta.projectName || 'New Proposal',
+                client_name: debouncedMeta.clientName,
+                status: debouncedMeta.status,
+                issue_date: debouncedMeta.issueDate,
+                due_date: debouncedMeta.expirationDate,
+                amount: totalAmount,
+                blocks: debouncedBlocks,
+                meta: debouncedMeta
+            }),
+            {
+                loading: 'Saving changes...',
+                success: 'Changes saved',
+                error: 'Failed to save changes'
+            }
+        );
     }, [debouncedMeta, debouncedBlocks, id, isLoaded, updateProposal]);
 
     /* ── Block mutations ── */
@@ -391,21 +393,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     </div>
                 </div>
 
-                {/* Middle: Auto-save Indicator */}
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center pointer-events-none">
-                    {saveStatus === 'saving' && (
-                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 animate-in fade-in zoom-in-95 duration-200">
-                            <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                            <span className={cn("text-[10px] font-bold tracking-widest uppercase opacity-60", isDark ? "text-white" : "text-black")}>Saving...</span>
-                        </div>
-                    )}
-                    {saveStatus === 'saved' && (
-                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#4dbf39]/5 border border-[#4dbf39]/10 animate-in fade-in zoom-in-95 duration-200">
-                            <div className="w-1 h-1 rounded-full bg-[#4dbf39]" />
-                            <span className="text-[10px] font-bold tracking-widest uppercase text-[#4dbf39]">Saved</span>
-                        </div>
-                    )}
-                </div>
+
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-1.5 md:gap-2 shrink-0">

@@ -43,7 +43,6 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [isSaving, setIsSaving] = useState(false);
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
     const [rightTab, setRightTab] = useState<RightPanelTab>('details');
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
@@ -78,22 +77,23 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     const handleSave = async () => {
         if (!template) return;
         setIsSaving(true);
-        setSaveStatus('saving');
-        
-        const success = await updateTemplate(id, {
-            blocks: template.blocks,
-            design: template.design,
-            name: template.name,
-            description: template.description,
-            // @ts-ignore - meta is stored in the JSONB field in supabase
-            meta: (template as any).meta 
-        });
-        
-        if (success) {
-            setSaveStatus('saved');
-            gooeyToast('Template saved', { duration: 1200 });
-            setTimeout(() => setSaveStatus('idle'), 2000);
-        }
+        // setSaveStatus('saving');
+        gooeyToast.promise(
+            updateTemplate(id, {
+                blocks: template.blocks,
+                design: template.design,
+                name: template.name,
+                description: template.description,
+                // @ts-ignore - meta is stored in the JSONB field in supabase
+                meta: (template as any).meta 
+            }),
+            {
+                loading: 'Saving template...',
+                success: 'Template saved',
+                error: 'Failed to save template'
+            }
+        );
+        setIsSaving(false);
         setIsSaving(false);
     };
 
@@ -194,20 +194,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                     </div>
                 </div>
 
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center pointer-events-none">
-                    {saveStatus === 'saving' && (
-                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 animate-in fade-in zoom-in-95 duration-200">
-                            <div className="w-1 h-1 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                            <span className={cn("text-[10px] font-bold tracking-widest uppercase opacity-60", isDark ? "text-white" : "text-black")}>Saving...</span>
-                        </div>
-                    )}
-                    {saveStatus === 'saved' && (
-                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#4dbf39]/5 border border-[#4dbf39]/10 animate-in fade-in zoom-in-95 duration-200">
-                            <div className="w-1 h-1 rounded-full bg-[#4dbf39]" />
-                            <span className="text-[10px] font-bold tracking-widest uppercase text-[#4dbf39]">Saved</span>
-                        </div>
-                    )}
-                </div>
+
 
                 <div className="flex items-center gap-2">
                     <button
