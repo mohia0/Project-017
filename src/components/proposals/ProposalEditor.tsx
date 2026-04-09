@@ -205,19 +205,23 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const debouncedMeta = useDebounce(meta, 1000);
     const debouncedBlocks = useDebounce(blocks, 1000);
 
-    // Initial load effect
+    // Polling effect to keep editor in sync with backend (e.g. client signing)
     React.useEffect(() => {
-        if (!id) {
-            setIsLoaded(true);
-            return;
-        }
-        fetchProposals();
+        if (!id) return;
+        const interval = setInterval(() => {
+            fetchProposals();
+        }, 10000); // Sync every 10s
+        return () => clearInterval(interval);
     }, [id, fetchProposals]);
 
+    // Enhanced sync effect: allows status and signatures to update even after load
     React.useEffect(() => {
         if (!id) return;
         const proposal = proposals.find(p => p.id === id);
-        if (proposal && !isLoaded) {
+        if (!proposal) return;
+
+        if (!isLoaded) {
+            // Initial Full Load
             setMeta(prev => ({
                 ...prev,
                 clientName: proposal.client_name || '',
@@ -232,8 +236,29 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 setBlocks(proposal.blocks);
             }
             setIsLoaded(true);
+        } else {
+            // Background Sync: Only update specific fields that the client might change (Status, Signatures)
+            if (proposal.status !== meta.status) {
+                setMeta(prev => ({ ...prev, status: proposal.status as any }));
+            }
+            
+            // Sync blocks (specifically signatures)
+            if (proposal.blocks && Array.isArray(proposal.blocks)) {
+                setBlocks(prev => {
+                    let changed = false;
+                    const next = prev.map(oldBlock => {
+                        const newBlock = proposal.blocks.find((nb: any) => nb.id === oldBlock.id);
+                        if (newBlock && newBlock.type === 'signature' && newBlock.signed !== oldBlock.signed) {
+                            changed = true;
+                            return { ...oldBlock, ...newBlock };
+                        }
+                        return oldBlock;
+                    });
+                    return changed ? next : prev;
+                });
+            }
         }
-    }, [id, proposals, isLoaded]);
+    }, [id, proposals, isLoaded, meta.status]);
 
     // Auto-save effect
     const isFirstRender = useRef(true);

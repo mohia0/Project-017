@@ -181,19 +181,23 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const debouncedMeta = useDebounce(meta, 1000);
     const debouncedBlocks = useDebounce(blocks, 1000);
 
-    // Initial load effect
+    // Polling effect to keep editor in sync with backend
     React.useEffect(() => {
-        if (!id) {
-            setIsLoaded(true);
-            return;
-        }
-        fetchInvoices();
+        if (!id) return;
+        const interval = setInterval(() => {
+            fetchInvoices();
+        }, 10000); // Sync every 10s
+        return () => clearInterval(interval);
     }, [id, fetchInvoices]);
 
+    // Enhanced sync effect: allows status to update even after load
     React.useEffect(() => {
         if (!id) return;
         const invoice = invoices.find(i => i.id === id);
-        if (invoice && !isLoaded) {
+        if (!invoice) return;
+
+        if (!isLoaded) {
+            // Initial Full Load
             setMeta(prev => ({
                 ...prev,
                 clientName: invoice.client_name || '',
@@ -208,8 +212,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 setBlocks(invoice.blocks);
             }
             setIsLoaded(true);
+        } else {
+            // Background Sync: Only update specific fields that might change (Status)
+            if (invoice.status !== meta.status) {
+                setMeta(prev => ({ ...prev, status: invoice.status as any }));
+            }
         }
-    }, [id, invoices, isLoaded]);
+    }, [id, invoices, isLoaded, meta.status]);
 
     // Auto-save effect
     const isFirstRender = useRef(true);

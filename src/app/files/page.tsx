@@ -1042,13 +1042,17 @@ export default function FilesPage() {
     const [previewItem, setPreviewItem] = useState<FileItem | null>(null);
     const [deleteWarning, setDeleteWarning] = useState<string[] | null>(null);
     const [globalDragOver, setGlobalDragOver] = useState(false);
+    const errorShown = useRef(false);
 
     // Sync files from Supabase
     useEffect(() => {
         const loadFiles = async () => {
             const { data, error } = await supabase.from('file_items').select('*');
             if (error) {
-                gooeyToast.error('Failed to load files');
+                if (!errorShown.current) {
+                    gooeyToast.error('Database connection failed. Please ensure the "file_items" table exists in Supabase.');
+                    errorShown.current = true;
+                }
             } else {
                 // If user has no files, seed a 'root' folder for them
                 if (data.length === 0) {
@@ -1188,96 +1192,60 @@ export default function FilesPage() {
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
 
-        // Initialize progress tracking
-        const fileProgress: Record<string, number> = {};
-        files.forEach((_, i) => fileProgress[i] = 0);
-        
-        const toastId = `upload-${Date.now()}`;
-        gooeyToast.loading(`Preparing ${files.length} file${files.length !== 1 ? 's' : ''}...`, { id: toastId });
+        const uploadPromise = new Promise<void>(async (resolve, reject) => {
+            try {
+                const newItems: FileItem[] = [];
+                
+                await Promise.all(files.map(async (file) => {
+                    return new Promise<void>((subResolve, subReject) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open("POST", "/api/upload", true);
+                        
+                        xhr.onload = () => {
+                            if (xhr.status === 200) {
+                                const resp = JSON.parse(xhr.responseText);
+                                newItems.push({
+                                    id: `file-${Date.now()}-${Math.random()}`,
+                                    name: file.name,
+                                    type: detectType(file.name),
+                                    parentId: currentFolderId,
+                                    size: file.size,
+                                    downloadUrl: resp.url,
+                                    createdAt: new Date().toISOString(),
+                                    modifiedAt: new Date().toISOString(),
+                                });
+                                subResolve();
+                            } else {
+                                subReject(new Error(`Failed to upload ${file.name}`));
+                            }
+                        };
+                        xhr.onerror = () => subReject(new Error("Network error during upload"));
+                        const formData = new FormData();
+                        formData.append("file", file);
+                        xhr.send(formData);
+                    });
+                }));
 
-        const updateToast = () => {
-            const totalProgress = Math.round(Object.values(fileProgress).reduce((a, b) => a + b, 0) / files.length);
-            gooeyToast.loading(
-                <div className="flex flex-col gap-1.5 min-w-[180px]">
-                    <div className="flex items-center justify-between gap-4">
-                        <span className="font-semibold text-[11px]">Uploading {files.length} files...</span>
-                        <span className="text-[10px] font-bold tabular-nums opacity-60">{totalProgress}%</span>
-                    </div>
-                    <div className="h-1 bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
-                        <div 
-                            className="h-full bg-[#4dbf39] transition-all duration-300" 
-                            style={{ width: `${totalProgress}%` }}
-                        />
-                    </div>
-                </div>,
-                { id: toastId }
-            );
-        };
+                const dbItems = newItems.map(i => ({
+                    id: i.id, name: i.name, type: i.type, parent_id: i.parentId, 
+                    size: i.size, download_url: i.downloadUrl, 
+                    created_at: i.createdAt, modified_at: i.modifiedAt
+                }));
+                const { error: dbErr } = await supabase.from('file_items').insert(dbItems);
+                if (dbErr) throw dbErr;
 
-        try {
-            const newItems: FileItem[] = [];
-            
-            // Upload files in parallel
-            await Promise.all(files.map(async (file, i) => {
-                return new Promise<void>((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    xhr.open("POST", "/api/upload", true);
-                    
-                    xhr.upload.onprogress = (event) => {
-                        if (event.lengthComputable) {
-                            fileProgress[i] = (event.loaded / event.total) * 100;
-                            updateToast();
-                        }
-                    };
+                setItems(prev => [...prev, ...newItems]);
+                resolve();
+            } catch (err: any) {
+                reject(err);
+            }
+        });
 
-                    xhr.onload = () => {
-                        if (xhr.status === 200) {
-                            const resp = JSON.parse(xhr.responseText);
-                            newItems.push({
-                                id: `file-${Date.now()}-${Math.random()}`,
-                                name: file.name,
-                                type: detectType(file.name),
-                                parentId: currentFolderId,
-                                size: file.size,
-                                downloadUrl: resp.url,
-                                createdAt: new Date().toISOString(),
-                                modifiedAt: new Date().toISOString(),
-                            });
-                            fileProgress[i] = 100;
-                            updateToast();
-                            resolve();
-                        } else {
-                            reject(new Error(`Failed to upload ${file.name}`));
-                        }
-                    };
-
-                    xhr.onerror = () => reject(new Error("Network error"));
-                    
-                    const formData = new FormData();
-                    formData.append("file", file);
-                    xhr.send(formData);
-                });
-            }));
-
-            // Save metadata to Supabase
-            const dbItems = newItems.map(i => ({
-                id: i.id,
-                name: i.name,
-                type: i.type,
-                parent_id: i.parentId,
-                size: i.size,
-                download_url: i.downloadUrl,
-                created_at: i.createdAt,
-                modified_at: i.modifiedAt
-            }));
-            const { error: dbErr } = await supabase.from('file_items').insert(dbItems);
-            if (dbErr) throw dbErr;
-
-            setItems(prev => [...prev, ...newItems]);
-            gooeyToast.success(`${files.length} file${files.length !== 1 ? 's' : ''} uploaded successfully`, { id: toastId });
-        } catch (error: any) {
-            gooeyToast.error(error.message || "Upload failed", { id: toastId });
-        }
+        gooeyToast.promise(uploadPromise, {
+            loading: `Uploading ${files.length} file${files.length !== 1 ? 's' : ''}...`,
+            success: 'Upload successful',
+            error: (err: any) => err?.message || 'Upload failed',
+        });
     }, [currentFolderId, setItems]);
 
     // CRUD
