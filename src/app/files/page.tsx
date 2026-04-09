@@ -1101,6 +1101,62 @@ type SortKey = 'name' | 'type' | 'size' | 'modified';
 type SortDir = 'asc' | 'desc';
 type FilterType = 'all' | 'folder' | 'file' | 'image' | 'video' | 'audio' | 'doc' | 'code' | 'link' | 'archive' | 'starred';
 
+// ─── File Skeleton ────────────────────────────────────────────────────────
+const FileSkeleton = ({ view, isDark }: { view: ViewMode; isDark: boolean }) => {
+    const pulseCls = cn("rounded-md", isDark ? "bg-white/[0.04]" : "bg-black/[0.04]");
+    
+    const SkeletonItem = () => (
+        <motion.div 
+            initial={{ opacity: 0.1 }}
+            animate={{ opacity: [0.1, 0.3, 0.1] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            className={cn("p-3 rounded-xl border flex flex-col items-center gap-3", isDark ? "border-[#242424] bg-[#1a1a1a]" : "bg-white border-[#ededed]")}
+        >
+            <div className="relative w-full flex items-center justify-center py-2 mt-1">
+                <div className={cn("w-12 h-12 rounded-2xl", pulseCls)} />
+            </div>
+            <div className="w-full space-y-2 flex flex-col items-center">
+               <div className={cn("h-3 w-3/4", pulseCls)} />
+               <div className={cn("h-2 w-1/2", pulseCls)} />
+            </div>
+            <div className="w-full h-8 mt-1 border-t border-dashed border-transparent" />
+        </motion.div>
+    );
+
+    const ListItemSkeleton = () => (
+        <motion.div 
+            initial={{ opacity: 0.1 }}
+            animate={{ opacity: [0.1, 0.3, 0.1] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            className={cn("grid px-3 py-[11px] items-center", isDark ? 'border-b border-[#1e1e1e]' : 'border-b border-[#f5f5f5]')}
+            style={{ gridTemplateColumns: '32px 32px 1fr 80px 120px 120px 100px' }}>
+            <div className={cn("w-3.5 h-3.5 mx-auto rounded-[3px]", pulseCls)} />
+            <div className={cn("w-4 h-4 rounded-full", pulseCls)} />
+            <div className={cn("h-2.5 w-3/4", pulseCls)} />
+            <div className={cn("h-2 w-1/2", pulseCls)} />
+            <div className={cn("h-2 w-1/2", pulseCls)} />
+            <div className={cn("h-2 w-1/2", pulseCls)} />
+            <div />
+        </motion.div>
+    );
+
+    if (view === 'grid') {
+        return (
+            <div className="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 content-start">
+                {Array.from({ length: 18 }).map((_, i) => <SkeletonItem key={i} />)}
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-4">
+            <div className={cn("rounded-xl border overflow-hidden", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
+                {Array.from({ length: 12 }).map((_, i) => <ListItemSkeleton key={i} />)}
+            </div>
+        </div>
+    );
+};
+
 export default function FilesPage() {
     const { theme, activeWorkspaceId } = useUIStore();
     const isDark = theme === 'dark';
@@ -1526,8 +1582,19 @@ export default function FilesPage() {
     const copyDownloadLink = (itemId: string) => {
         const item = items.find(i => i.id === itemId);
         if (!item) return;
-        const link = item.downloadUrl || item.url || `https://cdn.example.com/files/${item.name}`;
-        navigator.clipboard.writeText(link).then(() => {
+
+        let link = item.downloadUrl || item.url || "";
+        
+        // Strip out legacy localhost origins if they were saved in the DB
+        if (link.includes('localhost:3000')) {
+            link = link.replace(/^https?:\/\/localhost:3000/, '');
+        }
+
+        // Use production domain if configured, otherwise fallback to current origin
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : "");
+        const absoluteLink = (link.startsWith('/') && baseUrl) ? `${baseUrl}${link}` : link;
+
+        navigator.clipboard.writeText(absoluteLink).then(() => {
             gooeyToast.success('Link copied', { duration: 1800 });
         }).catch(() => {
             gooeyToast.error('Failed to copy link');
@@ -1857,7 +1924,9 @@ export default function FilesPage() {
                             </div>
                         )}
 
-                        {currentChildren.length === 0 ? (
+                        {isLoading ? (
+                            <FileSkeleton view={view} isDark={isDark} />
+                        ) : currentChildren.length === 0 ? (
                             <div className={cn('flex flex-col items-center justify-center h-full gap-4', muted)}>
                                 <div className={cn('w-16 h-16 rounded-3xl flex items-center justify-center', isDark ? 'bg-white/[0.03]' : 'bg-black/[0.03]')}>
                                     {filter === 'starred' ? <Star size={28} strokeWidth={1.25}/> : search ? <Search size={28} strokeWidth={1.25}/> : <FolderOpen size={28} strokeWidth={1.25}/>}

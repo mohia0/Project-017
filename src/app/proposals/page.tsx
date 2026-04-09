@@ -8,14 +8,16 @@ import { cn } from '@/lib/utils';
 import { STATUS_COLORS, getStatusColors } from '@/lib/statusConfig';
 import {
     Search, Table2, LayoutGrid, Edit3, ChevronDown,
-    ArrowUpDown, Archive, Upload, Plus, User, Filter,
+    ArrowUpDown, Archive, Upload, Download, Plus, User, Filter,
     Calendar, Check, X, ArchiveRestore, ChevronsUpDown,
-    Copy, Trash2, CheckCircle
+    Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
+    FileJson, FileSpreadsheet
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { CreateProposalModal } from '@/components/modals/CreateProposalModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { gooeyToast } from 'goey-toast';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_ORDER: ProposalStatus[] = ['Draft', 'Pending', 'Accepted', 'Overdue', 'Declined', 'Cancelled'];
@@ -348,13 +350,70 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
     );
 }
 
+/* ─── Mobile proposal list item ───────────────────────────────── */
+function MobileProposalRow({ p, onOpen, isDark, onStatusChange, onArchive, isArchived }: {
+    p: Proposal; onOpen: () => void; isDark: boolean;
+    onStatusChange: (s: ProposalStatus) => void;
+    onArchive: () => void; isArchived: boolean;
+}) {
+    const sc = getStatusColors(p.status);
+    return (
+        <div
+            onClick={onOpen}
+            className={cn(
+                "flex items-center gap-3 px-4 py-3.5 border-b cursor-pointer active:opacity-70 transition-opacity",
+                isDark ? "border-[#1f1f1f] bg-[#141414]" : "border-[#f0f0f0] bg-white"
+            )}
+        >
+            {/* Status accent bar */}
+            <div
+                className="w-[3px] h-10 rounded-full shrink-0"
+                style={{ backgroundColor: getStatusColors(p.status).bar }}
+            />
+            {/* Main info */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className={cn("font-semibold text-[13.5px] truncate", isDark ? "text-white" : "text-[#111]")}>
+                        {p.title || 'New Proposal'}
+                    </span>
+                    <span className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border",
+                        isDark ? "bg-white/[0.06] text-[#888] border-white/10" : cn(sc.badge, sc.badgeText, sc.badgeBorder)
+                    )}>
+                        {p.status}
+                    </span>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className={cn("flex items-center gap-1 text-[11.5px]", isDark ? "text-[#666]" : "text-[#999]")}>
+                        <User size={10} className="opacity-60" />
+                        <span className="truncate max-w-[120px]">{p.client_name || '—'}</span>
+                    </div>
+                    <span className={cn("text-[11px]", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                        {p.due_date ? fmtDate(p.due_date) : '—'}
+                    </span>
+                </div>
+            </div>
+            {/* Amount */}
+            <div className="shrink-0 text-right">
+                <div className={cn("text-[13px] font-bold tabular-nums", isDark ? "text-[#ddd]" : "text-[#222]")}>
+                    {fmt$(Number(p.amount || 0))}
+                </div>
+                <ChevronRight size={14} className={cn("ml-auto mt-0.5", isDark ? "text-[#444]" : "text-[#ccc]")} />
+            </div>
+        </div>
+    );
+}
+
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function ProposalsPage() {
     const router = useRouter();
     const { theme } = useUIStore();
     const { proposals, fetchProposals, updateProposal, addProposal, deleteProposal, isLoading } = useProposalStore();
     const isDark = theme === 'dark';
+    const isMobile = useIsMobile();
     const [view, setView] = useState<'table' | 'cards'>('table');
+    const [importExportOpen, setImportExportOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     /* ... existing state ... */
     const [colWidths, setColWidths] = useState({
         select: 44,
@@ -418,14 +477,16 @@ export default function ProposalsPage() {
             if (statusFilter !== 'All' && p.status !== statusFilter) return false;
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
-                if (!p.title?.toLowerCase().includes(q) && !p.client_name?.toLowerCase().includes(q)) return false;
+                const idMatch = p.id?.toLowerCase().slice(-6).includes(q);
+                if (!p.title?.toLowerCase().includes(q) && !p.client_name?.toLowerCase().includes(q) && !idMatch) return false;
             }
             if (dateFilter === 'month' && !isThisMonth(p.issue_date)) return false;
             if (dateFilter === 'year' && !isThisYear(p.issue_date)) return false;
             return true;
         });
         if (orderBy === 'issue_date') r = [...r].sort((a, b) => new Date(b.issue_date || 0).getTime() - new Date(a.issue_date || 0).getTime());
-        if (orderBy === 'amount') r = [...r].sort((a, b) => Number(b.amount) - Number(a.amount));
+        else if (orderBy === 'amount') r = [...r].sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
+        else r = [...r].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         return r;
     }, [proposals, statusFilter, searchQuery, dateFilter, orderBy, archivedIds, showArchived]);
 
@@ -487,6 +548,47 @@ export default function ProposalsPage() {
         setSelectedIds(new Set());
     };
 
+    const handleExportJSON = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(proposals));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href",     dataStr);
+        downloadAnchorNode.setAttribute("download", `proposals_export_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+        gooeyToast.success('Exported successfully');
+        setImportExportOpen(false);
+    };
+
+    const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const json = JSON.parse(event.target?.result as string);
+                if (Array.isArray(json)) {
+                    const promise = (async () => {
+                        for (const item of json) {
+                            const { id, created_at, workspace_id, ...payload } = item;
+                            await addProposal(payload);
+                        }
+                    })();
+                    gooeyToast.promise(promise, {
+                        loading: 'Importing proposals...',
+                        success: 'Imported successfully',
+                        error: 'Import failed'
+                    });
+                    await promise;
+                }
+            } catch (error) {
+                gooeyToast.error('Invalid JSON file');
+            }
+        };
+        reader.readAsText(file);
+        if (e.target) e.target.value = ''; // Reset input
+    };
+
     const border = isDark ? "border-[#252525]" : "border-[#ebebeb]";
     const datePill = dateFilter === 'month' ? 'This Month' : dateFilter === 'year' ? 'This Year' : 'All time';
 
@@ -494,7 +596,7 @@ export default function ProposalsPage() {
         <div className={cn("flex flex-col h-full overflow-hidden font-sans text-[13px]",
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]")}>
 
-            {/* ── Page header — hidden on mobile (MobileTopBar handles it) ── */}
+            {/* ── Page header — hidden on mobile (MobileTopBar handles title) ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Proposals</h1>
                 <button onClick={() => setShowCreateModal(true)}
@@ -504,122 +606,274 @@ export default function ProposalsPage() {
             </div>
 
             {/* ── Toolbar ── */}
-            <div className={cn("flex items-center gap-0 px-3 md:px-4 py-1.5 shrink-0 overflow-x-auto no-scrollbar", isDark ? "border-b border-[#252525]" : "")}>
-                {/* Search */}
-                <div className="relative mr-2">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" size={11} />
-                    <input type="text" placeholder="Search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                        className={cn("pl-6 pr-3 py-1 text-[11px] rounded border focus:outline-none w-28 transition-all focus:w-44",
-                            isDark ? "bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-white/20"
-                                : "bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]")} />
-                </div>
-
-                {/* View switcher */}
-                <div className="relative mr-1">
-                    <TbBtn label={view === 'table' ? 'Table' : 'Cards'} icon={view === 'table' ? <Table2 size={11} /> : <LayoutGrid size={11} />}
-                        hasArrow onClick={() => setViewOpen(v => !v)} isDark={isDark} />
-                    <Dropdown open={viewOpen} onClose={() => setViewOpen(false)} isDark={isDark}>
-                        <div className="py-1">
-                            <DItem label="Table" icon={<Table2 size={12} />} active={view === 'table'} onClick={() => { setView('table'); setViewOpen(false); }} isDark={isDark} />
-                            <DItem label="Cards" icon={<LayoutGrid size={12} />} active={view === 'cards'} onClick={() => { setView('cards'); setViewOpen(false); }} isDark={isDark} />
-                        </div>
-                    </Dropdown>
-                </div>
-
-                {/* Filter / date */}
-                <div className="relative mx-1">
-                    <button onClick={() => setFilterOpen(v => !v)} className={cn(
-                        "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition-all",
-                        filterOpen
-                            ? isDark ? "bg-[#252525] border-[#444] text-[#ccc]" : "bg-white border-[#aaa] text-[#444] shadow-xs"
-                            : isDark ? "bg-[#252525] border-[#333] text-[#ccc] hover:border-[#444]" : "bg-white border-[#d0d0d0] text-[#444] hover:border-[#bbb] shadow-xs"
-                    )}>
-                        <Calendar size={11} className="opacity-60" />
-                        {datePill}
-                        {dateFilter !== 'all' && (
-                            <span onClick={e => { e.stopPropagation(); setDateFilter('all'); }}
-                                className={cn("ml-0.5 opacity-50 hover:opacity-100 transition-opacity")}>
-                                <X size={9} />
-                            </span>
-                        )}
-                    </button>
-                    <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
-                        <div className={cn("flex items-center gap-2 px-3.5 py-2.5 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
-                            <Plus size={11} className="opacity-40" />
-                            <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
-                        </div>
-                        <div className="py-1">
-                            <DItem label="This Month" active={dateFilter === 'month'} onClick={() => { setDateFilter('month'); setFilterOpen(false); }} isDark={isDark} />
-                            <DItem label="This Year" active={dateFilter === 'year'} onClick={() => { setDateFilter('year'); setFilterOpen(false); }} isDark={isDark} />
-                            <DItem label="All time" active={dateFilter === 'all'} onClick={() => { setDateFilter('all'); setFilterOpen(false); }} isDark={isDark} />
-                        </div>
-                    </Dropdown>
-                </div>
-
-                <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
-
-                {/* Order */}
-                <div className="relative">
-                    <TbBtn label="Order" icon={<ArrowUpDown size={11} />} hasArrow onClick={() => setOrderOpen(v => !v)} isDark={isDark} />
-                    <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
-                        <div className="py-1">
-                            <DItem label="Creation date" active={orderBy === 'created_at'} onClick={() => { setOrderBy('created_at'); setOrderOpen(false); }} isDark={isDark} />
-                            <DItem label="Issue date" active={orderBy === 'issue_date'} onClick={() => { setOrderBy('issue_date'); setOrderOpen(false); }} isDark={isDark} />
-                            <DItem label="Total amount" active={orderBy === 'amount'} onClick={() => { setOrderBy('amount'); setOrderOpen(false); }} isDark={isDark} />
-                        </div>
-                    </Dropdown>
-                </div>
-
-                <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
-
-                {/* Archived toggle */}
-                <TbBtn label="Archived" icon={showArchived ? <ArchiveRestore size={11} /> : <Archive size={11} />}
-                    active={showArchived} onClick={() => { setShowArchived(v => !v); setSelectedIds(new Set()); }} isDark={isDark} />
-
-                <TbBtn label="Import / Export" icon={<Upload size={11} />} isDark={isDark} />
-
-                {/* Bulk banner */}
-                {selectedIds.size > 0 && (
-                    <div className={cn("ml-auto flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border",
-                        isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-[#f8f8f8] border-[#e8e8e8] text-[#666]")}>
-                        <span className="opacity-50">{selectedIds.size} selected</span>
-                        <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
-                        <div className="flex items-center gap-3">
-                            <button onClick={handleBulkDuplicate} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
-                                <Copy size={11} className="opacity-70" />Duplicate
-                            </button>
-                            <button onClick={handleBulkArchive} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
-                                <Archive size={11} className="opacity-70" />Archive
-                            </button>
-                            <button onClick={handleBulkDelete} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
-                                <Trash2 size={11} className="opacity-70" />Delete
-                            </button>
-                        </div>
+            {isMobile ? (
+                /* ── Mobile toolbar: compact row with search + filter sheet ── */
+                <div className={cn("flex items-center gap-2 px-3 py-2 shrink-0 border-b",
+                    isDark ? "border-[#252525] bg-[#141414]" : "border-[#f0f0f0] bg-white")}>
+                    {/* Search */}
+                    <div className={cn("relative flex-1")}>
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-40" size={12} />
+                        <input
+                            type="text"
+                            placeholder="Search proposals..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className={cn(
+                                "w-full pl-7 pr-3 py-1.5 text-[12px] rounded-[8px] border focus:outline-none transition-all",
+                                isDark
+                                    ? "bg-white/[0.05] border-white/10 text-white placeholder:text-white/25"
+                                    : "bg-[#f5f5f5] border-transparent text-[#111] placeholder:text-[#aaa]"
+                            )}
+                        />
                     </div>
-                )}
-            </div>
+                    {/* Filter button */}
+                    <div className="relative shrink-0">
+                        <button
+                            onClick={() => setFilterOpen(v => !v)}
+                            className={cn(
+                                "w-[34px] h-[34px] rounded-[8px] flex items-center justify-center border transition-all",
+                                filterOpen || dateFilter !== 'all'
+                                    ? "bg-[#4dbf39]/15 border-[#4dbf39]/40 text-[#4dbf39]"
+                                    : isDark ? "bg-white/[0.05] border-white/10 text-[#888]" : "bg-[#f5f5f5] border-transparent text-[#888]"
+                            )}
+                        >
+                            <SlidersHorizontal size={14} />
+                        </button>
+                        <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
+                            <div className={cn("px-3.5 py-2.5 border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>FILTER</div>
+                            <div className="py-1">
+                                <DItem label="This Month" active={dateFilter === 'month'} onClick={() => { setDateFilter('month'); setFilterOpen(false); }} isDark={isDark} />
+                                <DItem label="This Year" active={dateFilter === 'year'} onClick={() => { setDateFilter('year'); setFilterOpen(false); }} isDark={isDark} />
+                                <DItem label="All time" active={dateFilter === 'all'} onClick={() => { setDateFilter('all'); setFilterOpen(false); }} isDark={isDark} />
+                            </div>
+                            <div className={cn("px-3.5 py-2.5 border-t border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>SORT BY</div>
+                            <div className="py-1">
+                                <DItem label="Creation date" active={orderBy === 'created_at'} onClick={() => { setOrderBy('created_at'); setFilterOpen(false); }} isDark={isDark} />
+                                <DItem label="Issue date" active={orderBy === 'issue_date'} onClick={() => { setOrderBy('issue_date'); setFilterOpen(false); }} isDark={isDark} />
+                                <DItem label="Total amount" active={orderBy === 'amount'} onClick={() => { setOrderBy('amount'); setFilterOpen(false); }} isDark={isDark} />
+                            </div>
+                        </Dropdown>
+                    </div>
+                    {/* New Proposal (mobile only in toolbar) */}
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] font-bold rounded-[8px] bg-[#4dbf39] text-black active:scale-95 transition-all"
+                    >
+                        <Plus size={13} strokeWidth={2.5} /> New
+                    </button>
+                </div>
+            ) : (
+                /* ── Desktop toolbar ── */
+                <div className={cn("flex items-center gap-0 px-4 py-1.5 shrink-0", isDark ? "border-b border-[#252525]" : "")}>
+                    {/* Search */}
+                    <div className="relative mr-2">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" size={11} />
+                        <input type="text" placeholder="Search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                            className={cn("pl-6 pr-3 py-1 text-[11px] rounded border focus:outline-none w-28 transition-all focus:w-44",
+                                isDark ? "bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-white/20"
+                                    : "bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]")} />
+                    </div>
+
+                    {/* View switcher */}
+                    <div className="relative mr-1">
+                        <TbBtn label={view === 'table' ? 'Table' : 'Grid'} icon={view === 'table' ? <Table2 size={11} /> : <LayoutGrid size={11} />}
+                            hasArrow onClick={() => setViewOpen(v => !v)} isDark={isDark} active={viewOpen} />
+                        <Dropdown open={viewOpen} onClose={() => setViewOpen(false)} isDark={isDark}>
+                            <div className="py-1">
+                                <DItem label="Table" icon={<Table2 size={12} />} active={view === 'table'} onClick={() => { setView('table'); setViewOpen(false); }} isDark={isDark} />
+                                <DItem label="Grid" icon={<LayoutGrid size={12} />} active={view === 'cards'} onClick={() => { setView('cards'); setViewOpen(false); }} isDark={isDark} />
+                            </div>
+                        </Dropdown>
+                    </div>
+
+                    {/* Filter / date */}
+                    <div className="relative mx-1">
+                        <button onClick={() => setFilterOpen(v => !v)} className={cn(
+                            "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition-all",
+                            filterOpen
+                                ? isDark ? "bg-[#252525] border-[#444] text-[#ccc]" : "bg-white border-[#aaa] text-[#444] shadow-xs"
+                                : isDark ? "bg-[#252525] border-[#333] text-[#ccc] hover:border-[#444]" : "bg-white border-[#d0d0d0] text-[#444] hover:border-[#bbb] shadow-xs"
+                        )}>
+                            <Calendar size={11} className="opacity-60" />
+                            {datePill}
+                            {dateFilter !== 'all' && (
+                                <span onClick={e => { e.stopPropagation(); setDateFilter('all'); }}
+                                    className={cn("ml-0.5 opacity-50 hover:opacity-100 transition-opacity")}>
+                                    <X size={9} />
+                                </span>
+                            )}
+                        </button>
+                        <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
+                            <div className={cn("flex items-center gap-2 px-3.5 py-2.5 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
+                                <Plus size={11} className="opacity-40" />
+                                <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
+                            </div>
+                            <div className="py-1">
+                                <DItem label="This Month" active={dateFilter === 'month'} onClick={() => { setDateFilter('month'); setFilterOpen(false); }} isDark={isDark} />
+                                <DItem label="This Year" active={dateFilter === 'year'} onClick={() => { setDateFilter('year'); setFilterOpen(false); }} isDark={isDark} />
+                                <DItem label="All time" active={dateFilter === 'all'} onClick={() => { setDateFilter('all'); setFilterOpen(false); }} isDark={isDark} />
+                            </div>
+                        </Dropdown>
+                    </div>
+
+                    <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
+
+                    {/* Order */}
+                    <div className="relative">
+                        <TbBtn label="Order" icon={<ArrowUpDown size={11} />} hasArrow onClick={() => setOrderOpen(v => !v)} isDark={isDark} active={orderOpen} />
+                        <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
+                            <div className="py-1">
+                                <DItem label="Creation date" active={orderBy === 'created_at'} onClick={() => { setOrderBy('created_at'); setOrderOpen(false); }} isDark={isDark} />
+                                <DItem label="Issue date" active={orderBy === 'issue_date'} onClick={() => { setOrderBy('issue_date'); setOrderOpen(false); }} isDark={isDark} />
+                                <DItem label="Total amount" active={orderBy === 'amount'} onClick={() => { setOrderBy('amount'); setOrderOpen(false); }} isDark={isDark} />
+                            </div>
+                        </Dropdown>
+                    </div>
+
+                    <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
+
+                    <TbBtn label="Archived" icon={showArchived ? <ArchiveRestore size={11} /> : <Archive size={11} />}
+                        active={showArchived} onClick={() => { setShowArchived(v => !v); setSelectedIds(new Set()); }} isDark={isDark} />
+
+                    <div className="relative">
+                        <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} />
+                        <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
+                            <div className="py-1">
+                                <DItem label="Import JSON" icon={<Upload size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
+                                <DItem label="Export JSON" icon={<Download size={12} />} onClick={handleExportJSON} isDark={isDark} />
+                            </div>
+                        </Dropdown>
+                        <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
+                    </div>
+
+                    {/* Bulk banner */}
+                    {selectedIds.size > 0 && (
+                        <div className={cn("ml-auto flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border",
+                            isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-[#f8f8f8] border-[#e8e8e8] text-[#666]")}>
+                            <span className="opacity-50">{selectedIds.size} selected</span>
+                            <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
+                            <div className="flex items-center gap-3">
+                                <button onClick={handleBulkDuplicate} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
+                                    <Copy size={11} className="opacity-70" />Duplicate
+                                </button>
+                                <button onClick={handleBulkArchive} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
+                                    <Archive size={11} className="opacity-70" />Archive
+                                </button>
+                                <button onClick={handleBulkDelete} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
+                                    <Trash2 size={11} className="opacity-70" />Delete
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── Status bar ── */}
-            <div className="flex items-stretch h-[26px] shrink-0">
-                {Object.entries(STATUS_COLORS).filter(([k]) => k !== 'Paid').map(([key, cfg]) => {
-                    const s = stats[key] || { count: 0, amount: 0 };
-                    const isActive = statusFilter === key;
-                    const barStyle = { backgroundColor: cfg.bar };
-                    const activeStyle = isActive ? { filter: 'brightness(1.1)' } : { filter: 'brightness(0.88)' };
-                    return (
-                        <button key={key} onClick={() => { setStatusFilter(key as any); setShowArchived(false); }}
-                            style={{ ...barStyle, ...activeStyle }}
-                            className="flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all text-white hover:brightness-100">
-                            <span className="font-bold tabular-nums">{s.count}</span>
-                            <span className="opacity-80 font-medium">{key === 'All' ? 'Proposals' : cfg.label}</span>
-                            {s.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">{fmt$(s.amount)}</span>}
-                        </button>
-                    );
-                })}
-            </div>
+            {isMobile ? (
+                /* Mobile: horizontally scrollable pill tabs */
+                <div className={cn(
+                    "flex gap-1.5 px-3 py-2 overflow-x-auto no-scrollbar shrink-0 border-b",
+                    isDark ? "border-[#252525] bg-[#141414]" : "border-[#f0f0f0] bg-white"
+                )}>
+                    {Object.entries(STATUS_COLORS).filter(([k]) => k !== 'Paid').map(([key, cfg]) => {
+                        const s = stats[key] || { count: 0, amount: 0 };
+                        const isActive = statusFilter === key;
+                        return (
+                            <button
+                                key={key}
+                                onClick={() => { setStatusFilter(key as any); setShowArchived(false); }}
+                                className={cn(
+                                    "shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all border",
+                                    isActive
+                                        ? "text-white border-transparent"
+                                        : isDark ? "bg-white/[0.04] border-white/10 text-[#666] hover:text-[#aaa]" : "bg-[#f5f5f5] border-transparent text-[#aaa] hover:text-[#666]"
+                                )}
+                                style={isActive ? { backgroundColor: cfg.bar } : {}}
+                            >
+                                <span className="font-bold tabular-nums">{s.count}</span>
+                                <span className="opacity-90">{key === 'All' ? 'All' : cfg.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            ) : (
+                /* Desktop: full-width colored bar */
+                <div className="flex items-stretch h-[26px] shrink-0">
+                    {Object.entries(STATUS_COLORS).filter(([k]) => k !== 'Paid').map(([key, cfg]) => {
+                        const s = stats[key] || { count: 0, amount: 0 };
+                        const isActive = statusFilter === key;
+                        const barStyle = { backgroundColor: cfg.bar };
+                        const activeStyle = isActive ? { filter: 'brightness(1.1)' } : { filter: 'brightness(0.88)' };
+                        return (
+                            <button key={key} onClick={() => { setStatusFilter(key as any); setShowArchived(false); }}
+                                style={{ ...barStyle, ...activeStyle }}
+                                className="flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all text-white hover:brightness-100">
+                                <span className="font-bold tabular-nums">{s.count}</span>
+                                <span className="opacity-80 font-medium">{key === 'All' ? 'Proposals' : cfg.label}</span>
+                                {s.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">{fmt$(s.amount)}</span>}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* ── Content ── */}
-            {view === 'table' ? (
+            {/* On mobile: always show the mobile list view regardless of 'view' setting */}
+            {isMobile ? (
+                /* ── Mobile list view ── */
+                <div className={cn("flex-1 overflow-y-auto", isDark ? "bg-[#141414]" : "bg-[#fafafa]")}>
+                    {isLoading ? (
+                        <div className="flex flex-col">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                                <div key={i} className={cn("flex items-center gap-3 px-4 py-3.5 border-b",
+                                    isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")}>
+                                    <div className={cn("w-[3px] h-10 rounded-full animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
+                                    <div className="flex-1">
+                                        <div className={cn("h-3.5 w-36 rounded animate-pulse mb-2", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
+                                        <div className={cn("h-2.5 w-24 rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
+                                    </div>
+                                    <div className={cn("h-4 w-14 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
+                                </div>
+                            ))}
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-24 gap-3">
+                            {showArchived
+                                ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p>
+                                : <>
+                                    <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
+                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-black bg-[#4dbf39] rounded-lg hover:bg-[#59d044] transition-colors">+ New Proposal</button>
+                                </>}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col">
+                            {filtered.map(p => (
+                                <MobileProposalRow
+                                    key={p.id}
+                                    p={p}
+                                    onOpen={() => router.push(`/proposals/${p.id}`)}
+                                    isDark={isDark}
+                                    onStatusChange={(s) => updateProposal(p.id, { status: s })}
+                                    onArchive={() => handleArchive(p.id)}
+                                    isArchived={archivedIds.has(p.id)}
+                                />
+                            ))}
+                            {!isLoading && !showArchived && (
+                                <button
+                                    onClick={() => setShowCreateModal(true)}
+                                    className={cn(
+                                        "flex items-center gap-2 px-4 py-3.5 w-full text-left text-[13px] font-medium border-b transition-colors",
+                                        isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa]" : "text-[#bbb] border-[#f0f0f0] hover:text-[#666]"
+                                    )}
+                                >
+                                    <Plus size={13} className="opacity-60" />
+                                    Create proposal
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            ) : view === 'table' ? (
                 <div className="flex-1 overflow-auto" style={{ backgroundColor: isDark ? '#141414' : '#f7f7f7' }}>
                     {/* Header */}
                     <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-10",
@@ -701,8 +955,8 @@ export default function ProposalsPage() {
                                                 variant="table"
                                             />
                                         </div>
-                                        <div className={cn("flex items-center px-4 py-3 font-bold truncate", isDark ? "text-white" : "text-black")}>
-                                            {p.title || (p.id?.slice(-8).toUpperCase() ?? '—')}
+                                        <div className={cn("flex items-center px-4 py-3 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
+                                            <span className="truncate">{p.title || 'New Proposal'}</span>
                                         </div>
                                         <div className="flex items-center px-4 py-3">
                                             <StatusCell status={p.status} onStatusChange={(s) => updateProposal(p.id, { status: s })} isDark={isDark} />

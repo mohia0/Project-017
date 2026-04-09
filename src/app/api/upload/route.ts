@@ -36,8 +36,7 @@ export async function POST(req: NextRequest) {
 
         // Return a proxy URL through our own domain — works for private buckets,
         // and links look like https://yourdomain.com/api/files/filename.png
-        const origin = req.nextUrl.origin;
-        const fileUrl = `${origin}/api/files/${encodeURIComponent(fileName)}`;
+        const fileUrl = `/api/files/${encodeURIComponent(fileName)}`;
 
         return NextResponse.json({ 
             success: true, 

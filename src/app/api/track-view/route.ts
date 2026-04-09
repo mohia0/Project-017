@@ -9,12 +9,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        // Generate a localized readable title
-        const typeLabel = type === 'proposal' ? 'Proposal' : type === 'invoice' ? 'Invoice' : 'Document';
-        const docTitle = title || 'a document';
-        
-        const notificationTitle = `${typeLabel} Viewed`;
-        const notificationMessage = `Client viewed the ${typeLabel.toLowerCase()} "${docTitle}".`;
+        const docTitle = title || 'Untitled';
+
+        // Message format matches the design: `Someone opened "Title"`
+        const notificationTitle = `Someone opened "${docTitle}"`;
+        const notificationMessage =
+            type === 'proposal'
+                ? `A client opened your proposal.`
+                : type === 'invoice'
+                ? `A client opened your invoice.`
+                : `A client opened a shared document.`;
 
         // Insert into notifications
         const { error } = await supabaseService
@@ -23,13 +27,12 @@ export async function POST(req: Request) {
                 workspace_id,
                 title: notificationTitle,
                 message: notificationMessage,
-                link: `/app/${type}s/${id}`, // Dashboard internal link
-                read: false
+                link: `/${type}s/${id}`,
+                read: false,
             });
 
         if (error) {
             console.error('Error recording notification:', error);
-            // If the table doesn't exist yet, we silently fail to not break the preview API
             return NextResponse.json({ success: false, error: error.message });
         }
 

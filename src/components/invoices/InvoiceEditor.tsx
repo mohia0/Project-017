@@ -38,6 +38,7 @@ import { useTemplateStore } from '@/store/useTemplateStore';
 import { BankTransferModal } from '@/components/modals/BankTransferModal';
 import ImageUploadModal from '../modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
 import { gooeyToast } from 'goey-toast';
 
 /* ═══════════════════════════════════════════════════════
@@ -205,7 +206,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 issueDate: invoice.issue_date ? invoice.issue_date.split('T')[0] : prev.issueDate,
                 dueDate: invoice.due_date ? invoice.due_date.split('T')[0] : prev.dueDate,
                 status: invoice.status as any,
-                invoiceNumber: invoice.id.slice(0, 8).toUpperCase(),
+                invoiceNumber: invoice.title || invoice.id.slice(0, 8).toUpperCase(),
                 ...((invoice.meta as any) || {})
             }));
             if (invoice.blocks && Array.isArray(invoice.blocks) && invoice.blocks.length > 0) {
@@ -298,17 +299,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const confirmStatusChange = () => {
         if (!pendingStatusChange) return;
 
-        // Remove signatures if we are invalidating them
-        const nb = blocks.map((b: any) => 
-            b.type === 'signature' ? { 
-                ...b, 
-                signed: false, 
-                signatureImage: null, 
-                signedAt: null,
-                signerName: '' 
-            } : b
-        );
-        setBlocks(nb);
         updateMeta({ status: pendingStatusChange as any });
         setPendingStatusChange(null);
     };
@@ -379,7 +369,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 "text-[13px] font-semibold bg-transparent outline-none transition-all min-w-[150px]",
                                 isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300"
                             )}
-                            placeholder="Name"
+                            placeholder="Invoice Name"
                         />
                     </div>
                 </div>
@@ -722,21 +712,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         />
                                     </MetaField>
                                     <MetaField 
-                                        label="Invoice number" 
-                                        isDark={isDark} 
-                                        icon={<Tag size={11} className="opacity-50" />}
-                                        onReset={() => updateMeta({ invoiceNumber: `INV-${Math.floor(Math.random()*1000000)}` })}
-                                    >
-                                        <input 
-                                            value={meta.invoiceNumber} 
-                                            onChange={e => updateMeta({ invoiceNumber: e.target.value })} 
-                                            className={cn(
-                                                "w-full bg-transparent outline-none text-[12px] font-medium",
-                                                isDark ? "text-[#ccc]" : "text-[#333]"
-                                            )}
-                                        />
-                                    </MetaField>
-                                    <MetaField 
                                         label="Issue Date" 
                                         isDark={isDark} 
                                         icon={<Calendar size={11} className="opacity-50" />}
@@ -879,6 +854,23 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                     }
                     setImageUploadOpen(false);
                     setUploadTarget(null);
+                }}
+            />
+
+            <SaveTemplateModal 
+                open={isSaveTemplateModalOpen} 
+                onClose={() => setIsSaveTemplateModalOpen(false)} 
+                defaultName={meta.projectName || 'My Invoice Template'}
+                entityType="invoice"
+                onSave={async (name, description, isDefault) => {
+                    await addTemplate({
+                        name,
+                        description,
+                        is_default: isDefault,
+                        entity_type: 'invoice',
+                        blocks,
+                        design: meta.design || DEFAULT_DOCUMENT_DESIGN
+                    });
                 }}
             />
         </div>
@@ -1063,33 +1055,32 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 Bill To: {meta.clientName}
                             </div>
                             <div className="text-[11px] opacity-60 space-y-0.5">
-                                <div 
-                                    contentEditable={!isPreview}
-                                    suppressContentEditableWarning
-                                    onBlur={e => updateMeta({ clientEmail: e.currentTarget.textContent || '' })}
-                                    className="outline-none empty:before:content-['Email'] empty:before:opacity-30"
-                                >
-                                    {meta.clientEmail}
-                                </div>
-                                <div 
-                                    contentEditable={!isPreview}
-                                    suppressContentEditableWarning
-                                    onBlur={e => updateMeta({ clientAddress: e.currentTarget.textContent || '' })}
-                                    className="outline-none empty:before:content-['Address'] empty:before:opacity-30"
-                                >
-                                    {meta.clientAddress}
-                                </div>
+                                {meta.clientEmail && (
+                                    <div 
+                                        contentEditable={!isPreview}
+                                        suppressContentEditableWarning
+                                        onBlur={e => updateMeta({ clientEmail: e.currentTarget.textContent || '' })}
+                                        className="outline-none empty:before:content-['Email'] empty:before:opacity-30"
+                                    >
+                                        {meta.clientEmail}
+                                    </div>
+                                )}
+                                {meta.clientAddress && (
+                                    <div 
+                                        contentEditable={!isPreview}
+                                        suppressContentEditableWarning
+                                        onBlur={e => updateMeta({ clientAddress: e.currentTarget.textContent || '' })}
+                                        className="outline-none empty:before:content-['Address'] empty:before:opacity-30"
+                                    >
+                                        {meta.clientAddress}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="text-right text-[11px] space-y-1">
                             <div className="flex items-center justify-end gap-1">
-                                <span className="font-bold">Invoice Number:</span> 
-                                <span 
-                                    contentEditable={!isPreview}
-                                    suppressContentEditableWarning
-                                    onBlur={e => updateMeta({ invoiceNumber: e.currentTarget.textContent || '' })}
-                                    className="outline-none min-w-[50px] text-right"
-                                >
+                                <span className="font-bold">ID #:</span> 
+                                <span className={cn(isDark ? "text-[#aaa]" : "text-[#666]")}>
                                     {meta.invoiceNumber}
                                 </span>
                             </div>

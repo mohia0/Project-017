@@ -25,6 +25,11 @@ import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import DatePicker from '@/components/ui/DatePicker';
 import { STATUS_COLORS } from '@/lib/statusConfig';
 import { gooeyToast } from 'goey-toast';
+import { ClientActionBar } from '@/components/ui/ClientActionBar';
+
+function fmt(n: number, currency = 'USD') {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
+}
 
 interface TemplateEditorProps {
     id: string;
@@ -127,6 +132,26 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
         });
         setOpenInsertMenu(null);
     };
+
+    const totals = useMemo(() => {
+        if (!template) return { subtotal: 0, discAmt: 0, taxAmt: 0, total: 0 };
+        const pricingBlocks = template.blocks.filter(b => b.type === 'pricing');
+        let subtotal = 0;
+        let discAmt = 0;
+        let taxAmt = 0;
+
+        pricingBlocks.forEach(b => {
+            const blockSub = (b.rows || []).reduce((sum: number, r: any) => sum + (r.qty * (r.rate || 0)), 0);
+            const blockDisc = blockSub * ((b.discountRate || 0) / 100);
+            const blockTax = (blockSub - blockDisc) * ((b.taxRate || 0) / 100);
+            
+            subtotal += blockSub;
+            discAmt += blockDisc;
+            taxAmt += blockTax;
+        });
+
+        return { subtotal, discAmt, taxAmt, total: subtotal - discAmt + taxAmt };
+    }, [template?.blocks]);
 
     const updateMeta = (patch: any) => {
         setTemplate(prev => {
@@ -313,7 +338,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                     <div className={cn(
                                         "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10 bg-white/[0.05]"
                                     )} />
-                                    <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0"
+                                    <div className="absolute inset-x-0 top-[52px] bottom-0 overflow-y-auto scrollbar-none z-0"
                                          style={{ 
                                              backgroundColor: (template.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
                                              backgroundImage: template.design?.backgroundImage ? `url(${template.design.backgroundImage})` : 'none',
@@ -321,11 +346,23 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                              backgroundPosition: 'center',
                                          }}
                                     >
+                                        <ClientActionBar
+                                            type={template.entity_type}
+                                            status="Pending"
+                                            design={template.design}
+                                            inline={true}
+                                            isMobile={true}
+                                            amountDue={fmt(totals.total, (template as any).meta?.currency || 'USD')}
+                                            onDownloadPDF={() => {}}
+                                            onPrint={() => {}}
+                                            onAccept={() => {}}
+                                            onPay={() => {}}
+                                        />
                                         {template.entity_type === 'proposal' ? (
                                             <ProposalDocument
                                                 meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
                                                 blocks={template.blocks}
-                                                totals={{ subtotal: 0, discAmt: 0, taxAmt: 0, total: 0 }}
+                                                totals={totals}
                                                 isDark={false}
                                                 isPreview={true}
                                                 isMobile={true}
@@ -347,7 +384,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                             <InvoiceDocument
                                                 meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
                                                 blocks={template.blocks}
-                                                totals={{ subtotal: 0, discAmt: 0, taxAmt: 0, total: 0 }}
+                                                totals={totals}
                                                 isDark={false}
                                                 isPreview={true}
                                                 isMobile={true}
@@ -379,11 +416,24 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                     boxShadow: template.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                                 }}
                             >
+                                {isPreview && (
+                                    <ClientActionBar
+                                        type={template.entity_type}
+                                        status="Pending"
+                                        design={template.design}
+                                        inline={true}
+                                        amountDue={fmt(totals.total, (template as any).meta?.currency || 'USD')}
+                                        onDownloadPDF={() => {}}
+                                        onPrint={() => {}}
+                                        onAccept={() => {}}
+                                        onPay={() => {}}
+                                    />
+                                )}
                                 {template.entity_type === 'proposal' ? (
                                     <ProposalDocument
                                         meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
                                         blocks={template.blocks}
-                                        totals={{ subtotal: 0, discAmt: 0, taxAmt: 0, total: 0 }}
+                                        totals={totals}
                                         isDark={false}
                                         isPreview={isPreview}
                                         isMobile={false}
@@ -405,7 +455,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                     <InvoiceDocument
                                         meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
                                         blocks={template.blocks}
-                                        totals={{ subtotal: 0, discAmt: 0, taxAmt: 0, total: 0 }}
+                                        totals={totals}
                                         isDark={false}
                                         isPreview={isPreview}
                                         isMobile={false}

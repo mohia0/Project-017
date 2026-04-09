@@ -419,7 +419,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 "text-[13px] font-semibold bg-transparent outline-none transition-all w-full min-w-0",
                                 isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300"
                             )}
-                            placeholder="Name"
+                            placeholder="Proposal Name"
                         />
                     </div>
                 </div>
@@ -818,7 +818,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     </MetaField>
 
                                     <MetaField
-                                        label="Name"
+                                        label="Project"
                                         isDark={isDark}
                                         icon={<FileText size={11} className="opacity-50" />}
                                         hasInfo
@@ -827,7 +827,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         <input
                                             value={meta.projectName}
                                             onChange={e => updateMeta({ projectName: e.target.value })}
-                                            placeholder="Set project..."
+                                            placeholder="Set project name..."
                                             className={cn(
                                                 "w-full text-[12px] bg-transparent outline-none font-medium",
                                                 isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
@@ -1447,39 +1447,45 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
                         To {meta.clientName}
                     </div>
                     <div className={cn("text-[11px] space-y-1", isDark ? "text-[#aaa]" : "text-[#555]")}>
-                        <div className="flex items-center gap-1">
-                            <span className="font-bold">Email:</span> 
-                            <span
-                                contentEditable={!isPreview}
-                                suppressContentEditableWarning
-                                onBlur={e => updateMeta({ clientEmail: e.currentTarget.textContent || '' })}
-                                className="outline-none min-w-[50px]"
-                            >
-                                {meta.clientEmail}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <span className="font-bold">Phone:</span> 
-                            <span
-                                contentEditable={!isPreview}
-                                suppressContentEditableWarning
-                                onBlur={e => updateMeta({ clientPhone: e.currentTarget.textContent || '' })}
-                                className="outline-none min-w-[50px]"
-                            >
-                                {meta.clientPhone}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <span className="font-bold">Address:</span> 
-                            <span
-                                contentEditable={!isPreview}
-                                suppressContentEditableWarning
-                                onBlur={e => updateMeta({ clientAddress: e.currentTarget.textContent || '' })}
-                                className="outline-none min-w-[50px]"
-                            >
-                                {meta.clientAddress}
-                            </span>
-                        </div>
+                        {meta.clientEmail && (
+                            <div className="flex items-center gap-1">
+                                <span className="font-bold">Email:</span> 
+                                <span
+                                    contentEditable={!isPreview}
+                                    suppressContentEditableWarning
+                                    onBlur={e => updateMeta({ clientEmail: e.currentTarget.textContent || '' })}
+                                    className="outline-none min-w-[50px]"
+                                >
+                                    {meta.clientEmail}
+                                </span>
+                            </div>
+                        )}
+                        {meta.clientPhone && (
+                            <div className="flex items-center gap-1">
+                                <span className="font-bold">Phone:</span> 
+                                <span
+                                    contentEditable={!isPreview}
+                                    suppressContentEditableWarning
+                                    onBlur={e => updateMeta({ clientPhone: e.currentTarget.textContent || '' })}
+                                    className="outline-none min-w-[50px]"
+                                >
+                                    {meta.clientPhone}
+                                </span>
+                            </div>
+                        )}
+                        {meta.clientAddress && (
+                            <div className="flex items-center gap-1">
+                                <span className="font-bold">Address:</span> 
+                                <span
+                                    contentEditable={!isPreview}
+                                    suppressContentEditableWarning
+                                    onBlur={e => updateMeta({ clientAddress: e.currentTarget.textContent || '' })}
+                                    className="outline-none min-w-[50px]"
+                                >
+                                    {meta.clientAddress}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="text-right text-[11px] space-y-1">

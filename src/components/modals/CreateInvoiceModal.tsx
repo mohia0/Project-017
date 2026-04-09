@@ -16,7 +16,7 @@ interface Props {
 }
 
 function generateInvoiceNumber() {
-    return `INV-${Math.floor(Math.random() * 9000000 + 1000000)}`;
+    return `INV${Math.floor(Math.random() * 9000000 + 1000000)}`;
 }
 
 function addDays(date: Date, days: number) {

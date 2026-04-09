@@ -105,9 +105,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                     notifications: [newNotification, ...state.notifications]
                 }));
 
-                // Trigger pure visual toast
-                gooeyToast.success(newNotification.message, {
-                    duration: 4000,
+                // Trigger pure visual toast showing who opened what
+                gooeyToast.success(newNotification.title, {
+                    duration: 6000,
                 });
             })
             .subscribe((status) => {

@@ -19,6 +19,41 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { MobileTopBar, MobileBottomNav, MobileRightPanelDrawer } from './MobileNav';
 
+function DocumentTitleSetter() {
+    const pathname = usePathname();
+    const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
+    const workspaces = useWorkspaceStore(s => s.workspaces);
+    
+    useEffect(() => {
+        const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+        const workspaceName = activeWorkspace?.name || 'CRM';
+        
+        const path = pathname || '/';
+        let pageTitle = '';
+
+        if (path === '/') pageTitle = 'Dashboard';
+        else if (path === '/proposals') pageTitle = 'Proposals';
+        else if (path.startsWith('/proposals/')) pageTitle = 'Proposal Detail';
+        else if (path === '/invoices') pageTitle = 'Invoices';
+        else if (path.startsWith('/invoices/')) pageTitle = 'Invoice Detail';
+        else if (path === '/clients') pageTitle = 'Clients';
+        else if (path.startsWith('/clients/')) pageTitle = 'Client Detail';
+        else if (path === '/files') pageTitle = 'File Manager';
+        else if (path === '/templates') pageTitle = 'Templates';
+        else if (path === '/settings') pageTitle = 'Settings';
+        else if (path === '/onboarding') pageTitle = 'Onboarding';
+        else if (path === '/login') pageTitle = 'Login';
+        else {
+            const segment = path.split('/').filter(Boolean).pop() || '';
+            pageTitle = segment.charAt(0).toUpperCase() + segment.slice(1);
+        }
+
+        document.title = `${workspaceName} - ${pageTitle}`;
+    }, [pathname, activeWorkspaceId, workspaces]);
+
+    return null;
+}
+
 function WorkspaceDataSync() {
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
     
@@ -89,6 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 "flex h-screen w-full overflow-hidden",
                 isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f0f0f0] text-[#111]"
             )}>
+                <DocumentTitleSetter />
                 {children}
             </div>
         );
@@ -110,6 +146,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     isDark ? "bg-[#141414]" : "bg-white"
                 )}>
                     <WorkspaceDataSync />
+                    <DocumentTitleSetter />
                     {/* Inner scroll area with bottom padding for nav bar */}
                     <div className="flex-1 overflow-hidden flex flex-col pb-[68px]">
                         {children}
@@ -143,6 +180,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 isDark ? "bg-[#141414]" : "bg-white"
             )}>
                 <WorkspaceDataSync />
+                <DocumentTitleSetter />
                 {children}
             </main>
 

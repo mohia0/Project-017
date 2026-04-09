@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import RightPanel from './RightPanel';
 import {
     Plus, Bell, Moon, Sun, Settings, LogOut, X,
-    LayoutGrid, User, MoreHorizontal
+    LayoutGrid, User, ChevronRight
 } from 'lucide-react';
 
 /* ─── Mobile Top Bar ─────────────────────────────────────────────── */
@@ -26,7 +26,6 @@ export function MobileTopBar() {
 
     const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
 
-    // Route label from pathname
     const routeLabel: Record<string, string> = {
         '/dashboard': 'Dashboard',
         '/proposals': 'Proposals',
@@ -41,142 +40,165 @@ export function MobileTopBar() {
         pathname === path || (path !== '/' && pathname.startsWith(path))
     )?.[1] ?? 'App';
 
+    const initials = (displayName?.charAt(0) || user?.email?.charAt(0) || '?').toUpperCase();
+
     return (
         <>
             {/* Top bar */}
             <div className={cn(
-                "flex items-center justify-between px-4 h-14 shrink-0 border-b z-30",
+                "flex items-center justify-between px-4 shrink-0 border-b z-30",
+                "h-[56px]",
                 isDark
-                    ? "bg-[#141414] border-[#252525]"
-                    : "bg-white border-[#e8e8e8]"
+                    ? "bg-[#141414]/95 border-[#252525] backdrop-blur-xl"
+                    : "bg-white/95 border-[#ebebeb] backdrop-blur-xl"
             )}>
-                {/* Left: logo / page title */}
-                <div className="flex items-center gap-2.5">
-                    <div className={cn(
-                        "w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black bg-[#4dbf39]"
-                    )}>
-                        <span className="text-black">M</span>
+                {/* Left: logo + page title */}
+                <div className="flex items-center gap-3">
+                    {/* Brand dot */}
+                    <div className="w-[30px] h-[30px] rounded-[9px] bg-[#4dbf39] flex items-center justify-center shadow-sm shadow-[#4dbf39]/30">
+                        <span className="text-black text-[11px] font-black tracking-tight">M</span>
                     </div>
-                    <span className={cn(
-                        "text-[15px] font-bold tracking-tight",
-                        isDark ? "text-white" : "text-[#111]"
-                    )}>
-                        {currentLabel}
-                    </span>
+                    <div>
+                        <h1 className={cn(
+                            "text-[16px] font-bold tracking-tight leading-none",
+                            isDark ? "text-white" : "text-[#111]"
+                        )}>
+                            {currentLabel}
+                        </h1>
+                    </div>
                 </div>
 
                 {/* Right actions */}
-                <div className="flex items-center gap-1.5">
-                    {/* Notifications */}
+                <div className="flex items-center gap-2">
+                    {/* Notifications bell */}
                     <button
                         onClick={toggleNotifications}
                         className={cn(
-                            "w-9 h-9 rounded-[11px] flex items-center justify-center transition-all active:scale-95",
-                            isDark ? "bg-white/5 text-[#777] hover:bg-white/10" : "bg-[#f0f0f0] text-[#888] hover:bg-[#e8e8e8]"
+                            "w-[36px] h-[36px] rounded-[10px] flex items-center justify-center transition-all active:scale-90",
+                            isDark
+                                ? "bg-white/[0.06] text-[#888] hover:bg-white/10 hover:text-white"
+                                : "bg-[#f2f2f2] text-[#888] hover:bg-[#e8e8e8] hover:text-[#444]"
                         )}
                     >
-                        <Bell size={16} strokeWidth={1.75} />
+                        <Bell size={17} strokeWidth={1.75} />
                     </button>
 
-                    {/* Create (single + button) */}
+                    {/* New item */}
                     <button
                         onClick={() => setCreateModalOpen(true)}
-                        className="w-9 h-9 rounded-[11px] flex items-center justify-center bg-[#4dbf39] hover:bg-[#59d044] text-black active:scale-95 transition-all"
+                        className="w-[36px] h-[36px] rounded-[10px] flex items-center justify-center bg-[#4dbf39] hover:bg-[#59d044] text-black active:scale-90 transition-all shadow-sm shadow-[#4dbf39]/30"
                     >
-                        <Plus size={17} strokeWidth={2.5} />
+                        <Plus size={18} strokeWidth={2.5} />
                     </button>
 
-                    {/* Avatar / menu */}
+                    {/* Avatar */}
                     <button
                         onClick={() => setMenuOpen(true)}
                         className={cn(
-                            "w-9 h-9 rounded-[11px] flex items-center justify-center transition-all active:scale-95 overflow-hidden",
-                            isDark ? "bg-white/8 text-white" : "bg-[#f0f0f0] text-[#555]"
+                            "w-[36px] h-[36px] rounded-[10px] flex items-center justify-center transition-all active:scale-90 font-bold text-[13px]",
+                            isDark
+                                ? "bg-white/[0.08] text-white hover:bg-white/12"
+                                : "bg-[#f2f2f2] text-[#444] hover:bg-[#e8e8e8]"
                         )}
                     >
-                        {user ? (
-                            <span className="text-[12px] font-bold">
-                                {(displayName?.charAt(0) || user.email?.charAt(0) || '?').toUpperCase()}
-                            </span>
-                        ) : (
-                            <User size={15} />
-                        )}
+                        {initials}
                     </button>
                 </div>
             </div>
 
-            {/* Mobile user menu drawer */}
+            {/* User menu drawer */}
             {menuOpen && (
                 <div
                     className="fixed inset-0 z-[200]"
                     onClick={() => setMenuOpen(false)}
                 >
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" />
+
+                    {/* Menu panel */}
                     <div
                         className={cn(
-                            "absolute right-3 top-16 rounded-2xl border shadow-2xl overflow-hidden p-1.5 min-w-[240px]",
-                            isDark ? "bg-[#1c1c1e] border-white/10" : "bg-white border-[#e0e0e0]"
+                            "absolute right-3 top-[64px] rounded-2xl border shadow-2xl overflow-hidden min-w-[240px]",
+                            "animate-in fade-in duration-150",
+                            isDark
+                                ? "bg-[#1c1c1e]/95 border-white/10 backdrop-blur-xl"
+                                : "bg-white border-[#e0e0e0] shadow-xl"
                         )}
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Profile header */}
                         <div className={cn(
-                            "px-3.5 py-3 border-b mb-1 flex items-center gap-3",
-                            isDark ? "border-white/8" : "border-[#f0f0f0]"
+                            "px-4 py-3.5 border-b flex items-center gap-3",
+                            isDark ? "border-white/[0.06]" : "border-[#f0f0f0]"
                         )}>
                             <div className={cn(
-                                "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-[13px]",
-                                isDark ? "bg-white/8 text-white" : "bg-[#f0f0f0] text-[#555]"
+                                "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[14px] shrink-0",
+                                isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#444]"
                             )}>
-                                {(displayName?.charAt(0) || user?.email?.charAt(0) || '?').toUpperCase()}
+                                {initials}
                             </div>
                             <div className="min-w-0">
-                                <p className={cn("text-[13px] font-bold truncate", isDark ? "text-white" : "text-[#111]")}>
+                                <p className={cn("text-[13px] font-semibold truncate", isDark ? "text-white" : "text-[#111]")}>
                                     {displayName || 'Account'}
                                 </p>
-                                <p className={cn("text-[11px] truncate mt-0.5", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                                <p className={cn("text-[11px] truncate mt-0.5", isDark ? "text-[#666]" : "text-[#aaa]")}>
                                     {user?.email}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Theme toggle */}
-                        <button
-                            onClick={() => { toggleTheme(); setMenuOpen(false); }}
-                            className={cn(
-                                "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors",
-                                isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
-                            )}
-                        >
-                            {isDark ? <Moon size={15} className="opacity-70" /> : <Sun size={15} className="opacity-70" />}
-                            {isDark ? 'Light Mode' : 'Dark Mode'}
-                        </button>
+                        {/* Menu items */}
+                        <div className="p-1.5 flex flex-col gap-0.5">
+                            <button
+                                onClick={() => { toggleTheme(); setMenuOpen(false); }}
+                                className={cn(
+                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors",
+                                    isDark ? "text-[#ccc] hover:bg-white/[0.06]" : "text-[#333] hover:bg-[#f5f5f5]"
+                                )}
+                            >
+                                <div className={cn(
+                                    "w-7 h-7 rounded-lg flex items-center justify-center",
+                                    isDark ? "bg-white/8 text-[#aaa]" : "bg-[#f0f0f0] text-[#666]"
+                                )}>
+                                    {isDark ? <Moon size={14} /> : <Sun size={14} />}
+                                </div>
+                                {isDark ? 'Light Mode' : 'Dark Mode'}
+                                <ChevronRight size={13} className="ml-auto opacity-30" />
+                            </button>
 
-                        {/* Settings */}
-                        <button
-                            onClick={() => { router.push('/settings'); setMenuOpen(false); }}
-                            className={cn(
-                                "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors",
-                                isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
-                            )}
-                        >
-                            <Settings size={15} className="opacity-70" />
-                            Settings
-                        </button>
+                            <button
+                                onClick={() => { router.push('/settings'); setMenuOpen(false); }}
+                                className={cn(
+                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-colors",
+                                    isDark ? "text-[#ccc] hover:bg-white/[0.06]" : "text-[#333] hover:bg-[#f5f5f5]"
+                                )}
+                            >
+                                <div className={cn(
+                                    "w-7 h-7 rounded-lg flex items-center justify-center",
+                                    isDark ? "bg-white/8 text-[#aaa]" : "bg-[#f0f0f0] text-[#666]"
+                                )}>
+                                    <Settings size={14} />
+                                </div>
+                                Settings
+                                <ChevronRight size={13} className="ml-auto opacity-30" />
+                            </button>
 
-                        <div className={cn("h-px my-1", isDark ? "bg-white/5" : "bg-[#f0f0f0]")} />
+                            <div className={cn("h-px mx-2 my-1", isDark ? "bg-white/[0.05]" : "bg-[#f0f0f0]")} />
 
-                        {/* Sign out */}
-                        <button
-                            onClick={async () => {
-                                await useAuthStore.getState().signOut();
-                                setMenuOpen(false);
-                                router.push('/login');
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium text-red-500 hover:bg-red-500/10 transition-colors"
-                        >
-                            <LogOut size={15} />
-                            Sign Out
-                        </button>
+                            <button
+                                onClick={async () => {
+                                    await useAuthStore.getState().signOut();
+                                    setMenuOpen(false);
+                                    router.push('/login');
+                                }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+                            >
+                                <div className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center">
+                                    <LogOut size={14} />
+                                </div>
+                                Sign Out
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -185,18 +207,14 @@ export function MobileTopBar() {
 }
 
 /* ─── Mobile Bottom Navigation ───────────────────────────────────── */
-/*
- * Design goals:
- *  - No center FAB (eliminates duplicate + button)
- *  - Horizontally scrollable for future nav items
- *  - Icon + label, active item highlighted with brand color dot
- *  - Equal-width tabs up to 5, then scroll
- */
 export function MobileBottomNav() {
     const pathname = usePathname();
     const { theme } = useUIStore();
     const { navItems } = useMenuStore();
     const isDark = theme === 'dark';
+
+    // Show max 5 nav items on mobile bottom bar
+    const visibleItems = navItems.slice(0, 5);
 
     return (
         <nav className={cn(
@@ -206,9 +224,8 @@ export function MobileBottomNav() {
                 ? "bg-[#141414]/97 border-t border-[#252525] backdrop-blur-xl"
                 : "bg-white/97 border-t border-[#e8e8e8] backdrop-blur-xl"
         )}>
-            {/* Scrollable tab strip */}
-            <div className="flex overflow-x-auto no-scrollbar px-1 pt-1 pb-1.5">
-                {navItems.map(item => {
+            <div className="flex items-stretch h-[56px] px-2">
+                {visibleItems.map(item => {
                     const Icon = ICON_MAP[item.icon] || LayoutGrid;
                     const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
                     return (
@@ -216,24 +233,40 @@ export function MobileBottomNav() {
                             key={item.id}
                             href={item.href}
                             className={cn(
-                                "flex flex-col items-center gap-[3px] py-2 flex-1 min-w-[60px] max-w-[80px] rounded-xl transition-all shrink-0",
+                                "flex flex-col items-center justify-center gap-[3px] flex-1 relative transition-all",
+                                "active:scale-95",
                                 isActive
                                     ? isDark ? "text-white" : "text-[#111]"
-                                    : isDark ? "text-white/25 hover:text-white/50" : "text-[#c0c0c0] hover:text-[#888]"
+                                    : isDark ? "text-white/25" : "text-[#c8c8c8]"
                             )}
                         >
-                            {/* Icon with active dot */}
-                            <div className="relative flex items-center justify-center">
-                                <Icon size={20} strokeWidth={isActive ? 2 : 1.5} />
-                                {isActive && (
-                                    <div className="absolute -bottom-[6px] left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#4dbf39]" />
-                                )}
+                            {/* Active pill indicator */}
+                            {isActive && (
+                                <div className={cn(
+                                    "absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[#4dbf39]",
+                                )} />
+                            )}
+
+                            {/* Icon */}
+                            <div className={cn(
+                                "relative flex items-center justify-center w-[34px] h-[26px] rounded-[9px] transition-all",
+                                isActive
+                                    ? isDark ? "bg-white/[0.08]" : "bg-[#f0f0f0]"
+                                    : "bg-transparent"
+                            )}>
+                                <Icon
+                                    size={18}
+                                    strokeWidth={isActive ? 2.25 : 1.5}
+                                    className={isActive ? "text-[#4dbf39]" : ""}
+                                />
                             </div>
+
+                            {/* Label */}
                             <span className={cn(
-                                "text-[9.5px] font-semibold tracking-wide leading-none mt-[7px]",
+                                "text-[9px] font-semibold tracking-wide leading-none",
                                 isActive ? "text-[#4dbf39]" : ""
                             )}>
-                                {item.label.length > 9 ? item.label.slice(0, 8) + '…' : item.label}
+                                {item.label.length > 8 ? item.label.slice(0, 7) + '…' : item.label}
                             </span>
                         </Link>
                     );
