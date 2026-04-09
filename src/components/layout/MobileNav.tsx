@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import RightPanel from './RightPanel';
 import {
     Plus, Bell, Moon, Sun, Settings, LogOut, X,
-    LayoutGrid, User
+    LayoutGrid, User, MoreHorizontal
 } from 'lucide-react';
 
 /* ─── Mobile Top Bar ─────────────────────────────────────────────── */
@@ -50,11 +50,10 @@ export function MobileTopBar() {
                     ? "bg-[#141414] border-[#252525]"
                     : "bg-white border-[#e8e8e8]"
             )}>
-                {/* Left: logo / workspace */}
+                {/* Left: logo / page title */}
                 <div className="flex items-center gap-2.5">
                     <div className={cn(
-                        "w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black",
-                        isDark ? "bg-[#4dbf39]" : "bg-[#4dbf39]"
+                        "w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black bg-[#4dbf39]"
                     )}>
                         <span className="text-black">M</span>
                     </div>
@@ -68,14 +67,6 @@ export function MobileTopBar() {
 
                 {/* Right actions */}
                 <div className="flex items-center gap-1.5">
-                    {/* Create */}
-                    <button
-                        onClick={() => setCreateModalOpen(true)}
-                        className="w-9 h-9 rounded-[11px] flex items-center justify-center bg-[#4dbf39] hover:bg-[#59d044] text-black active:scale-95 transition-all"
-                    >
-                        <Plus size={17} strokeWidth={2.5} />
-                    </button>
-
                     {/* Notifications */}
                     <button
                         onClick={toggleNotifications}
@@ -85,6 +76,14 @@ export function MobileTopBar() {
                         )}
                     >
                         <Bell size={16} strokeWidth={1.75} />
+                    </button>
+
+                    {/* Create (single + button) */}
+                    <button
+                        onClick={() => setCreateModalOpen(true)}
+                        className="w-9 h-9 rounded-[11px] flex items-center justify-center bg-[#4dbf39] hover:bg-[#59d044] text-black active:scale-95 transition-all"
+                    >
+                        <Plus size={17} strokeWidth={2.5} />
                     </button>
 
                     {/* Avatar / menu */}
@@ -186,88 +185,60 @@ export function MobileTopBar() {
 }
 
 /* ─── Mobile Bottom Navigation ───────────────────────────────────── */
+/*
+ * Design goals:
+ *  - No center FAB (eliminates duplicate + button)
+ *  - Horizontally scrollable for future nav items
+ *  - Icon + label, active item highlighted with brand color dot
+ *  - Equal-width tabs up to 5, then scroll
+ */
 export function MobileBottomNav() {
     const pathname = usePathname();
-    const { theme, setCreateModalOpen } = useUIStore();
+    const { theme } = useUIStore();
     const { navItems } = useMenuStore();
     const isDark = theme === 'dark';
 
-    // Take up to 4 items total (2 + FAB center + 2)
-    const allItems = navItems.slice(0, 4);
-    const leftItems = allItems.slice(0, 2);
-    const rightItems = allItems.slice(2, 4);
-
     return (
         <nav className={cn(
-            "fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around",
-            "pb-[env(safe-area-inset-bottom)] pt-1.5 px-1",
+            "fixed bottom-0 left-0 right-0 z-50",
+            "pb-[env(safe-area-inset-bottom)]",
             isDark
-                ? "bg-[#141414]/96 border-t border-[#252525] backdrop-blur-xl"
-                : "bg-white/96 border-t border-[#e8e8e8] backdrop-blur-xl"
+                ? "bg-[#141414]/97 border-t border-[#252525] backdrop-blur-xl"
+                : "bg-white/97 border-t border-[#e8e8e8] backdrop-blur-xl"
         )}>
-            {/* Left items */}
-            {leftItems.map(item => {
-                const Icon = ICON_MAP[item.icon] || LayoutGrid;
-                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-                return (
-                    <Link
-                        key={item.id}
-                        href={item.href}
-                        className={cn(
-                            "flex flex-col items-center gap-[3px] py-1.5 flex-1 rounded-xl transition-all",
-                            isActive
-                                ? isDark ? "text-white" : "text-[#111]"
-                                : isDark ? "text-white/25" : "text-[#bbb]"
-                        )}
-                    >
-                        <Icon size={20} strokeWidth={isActive ? 2 : 1.5} />
-                        <span className={cn(
-                            "text-[9px] font-semibold tracking-wide leading-none",
-                            isActive && "text-[#4dbf39]"
-                        )}>
-                            {item.label.length > 8 ? item.label.slice(0, 7) + '…' : item.label}
-                        </span>
-                    </Link>
-                );
-            })}
-
-            {/* Center: Create button */}
-            <button
-                onClick={() => setCreateModalOpen(true)}
-                className={cn(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
-                    "-mt-5 shadow-lg shadow-[#4dbf39]/30",
-                    "bg-[#4dbf39] hover:bg-[#59d044] text-black active:scale-95 transition-all"
-                )}
-            >
-                <Plus size={22} strokeWidth={2.5} />
-            </button>
-
-            {/* Right items */}
-            {rightItems.map(item => {
-                const Icon = ICON_MAP[item.icon] || LayoutGrid;
-                const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-                return (
-                    <Link
-                        key={item.id}
-                        href={item.href}
-                        className={cn(
-                            "flex flex-col items-center gap-[3px] py-1.5 flex-1 rounded-xl transition-all",
-                            isActive
-                                ? isDark ? "text-white" : "text-[#111]"
-                                : isDark ? "text-white/25" : "text-[#bbb]"
-                        )}
-                    >
-                        <Icon size={20} strokeWidth={isActive ? 2 : 1.5} />
-                        <span className={cn(
-                            "text-[9px] font-semibold tracking-wide leading-none",
-                            isActive && "text-[#4dbf39]"
-                        )}>
-                            {item.label.length > 8 ? item.label.slice(0, 7) + '…' : item.label}
-                        </span>
-                    </Link>
-                );
-            })}
+            {/* Scrollable tab strip */}
+            <div className="flex overflow-x-auto no-scrollbar px-1 pt-1 pb-1.5">
+                {navItems.map(item => {
+                    const Icon = ICON_MAP[item.icon] || LayoutGrid;
+                    const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                    return (
+                        <Link
+                            key={item.id}
+                            href={item.href}
+                            className={cn(
+                                "flex flex-col items-center gap-[3px] py-2 flex-1 min-w-[60px] max-w-[80px] rounded-xl transition-all shrink-0",
+                                isActive
+                                    ? isDark ? "text-white" : "text-[#111]"
+                                    : isDark ? "text-white/25 hover:text-white/50" : "text-[#c0c0c0] hover:text-[#888]"
+                            )}
+                        >
+                            {/* Icon with active dot */}
+                            <div className="relative flex items-center justify-center">
+                                <Icon size={20} strokeWidth={isActive ? 2 : 1.5} />
+                                {isActive && (
+                                    <div className="absolute -bottom-[6px] left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#4dbf39]" />
+                                )}
+                            </div>
+                            <span className={cn(
+                                "text-[9.5px] font-semibold tracking-wide leading-none mt-[7px]",
+                                isActive ? "text-[#4dbf39]" : ""
+                            )}>
+                                {item.label.length > 9 ? item.label.slice(0, 8) + '…' : item.label}
+                            </span>
+                        </Link>
+                    );
+                })}
+            </div>
         </nav>
     );
 }

@@ -4,13 +4,15 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight
+    Globe, Briefcase, Users, ChevronRight, Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { formatDistanceToNow } from 'date-fns';
 
 /* ─── Shared helpers ─── */
 function getInitials(name: string) {
@@ -39,17 +41,82 @@ function PanelHeader({ title, isDark, onClose }: { title: string; isDark: boolea
 
 /* ─── Notifications Panel ─── */
 function NotificationsPanel({ isDark }: { isDark: boolean }) {
+    const { notifications, fetchNotifications, subscribe, unsubscribe, markAsRead, markAllAsRead } = useNotificationStore();
+    const [filterUnread, setFilterUnread] = useState(false);
+
+    useEffect(() => {
+        fetchNotifications();
+        subscribe();
+        return () => unsubscribe();
+    }, [fetchNotifications, subscribe, unsubscribe]);
+
+    const displayNotifications = filterUnread ? notifications.filter(n => !n.read) : notifications;
+
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center",
-                    isDark ? "bg-white/5" : "bg-[#f0f0f0]"
-                )}>
-                    <Bell size={18} strokeWidth={1.5} className={isDark ? "text-[#555]" : "text-[#bbb]"} />
-                </div>
-                <p className={cn("text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No notifications yet</p>
+            {/* Header Actions */}
+            <div className={cn("px-4 py-2 flex items-center justify-between border-b shrink-0", isDark ? "border-[#252525]" : "border-[#f0f0f0]")}>
+                <span className={cn("text-[11px] font-semibold", isDark ? "text-[#888]" : "text-[#999]")}>
+                    {notifications.filter(n => !n.read).length} Unread
+                </span>
+                <button 
+                    onClick={markAllAsRead}
+                    className={cn("text-[10px] font-medium hover:underline", isDark ? "text-[#ccc]" : "text-[#666]")}
+                >
+                    Mark all as read
+                </button>
             </div>
+
+            <div className="flex-1 overflow-y-auto w-full">
+                {displayNotifications.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center gap-3">
+                        <div className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center",
+                            isDark ? "bg-white/5" : "bg-[#f0f0f0]"
+                        )}>
+                            <Bell size={18} strokeWidth={1.5} className={isDark ? "text-[#555]" : "text-[#bbb]"} />
+                        </div>
+                        <p className={cn("text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No notifications yet</p>
+                    </div>
+                ) : (
+                    <div className="flex flex-col">
+                        {displayNotifications.map((notif) => (
+                            <div 
+                                key={notif.id}
+                                onClick={() => {
+                                    if (!notif.read) markAsRead(notif.id);
+                                }}
+                                className={cn(
+                                    "flex items-start gap-3 px-4 py-3 border-b last:border-0 transition-colors cursor-pointer relative",
+                                    isDark ? "border-[#252525] hover:bg-white/[0.02]" : "border-[#f0f0f0] hover:bg-[#f9f9f9]",
+                                    !notif.read && (isDark ? "bg-white/[0.04]" : "bg-blue-50/30")
+                                )}
+                            >
+                                {!notif.read && (
+                                    <div className="absolute left-2 top-4 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                )}
+                                <div className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5", 
+                                    isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
+                                )}>
+                                    <Eye size={12} className={isDark ? "text-[#888]" : "text-[#999]"} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className={cn("text-[12px] font-medium leading-snug", isDark ? "text-[#eee]" : "text-[#222]")}>
+                                        {notif.title}
+                                    </p>
+                                    <p className={cn("text-[11px] mt-0.5 leading-relaxed", isDark ? "text-[#888]" : "text-[#666]")}>
+                                        {notif.message}
+                                    </p>
+                                    <p className={cn("text-[10px] mt-1.5 font-medium", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                                        {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             {/* Footer */}
             <div className={cn(
                 "flex items-center gap-3 px-4 py-3 border-t shrink-0",
@@ -62,16 +129,23 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                     <X size={10} className={isDark ? "text-[#555]" : "text-[#ccc]"} />
                     <span className={cn("text-[11px]", isDark ? "text-[#555]" : "text-[#aaa]")}>Search</span>
                 </div>
-                <div className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors cursor-pointer",
-                    isDark ? "text-[#666] hover:text-[#aaa] hover:bg-white/5" : "text-[#aaa] hover:text-[#555] hover:bg-[#f0f0f0]"
-                )}>
+                <button 
+                    onClick={() => setFilterUnread(!filterUnread)}
+                    className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors cursor-pointer",
+                        filterUnread 
+                            ? (isDark ? "bg-white/10 text-white" : "bg-[#e8e8e8] text-[#111]")
+                            : (isDark ? "text-[#666] hover:text-[#aaa] hover:bg-white/5" : "text-[#aaa] hover:text-[#555] hover:bg-[#f0f0f0]")
+                    )}
+                >
                     <span className={cn(
                         "w-4 h-4 rounded-sm border flex items-center justify-center text-[9px]",
-                        isDark ? "border-[#444]" : "border-[#ddd]"
-                    )}>•</span>
+                        filterUnread ? (isDark ? "border-[#666] bg-white/20" : "border-[#999] bg-black/10") : (isDark ? "border-[#444]" : "border-[#ddd]")
+                    )}>
+                        {filterUnread ? '✓' : '•'}
+                    </span>
                     Unread
-                </div>
+                </button>
             </div>
         </div>
     );

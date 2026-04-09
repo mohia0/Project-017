@@ -134,6 +134,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [rightTab, setRightTab] = useState<RightPanelTab>('details');
+    const [mobileBottomPanelOpen, setMobileBottomPanelOpen] = useState(false);
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showStatusMenu, setShowStatusMenu] = useState(false);
     const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -324,7 +325,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
     /* ── Copy link ── */
     const copyLink = () => {
-        navigator.clipboard.writeText(window.location.href);
+        navigator.clipboard.writeText(window.location.origin + '/p/proposal/' + id);
         setCopied(true);
         setTimeout(() => setCopied(false), 1800);
     };
@@ -701,10 +702,10 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     </div>
                 </div>
 
-                {/* ── RIGHT: METADATA PANEL ── */}
+                {/* ── RIGHT: METADATA PANEL (desktop only) ── */}
                 {!isPreview && (
                     <div className={cn(
-                        "w-[240px] shrink-0 flex flex-col overflow-hidden border-l",
+                        "hidden md:flex w-[240px] shrink-0 flex-col overflow-hidden border-l",
                         isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#f7f7f7] border-[#e4e4e4]"
                     )}>
                         <div className="flex items-center shrink-0 p-1.5 gap-1">
@@ -779,11 +780,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                                     isDark ? "hover:bg-[#2a2a2a] border-[#252525]" : "hover:bg-[#f5f5f5] border-[#f0f0f0]"
                                                                 )}
                                                             >
-                                                                <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                                                <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")})>
                                                                     {c.company_name}
                                                                 </div>
                                                                 {c.contact_person && (
-                                                                    <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")}>
+                                                                    <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")})>
                                                                         {c.contact_person}
                                                                     </div>
                                                                 )}
@@ -923,6 +924,121 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 />
                             )}
 
+                        </div>
+                    </div>
+                )}
+
+                {/* ── MOBILE BOTTOM PANEL (mobile only, hidden on md+) ── */}
+                {!isPreview && (
+                    <div className={cn(
+                        "md:hidden absolute bottom-0 left-0 right-0 z-40 transition-all duration-300 ease-out",
+                        isDark ? "" : ""
+                    )}>
+                        {/* Expanded content panel (slides up) */}
+                        {mobileBottomPanelOpen && (
+                            <>
+                                {/* Tap outside to close */}
+                                <div
+                                    className="fixed inset-0 z-[-1]"
+                                    onClick={() => setMobileBottomPanelOpen(false)}
+                                />
+                                <div className={cn(
+                                    "max-h-[55vh] overflow-y-auto py-3 px-4 space-y-1.5",
+                                    "border-t border-l border-r rounded-t-2xl shadow-2xl",
+                                    isDark
+                                        ? "bg-[#1a1a1a] border-[#303030]"
+                                        : "bg-white border-[#e4e4e4]"
+                                )}>
+                                    {rightTab === 'details' && (
+                                        <>
+                                            <MetaField label="Client" isDark={isDark} icon={<User size={11} className="opacity-50" />} onReset={() => updateMeta({ clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' })}>
+                                                <input value={meta.clientName} onChange={e => updateMeta({ clientName: e.target.value })} placeholder="Select client..." className={cn("w-full text-[12px] bg-transparent outline-none font-medium", isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]")} />
+                                            </MetaField>
+                                            <MetaField label="Project" isDark={isDark} icon={<FileText size={11} className="opacity-50" />} onReset={() => updateMeta({ projectName: '' })}>
+                                                <input value={meta.projectName} onChange={e => updateMeta({ projectName: e.target.value })} placeholder="Set project..." className={cn("w-full text-[12px] bg-transparent outline-none font-medium", isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]")} />
+                                            </MetaField>
+                                            <MetaField label="Issue date" isDark={isDark} icon={<Calendar size={11} className="opacity-50" />} onReset={() => updateMeta({ issueDate: new Date().toISOString().split('T')[0] })}>
+                                                <DatePicker value={meta.issueDate} onChange={v => updateMeta({ issueDate: v })} isDark={isDark} align="right" />
+                                            </MetaField>
+                                            <MetaField label="Expiration" isDark={isDark} icon={<Calendar size={11} className="opacity-50" />} onReset={() => updateMeta({ expirationDate: '' })}>
+                                                <DatePicker value={meta.expirationDate} onChange={v => updateMeta({ expirationDate: v })} isDark={isDark} placeholder="Add expiration" align="right" />
+                                            </MetaField>
+                                            <MetaField label="Currency" isDark={isDark} icon={<DollarSign size={11} className="opacity-50" />} onReset={() => updateMeta({ currency: 'USD' })}>
+                                                <select value={meta.currency} onChange={e => updateMeta({ currency: e.target.value })} className={cn("w-full text-[12px] bg-transparent outline-none font-medium appearance-none", isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                                    <option value="USD">USD ($)</option>
+                                                    <option value="EUR">EUR (€)</option>
+                                                    <option value="GBP">GBP (£)</option>
+                                                    <option value="SAR">SAR (﷼)</option>
+                                                    <option value="AED">AED (د.إ)</option>
+                                                </select>
+                                            </MetaField>
+                                            <MetaField label="Status" isDark={isDark} icon={<Zap size={11} className="opacity-50" />} onReset={() => handleStatusChange('Draft')}>
+                                                <select value={meta.status} onChange={e => handleStatusChange(e.target.value as any)} className={cn("w-full text-[12px] bg-transparent outline-none font-medium appearance-none", isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                                    {Object.keys(STATUS_COLORS).filter(k => k !== 'All').map(s => (<option key={s} value={s}>{s}</option>))}
+                                                </select>
+                                            </MetaField>
+                                        </>
+                                    )}
+                                    {rightTab === 'appearance' && (
+                                        <DesignSettingsPanel isDark={isDark} meta={meta} updateMeta={updateMeta}
+                                            onUploadLogo={() => { setUploadTarget({ type: 'logo' }); setImageUploadOpen(true); }}
+                                            onUploadBackground={() => { setUploadTarget({ type: 'background' }); setImageUploadOpen(true); }}
+                                        />
+                                    )}
+                                </div>
+                            </>
+                        )}
+
+                        {/* Always-visible tab strip handle */}
+                        <div className={cn(
+                            "flex items-center border-t",
+                            isDark ? "bg-[#1a1a1a] border-[#303030]" : "bg-white border-[#e4e4e4]"
+                        )}>
+                            {/* Drag handle / collapse indicator */}
+                            <button
+                                onClick={() => setMobileBottomPanelOpen(o => !o)}
+                                className={cn(
+                                    "flex items-center justify-center w-10 h-10 shrink-0",
+                                    isDark ? "text-[#444]" : "text-[#ccc]"
+                                )}
+                            >
+                                <ChevronDown
+                                    size={16}
+                                    strokeWidth={2}
+                                    className={cn(
+                                        "transition-transform duration-200",
+                                        mobileBottomPanelOpen ? "rotate-0" : "rotate-180"
+                                    )}
+                                />
+                            </button>
+
+                            {/* Tab buttons */}
+                            <div className="flex flex-1 overflow-x-auto no-scrollbar">
+                                {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => {
+                                            if (rightTab === tab && mobileBottomPanelOpen) {
+                                                setMobileBottomPanelOpen(false);
+                                            } else {
+                                                setRightTab(tab);
+                                                setMobileBottomPanelOpen(true);
+                                            }
+                                        }}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-4 h-11 text-[12px] font-semibold transition-all shrink-0 border-b-2",
+                                            rightTab === tab && mobileBottomPanelOpen
+                                                ? "border-[#4dbf39] text-[#4dbf39]"
+                                                : isDark
+                                                    ? "border-transparent text-[#555] hover:text-[#aaa]"
+                                                    : "border-transparent text-[#bbb] hover:text-[#666]"
+                                        )}
+                                    >
+                                        <Icon size={13} strokeWidth={2} />
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
