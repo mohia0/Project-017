@@ -7,6 +7,7 @@ import {
     Mail, Phone, Building2, Calendar, Plus, Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { gooeyToast } from 'goey-toast';
 import { useClientStore } from '@/store/useClientStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';

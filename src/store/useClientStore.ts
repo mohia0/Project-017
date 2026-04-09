@@ -19,7 +19,7 @@ interface ClientState {
     isLoading: boolean;
     error: string | null;
     fetchClients: () => Promise<void>;
-    addClient: (client: Omit<Client, 'id' | 'created_at'>) => Promise<void>;
+    addClient: (client: Omit<Client, 'id' | 'created_at'>) => Promise<Client | null>;
     updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
     deleteClient: (id: string) => Promise<void>;
 }
@@ -52,15 +52,18 @@ export const useClientStore = create<ClientState>((set) => ({
 
     addClient: async (client) => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
-        if (!workspaceId) return;
+        if (!workspaceId) return null;
 
         const payload = { ...client, workspace_id: workspaceId };
         const { data, error } = await supabase.from('clients').insert(payload).select().single();
         if (error) {
             set({ error: error.message });
+            return null;
         } else if (data) {
-            set((state) => ({ clients: [data, ...state.clients] }));
+            set((state) => ({ clients: [data as Client, ...state.clients] }));
+            return data as Client;
         }
+        return null;
     },
 
     updateClient: async (id, updates) => {

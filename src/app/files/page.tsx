@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useLocalStorage } from '@mantine/hooks';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Folder, FolderOpen, FolderPlus, File, FileText, FileImage, FileVideo,
     FileAudio, FileCode, FileArchive, Link2, Search, Upload, Download,
@@ -22,20 +23,37 @@ import { supabase } from '@/lib/supabase';
 
 // ─── Shared Components ────────────────────────────────────────────────────────
 
-const ProgressContent = ({ progress, isDark }: { progress: number; isDark: boolean }) => (
-    <div className="w-full min-w-[180px] mt-1.5">
-        <div className={cn("h-1 w-full rounded-full overflow-hidden", isDark ? "bg-white/10" : "bg-black/5")}>
-            <div 
-                className="h-full bg-[#4dbf39] transition-all duration-300 ease-out" 
-                style={{ width: `${progress}%` }}
-            />
+const ProgressContent = ({ progress, isDark }: { progress: number; isDark: boolean }) => {
+    const isComplete = progress >= 100;
+    return (
+        <div className="w-full min-w-[200px] mt-1.5 text-left">
+            <div className={cn("h-1 w-full rounded-full overflow-hidden", isDark ? "bg-white/10" : "bg-black/5")}>
+                <div 
+                    className={cn(
+                        "h-full bg-[#4dbf39] transition-all duration-300 ease-out",
+                        isComplete && "opacity-80"
+                    )} 
+                    style={{ width: `${progress}%` }}
+                />
+            </div>
+            <div className="flex justify-between items-center mt-2">
+                <div className="flex items-center gap-1.5">
+                    {isComplete ? (
+                        <RefreshCw size={10} className="animate-spin text-[#4dbf39]" />
+                    ) : (
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#4dbf39] animate-pulse" />
+                    )}
+                    <span className={cn("text-[10px] font-medium uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                        {isComplete ? 'Finalizing library...' : 'Uploading files...'}
+                    </span>
+                </div>
+                <span className={cn("text-[10px] font-bold tabular-nums", isDark ? "text-[#4dbf39]/80" : "text-[#4dbf39]")}>
+                    {Math.round(progress)}%
+                </span>
+            </div>
         </div>
-        <div className="flex justify-between items-center mt-1.5">
-            <span className={cn("text-[10px] font-medium uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#aaa]")}>Uploading...</span>
-            <span className={cn("text-[10px] font-bold tabular-nums", isDark ? "text-[#4dbf39]/80" : "text-[#4dbf39]")}>{Math.round(progress)}%</span>
-        </div>
-    </div>
-);
+    );
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -183,6 +201,7 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
 }) {
     const [imgZoom, setImgZoom] = useState(1);
     const [imgRotate, setImgRotate] = useState(0);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const ext = item.name.split('.').pop()?.toLowerCase() || '';
 
     // Close on Escape
@@ -437,11 +456,31 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                             title="Download">
                             <Download size={14}/>
                         </button>
-                        <button onClick={onDelete}
-                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-red-400/50 hover:text-red-500 ${isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
-                            title="Delete">
-                            <Trash2 size={14}/>
-                        </button>
+                        <AnimatePresence mode="wait">
+                            {showDeleteConfirm ? (
+                                <motion.button
+                                    key="confirm"
+                                    initial={{ opacity: 0, width: 0 }}
+                                    animate={{ opacity: 1, width: 'auto' }}
+                                    exit={{ opacity: 0, width: 0 }}
+                                    onClick={onDelete}
+                                    className="px-3 h-8 flex items-center justify-center rounded-lg bg-red-500 text-white text-[11px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                                >
+                                    Sure?
+                                </motion.button>
+                            ) : (
+                                <motion.button 
+                                    key="delete"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => { setShowDeleteConfirm(true); setTimeout(() => setShowDeleteConfirm(false), 3000); }}
+                                    className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-red-400/50 hover:text-red-500 ${isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
+                                    title="Delete">
+                                    <Trash2 size={14}/>
+                                </motion.button>
+                            )}
+                        </AnimatePresence>
                         <div className={`w-[1px] h-5 mx-1 ${isDark ? 'bg-[#2a2a2a]' : 'bg-[#e8e8e8]'}`}/>
                         <button onClick={onClose}
                             className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]'}`}>
@@ -504,9 +543,10 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
         const totalLoaded = activeUploads.reduce((acc, u) => acc + (u.file.size * (u.progress / 100)), 0);
         const overallProgress = (totalLoaded / totalSize) * 100;
 
-        if (uploads.some(u => u.status === 'uploading')) {
+        if (uploads.some(u => u.status === 'uploading' || u.status === 'done')) {
+            const isActuallyUploading = uploads.some(u => u.status === 'uploading');
             if (!toastId) {
-                const id = gooeyToast(`Uploading ${activeUploads.length} files...`, {
+                const id = gooeyToast(isActuallyUploading ? `Uploading ${activeUploads.length} files...` : 'Processing files...', {
                     description: <ProgressContent progress={overallProgress} isDark={isDark} />,
                     duration: Infinity
                 });
@@ -1087,6 +1127,7 @@ export default function FilesPage() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [previewItem, setPreviewItem] = useState<FileItem | null>(null);
     const [deleteWarning, setDeleteWarning] = useState<string[] | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [globalDragOver, setGlobalDragOver] = useState(false);
     const errorShown = useRef(false);
 
@@ -1185,6 +1226,7 @@ export default function FilesPage() {
     const navigate = useCallback((id: string) => {
         setCurrentFolderId(id);
         setSelectedIds(new Set());
+        setDeletingId(null);
         setSearch('');
         setExpandedIds(prev => { const next = new Set(prev); next.add(id); return next; });
         setHistory(prev => { const h = prev.slice(0, histIdx + 1); h.push(id); return h; });
@@ -1226,7 +1268,10 @@ export default function FilesPage() {
         if (selectedIds.size === currentChildren.length) setSelectedIds(new Set());
         else setSelectedIds(new Set(currentChildren.map(i => i.id)));
     };
-    const clearSelection = () => setSelectedIds(new Set());
+    const clearSelection = () => {
+        setSelectedIds(new Set());
+        setDeletingId(null);
+    };
 
     const toggleExpand = useCallback((id: string) => {
         setExpandedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -1924,35 +1969,58 @@ export default function FilesPage() {
                                             {/* Expanding Action Bar */}
                                             {!isRenaming && selectedIds.size === 0 && (
                                                 <div className="w-full h-0 opacity-0 group-hover:h-8 group-hover:opacity-100 group-hover:mt-1 transition-all duration-300 overflow-hidden pointer-events-none group-hover:pointer-events-auto">
-                                                    <div className="flex items-center justify-center gap-1.5 py-1 border-t border-dashed border-black/5 dark:border-white/5">
-                                                        <button onClick={e => { e.stopPropagation(); setRenamingId(item.id); }}
-                                                            className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                isDark ? 'text-[#444] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-black/5')}
-                                                            title="Rename">
-                                                            <Pencil size={11} strokeWidth={2}/>
-                                                        </button>
-                                                        {item.type !== 'folder' && item.downloadUrl && (
-                                                            <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
-                                                                className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                    isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}
-                                                                    title="Download">
-                                                                <Download size={11} strokeWidth={2}/>
-                                                            </button>
-                                                        )}
-                                                        {(item.downloadUrl || item.url) && (
-                                                            <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
-                                                                className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                    isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}
-                                                                    title="Copy link">
-                                                                <Link size={11} strokeWidth={2}/>
-                                                            </button>
-                                                        )}
-                                                        <button onClick={e => { e.stopPropagation(); deleteItems([item.id]); }}
-                                                            className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                isDark ? 'text-red-500/20 hover:text-red-500 hover:bg-red-500/10' : 'text-red-200 hover:text-red-500 hover:bg-red-50')}
-                                                            title="Delete">
-                                                            <Trash2 size={11} strokeWidth={2}/>
-                                                        </button>
+                                                    <div className="flex items-center justify-center gap-1.5 py-1 border-t border-dashed border-black/5 dark:border-white/5 h-8">
+                                                        <AnimatePresence mode="wait">
+                                                            {deletingId === item.id ? (
+                                                                <motion.button
+                                                                    key="confirm"
+                                                                    initial={{ opacity: 0, scale: 0.9, width: 0 }}
+                                                                    animate={{ opacity: 1, scale: 1, width: 'auto' }}
+                                                                    exit={{ opacity: 0, scale: 0.9, width: 0 }}
+                                                                    onClick={e => { e.stopPropagation(); deleteItems([item.id]); setDeletingId(null); }}
+                                                                    className="px-3 h-6.5 flex items-center justify-center rounded-lg bg-red-500 text-white text-[10px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                                                                >
+                                                                    Sure?
+                                                                </motion.button>
+                                                            ) : (
+                                                                <motion.div 
+                                                                    key="actions"
+                                                                    initial={{ opacity: 0 }}
+                                                                    animate={{ opacity: 1 }}
+                                                                    exit={{ opacity: 0 }}
+                                                                    className="flex items-center gap-1.5"
+                                                                >
+                                                                    <button onClick={e => { e.stopPropagation(); setRenamingId(item.id); }}
+                                                                        className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
+                                                                            isDark ? 'text-[#444] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-black/5')}
+                                                                        title="Rename">
+                                                                        <Pencil size={11} strokeWidth={2}/>
+                                                                    </button>
+                                                                    {item.type !== 'folder' && item.downloadUrl && (
+                                                                        <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
+                                                                            className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
+                                                                                isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}
+                                                                                title="Download">
+                                                                            <Download size={11} strokeWidth={2}/>
+                                                                        </button>
+                                                                    )}
+                                                                    {(item.downloadUrl || item.url) && (
+                                                                        <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
+                                                                            className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
+                                                                                isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}
+                                                                                title="Copy link">
+                                                                            <Link size={11} strokeWidth={2}/>
+                                                                        </button>
+                                                                    )}
+                                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(item.id); setTimeout(() => setDeletingId(curr => curr === item.id ? null : curr), 3000); }}
+                                                                        className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
+                                                                            isDark ? 'text-red-500/20 hover:text-red-500 hover:bg-red-500/10' : 'text-red-200 hover:text-red-500 hover:bg-red-50')}
+                                                                        title="Delete">
+                                                                        <Trash2 size={11} strokeWidth={2}/>
+                                                                    </button>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
                                                     </div>
                                                 </div>
                                             )}
@@ -2028,34 +2096,57 @@ export default function FilesPage() {
                                                 {/* Row actions */}
                                                 {selectedIds.size === 0 && (
                                                     <div className="flex items-center gap-0.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {/* Star */}
-                                                    <button onClick={e => { e.stopPropagation(); toggleStar(item.id); }}
-                                                        className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', item.starred ? 'text-amber-400' : isDark ? 'text-[#555] hover:text-amber-400 hover:bg-white/5' : 'text-[#ccc] hover:text-amber-400 hover:bg-[#f0f0f0]')}
-                                                        title={item.starred ? 'Unstar' : 'Star'}>
-                                                        <Star size={11} fill={item.starred ? 'currentColor' : 'none'}/>
-                                                    </button>
-                                                    {/* Download */}
-                                                    {item.type !== 'folder' && item.downloadUrl && (
-                                                        <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
-                                                            className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', isDark ? 'text-[#555] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-[#f0f0f0]')}
-                                                            title="Download">
-                                                            <Download size={11}/>
-                                                        </button>
-                                                    )}
-                                                    {/* Copy link */}
-                                                    {(item.downloadUrl || item.url) && (
-                                                        <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
-                                                            className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', isDark ? 'text-[#555] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-[#f0f0f0]')}
-                                                            title="Copy download link">
-                                                            <Link size={11}/>
-                                                        </button>
-                                                    )}
-                                                    <button onClick={e => { e.stopPropagation(); setRenamingId(item.id); }}
-                                                        className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', isDark ? 'hover:bg-white/8 text-[#555] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#ccc] hover:text-[#444]')}
-                                                        title="Rename"><Pencil size={11}/></button>
-                                                    <button onClick={e => { e.stopPropagation(); deleteItems([item.id]); }}
-                                                        className="w-6 h-6 flex items-center justify-center rounded-md transition-colors text-[#ccc] hover:text-red-500 hover:bg-red-500/10"
-                                                        title="Delete"><Trash2 size={11}/></button>
+                                                        <AnimatePresence mode="wait">
+                                                            {deletingId === item.id ? (
+                                                                <motion.button
+                                                                    key="confirm"
+                                                                    initial={{ opacity: 0, x: 10, width: 0 }}
+                                                                    animate={{ opacity: 1, x: 0, width: 'auto' }}
+                                                                    exit={{ opacity: 0, x: 10, width: 0 }}
+                                                                    onClick={e => { e.stopPropagation(); deleteItems([item.id]); setDeletingId(null); }}
+                                                                    className="px-2.5 h-6 flex items-center justify-center rounded-md bg-red-500 text-white text-[10px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                                                                >
+                                                                    Sure?
+                                                                </motion.button>
+                                                            ) : (
+                                                                <motion.div 
+                                                                    key="actions"
+                                                                    initial={{ opacity: 0 }}
+                                                                    animate={{ opacity: 1 }}
+                                                                    exit={{ opacity: 0 }}
+                                                                    className="flex items-center gap-0.5"
+                                                                >
+                                                                    {/* Star */}
+                                                                    <button onClick={e => { e.stopPropagation(); toggleStar(item.id); }}
+                                                                        className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', item.starred ? 'text-amber-400' : isDark ? 'text-[#555] hover:text-amber-400 hover:bg-white/5' : 'text-[#ccc] hover:text-amber-400 hover:bg-[#f0f0f0]')}
+                                                                        title={item.starred ? 'Unstar' : 'Star'}>
+                                                                        <Star size={11} fill={item.starred ? 'currentColor' : 'none'}/>
+                                                                    </button>
+                                                                    {/* Download */}
+                                                                    {item.type !== 'folder' && item.downloadUrl && (
+                                                                        <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
+                                                                            className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', isDark ? 'text-[#555] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-[#f0f0f0]')}
+                                                                            title="Download">
+                                                                            <Download size={11}/>
+                                                                        </button>
+                                                                    )}
+                                                                    {/* Copy link */}
+                                                                    {(item.downloadUrl || item.url) && (
+                                                                        <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
+                                                                            className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', isDark ? 'text-[#555] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-[#f0f0f0]')}
+                                                                            title="Copy download link">
+                                                                            <Link size={11}/>
+                                                                        </button>
+                                                                    )}
+                                                                    <button onClick={e => { e.stopPropagation(); setRenamingId(item.id); }}
+                                                                        className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', isDark ? 'hover:bg-white/8 text-[#555] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#ccc] hover:text-[#444]')}
+                                                                        title="Rename"><Pencil size={11}/></button>
+                                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(item.id); setTimeout(() => setDeletingId(curr => curr === item.id ? null : curr), 3000); }}
+                                                                        className="w-6 h-6 flex items-center justify-center rounded-md transition-colors text-[#ccc] hover:text-red-500 hover:bg-red-500/10"
+                                                                        title="Delete"><Trash2 size={11}/></button>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
                                                     </div>
                                                 )}
                                             </div>
