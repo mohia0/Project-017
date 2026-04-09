@@ -8,6 +8,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useMenuStore, ICON_MAP } from '@/store/useMenuStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import RightPanel from './RightPanel';
 import {
     Plus, Bell, Moon, Sun, Settings, LogOut, X,
@@ -19,6 +20,8 @@ export function MobileTopBar() {
     const { theme, toggleTheme, setCreateModalOpen, toggleNotifications } = useUIStore();
     const { user } = useAuthStore();
     const { profile } = useSettingsStore();
+    const { notifications } = useNotificationStore();
+    const unreadCount = notifications.filter(n => !n.read).length;
     const isDark = theme === 'dark';
     const pathname = usePathname();
     const [menuOpen, setMenuOpen] = useState(false);
@@ -74,13 +77,16 @@ export function MobileTopBar() {
                     <button
                         onClick={toggleNotifications}
                         className={cn(
-                            "w-[36px] h-[36px] rounded-[10px] flex items-center justify-center transition-all active:scale-90",
+                            "relative w-[36px] h-[36px] rounded-[10px] flex items-center justify-center transition-all active:scale-90",
                             isDark
                                 ? "bg-white/[0.06] text-[#888] hover:bg-white/10 hover:text-white"
                                 : "bg-[#f2f2f2] text-[#888] hover:bg-[#e8e8e8] hover:text-[#444]"
                         )}
                     >
                         <Bell size={17} strokeWidth={1.75} />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 border border-white dark:border-[#141414] shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+                        )}
                     </button>
 
                     {/* New item */}

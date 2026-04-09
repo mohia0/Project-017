@@ -85,9 +85,33 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
     },
 
     updateInvoice: async (id, updates) => {
+        const state = useInvoiceStore.getState();
+        const current = state.invoices.find(i => i.id === id);
+        
         const payload: any = { ...updates };
         if (payload.due_date === '') payload.due_date = null;
         if (payload.issue_date === '') payload.issue_date = null;
+
+        if (current && current.meta) {
+            let metaUpdated = false;
+            const newMeta = { ...current.meta };
+            if (updates.status && newMeta.status !== updates.status) {
+                newMeta.status = updates.status;
+                metaUpdated = true;
+            }
+            if (updates.client_name && newMeta.clientName !== updates.client_name) {
+                newMeta.clientName = updates.client_name;
+                metaUpdated = true;
+            }
+            if (metaUpdated) {
+                payload.meta = newMeta;
+            }
+        }
+
+        // Optimistic update
+        set((state) => ({
+            invoices: state.invoices.map((i) => (i.id === id ? { ...i, ...payload } : i)),
+        }));
 
         const { data, error } = await supabase.from('invoices').update(payload).eq('id', id).select().single();
         if (error) {

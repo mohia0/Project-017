@@ -3,60 +3,52 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SettingsCard } from '@/components/settings/SettingsCard';
-import { SettingsField, SettingsInput } from '@/components/settings/SettingsField';
-import { useWorkspaceStore } from '@/store/useWorkspaceStore';
+import { SettingsField, SettingsInput, SettingsTextarea, SettingsToggle } from '@/components/settings/SettingsField';
+import { useWorkspaceStore, Workspace } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
-import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, FileText, Code } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
-import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
-function AccordionSection({ title, children, defaultOpen = false }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) {
-    const [isOpen, setIsOpen] = useState(defaultOpen);
-    const { theme } = useUIStore();
-    const isDark = theme === 'dark';
-    return (
-        <div className={cn(
-            "w-full rounded-xl overflow-hidden mb-4 border transition-colors",
-            isDark ? "bg-[#111] border-white/10" : "bg-white border-black/10"
-        )}>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className={cn(
-                    "w-full flex items-center justify-between p-5 text-sm font-bold transition-colors hover:bg-black/5 dark:hover:bg-white/5",
-                    isOpen && "border-b border-black/10 dark:border-white/10"
-                )}
-            >
-                {title}
-                {isOpen ? <ChevronDown size={18} className="opacity-50" /> : <ChevronRight size={18} className="opacity-50" />}
-            </button>
-            {isOpen && <div className="p-5">{children}</div>}
-        </div>
-    );
-}
-
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function WorkspaceSettingsPage() {
     const router = useRouter();
     const { workspaces, updateWorkspace, deleteWorkspace, hasFetched: hasFetchedWorkspace } = useWorkspaceStore();
     const { domains, fetchDomains, hasFetched: hasFetchedDomains } = useSettingsStore();
-    const { activeWorkspaceId } = useUIStore();
-    const { theme } = useUIStore();
+    const { activeWorkspaceId, theme } = useUIStore();
     const isDark = theme === 'dark';
     
     const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
-    const primaryDomain = domains.find(d => d.is_primary)?.domain || '';
-
+    
+    // General State
     const [name, setName] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     
-    // Complex state
+    // Contact State
     const [emails, setEmails] = useState<{value: string, type: string}[]>([]);
     const [phones, setPhones] = useState<{value: string, type: string}[]>([]);
     const [address, setAddress] = useState({ line: '', city: '', country: '', zip: '' });
     
-    const [isSaving, setIsSaving] = useState(false);
+    // Links State
+    const [links, setLinks] = useState<{label: string, url: string}[]>([]);
+    
+    // Working Hours State
+    const [workingHours, setWorkingHours] = useState<Record<string, { start: string, end: string, closed: boolean }>>({});
+    
+    // Additional Details State
+    const [additionalDetails, setAdditionalDetails] = useState({ 
+        tax_id: '', 
+        reg_number: '', 
+        vat_number: '', 
+        notes: '' 
+    });
+
+    // Metadata State
+    const [metadata, setMetadata] = useState<{key: string, value: string}[]>([]);
+    
+    const [isSaving, setIsSaving] = useState<Record<string, boolean>>({});
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
 
@@ -70,106 +62,131 @@ export default function WorkspaceSettingsPage() {
             setName(activeWorkspace.name || '');
             setLogoUrl(activeWorkspace.logo_url || '');
             
-            // Parse jsonb fields safely
-            let ems = activeWorkspace.contact_emails || [];
-            if (ems.length === 0) ems = [{ value: '', type: 'Email' }];
-            setEmails(ems);
+            // Contact
+            setEmails(activeWorkspace.contact_emails?.length ? activeWorkspace.contact_emails : [{ value: '', type: 'Email' }]);
+            setPhones(activeWorkspace.contact_phones?.length ? activeWorkspace.contact_phones : [{ value: '', type: 'Mobile number' }]);
+            setAddress(activeWorkspace.contact_address || { line: '', city: '', country: '', zip: '' });
 
-            let phs = activeWorkspace.contact_phones || [];
-            if (phs.length === 0) phs = [{ value: '', type: 'Mobile number' }];
-            setPhones(phs);
+            // Links
+            setLinks(activeWorkspace.links?.length ? activeWorkspace.links : [{ label: '', url: '' }]);
 
-            let addr = activeWorkspace.contact_address || { line: '', city: '', country: '', zip: '' };
-            setAddress(addr);
+            // Working Hours
+            const initialHours: Record<string, { start: string, end: string, closed: boolean }> = {};
+            DAYS.forEach(day => {
+                initialHours[day] = activeWorkspace.working_hours?.[day] || { start: '09:00', end: '17:00', closed: false };
+            });
+            setWorkingHours(initialHours);
+
+            // Additional Details
+            setAdditionalDetails(activeWorkspace.additional_details || { tax_id: '', reg_number: '', vat_number: '', notes: '' });
+
+            // Metadata
+            const metaEntries = Object.entries(activeWorkspace.metadata || {}).map(([key, value]) => ({ key, value: String(value) }));
+            setMetadata(metaEntries.length > 0 ? metaEntries : [{ key: '', value: '' }]);
         }
     }, [activeWorkspace]);
 
-    const hasUnsavedChanges = () => {
-        if (!activeWorkspace) return false;
-        const currentEms = JSON.stringify(emails);
-        const savedEms = JSON.stringify(activeWorkspace.contact_emails?.length ? activeWorkspace.contact_emails : [{ value: '', type: 'Email' }]);
+    const handleSaveSection = async (section: string, updates: Partial<Workspace>) => {
+        if (!activeWorkspaceId) return;
+        setIsSaving(prev => ({ ...prev, [section]: true }));
         
-        const currentPhs = JSON.stringify(phones);
-        const savedPhs = JSON.stringify(activeWorkspace.contact_phones?.length ? activeWorkspace.contact_phones : [{ value: '', type: 'Mobile number' }]);
-        
-        const currentAddr = JSON.stringify(address);
-        const savedAddr = JSON.stringify(activeWorkspace.contact_address || { line: '', city: '', country: '', zip: '' });
+        // Clean up data before saving
+        if (updates.contact_emails) {
+            updates.contact_emails = (updates.contact_emails as any[]).filter(e => e.value.trim() !== '');
+        }
+        if (updates.contact_phones) {
+            updates.contact_phones = (updates.contact_phones as any[]).filter(p => p.value.trim() !== '');
+        }
+        if (updates.links) {
+            updates.links = (updates.links as any[]).filter(l => l.url.trim() !== '');
+        }
+        if (section === 'metadata') {
+            const metaObj: Record<string, string> = {};
+            metadata.forEach(m => {
+                if (m.key.trim()) metaObj[m.key.trim()] = m.value;
+            });
+            (updates as any).metadata = metaObj;
+        }
 
-        return (
-            name !== (activeWorkspace.name || '') ||
-            logoUrl !== (activeWorkspace.logo_url || '') ||
-            currentEms !== savedEms ||
-            currentPhs !== savedPhs ||
-            currentAddr !== savedAddr
-        );
+        await updateWorkspace(activeWorkspaceId, updates);
+        setIsSaving(prev => ({ ...prev, [section]: false }));
     };
 
-    const handleSave = async () => {
-        if (!activeWorkspaceId) return;
-        setIsSaving(true);
-        // clean up empty array elements
-        const cleanEmails = emails.filter(e => e.value.trim() !== '');
-        const cleanPhones = phones.filter(p => p.value.trim() !== '');
-
-        await updateWorkspace(activeWorkspaceId, {
-            name,
-            logo_url: logoUrl,
-            contact_emails: cleanEmails.length > 0 ? cleanEmails : [],
-            contact_phones: cleanPhones.length > 0 ? cleanPhones : [],
-            contact_address: address
-        });
-        setIsSaving(false);
+    const hasChanged = (section: string) => {
+        if (!activeWorkspace) return false;
+        switch (section) {
+            case 'general':
+                return name !== (activeWorkspace.name || '') || logoUrl !== (activeWorkspace.logo_url || '');
+            case 'contact':
+                const currentEms = JSON.stringify(emails.filter(e => e.value.trim() !== ''));
+                const savedEms = JSON.stringify(activeWorkspace.contact_emails || []);
+                const currentPhs = JSON.stringify(phones.filter(p => p.value.trim() !== ''));
+                const savedPhs = JSON.stringify(activeWorkspace.contact_phones || []);
+                const currentAddr = JSON.stringify(address);
+                const savedAddr = JSON.stringify(activeWorkspace.contact_address || { line: '', city: '', country: '', zip: '' });
+                return currentEms !== savedEms || currentPhs !== savedPhs || currentAddr !== savedAddr;
+            case 'links':
+                const currentLinks = JSON.stringify(links.filter(l => l.url.trim() !== ''));
+                const savedLinks = JSON.stringify(activeWorkspace.links || []);
+                return currentLinks !== savedLinks;
+            case 'workingHours':
+                return JSON.stringify(workingHours) !== JSON.stringify(activeWorkspace.working_hours || {});
+            case 'additionalDetails':
+                return JSON.stringify(additionalDetails) !== JSON.stringify(activeWorkspace.additional_details || { tax_id: '', reg_number: '', vat_number: '', notes: '' });
+            case 'metadata':
+                const currentMeta = JSON.stringify(metadata.filter(m => m.key.trim() !== ''));
+                const savedMeta = JSON.stringify(Object.entries(activeWorkspace.metadata || {}).map(([key, value]) => ({ key, value: String(value) })));
+                return currentMeta !== savedMeta;
+            default:
+                return false;
+        }
     };
 
     const handleForceDelete = async () => {
         if (!activeWorkspaceId) return;
-        
         const confirmStr = `Are you sure you want to delete "${activeWorkspace?.name}"? This action cannot be undone.`;
         if (window.confirm(confirmStr)) {
             const success = await deleteWorkspace(activeWorkspaceId);
-            if (success) {
-                router.push('/');
-            }
+            if (success) router.push('/');
         }
     };
 
     if (!hasFetchedWorkspace || !hasFetchedDomains.domains || !mounted) {
         return (
             <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto py-8 animate-pulse">
-                <div className={cn("h-48 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
-                <div className={cn("h-32 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
-                <div className={cn("h-32 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
+                <div className={cn("h-64 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
+                <div className={cn("h-96 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
             </div>
         );
     }
 
-    if (!activeWorkspace) {
-        return <div className="opacity-50 text-sm py-8">No active workspace selected.</div>;
-    }
+    if (!activeWorkspace) return <div className="opacity-50 text-sm py-8 px-4">No active workspace selected.</div>;
 
     return (
-        <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto py-8">
+        <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto py-8 pb-32">
+            {/* General Settings */}
             <SettingsCard
-                title="Settings / General"
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasUnsavedChanges()}
+                title="Workspace General"
+                description="The core identity and primary access point for your workspace."
+                onSave={() => handleSaveSection('general', { name, logo_url: logoUrl })}
+                isSaving={isSaving['general']}
+                unsavedChanges={hasChanged('general')}
             >
                 <div className="flex flex-col gap-8">
-                    <SettingsField label="Workspace Logo" description="Upload a customized workspace logo.">
+                    <SettingsField label="Workspace Logo" description="This logo will appear on your dashboard and public client pages.">
                         <div className="flex items-center gap-4">
                             <button
                                 type="button"
                                 onClick={() => setIsUploadModalOpen(true)}
                                 className={cn(
-                                    "w-16 h-16 rounded-[14px] flex items-center justify-center overflow-hidden transition-all hover:ring-2 hover:ring-offset-2 hover:ring-black/20 dark:hover:ring-white/20",
+                                    "w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden transition-all hover:ring-2 hover:ring-offset-2 hover:ring-black/20 dark:hover:ring-white/20",
                                     isDark ? "bg-white/10 hover:ring-offset-[#111]" : "bg-black/5 hover:ring-offset-white"
                                 )}
                             >
                                 {logoUrl ? (
                                     <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className={cn("text-lg font-bold", isDark ? "text-white/40" : "text-black/40")}>
+                                    <span className={cn("text-2xl font-bold", isDark ? "text-white/40" : "text-black/40")}>
                                         {name?.charAt(0).toUpperCase() || 'W'}
                                     </span>
                                 )}
@@ -178,43 +195,34 @@ export default function WorkspaceSettingsPage() {
                                 <button
                                     type="button"
                                     onClick={() => setIsUploadModalOpen(true)}
-                                    className={cn(
-                                        "text-xs font-bold transition-opacity hover:opacity-70",
-                                        isDark ? "text-white" : "text-black"
-                                    )}
+                                    className="text-sm font-bold hover:opacity-70 transition-opacity"
                                 >
                                     Change Logo
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setLogoUrl('')}
-                                    className="text-[10px] font-semibold text-red-500 opacity-80 hover:opacity-100 transition-opacity"
+                                    className="text-xs font-semibold text-red-500 opacity-80 hover:opacity-100 transition-opacity"
                                 >
-                                    Remove
+                                    Remove custom logo
                                 </button>
                             </div>
                         </div>
                     </SettingsField>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                        <SettingsField label="Workspace name">
+                        <SettingsField label="Workspace Name">
                             <SettingsInput 
                                 value={name} 
                                 onChange={e => setName(e.target.value)}
-                                placeholder="MOHI HASSAN DESIGN"
+                                placeholder="Your Business Name"
                             />
                         </SettingsField>
 
-                        <div className="flex flex-col gap-2">
-                             <div className="flex items-center gap-2 mb-1.5">
-                                <span className={cn("text-[10px] uppercase tracking-wider font-bold opacity-40")}>Primary Domain</span>
-                                {domains.find(d => d.is_primary) && (
-                                    <div className="px-1.5 py-0.5 rounded-full bg-[#4dbf39]/10 text-[#4dbf39] text-[9px] font-bold">ACTIVE</div>
-                                )}
-                             </div>
+                        <SettingsField label="Primary Domain" description="Managed via Domains tab">
                              <div className="flex items-center">
                                 <span className={cn(
-                                    "h-10 px-3 border border-r-0 rounded-l-xl flex items-center text-sm font-mono opacity-50",
+                                    "h-10 px-3 border border-r-0 rounded-l-xl flex items-center text-xs font-mono opacity-50",
                                     isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
                                 )}>
                                     https://
@@ -225,37 +233,36 @@ export default function WorkspaceSettingsPage() {
                                     className="rounded-l-none font-mono opacity-70 cursor-not-allowed"
                                 />
                             </div>
-                        </div>
+                        </SettingsField>
                     </div>
                 </div>
             </SettingsCard>
 
-
-
-            <ImageUploadModal 
-                isOpen={isUploadModalOpen}
-                onClose={() => setIsUploadModalOpen(false)}
-                onUpload={(url) => setLogoUrl(url)}
-                title="Upload Workspace Logo"
-            />
-
-
-
-            <AccordionSection title="Contact details" defaultOpen={true}>
-                <div className="flex flex-col gap-6">
+            {/* Contact Details */}
+            <SettingsCard
+                title="Contact Details"
+                description="Information used for billing, client communication, and public profiles."
+                onSave={() => handleSaveSection('contact', { contact_emails: emails, contact_phones: phones, contact_address: address })}
+                isSaving={isSaving['contact']}
+                unsavedChanges={hasChanged('contact')}
+            >
+                <div className="flex flex-col gap-8">
                     <div>
-                        <h4 className="text-xs font-bold mb-3">Email address</h4>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Mail size={14} className="opacity-40" />
+                            <h4 className="text-xs font-bold uppercase tracking-wider opacity-60">Email Addresses</h4>
+                        </div>
                         <div className="flex flex-col gap-2">
                             {emails.map((em, idx) => (
                                 <div key={idx} className="flex gap-2 items-center group">
                                     <SettingsInput 
-                                        placeholder="hey@yourdomain.com" 
+                                        placeholder="hello@example.com" 
                                         className="flex-1" 
                                         value={em.value}
                                         onChange={e => {
-                                            const newEms = [...emails];
-                                            newEms[idx].value = e.target.value;
-                                            setEmails(newEms);
+                                            const next = [...emails];
+                                            next[idx].value = e.target.value;
+                                            setEmails(next);
                                         }}
                                     />
                                     <div className="w-[120px] relative">
@@ -266,58 +273,50 @@ export default function WorkspaceSettingsPage() {
                                             )}
                                             value={em.type}
                                             onChange={e => {
-                                                const newEms = [...emails];
-                                                newEms[idx].type = e.target.value;
-                                                setEmails(newEms);
+                                                const next = [...emails];
+                                                next[idx].type = e.target.value;
+                                                setEmails(next);
                                             }}
                                         >
-                                            <option value="Email">Email</option>
+                                            <option value="Email">Work</option>
                                             <option value="Support">Support</option>
                                             <option value="Billing">Billing</option>
                                         </select>
                                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" />
                                     </div>
                                     <button 
-                                        onClick={() => {
-                                            if (emails.length === 1) {
-                                                setEmails([{ value: '', type: 'Email' }]);
-                                            } else {
-                                                setEmails(emails.filter((_, i) => i !== idx));
-                                            }
-                                        }}
+                                        onClick={() => setEmails(emails.length === 1 ? [{ value: '', type: 'Email' }] : emails.filter((_, i) => i !== idx))}
                                         className={cn(
-                                            "h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-xl border transition-all opacity-0 group-hover:opacity-100 focus:opacity-100",
-                                            isDark ? "border-white/10 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20" : "border-black/10 hover:bg-black/5"
+                                            "h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-xl border transition-all opacity-0 group-hover:opacity-100",
+                                            isDark ? "border-white/10 hover:bg-red-500/10 hover:text-red-500" : "border-black/10 hover:bg-black/5"
                                         )}
                                     >
-                                        <X size={14} strokeWidth={2.5} />
+                                        <X size={14} />
                                     </button>
                                 </div>
                             ))}
+                            <button onClick={() => setEmails([...emails, { value: '', type: 'Email' }])} className="text-xs font-bold mt-1 opacity-60 hover:opacity-100 flex items-center gap-1">
+                                <Plus size={14} /> Add Email
+                            </button>
                         </div>
-                        <button 
-                            onClick={() => setEmails([...emails, { value: '', type: 'Email' }])}
-                            className="mt-2 text-xs flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity font-medium"
-                        >
-                            <Plus size={14} /> Add another
-                        </button>
                     </div>
-                    
-                    <div className="h-px w-full border-t border-dashed border-black/10 dark:border-white/20" />
 
                     <div>
-                        <h4 className="text-xs font-bold mb-3">Phone number</h4>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Phone size={14} className="opacity-40" />
+                            <h4 className="text-xs font-bold uppercase tracking-wider opacity-60">Phone Numbers</h4>
+                        </div>
                         <div className="flex flex-col gap-2">
                             {phones.map((ph, idx) => (
                                 <div key={idx} className="flex gap-2 items-center group">
                                     <SettingsInput 
-                                        placeholder="+201010150242" 
+                                        placeholder="+1 234 567 890" 
                                         className="flex-1" 
                                         value={ph.value}
                                         onChange={e => {
-                                            const newPhs = [...phones];
-                                            newPhs[idx].value = e.target.value;
-                                            setPhones(newPhs);
+                                            const next = [...phones];
+                                            next[idx].value = e.target.value;
+                                            setPhones(next);
                                         }}
                                     />
                                     <div className="w-[120px] relative">
@@ -328,9 +327,9 @@ export default function WorkspaceSettingsPage() {
                                             )}
                                             value={ph.type}
                                             onChange={e => {
-                                                const newPhs = [...phones];
-                                                newPhs[idx].type = e.target.value;
-                                                setPhones(newPhs);
+                                                const next = [...phones];
+                                                next[idx].type = e.target.value;
+                                                setPhones(next);
                                             }}
                                         >
                                             <option value="Mobile number">Mobile</option>
@@ -340,51 +339,38 @@ export default function WorkspaceSettingsPage() {
                                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" />
                                     </div>
                                     <button 
-                                        onClick={() => {
-                                            if (phones.length === 1) {
-                                                setPhones([{ value: '', type: 'Mobile number' }]);
-                                            } else {
-                                                setPhones(phones.filter((_, i) => i !== idx));
-                                            }
-                                        }}
+                                        onClick={() => setPhones(phones.length === 1 ? [{ value: '', type: 'Mobile number' }] : phones.filter((_, i) => i !== idx))}
                                         className={cn(
-                                            "h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-xl border transition-all opacity-0 group-hover:opacity-100 focus:opacity-100",
-                                            isDark ? "border-white/10 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20" : "border-black/10 hover:bg-black/5"
+                                            "h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-xl border transition-all opacity-0 group-hover:opacity-100",
+                                            isDark ? "border-white/10 hover:bg-red-500/10 hover:text-red-500" : "border-black/10 hover:bg-black/5"
                                         )}
                                     >
-                                        <X size={14} strokeWidth={2.5} />
+                                        <X size={14} />
                                     </button>
                                 </div>
                             ))}
+                            <button onClick={() => setPhones([...phones, { value: '', type: 'Mobile number' }])} className="text-xs font-bold mt-1 opacity-60 hover:opacity-100 flex items-center gap-1">
+                                <Plus size={14} /> Add Phone
+                            </button>
                         </div>
-                        <button 
-                            onClick={() => setPhones([...phones, { value: '', type: 'Mobile number' }])}
-                            className="mt-2 text-xs flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity font-medium"
-                        >
-                            <Plus size={14} /> Add another
-                        </button>
                     </div>
 
-                    <div className="h-px w-full border-t border-dashed border-black/10 dark:border-white/20" />
-
                     <div>
-                        <h4 className="text-xs font-bold mb-3">Address</h4>
+                        <div className="flex items-center gap-2 mb-3">
+                            <MapPin size={14} className="opacity-40" />
+                            <h4 className="text-xs font-bold uppercase tracking-wider opacity-60">Physical Address</h4>
+                        </div>
                         <div className="flex flex-col gap-3">
                             <SettingsInput 
-                                placeholder="Address line" 
+                                placeholder="Street address" 
                                 value={address.line}
                                 onChange={e => setAddress({ ...address, line: e.target.value })}
                             />
-                            <SettingsInput 
-                                placeholder="City / State" 
-                                value={address.city}
-                                onChange={e => setAddress({ ...address, city: e.target.value })}
-                            />
                             <div className="grid grid-cols-2 gap-3">
                                 <SettingsInput 
-                                    placeholder="Country" 
-                                    value={address.country}
-                                    onChange={e => setAddress({ ...address, country: e.target.value })}
+                                    placeholder="City" 
+                                    value={address.city}
+                                    onChange={e => setAddress({ ...address, city: e.target.value })}
                                 />
                                 <SettingsInput 
                                     placeholder="Post / Zip code" 
@@ -392,45 +378,230 @@ export default function WorkspaceSettingsPage() {
                                     onChange={e => setAddress({ ...address, zip: e.target.value })}
                                 />
                             </div>
+                            <SettingsInput 
+                                placeholder="Country" 
+                                value={address.country}
+                                onChange={e => setAddress({ ...address, country: e.target.value })}
+                            />
                         </div>
                     </div>
                 </div>
-            </AccordionSection>
+            </SettingsCard>
 
-            <AccordionSection title="Links">
-                <div className="text-[13px] opacity-60 p-2 leading-relaxed">
-                    Add social profiles, portfolios, or external booking links to your public workspace profile.
+            {/* Links & Socials */}
+            <SettingsCard
+                title="Links & Socials"
+                description="Social profiles, portfolios, or external booking links."
+                onSave={() => handleSaveSection('links', { links })}
+                isSaving={isSaving['links']}
+                unsavedChanges={hasChanged('links')}
+            >
+                <div className="flex flex-col gap-4">
+                    {links.map((link, idx) => (
+                        <div key={idx} className="flex gap-2 items-center group">
+                            <SettingsInput 
+                                placeholder="Label (e.g. Website)" 
+                                className="w-1/3" 
+                                value={link.label}
+                                onChange={e => {
+                                    const next = [...links];
+                                    next[idx].label = e.target.value;
+                                    setLinks(next);
+                                }}
+                            />
+                            <div className="flex-1 relative">
+                                <SettingsInput 
+                                    placeholder="https://..." 
+                                    value={link.url}
+                                    onChange={e => {
+                                        const next = [...links];
+                                        next[idx].url = e.target.value;
+                                        setLinks(next);
+                                    }}
+                                />
+                                <ExternalLink size={14} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-30" />
+                            </div>
+                            <button 
+                                onClick={() => setLinks(links.length === 1 ? [{ label: '', url: '' }] : links.filter((_, i) => i !== idx))}
+                                className={cn(
+                                    "h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-xl border transition-all opacity-0 group-hover:opacity-100",
+                                    isDark ? "border-white/10 hover:bg-red-500/10 hover:text-red-500" : "border-black/10 hover:bg-black/5"
+                                )}
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    ))}
+                    <button onClick={() => setLinks([...links, { label: '', url: '' }])} className="text-xs font-bold opacity-60 hover:opacity-100 flex items-center gap-1">
+                        <Plus size={14} /> Add Social Link
+                    </button>
                 </div>
-            </AccordionSection>
-            
-            <AccordionSection title="Metadata">
-                <div className="text-[13px] opacity-60 p-2 leading-relaxed">
-                    Custom properties and tracking tokens passed automatically to your checkout environments.
-                </div>
-            </AccordionSection>
-            
-            <AccordionSection title="Working hours">
-                <div className="text-[13px] opacity-60 p-2 leading-relaxed">
-                    Set your active business schedule indicating when clients might expect responses or booking availability.
-                </div>
-            </AccordionSection>
-            
-            <AccordionSection title="Additional details">
-                <div className="text-[13px] opacity-60 p-2 leading-relaxed">
-                    Specify registration references or required internal notes tied to this workspace entity globally.
-                </div>
-            </AccordionSection>
+            </SettingsCard>
 
+            {/* Working Hours */}
+            <SettingsCard
+                title="Working Hours"
+                description="Set your active business schedule for client expectations."
+                onSave={() => handleSaveSection('workingHours', { working_hours: workingHours })}
+                isSaving={isSaving['workingHours']}
+                unsavedChanges={hasChanged('workingHours')}
+            >
+                <div className="flex flex-col gap-1 border rounded-2xl overflow-hidden" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                    {DAYS.map(day => {
+                        const config = workingHours[day] || { start: '09:00', end: '17:00', closed: false };
+                        return (
+                            <div key={day} className={cn(
+                                "flex items-center justify-between p-4 transition-colors",
+                                isDark ? "hover:bg-white/5" : "hover:bg-black/5",
+                                day !== DAYS[DAYS.length-1] && (isDark ? "border-b border-white/5" : "border-b border-black/5")
+                            )}>
+                                <div className="flex items-center gap-4 flex-1">
+                                    <div className="w-24 font-bold text-sm">{day}</div>
+                                    {!config.closed && (
+                                        <div className="flex items-center gap-2">
+                                            <input 
+                                                type="time" 
+                                                value={config.start}
+                                                onChange={e => setWorkingHours({ ...workingHours, [day]: { ...config, start: e.target.value } })}
+                                                className={cn(
+                                                    "h-8 px-2 rounded-lg border text-xs focus:outline-none",
+                                                    isDark ? "bg-white/5 border-white/10 text-white" : "bg-black/5 border-black/10 text-black"
+                                                )}
+                                            />
+                                            <span className="opacity-40 text-[10px] font-bold">TO</span>
+                                            <input 
+                                                type="time" 
+                                                value={config.end}
+                                                onChange={e => setWorkingHours({ ...workingHours, [day]: { ...config, end: e.target.value } })}
+                                                className={cn(
+                                                    "h-8 px-2 rounded-lg border text-xs focus:outline-none",
+                                                    isDark ? "bg-white/5 border-white/10 text-white" : "bg-black/5 border-black/10 text-black"
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className={cn("text-[10px] font-bold uppercase tracking-wider", config.closed ? "text-red-500" : "opacity-40")}>
+                                        {config.closed ? 'Closed' : 'Open'}
+                                    </span>
+                                    <SettingsToggle 
+                                        checked={!config.closed} 
+                                        onChange={checked => setWorkingHours({ ...workingHours, [day]: { ...config, closed: !checked } })} 
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </SettingsCard>
+
+            {/* Additional Details */}
+            <SettingsCard
+                title="Professional Details"
+                description="Registration references and required internal notes."
+                onSave={() => handleSaveSection('additionalDetails', { additional_details: additionalDetails })}
+                isSaving={isSaving['additionalDetails']}
+                unsavedChanges={hasChanged('additionalDetails')}
+            >
+                <div className="flex flex-col gap-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <SettingsField label="Registration Number">
+                            <SettingsInput 
+                                placeholder="e.g. 12345678" 
+                                value={additionalDetails.reg_number}
+                                onChange={e => setAdditionalDetails({ ...additionalDetails, reg_number: e.target.value })}
+                            />
+                        </SettingsField>
+                        <SettingsField label="VAT / TAX ID">
+                            <SettingsInput 
+                                placeholder="e.g. GB 123 4567 89" 
+                                value={additionalDetails.tax_id}
+                                onChange={e => setAdditionalDetails({ ...additionalDetails, tax_id: e.target.value })}
+                            />
+                        </SettingsField>
+                    </div>
+                    <SettingsField label="Workspace Notes" description="Private internal notes about this workspace entity.">
+                        <SettingsTextarea 
+                            placeholder="Add any internal references here..." 
+                            value={additionalDetails.notes}
+                            onChange={e => setAdditionalDetails({ ...additionalDetails, notes: e.target.value })}
+                        />
+                    </SettingsField>
+                </div>
+            </SettingsCard>
+
+            {/* Metadata (Advanced) */}
+            <SettingsCard
+                title="System Metadata"
+                description="Custom properties passed automatically to checkout and API environments."
+                onSave={() => handleSaveSection('metadata', {})}
+                isSaving={isSaving['metadata']}
+                unsavedChanges={hasChanged('metadata')}
+            >
+                <div className="flex flex-col gap-3">
+                    {metadata.map((meta, idx) => (
+                        <div key={idx} className="flex gap-2 items-center group">
+                            <SettingsInput 
+                                placeholder="Key (e.g. tracking_id)" 
+                                className="flex-1 font-mono text-xs" 
+                                value={meta.key}
+                                onChange={e => {
+                                    const next = [...metadata];
+                                    next[idx].key = e.target.value;
+                                    setMetadata(next);
+                                }}
+                            />
+                            <SettingsInput 
+                                placeholder="Value" 
+                                className="flex-1 font-mono text-xs" 
+                                value={meta.value}
+                                onChange={e => {
+                                    const next = [...metadata];
+                                    next[idx].value = e.target.value;
+                                    setMetadata(next);
+                                }}
+                            />
+                            <button 
+                                onClick={() => setMetadata(metadata.length === 1 ? [{ key: '', value: '' }] : metadata.filter((_, i) => i !== idx))}
+                                className={cn(
+                                    "h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-xl border transition-all opacity-0 group-hover:opacity-100",
+                                    isDark ? "border-white/10 hover:bg-red-500/10 hover:text-red-500" : "border-black/10 hover:bg-black/5"
+                                )}
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    ))}
+                    <button onClick={() => setMetadata([...metadata, { key: '', value: '' }])} className="text-xs font-bold opacity-60 hover:opacity-100 flex items-center gap-1">
+                        <Plus size={14} /> Add Property
+                    </button>
+                </div>
+            </SettingsCard>
+
+            <ImageUploadModal 
+                isOpen={isUploadModalOpen}
+                onClose={() => setIsUploadModalOpen(false)}
+                onUpload={(url) => setLogoUrl(url)}
+                title="Upload Workspace Logo"
+            />
+
+            {/* Delete Section */}
             <div className={cn(
-                "w-full rounded-xl overflow-hidden mb-4 border transition-colors border-red-500/20 hover:border-red-500/40",
-                isDark ? "bg-[#111]" : "bg-white shadow-sm"
+                "w-full rounded-2xl overflow-hidden border transition-all duration-300",
+                isDark 
+                    ? "bg-[#111] border-red-500/10 hover:border-red-500/30" 
+                    : "bg-white border-red-500/10 hover:border-red-500/30 shadow-sm"
             )}>
                 <button 
                     onClick={handleForceDelete}
-                    className="w-full flex items-center justify-between p-5 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/5 group"
+                    className="w-full flex items-center justify-between p-6 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/5 group"
                 >
-                    Permanently delete this workspace
-                    <ChevronRight size={18} className="opacity-50 group-hover:translate-x-1 border-transparent transition-transform" />
+                    <div className="flex flex-col items-start gap-0.5">
+                        <span>Permanently delete this workspace</span>
+                        <span className="text-[10px] font-medium opacity-50">All data, invoices, and settings will be lost forever.</span>
+                    </div>
+                    <X size={18} className="opacity-30 group-hover:opacity-100 transition-all group-hover:rotate-90" />
                 </button>
             </div>
         </div>

@@ -780,25 +780,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         </select>
                                     </MetaField>
 
-                                    <MetaField
-                                        label="Status"
-                                        isDark={isDark}
-                                        icon={<Zap size={11} className="opacity-50" />}
-                                        onReset={() => handleStatusChange('Draft')}
-                                    >
-                                        <select
-                                            value={meta.status}
-                                            onChange={e => handleStatusChange(e.target.value as any)}
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium appearance-none",
-                                                isDark ? "text-[#ccc]" : "text-[#333]"
-                                            )}
-                                        >
-                                            {['Draft', 'Pending', 'Paid', 'Overdue'].map(s => (
-                                                <option key={s} value={s}>{s}</option>
-                                            ))}
-                                        </select>
-                                    </MetaField>
+
                                 </>
                             )}
                             {rightTab === 'appearance' && (
