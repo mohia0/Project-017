@@ -296,15 +296,6 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
         </div>
     );
 
-    const handleCreateClient = async (data: any) => {
-        const client = await addClient(data);
-        if (client) {
-            onClientChange(client.id, client.contact_person || client.company_name);
-            setIsClientEditorOpen(false);
-            setOpen(false);
-            gooeyToast.success('Contact created and selected');
-        }
-    };
 }
 
 function StatusCell({ status, onStatusChange, isDark }: { status: InvoiceStatus; onStatusChange: (s: InvoiceStatus) => void; isDark: boolean }) {
@@ -352,6 +343,16 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
     const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
     const { clients, fetchClients, addClient } = useClientStore();
 
+    const handleCreateClient = async (data: any) => {
+        const client = await addClient(data);
+        if (client) {
+            onClientChange(client.id, client.contact_person || client.company_name);
+            setIsClientEditorOpen(false);
+            setOpen(false);
+            gooeyToast.success('Contact created and selected');
+        }
+    };
+
     useEffect(() => {
         if (open) {
             if (clients.length === 0) fetchClients();
@@ -367,14 +368,20 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
     const activeClient = useMemo(() => clients.find(c => c.id === currentId), [clients, currentId]);
 
     const display = (
-        <div className={cn("flex items-center gap-1.5",
-            variant === 'card' ? cn("px-2 py-1 rounded-[6px]", isDark ? "bg-white/10" : "bg-[#f5f5f5]") : "truncate")}>
-            {activeClient?.avatar_url ? (
-                <img src={activeClient.avatar_url} className={cn("rounded-full object-cover shrink-0", variant === 'card' ? "w-4 h-4" : "w-5 h-5")} />
-            ) : (
-                <User size={variant === 'card' ? 10 : 11} className={cn("opacity-40 shrink-0", isDark ? "text-[#aaa]" : "text-[#777]")} />
-            )}
-            <span className="truncate">{currentName || '—'}</span>
+        <div className={cn("flex items-center gap-2",
+            variant === 'card' ? cn("px-2 py-1.5 rounded-[8px]", isDark ? "bg-white/[0.03] border border-white/5" : "bg-[#f8f8f8] border border-[#f0f0f0]") : "truncate")}>
+            <div className="shrink-0">
+                {activeClient?.avatar_url ? (
+                    <img src={activeClient.avatar_url} className={cn("rounded-full object-cover", variant === 'card' ? "w-5 h-5" : "w-6 h-6")} />
+                ) : (
+                    <div className={cn("rounded-full flex items-center justify-center font-bold", 
+                        variant === 'card' ? "w-5 h-5 text-[8px]" : "w-6 h-6 text-[9px]",
+                        isDark ? "bg-white/10 text-[#555]" : "bg-[#f0f0f0] text-[#aaa]")}>
+                        {(currentName || '?').slice(0, 1).toUpperCase()}
+                    </div>
+                )}
+            </div>
+            <span className={cn("truncate font-medium", variant === 'card' ? "text-[12px]" : "text-[13px]")}>{currentName || '—'}</span>
         </div>
     );
 
@@ -415,25 +422,47 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
                         <>
                             {filtered.map(c => (
                                 <button key={c.id} onClick={(e) => { e.stopPropagation(); onClientChange(c.id, c.contact_person || c.company_name); setOpen(false); }}
-                                    className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
-                                        c.id === currentId ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
-                                    )}
-                                >
-                                    <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#444]")}>{c.contact_person || c.company_name}</span>
-                                    {c.id === currentId && <Check size={12} className="opacity-40" />}
-                                </button>
+                                    className={cn("w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors group",
+                                         c.id === currentId ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
+                                     )}
+                                 >
+                                     <div className="flex items-center gap-3 min-w-0">
+                                         {c.avatar_url ? (
+                                             <img src={c.avatar_url} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                                         ) : (
+                                             <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0", 
+                                                 isDark ? "bg-white/10 text-[#555]" : "bg-[#f0f0f0] text-[#aaa]")}>
+                                                 {(c.contact_person || c.company_name || '?').slice(0, 1).toUpperCase()}
+                                             </div>
+                                         )}
+                                         <div className="flex flex-col min-w-0 leading-tight">
+                                             <span className={cn("text-[12px] font-bold truncate transition-colors", 
+                                                 c.id === currentId ? "text-primary" : (isDark ? "text-[#ddd]" : "text-[#111]"))}>
+                                                 {c.contact_person || '—'}
+                                             </span>
+                                             {c.company_name && (
+                                                 <span className={cn("text-[10px] truncate", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                                                     {c.company_name}
+                                                 </span>
+                                             )}
+                                         </div>
+                                     </div>
+                                     {c.id === currentId && <Check size={12} className="text-primary opacity-60" />}
+                                 </button>
                             ))}
                             <div className={cn("mt-1 border-t", isDark ? "border-white/5" : "border-black/5")} />
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setIsClientEditorOpen(true); }}
-                                className={cn(
-                                    "w-full flex items-center gap-2 px-3.5 py-2.5 text-[12px] font-bold transition-colors text-left",
-                                    isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-black/[0.02]"
-                                )}
-                            >
-                                <Plus size={14} strokeWidth={2.5} />
-                                {search ? `Create "${search}"` : 'Create new contact'}
-                            </button>
+                            {(!search || !clients.some(c => (c.contact_person?.toLowerCase() === search.toLowerCase() || c.company_name?.toLowerCase() === search.toLowerCase()))) && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setIsClientEditorOpen(true); }}
+                                    className={cn(
+                                        "w-full flex items-center gap-2 px-3.5 py-2.5 text-[12px] font-bold transition-colors text-left",
+                                        isDark ? "text-primary hover:bg-white/5" : "text-primary hover:bg-black/[0.02]"
+                                    )}
+                                >
+                                    <Plus size={14} strokeWidth={2.5} />
+                                    {search ? `Create "${search}"` : 'Create new contact'}
+                                </button>
+                            )}
                         </>
                     )}
                 </div>
@@ -519,7 +548,7 @@ export default function InvoicesPage() {
     const [importExportOpen, setImportExportOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     /* ... existing state ... */
-    const [colWidths, setColWidths] = useState(() => {
+    const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('invoice_col_widths');
             if (saved) return JSON.parse(saved);
@@ -550,7 +579,7 @@ export default function InvoicesPage() {
         localStorage.setItem('invoice_col_order', JSON.stringify(columnOrder));
     }, [columnOrder]);
 
-    const isResizing = useRef<string | null>(null);
+    const isResizing = useRef<keyof typeof colWidths | null>(null);
     const startX = useRef<number>(0);
     const startWidth = useRef<number>(0);
 

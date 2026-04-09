@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { CreateCompanyModal } from '@/components/modals/CreateCompanyModal';
+import ImageUploadModal from '@/components/modals/ImageUploadModal';
+import { Image as ImageIcon } from 'lucide-react';
 
 interface ClientFormData {
     company_name: string;
@@ -18,6 +20,7 @@ interface ClientFormData {
     address?: string;
     tax_number?: string;
     notes?: string;
+    avatar_url?: string;
 }
 
 interface ClientEditorProps {
@@ -166,12 +169,16 @@ function CompanyField({
                                             isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
                                         )}
                                     >
-                                        <div className={cn(
-                                            "w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold shrink-0",
-                                            isDark ? "bg-[#252525] text-[#777]" : "bg-[#f0f0f0] text-[#999]"
-                                        )}>
-                                            {c.name.slice(0, 2).toUpperCase()}
-                                        </div>
+                                        {c.avatar_url ? (
+                                            <img src={c.avatar_url} className="w-6 h-6 rounded-md object-cover shrink-0" />
+                                        ) : (
+                                            <div className={cn(
+                                                "w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold shrink-0",
+                                                isDark ? "bg-[#252525] text-[#777]" : "bg-[#f0f0f0] text-[#999]"
+                                            )}>
+                                                {c.name.slice(0, 2).toUpperCase()}
+                                            </div>
+                                        )}
                                         <div className="min-w-0">
                                             <div className="font-medium truncate">{c.name}</div>
                                             {c.industry && (
@@ -190,17 +197,21 @@ function CompanyField({
                         )}
 
                         {/* Divider + Create new */}
-                        {filtered.length > 0 && <div className={cn("border-t", isDark ? "border-[#252525]" : "border-[#f0f0f0]")} />}
-                        <button
-                            onMouseDown={e => { e.preventDefault(); setOpen(false); setShowCreateModal(true); }}
-                            className={cn(
-                                "w-full flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium transition-colors",
-                                isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-[#f5f5f5]"
-                            )}
-                        >
-                            <Plus size={13} />
-                            {query ? `Create "${query}" as new company` : 'Create new company'}
-                        </button>
+                        {(!query || !companies.some(c => c.name.toLowerCase() === query.toLowerCase())) && (
+                            <>
+                                {filtered.length > 0 && <div className={cn("border-t", isDark ? "border-[#252525]" : "border-[#f0f0f0]")} />}
+                                <button
+                                    onMouseDown={e => { e.preventDefault(); setOpen(false); setShowCreateModal(true); }}
+                                    className={cn(
+                                        "w-full flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium transition-colors",
+                                        isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-[#f5f5f5]"
+                                    )}
+                                >
+                                    <Plus size={13} />
+                                    {query ? `Create "${query}" as new company` : 'Create new company'}
+                                </button>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
@@ -228,7 +239,9 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
         address:        initialData?.address        || '',
         tax_number:     initialData?.tax_number     || '',
         notes:          initialData?.notes          || '',
+        avatar_url:     initialData?.avatar_url || '',
     });
+    const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [errors, setErrors] = useState<Partial<Record<keyof ClientFormData, string>>>({});
     const [saving, setSaving] = useState(false);
 
@@ -281,6 +294,40 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
 
                 {/* Body */}
                 <div className="px-5 pb-5 flex flex-col gap-2.5 max-h-[70vh] overflow-y-auto">
+                    {/* Avatar Upload */}
+                    <div 
+                        onClick={() => setIsAvatarModalOpen(true)}
+                        className={cn(
+                            "w-full rounded-xl border px-4 py-3 cursor-pointer transition-all",
+                            isDark
+                                ? "bg-[#1c1c1c] border-[#2e2e2e] hover:border-[#444]"
+                                : "bg-white border-[#e0e0e0] hover:border-[#ccc]"
+                        )}
+                    >
+                        <div className="flex items-center gap-1.5 mb-1.5 grayscale opacity-60">
+                            <ImageIcon size={11} className={isDark ? "text-white" : "text-[#333]"} />
+                            <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Profile photo</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {form.avatar_url ? (
+                                <img src={form.avatar_url} className="w-10 h-10 rounded-lg object-cover border border-black/5" />
+                            ) : (
+                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center border border-dashed", 
+                                    isDark ? "border-[#333] text-[#444]" : "border-[#e0e0e0] text-[#ccc]")}>
+                                    <ImageIcon size={16} />
+                                </div>
+                            )}
+                            <div className="flex flex-col">
+                                <span className={cn("text-[13px] font-medium", isDark ? "text-white/60" : "text-black/60")}>
+                                    {form.avatar_url ? 'Update photo' : 'Upload photo'}
+                                </span>
+                                <span className={cn("text-[10px]", isDark ? "text-[#444]" : "text-[#ccc]")}>
+                                    JPG, PNG or SVG. Max 2MB.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <FormField
                         isDark={isDark} autoFocus
                         label="Contact person *"
@@ -385,6 +432,14 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
                     </button>
                 </div>
             </div>
+
+            {isAvatarModalOpen && (
+                <ImageUploadModal
+                    isOpen={isAvatarModalOpen}
+                    onClose={() => setIsAvatarModalOpen(false)}
+                    onUpload={(url) => update('avatar_url')(url)}
+                />
+            )}
         </div>
     );
 }

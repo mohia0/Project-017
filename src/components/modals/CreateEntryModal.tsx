@@ -162,7 +162,7 @@ function ClientPicker({ isDark, selectedClient, selectedClientId, onSelect }: {
                                     onClick={() => setIsClientEditorOpen(true)}
                                     className={cn(
                                         "w-full text-left px-4 py-2.5 text-[13px] font-bold transition-colors flex items-center gap-2",
-                                        isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-black/5"
+                                        isDark ? "text-primary hover:bg-white/5" : "text-primary hover:bg-black/5"
                                     )}
                                 >
                                     <Plus size={14} strokeWidth={3} />
@@ -309,8 +309,8 @@ export default function CreateEntryModal() {
                     isDark ? "border-[#252525]" : "border-[#eaeaef]"
                 )}>
                     <div className="flex items-center gap-2.5">
-                        <div className="w-6 h-6 rounded-lg bg-[#4dbf39]/10 flex items-center justify-center">
-                            <Plus size={14} className="text-[#4dbf39]" strokeWidth={3} />
+                        <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Plus size={14} className="text-primary" strokeWidth={3} />
                         </div>
                         <h2 className={cn("text-[15px] font-bold tracking-tight", isDark ? "text-white" : "text-[#111]")}>
                             Create New
@@ -357,7 +357,7 @@ export default function CreateEntryModal() {
                                         tab === t.id
                                             ? isDark
                                                 ? "bg-[#2a2a2a] text-white shadow-sm"
-                                                : "bg-white text-[#4dbf39] shadow-sm border border-[#e0e0eb]"
+                                                : "bg-white text-primary shadow-sm border border-[#e0e0eb]"
                                             : isDark
                                                 ? "text-[#555] hover:text-[#888] hover:bg-white/[0.02]"
                                                 : "text-[#999] hover:text-[#555] hover:bg-[#efeff5]"
@@ -365,7 +365,7 @@ export default function CreateEntryModal() {
                                 >
                                     <span className={cn(
                                         "transition-colors",
-                                        tab === t.id ? "text-[#4dbf39]" : "opacity-40 group-hover:opacity-60"
+                                        tab === t.id ? "text-primary" : "opacity-40 group-hover:opacity-60"
                                     )}>
                                         {t.icon}
                                     </span>
@@ -468,7 +468,7 @@ export default function CreateEntryModal() {
                             <button
                                 onClick={handleCreate}
                                 disabled={loading}
-                                className="flex items-center gap-2 px-6 py-2 text-[13px] font-bold rounded-xl bg-[#4dbf39] hover:bg-[#59d044] text-black transition-all active:scale-[0.98] disabled:opacity-60 shadow-[0_4px_14px_-4px_rgba(77,191,57,0.4)]"
+                                className="flex items-center gap-2 px-6 py-2 text-[13px] font-bold rounded-xl bg-primary hover:bg-primary-hover text-black transition-all active:scale-[0.98] disabled:opacity-60 shadow-[0_4px_14px_-4px_rgba(var(--brand-primary-rgb),0.4)]"
                             >
                                 {loading ? 'Creating...' : ctaLabel}
                                 {!loading && <ChevronRight size={14} strokeWidth={2.5} />}

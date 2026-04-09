@@ -307,12 +307,16 @@ export default function ClientsPage() {
                                                         <Trash2 size={12} />
                                                     </button>
                                                 </div>
-                                                <div className={cn(
-                                                    "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0",
-                                                    isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]"
-                                                )}>
-                                                    {getInitials(client.contact_person || client.company_name)}
-                                                </div>
+                                                {client.avatar_url ? (
+                                                    <img src={client.avatar_url} className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                                                ) : (
+                                                    <div className={cn(
+                                                        "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0",
+                                                        isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]"
+                                                    )}>
+                                                        {getInitials(client.contact_person || client.company_name)}
+                                                    </div>
+                                                )}
                                                 <span className={cn("text-[13px] font-semibold truncate", textPrimary)}>
                                                     {client.contact_person || '—'}
                                                 </span>
@@ -362,10 +366,14 @@ export default function ClientsPage() {
                                             <div className="flex items-center justify-center" onClick={e => toggleRow(client.id, e)}>
                                                 <Chk checked={selectedIds.has(client.id)} isDark={isDark} />
                                             </div>
-                                            <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold",
-                                                isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]")}>
-                                                {getInitials(client.contact_person || client.company_name)}
-                                            </div>
+                                            {client.avatar_url ? (
+                                                <img src={client.avatar_url} className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                                            ) : (
+                                                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold",
+                                                    isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]")}>
+                                                    {getInitials(client.contact_person || client.company_name)}
+                                                </div>
+                                            )}
                                             <div className={cn("flex items-center font-medium truncate", textPrimary)}>
                                                 {client.contact_person || '—'}
                                             </div>
@@ -452,12 +460,16 @@ export default function ClientsPage() {
                                                         <Trash2 size={12} />
                                                     </button>
                                                 </div>
-                                                <div className={cn(
-                                                    "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0",
-                                                    isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]"
-                                                )}>
-                                                    {company.name.slice(0, 2).toUpperCase()}
-                                                </div>
+                                                {company.avatar_url ? (
+                                                    <img src={company.avatar_url} className="w-7 h-7 rounded-lg object-cover shrink-0" />
+                                                ) : (
+                                                    <div className={cn(
+                                                        "w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0",
+                                                        isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]"
+                                                    )}>
+                                                        {company.name.slice(0, 2).toUpperCase()}
+                                                    </div>
+                                                )}
                                                 <span className={cn("text-[13px] font-semibold truncate", textPrimary)}>
                                                     {company.name}
                                                 </span>

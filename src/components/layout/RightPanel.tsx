@@ -455,7 +455,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             <Trash2 size={13} />
                         </button>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => { setEditing(false); if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', tax_number: client.tax_number || '', notes: client.notes || '' }); }}
+                            <button onClick={() => { setEditing(false); if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', tax_number: client.tax_number || '', notes: client.notes || '', avatar_url: client.avatar_url || '' }); }}
                                 className={cn("text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors",
                                     isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>
                                 Cancel
@@ -649,10 +649,14 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
                         {linkedContacts.map(c => (
                             <div key={c.id} className={cn("flex items-center gap-2.5 py-2 rounded-lg transition-colors",
                                 isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#f9f9f9]")}>
-                                <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold shrink-0",
-                                    isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]")}>
-                                    {getInitials(c.contact_person || c.company_name || '?')}
-                                </div>
+                                {c.avatar_url ? (
+                                    <img src={c.avatar_url} className="w-6 h-6 rounded-lg object-cover shrink-0" />
+                                ) : (
+                                    <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold shrink-0",
+                                        isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]")}>
+                                        {getInitials(c.contact_person || c.company_name || '?')}
+                                    </div>
+                                )}
                                 <div className="min-w-0">
                                     <p className={cn("text-[11px] font-medium truncate", isDark ? "text-[#ccc]" : "text-[#222]")}>{c.contact_person || '—'}</p>
                                     {c.email && <p className={cn("text-[10px] truncate", isDark ? "text-[#555]" : "text-[#aaa]")}>{c.email}</p>}
@@ -673,7 +677,7 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             <Trash2 size={13} />
                         </button>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => { setEditing(false); if (company) setForm({ name: company.name || '', industry: company.industry || '', website: company.website || '', email: company.email || '', phone: company.phone || '', address: company.address || '', tax_number: company.tax_number || '', notes: company.notes || '' }); }}
+                            <button onClick={() => { setEditing(false); if (company) setForm({ name: company.name || '', industry: company.industry || '', website: company.website || '', email: company.email || '', phone: company.phone || '', address: company.address || '', tax_number: company.tax_number || '', notes: company.notes || '', avatar_url: company.avatar_url || '' }); }}
                                 className={cn("text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors",
                                     isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>
                                 Cancel

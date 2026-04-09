@@ -110,7 +110,7 @@ export function SaveTemplateModal({ open, onClose, onSave, defaultName, entityTy
                         <div className={cn(
                             "w-[18px] h-[18px] rounded-[5px] flex items-center justify-center shrink-0 transition-colors border",
                             isDefault 
-                                ? "bg-[#4dbf39] border-[#4dbf39] text-white" 
+                                ? "bg-primary border-primary text-white" 
                                 : isDark ? "border-white/20" : "border-black/20"
                         )}>
                             {isDefault && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
@@ -139,7 +139,7 @@ export function SaveTemplateModal({ open, onClose, onSave, defaultName, entityTy
                         <button
                             type="submit"
                             disabled={!name.trim() || isSubmitting}
-                            className="px-4 py-2 text-[12px] font-semibold rounded-xl bg-[#4dbf39] text-black hover:bg-[#59d044] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="px-4 py-2 text-[12px] font-semibold rounded-xl bg-primary text-black hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {isSubmitting ? 'Saving...' : 'Save Template'}
                         </button>

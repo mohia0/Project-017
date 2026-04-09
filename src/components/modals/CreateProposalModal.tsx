@@ -194,7 +194,7 @@ export function CreateProposalModal({ open, onClose }: Props) {
                                                 onClick={() => setIsClientEditorOpen(true)}
                                                 className={cn(
                                                     "w-full text-left px-4 py-2.5 text-[13px] font-bold transition-colors flex items-center gap-2",
-                                                    isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-black/5"
+                                                    isDark ? "text-primary hover:bg-white/5" : "text-primary hover:bg-black/5"
                                                 )}
                                             >
                                                 <Plus size={14} strokeWidth={3} />

@@ -10,6 +10,7 @@ interface DeleteConfirmModalProps {
     onConfirm: () => void;
     title?: string;
     description?: string;
+    actionLabel?: string;
     isDark?: boolean;
 }
 
@@ -19,6 +20,7 @@ export function DeleteConfirmModal({
     onConfirm,
     title = "Delete item",
     description = "This action cannot be undone. This will permanently delete the item and all associated data.",
+    actionLabel = "Delete",
     isDark = false
 }: DeleteConfirmModalProps) {
     if (!open) return null;
@@ -63,7 +65,7 @@ export function DeleteConfirmModal({
                         onClick={() => { onConfirm(); onClose(); }}
                         className="px-5 py-2 text-[13px] font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-sm"
                     >
-                        Delete
+                        {actionLabel}
                     </button>
                 </div>
             </div>

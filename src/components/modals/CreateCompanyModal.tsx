@@ -8,6 +8,8 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
+import ImageUploadModal from '@/components/modals/ImageUploadModal';
+import { Image as ImageIcon } from 'lucide-react';
 
 interface Props {
     open: boolean;
@@ -73,6 +75,8 @@ export function CreateCompanyModal({ open, onClose, onCreated }: Props) {
     const [address, setAddress] = useState('');
     const [taxNumber, setTaxNumber] = useState('');
     const [notes, setNotes] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState('');
+    const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [nameError, setNameError] = useState('');
     const industryRef = useRef<HTMLDivElement>(null);
@@ -108,6 +112,7 @@ export function CreateCompanyModal({ open, onClose, onCreated }: Props) {
                 address: address || undefined,
                 tax_number: taxNumber || undefined,
                 notes: notes || undefined,
+                avatar_url: avatarUrl || undefined,
             });
             if (company) {
                 onCreated?.(company.name);
@@ -160,6 +165,39 @@ export function CreateCompanyModal({ open, onClose, onCreated }: Props) {
 
                 {/* Body */}
                 <div className="px-5 pb-5 flex flex-col gap-2.5 max-h-[65vh] overflow-y-auto">
+                    {/* Logo Upload */}
+                    <div 
+                        onClick={() => setIsAvatarModalOpen(true)}
+                        className={cn(
+                            "w-full rounded-xl border px-4 py-3 cursor-pointer transition-all",
+                            isDark
+                                ? "bg-[#1c1c1c] border-[#2e2e2e] hover:border-[#444]"
+                                : "bg-white border-[#e0e0e0] hover:border-[#ccc]"
+                        )}
+                    >
+                        <div className="flex items-center gap-1.5 mb-1.5 grayscale opacity-60">
+                            <ImageIcon size={11} className={isDark ? "text-white" : "text-[#333]"} />
+                            <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Company logo</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            {avatarUrl ? (
+                                <img src={avatarUrl} className="w-10 h-10 rounded-lg object-cover border border-black/5" />
+                            ) : (
+                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center border border-dashed", 
+                                    isDark ? "border-[#333] text-[#444]" : "border-[#e0e0e0] text-[#ccc]")}>
+                                    <ImageIcon size={16} />
+                                </div>
+                            )}
+                            <div className="flex flex-col">
+                                <span className={cn("text-[13px] font-medium", isDark ? "text-white/60" : "text-black/60")}>
+                                    {avatarUrl ? 'Update logo' : 'Upload logo'}
+                                </span>
+                                <span className={cn("text-[10px]", isDark ? "text-[#444]" : "text-[#ccc]")}>
+                                    JPG, PNG or SVG. Max 2MB.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                     {/* Company name */}
                     <div className={cn(field, nameError && "border-red-400 focus-within:ring-red-100")}>
                         <div className="flex items-center gap-1.5 mb-0.5">
@@ -266,13 +304,21 @@ export function CreateCompanyModal({ open, onClose, onCreated }: Props) {
                     <button
                         onClick={handleCreate}
                         disabled={saving}
-                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-[#4dbf39] hover:bg-[#59d044] text-black transition-colors disabled:opacity-60"
+                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-black transition-colors disabled:opacity-60"
                     >
                         {saving ? 'Creating...' : 'Create company'}
                         {!saving && <ChevronRight size={14} />}
                     </button>
                 </div>
             </div>
+
+            {isAvatarModalOpen && (
+                <ImageUploadModal
+                    isOpen={isAvatarModalOpen}
+                    onClose={() => setIsAvatarModalOpen(false)}
+                    onUpload={(url) => setAvatarUrl(url)}
+                />
+            )}
         </div>
     );
 }
