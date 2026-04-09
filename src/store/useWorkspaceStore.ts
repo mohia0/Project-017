@@ -15,6 +15,7 @@ export interface Workspace {
     links?: any;
     working_hours?: any;
     additional_details?: any;
+    metadata?: any;
 }
 interface WorkspaceState {
     workspaces: Workspace[];

@@ -111,7 +111,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                 )}
                             >
                                 {!notif.read && (
-                                    <div className="absolute left-2 top-4 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                    <div className="absolute left-2.5 top-5 w-1 h-1 rounded-full bg-blue-500" />
                                 )}
                                 <div className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5", 
                                     isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
@@ -150,18 +150,16 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                 <button 
                     onClick={() => setFilterUnread(!filterUnread)}
                     className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors cursor-pointer",
+                        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer",
                         filterUnread 
-                            ? (isDark ? "bg-white/10 text-white" : "bg-[#e8e8e8] text-[#111]")
-                            : (isDark ? "text-[#666] hover:text-[#aaa] hover:bg-white/5" : "text-[#aaa] hover:text-[#555] hover:bg-[#f0f0f0]")
+                            ? (isDark ? "bg-white/10 text-white" : "bg-black text-white shadow-sm")
+                            : (isDark ? "bg-white/5 text-[#444] hover:text-[#888]" : "bg-white border border-[#f0f0f0] text-[#aaa] hover:text-[#555]")
                     )}
                 >
-                    <span className={cn(
-                        "w-4 h-4 rounded-sm border flex items-center justify-center text-[9px]",
-                        filterUnread ? (isDark ? "border-[#666] bg-white/20" : "border-[#999] bg-black/10") : (isDark ? "border-[#444]" : "border-[#ddd]")
-                    )}>
-                        {filterUnread ? '✓' : '•'}
-                    </span>
+                    <div className={cn(
+                        "w-1.5 h-1.5 rounded-full transition-colors",
+                        filterUnread ? "bg-blue-400" : (isDark ? "bg-[#222]" : "bg-[#eee]")
+                    )} />
                     Unread
                 </button>
             </div>

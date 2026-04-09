@@ -245,6 +245,8 @@ export default function WorkspaceSettingsPage() {
                 onSave={() => handleSaveSection('contact', { contact_emails: emails, contact_phones: phones, contact_address: address })}
                 isSaving={isSaving['contact']}
                 unsavedChanges={hasChanged('contact')}
+                collapsible
+                defaultCollapsed
             >
                 <div className="flex flex-col gap-8">
                     <div>
@@ -395,6 +397,8 @@ export default function WorkspaceSettingsPage() {
                 onSave={() => handleSaveSection('links', { links })}
                 isSaving={isSaving['links']}
                 unsavedChanges={hasChanged('links')}
+                collapsible
+                defaultCollapsed
             >
                 <div className="flex flex-col gap-4">
                     {links.map((link, idx) => (
@@ -445,6 +449,8 @@ export default function WorkspaceSettingsPage() {
                 onSave={() => handleSaveSection('workingHours', { working_hours: workingHours })}
                 isSaving={isSaving['workingHours']}
                 unsavedChanges={hasChanged('workingHours')}
+                collapsible
+                defaultCollapsed
             >
                 <div className="flex flex-col gap-1 border rounded-2xl overflow-hidden" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
                     {DAYS.map(day => {
@@ -503,6 +509,8 @@ export default function WorkspaceSettingsPage() {
                 onSave={() => handleSaveSection('additionalDetails', { additional_details: additionalDetails })}
                 isSaving={isSaving['additionalDetails']}
                 unsavedChanges={hasChanged('additionalDetails')}
+                collapsible
+                defaultCollapsed
             >
                 <div className="flex flex-col gap-6">
                     <div className="grid grid-cols-2 gap-4">
@@ -538,6 +546,8 @@ export default function WorkspaceSettingsPage() {
                 onSave={() => handleSaveSection('metadata', {})}
                 isSaving={isSaving['metadata']}
                 unsavedChanges={hasChanged('metadata')}
+                collapsible
+                defaultCollapsed
             >
                 <div className="flex flex-col gap-3">
                     {metadata.map((meta, idx) => (

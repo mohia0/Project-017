@@ -51,7 +51,7 @@ export default function RightToolsMenu() {
                     <div className="relative">
                         <Bell size={16} strokeWidth={1.75} className="transition-transform duration-300 group-hover:scale-110 group-hover:text-current" />
                         {unreadCount > 0 && (
-                            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-white dark:border-[#141414] shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+                            <div className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-red-500 border border-white dark:border-[#141414]" />
                         )}
                     </div>
                 </button>
