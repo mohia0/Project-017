@@ -39,6 +39,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const isDark = theme === 'dark';
     const pathname = usePathname();
     const router = useRouter();
+    const isPublicPreview = pathname?.startsWith('/p/');
     const isAuthRoute = pathname === '/login';
     const isMobile = useIsMobile();
 
@@ -48,10 +49,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }, [fetchMenu]);
 
     useEffect(() => {
-        if (!isLoading && !user && !isAuthRoute) {
+        if (!isLoading && !user && !isAuthRoute && !isPublicPreview) {
             router.push('/login');
         }
-    }, [user, isLoading, isAuthRoute, router]);
+    }, [user, isLoading, isAuthRoute, isPublicPreview, router]);
 
     // Don't render until we know auth state, unless we are already on auth route
     if (isLoading && !isAuthRoute) {
@@ -65,7 +66,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         );
     }
 
-    if (isAuthRoute) {
+    if (isAuthRoute || isPublicPreview) {
         return (
             <div className={cn(
                 "flex h-screen w-full overflow-hidden",
