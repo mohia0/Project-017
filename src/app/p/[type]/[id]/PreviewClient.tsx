@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { ProposalDocument } from '@/components/proposals/ProposalEditor';
 import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
@@ -8,53 +9,97 @@ import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import { BankTransferModal } from '@/components/modals/BankTransferModal';
 import { gooeyToast } from 'goey-toast';
 
+// Anon-key client — safe for public preview pages, used only to subscribe
+// to Realtime events. No sensitive data is written through this client.
+const supabasePublic = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 export default function PreviewClient({ type, data }: { type: 'proposal' | 'invoice', data: any }) {
     const [liveData, setLiveData] = useState(data);
     const [viewHasBeenTracked, setViewHasBeenTracked] = useState(false);
-    
+
     // Modals
     const [isSignModalOpen, setIsSignModalOpen] = useState(false);
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
 
+    // Track view once on mount
     useEffect(() => {
         if (!viewHasBeenTracked) {
-            // Track view via API route
             fetch('/api/track-view', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type, id: data.id, workspace_id: data.workspace_id, title: data.title || data.meta?.projectName || data.client_name }),
+                body: JSON.stringify({
+                    type,
+                    id: data.id,
+                    workspace_id: data.workspace_id,
+                    title: data.title || data.meta?.projectName || data.client_name,
+                }),
             }).catch(console.error);
             setViewHasBeenTracked(true);
         }
     }, [viewHasBeenTracked, type, data]);
 
-    // Live Sync Polling
+    // ─────────────────────────────────────────────────────────────────────────
+    // Supabase Realtime — subscribe to row-level changes on this document.
+    // The client sees updates the instant you save — no polling, no flicker,
+    // no indicator that anything is happening behind the scenes.
+    // ─────────────────────────────────────────────────────────────────────────
     useEffect(() => {
-        const interval = setInterval(async () => {
-            try {
-                const res = await fetch(`/api/p/${type}/${data.id}?t=${Date.now()}`);
-                if (res.ok) {
-                    const latest = await res.json();
-                    setLiveData(latest);
+        const tableName = type === 'proposal' ? 'proposals' : 'invoices';
+        const channelName = `preview:${tableName}:${data.id}`;
+
+        const channel = supabasePublic
+            .channel(channelName)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: tableName,
+                    filter: `id=eq.${data.id}`,
+                },
+                (payload) => {
+                    if (!payload.new) return;
+                    const raw = payload.new as any;
+
+                    // Merge only the safe fields — same set the server returns
+                    setLiveData({
+                        id: raw.id,
+                        title: raw.title,
+                        status: raw.status,
+                        amount: raw.amount,
+                        issue_date: raw.issue_date,
+                        due_date: raw.due_date,
+                        blocks: raw.blocks || [],
+                        meta: raw.meta || {},
+                        client_name: raw.client_name,
+                        workspace_id: raw.workspace_id,
+                        updated_at: raw.updated_at,
+                    });
                 }
-            } catch (e) {
-                console.error('Error fetching live data:', e);
-            }
-        }, 5000); // Polling every 5 seconds
-        return () => clearInterval(interval);
+            )
+            .subscribe();
+
+        return () => {
+            supabasePublic.removeChannel(channel);
+        };
     }, [type, data.id]);
 
     const handleUpdateStatus = async (status: string, signatureData?: any) => {
         if (isUpdating) return;
-        
-        const actionLabel = status === 'Accepted' ? 'Accepting' : 
-                           status === 'Declined' ? 'Declining' : 
-                           status === 'Paid' ? 'Marking as Paid' : 'Updating';
 
-        const successMessage = status === 'Accepted' ? 'Proposal Accepted & Signed!' : 
-                               status === 'Declined' ? 'Proposal Declined' : 
-                               status === 'Paid' ? 'Invoice marked as Paid' : 'Updated';
+        const actionLabel =
+            status === 'Accepted' ? 'Accepting' :
+            status === 'Declined' ? 'Declining' :
+            status === 'Paid'     ? 'Marking as Paid' : 'Updating';
+
+        const successMessage =
+            status === 'Accepted' ? 'Proposal Accepted & Signed!' :
+            status === 'Declined' ? 'Proposal Declined' :
+            status === 'Paid'     ? 'Invoice marked as Paid' : 'Updated';
 
         try {
             setIsUpdating(true);
@@ -63,15 +108,17 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     const res = await fetch(`/api/p/${type}/${data.id}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status, signatureData })
+                        body: JSON.stringify({ status, signatureData }),
                     });
-                    
+
                     if (!res.ok) {
                         const err = await res.json();
                         throw new Error(err.error || 'Failed to update');
                     }
 
                     const updatedResponse = await res.json();
+                    // Realtime will handle the UI update automatically,
+                    // but we apply it immediately for instant client feedback.
                     if (updatedResponse.success) {
                         setLiveData((prev: any) => ({ ...prev, ...updatedResponse.updateData }));
                     }
@@ -81,13 +128,9 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     loading: `${actionLabel}...`,
                     success: successMessage,
                     error: (err: any) => {
-                        console.error('Update failed detailed error:', err);
-                        // If it's a structured error from our API
-                        if (err.message && err.code) {
-                            return `Error: ${err.message} (${err.code})`;
-                        }
+                        if (err.message && err.code) return `Error: ${err.message} (${err.code})`;
                         return `Error: ${err.message || 'Update failed'}`;
-                    }
+                    },
                 }
             );
         } catch (e) {
@@ -97,34 +140,34 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
         }
     };
 
-    const isDark = false; // We can force light mode for previews or read from system preference
+    const isDark = false;
     const totals = { subtotal: liveData.amount || 0, discAmt: 0, taxAmt: 0, total: liveData.amount || 0 };
 
+    // ── PROPOSAL ─────────────────────────────────────────────────────────────
     if (type === 'proposal') {
         const meta = {
             ...liveData.meta,
-            clientName: liveData.client_name || '',
-            projectName: liveData.title || '',
-            issueDate: liveData.issue_date || '',
-            expirationDate: liveData.due_date || '',
-            status: liveData.status || 'Draft',
+            clientName:      liveData.client_name || '',
+            projectName:     liveData.title        || '',
+            issueDate:       liveData.issue_date   || '',
+            expirationDate:  liveData.due_date     || '',
+            status:          liveData.status       || 'Draft',
         };
 
         const signatureBlock = (liveData.blocks || []).find((b: any) => b.type === 'signature' && b.signed);
         const signedBy = signatureBlock ? (signatureBlock.signerName || 'Client') : undefined;
-        // Using concise format like user requested: "4/1/2026"
-        const signedAt = signatureBlock && liveData.updated_at 
-            ? new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }).format(new Date(liveData.updated_at)) 
+        const signedAt = signatureBlock && liveData.updated_at
+            ? new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }).format(new Date(liveData.updated_at))
             : undefined;
 
         return (
-            <div 
+            <div
                 className="flex-1 overflow-auto relative w-full h-screen"
-                style={{ 
-                    backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                    backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
+                style={{
+                    backgroundColor:   meta.design?.backgroundColor  || (isDark ? '#080808' : '#f7f7f7'),
+                    backgroundImage:   meta.design?.backgroundImage   ? `url(${meta.design.backgroundImage})` : 'none',
+                    backgroundSize:    'cover',
+                    backgroundPosition:'center',
                     backgroundAttachment: 'fixed',
                 }}
             >
@@ -141,16 +184,16 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         onAccept={() => setIsSignModalOpen(true)}
                         onDecline={() => handleUpdateStatus('Declined')}
                     />
-                    
-                    <div 
+
+                    <div
                         className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
-                        style={{ 
-                            borderRadius: `${meta.design?.borderRadius ?? 16}px`,
-                            backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
+                        style={{
+                            borderRadius:    `${meta.design?.borderRadius ?? 16}px`,
+                            backgroundColor: meta.design?.blockBackgroundColor || '#ffffff',
                             backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
-                            backgroundSize: 'cover',
+                            backgroundSize:  'cover',
                             backgroundPosition: 'center',
-                            boxShadow: meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
+                            boxShadow:       meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                         }}
                     >
                         <ProposalDocument
@@ -176,6 +219,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         />
                     </div>
                 </div>
+
                 <AcceptSignModal
                     isOpen={isSignModalOpen}
                     onClose={() => setIsSignModalOpen(false)}
@@ -186,30 +230,31 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
         );
     }
 
+    // ── INVOICE ──────────────────────────────────────────────────────────────
     if (type === 'invoice') {
         const invoiceMeta = {
             ...liveData.meta,
-            clientName: liveData.client_name || '',
-            projectName: liveData.title || '',
-            issueDate: liveData.issue_date || '',
-            dueDate: liveData.due_date || '',
-            status: liveData.status || 'Draft',
-            currency: liveData.meta?.currency || 'USD'
+            clientName:  liveData.client_name    || '',
+            projectName: liveData.title           || '',
+            issueDate:   liveData.issue_date      || '',
+            dueDate:     liveData.due_date        || '',
+            status:      liveData.status          || 'Draft',
+            currency:    liveData.meta?.currency  || 'USD',
         };
 
         const paidBy = invoiceMeta.clientName || 'Client';
-        const paidAt = liveData.updated_at 
-            ? new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }).format(new Date(liveData.updated_at)) 
+        const paidAt = liveData.updated_at
+            ? new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }).format(new Date(liveData.updated_at))
             : undefined;
 
         return (
-            <div 
+            <div
                 className="flex-1 overflow-auto relative w-full h-screen"
-                style={{ 
-                    backgroundColor: (invoiceMeta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                    backgroundImage: invoiceMeta.design?.backgroundImage ? `url(${invoiceMeta.design.backgroundImage})` : 'none',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
+                style={{
+                    backgroundColor:   invoiceMeta.design?.backgroundColor  || (isDark ? '#080808' : '#f7f7f7'),
+                    backgroundImage:   invoiceMeta.design?.backgroundImage   ? `url(${invoiceMeta.design.backgroundImage})` : 'none',
+                    backgroundSize:    'cover',
+                    backgroundPosition:'center',
                     backgroundAttachment: 'fixed',
                 }}
             >
@@ -226,16 +271,16 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         onPrint={() => window.print()}
                         onPay={() => setIsBankModalOpen(true)}
                     />
-                    
-                    <div 
+
+                    <div
                         className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
-                        style={{ 
-                            borderRadius: `${invoiceMeta.design?.borderRadius ?? 16}px`,
-                            backgroundColor: (invoiceMeta.design?.blockBackgroundColor) || '#ffffff',
+                        style={{
+                            borderRadius:    `${invoiceMeta.design?.borderRadius ?? 16}px`,
+                            backgroundColor: invoiceMeta.design?.blockBackgroundColor || '#ffffff',
                             backgroundImage: invoiceMeta.design?.backgroundImage ? `url(${invoiceMeta.design.backgroundImage})` : 'none',
-                            backgroundSize: 'cover',
+                            backgroundSize:  'cover',
                             backgroundPosition: 'center',
-                            boxShadow: invoiceMeta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
+                            boxShadow:       invoiceMeta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                         }}
                     >
                         <InvoiceDocument
@@ -255,6 +300,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         />
                     </div>
                 </div>
+
                 <BankTransferModal
                     isOpen={isBankModalOpen}
                     onClose={() => setIsBankModalOpen(false)}
