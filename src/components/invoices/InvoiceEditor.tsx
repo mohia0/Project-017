@@ -1187,11 +1187,11 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 src={logoToUse} 
                                 alt="Logo" 
                                 className="w-auto transition-all duration-300 ease-out" 
-                                style={{ height: `${meta.design?.logoSize ?? 64}px` }} 
+                                style={{ height: `${meta.design?.logoSize ?? 48}px` }} 
                             />
                         ) : (
                             <div className={cn(
-                                "font-black text-4xl leading-[0.85] tracking-tighter",
+                                "font-black text-3xl leading-[0.85] tracking-tighter",
                                 isDark ? "text-white" : "text-[#4a4a4a]"
                             )}>
                                 MOHI<sup className="text-[14px]">®</sup><br/>
