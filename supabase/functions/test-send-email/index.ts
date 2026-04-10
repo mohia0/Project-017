@@ -44,9 +44,9 @@ serve(async (req: Request) => {
     const mailOptions = {
       from: `"${config.from_name}" <${config.from_address}>`,
       to: user.email, 
-      subject: "SMTP Connection Test - Minimal CRM",
-      text: "Hello! This is a test email sent from your new custom SMTP configuration inside Minimal CRM. If you are receiving this, your connection is successful!",
-      html: "<p>Hello!</p><p>This is a test email sent from your new custom SMTP configuration inside Minimal CRM. If you are receiving this, your connection is successful!</p>",
+      subject: "SMTP Connection Test - CRM 17",
+      text: "Hello! This is a test email sent from your new custom SMTP configuration inside CRM 17. If you are receiving this, your connection is successful!",
+      html: "<p>Hello!</p><p>This is a test email sent from your new custom SMTP configuration inside CRM 17. If you are receiving this, your connection is successful!</p>",
     };
 
     const info = await transporter.sendMail(mailOptions);

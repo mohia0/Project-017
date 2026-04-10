@@ -302,10 +302,6 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
                                                     }
                                                     
                                                     const isToday = year === today.getFullYear() && monthIdx === today.getMonth() && cell.day === today.getDate();
-                                                    // use start of day for comparison to avoid exact time mismatches
-                                                    const dateObj = new Date(year, monthIdx, cell.day);
-                                                    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                                                    const isFuture = dateObj > todayStart;
                                                     
                                                     return (
                                                         <div
@@ -315,10 +311,7 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
                                                             style={{
                                                                 width: CELL,
                                                                 height: CELL,
-                                                                backgroundColor: isFuture
-                                                                    ? (isDark ? '#1e1e1e' : '#f9f9f9')
-                                                                    : cellColor(cell.val),
-                                                                opacity: isFuture ? 0.2 : 1,
+                                                                backgroundColor: cellColor(cell.val),
                                                                 boxShadow: isToday ? `0 0 0 1px ${isDark ? '#aaa' : '#666'}` : undefined
                                                             }}
                                                         />
