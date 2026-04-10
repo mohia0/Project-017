@@ -5,6 +5,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useInvoiceStore, InvoiceStatus, Invoice } from '@/store/useInvoiceStore';
 import { useClientStore } from '@/store/useClientStore';
 import { cn } from '@/lib/utils';
+import { Avatar } from '@/components/ui/Avatar';
 import { STATUS_COLORS, getStatusColors } from '@/lib/statusConfig';
 import {
     Search, Table2, LayoutGrid, Edit3, ChevronDown,
@@ -371,15 +372,12 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
         <div className={cn("flex items-center gap-2",
             variant === 'card' ? cn("px-2 py-1.5 rounded-[8px]", isDark ? "bg-white/[0.03] border border-white/5" : "bg-[#f8f8f8] border border-[#f0f0f0]") : "truncate")}>
             <div className="shrink-0">
-                {activeClient?.avatar_url ? (
-                    <img src={activeClient.avatar_url} className={cn("rounded-full object-cover", variant === 'card' ? "w-5 h-5" : "w-6 h-6")} />
-                ) : (
-                    <div className={cn("rounded-full flex items-center justify-center font-bold", 
-                        variant === 'card' ? "w-5 h-5 text-[8px]" : "w-6 h-6 text-[9px]",
-                        isDark ? "bg-white/10 text-[#555]" : "bg-[#f0f0f0] text-[#aaa]")}>
-                        {(currentName || '?').slice(0, 1).toUpperCase()}
-                    </div>
-                )}
+                <Avatar 
+                    src={activeClient?.avatar_url} 
+                    name={currentName} 
+                    className={cn("rounded-full", variant === 'card' ? "w-5 h-5" : "w-6 h-6")} 
+                    isDark={isDark} 
+                />
             </div>
             <span className={cn("truncate font-medium", variant === 'card' ? "text-[12px]" : "text-[13px]")}>{currentName || '—'}</span>
         </div>
@@ -427,14 +425,12 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
                                      )}
                                  >
                                      <div className="flex items-center gap-3 min-w-0">
-                                         {c.avatar_url ? (
-                                             <img src={c.avatar_url} className="w-7 h-7 rounded-full object-cover shrink-0" />
-                                         ) : (
-                                             <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0", 
-                                                 isDark ? "bg-white/10 text-[#555]" : "bg-[#f0f0f0] text-[#aaa]")}>
-                                                 {(c.contact_person || c.company_name || '?').slice(0, 1).toUpperCase()}
-                                             </div>
-                                         )}
+                                         <Avatar 
+                                             src={c.avatar_url} 
+                                             name={c.contact_person || c.company_name} 
+                                             className="w-7 h-7 rounded-full" 
+                                             isDark={isDark} 
+                                         />
                                          <div className="flex flex-col min-w-0 leading-tight">
                                              <span className={cn("text-[12px] font-bold truncate transition-colors", 
                                                  c.id === currentId ? "text-primary" : (isDark ? "text-[#ddd]" : "text-[#111]"))}>

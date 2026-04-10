@@ -9,6 +9,8 @@ import { useMenuStore, ICON_MAP } from '@/store/useMenuStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
+import { Avatar } from '@/components/ui/Avatar';
 import RightPanel from './RightPanel';
 import {
     Plus, Bell, Moon, Sun, Settings, LogOut, X,
@@ -20,12 +22,18 @@ export function MobileTopBar() {
     const { theme, toggleTheme, setCreateModalOpen, toggleNotifications } = useUIStore();
     const { user } = useAuthStore();
     const { profile } = useSettingsStore();
+    const { workspaces } = useWorkspaceStore();
     const { notifications } = useNotificationStore();
+    const { activeWorkspaceId } = useUIStore();
     const unreadCount = notifications.filter(n => !n.read).length;
     const isDark = theme === 'dark';
     const pathname = usePathname();
     const [menuOpen, setMenuOpen] = useState(false);
     const router = useRouter();
+
+    const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+    const hasWorkspaceLogo = !!activeWorkspace?.logo_url;
+    const avatarUrl = profile?.avatar_url;
 
     const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
 
@@ -57,10 +65,13 @@ export function MobileTopBar() {
             )}>
                 {/* Left: logo + page title */}
                 <div className="flex items-center gap-3">
-                    {/* Brand dot */}
-                    <div className="w-[30px] h-[30px] rounded-[9px] bg-[#4dbf39] flex items-center justify-center shadow-sm shadow-[#4dbf39]/30">
-                        <span className="text-black text-[11px] font-black tracking-tight">M</span>
-                    </div>
+                    <Avatar 
+                        src={activeWorkspace?.logo_url} 
+                        name={activeWorkspace?.name || 'M'} 
+                        className="w-[30px] h-[30px] rounded-[9px] shadow-sm" 
+                        isDark={isDark} 
+                        disableBlinking={!(hasWorkspaceLogo && avatarUrl)}
+                    />
                     <div>
                         <h1 className={cn(
                             "text-[16px] font-bold tracking-tight leading-none",
@@ -97,17 +108,17 @@ export function MobileTopBar() {
                         <Plus size={18} strokeWidth={2.5} />
                     </button>
 
-                    {/* Avatar */}
                     <button
                         onClick={() => setMenuOpen(true)}
-                        className={cn(
-                            "w-[36px] h-[36px] rounded-[10px] flex items-center justify-center transition-all active:scale-90 font-bold text-[13px]",
-                            isDark
-                                ? "bg-white/[0.08] text-white hover:bg-white/12"
-                                : "bg-[#f2f2f2] text-[#444] hover:bg-[#e8e8e8]"
-                        )}
+                        className="active:scale-95 transition-transform"
                     >
-                        {initials}
+                        <Avatar 
+                            src={avatarUrl} 
+                            name={displayName} 
+                            className="w-[36px] h-[36px] rounded-[10px]" 
+                            isDark={isDark} 
+                            disableBlinking={!(hasWorkspaceLogo && avatarUrl)}
+                        />
                     </button>
                 </div>
             </div>
@@ -137,12 +148,13 @@ export function MobileTopBar() {
                             "px-4 py-3.5 border-b flex items-center gap-3",
                             isDark ? "border-white/[0.06]" : "border-[#f0f0f0]"
                         )}>
-                            <div className={cn(
-                                "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[14px] shrink-0",
-                                isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#444]"
-                            )}>
-                                {initials}
-                            </div>
+                                <Avatar 
+                                    src={avatarUrl} 
+                                    name={displayName} 
+                                    className="w-10 h-10 rounded-xl" 
+                                    isDark={isDark} 
+                                    disableBlinking={true}
+                                />
                             <div className="min-w-0">
                                 <p className={cn("text-[13px] font-semibold truncate", isDark ? "text-white" : "text-[#111]")}>
                                     {displayName || 'Account'}

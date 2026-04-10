@@ -11,6 +11,7 @@ import { useCompanyStore } from '@/store/useCompanyStore';
 import { CreateCompanyModal } from '@/components/modals/CreateCompanyModal';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { Image as ImageIcon } from 'lucide-react';
+import { Avatar } from '@/components/ui/Avatar';
 
 interface ClientFormData {
     company_name: string;
@@ -169,16 +170,12 @@ function CompanyField({
                                             isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
                                         )}
                                     >
-                                        {c.avatar_url ? (
-                                            <img src={c.avatar_url} className="w-6 h-6 rounded-md object-cover shrink-0" />
-                                        ) : (
-                                            <div className={cn(
-                                                "w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold shrink-0",
-                                                isDark ? "bg-[#252525] text-[#777]" : "bg-[#f0f0f0] text-[#999]"
-                                            )}>
-                                                {c.name.slice(0, 2).toUpperCase()}
-                                            </div>
-                                        )}
+                                        <Avatar 
+                                            src={c.avatar_url} 
+                                            name={c.name} 
+                                            className="w-6 h-6 rounded-md" 
+                                            isDark={isDark} 
+                                        />
                                         <div className="min-w-0">
                                             <div className="font-medium truncate">{c.name}</div>
                                             {c.industry && (
@@ -309,14 +306,13 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
                             <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Profile photo</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            {form.avatar_url ? (
-                                <img src={form.avatar_url} className="w-10 h-10 rounded-lg object-cover border border-black/5" />
-                            ) : (
-                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center border border-dashed", 
-                                    isDark ? "border-[#333] text-[#444]" : "border-[#e0e0e0] text-[#ccc]")}>
-                                    <ImageIcon size={16} />
-                                </div>
-                            )}
+                            <Avatar 
+                                src={form.avatar_url} 
+                                name={form.contact_person || form.company_name} 
+                                className="w-10 h-10 rounded-lg border border-black/5" 
+                                isDark={isDark} 
+                                fallbackClassName="border border-dashed border-[#e0e0e0] dark:border-[#333]"
+                            />
                             <div className="flex flex-col">
                                 <span className={cn("text-[13px] font-medium", isDark ? "text-white/60" : "text-black/60")}>
                                     {form.avatar_url ? 'Update photo' : 'Upload photo'}

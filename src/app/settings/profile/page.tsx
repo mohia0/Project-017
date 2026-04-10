@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
+import { Avatar } from '@/components/ui/Avatar';
 
 export default function ProfileSettingsPage() {
     const { profile, fetchProfile, updateProfile, isLoading, hasFetched } = useSettingsStore();
@@ -92,13 +93,12 @@ export default function ProfileSettingsPage() {
                                 isDark ? "bg-white/10 hover:ring-offset-[#111]" : "bg-black/5 hover:ring-offset-white"
                             )}
                         >
-                            {formData.avatar_url ? (
-                                <img src={formData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                            ) : (
-                                <span className={cn("text-sm font-bold", isDark ? "text-white/40" : "text-black/40")}>
-                                    {formData.full_name?.charAt(0).toUpperCase() || 'U'}
-                                </span>
-                            )}
+                        <Avatar 
+                            src={formData.avatar_url} 
+                            name={formData.full_name || 'U'} 
+                            className="w-14 h-14 rounded-full" 
+                            isDark={isDark} 
+                        />
                         </button>
                         <div className="flex flex-col items-start gap-1">
                             <button

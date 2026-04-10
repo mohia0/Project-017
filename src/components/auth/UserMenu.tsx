@@ -6,15 +6,20 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { User, Settings, LogOut, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Avatar } from '@/components/ui/Avatar';
 
 export default function UserMenu() {
     const router = useRouter();
     const { user, isLoading, signOut } = useAuthStore();
     const { profile, fetchProfile } = useSettingsStore();
-    const { theme } = useUIStore();
+    const { workspaces } = useWorkspaceStore();
+    const { theme, activeWorkspaceId } = useUIStore();
     const isDark = theme === 'dark';
+    const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+    const hasWorkspaceLogo = !!activeWorkspace?.logo_url;
 
     const [isOpen, setIsOpen] = useState(false);
     const [rect, setRect] = useState<DOMRect | null>(null);
@@ -74,13 +79,13 @@ export default function UserMenu() {
                 {isLoading ? (
                     <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
                 ) : user ? (
-                    avatarUrl ? (
-                         <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
-                    ) : (
-                        <span className="text-[11px] font-bold transition-transform duration-300 group-hover:scale-110">
-                            {displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
-                        </span>
-                    )
+                    <Avatar 
+                        src={avatarUrl} 
+                        name={displayName} 
+                        className="w-full h-full" 
+                        isDark={isDark} 
+                        disableBlinking={!(avatarUrl && hasWorkspaceLogo)}
+                    />
                 ) : (
                     <User size={14} strokeWidth={2.5} className="transition-transform duration-300 group-hover:scale-110" />
                 )}
@@ -108,13 +113,12 @@ export default function UserMenu() {
                                     "w-10 h-10 rounded-[12px] flex items-center justify-center overflow-hidden shrink-0",
                                     isDark ? "bg-white/5" : "bg-black/5"
                                 )}>
-                                    {avatarUrl ? (
-                                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <span className={cn("text-sm font-bold", isDark ? "text-white/40" : "text-black/40")}>
-                                            {displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
-                                        </span>
-                                    )}
+                                    <Avatar 
+                                        src={avatarUrl} 
+                                        name={displayName} 
+                                        className="w-full h-full" 
+                                        isDark={isDark} 
+                                    />
                                 </div>
                                 <div className="flex flex-col min-w-0">
                                     <span className="text-sm font-bold truncate leading-tight uppercase tracking-tight">{displayName}</span>

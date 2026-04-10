@@ -14,6 +14,7 @@ import { useCompanyStore } from '@/store/useCompanyStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from '@/components/ui/Avatar';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter, usePathname } from 'next/navigation';
@@ -341,11 +342,12 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                         isDark ? "bg-white/8 text-[#888] hover:bg-white/12" : "bg-[#f0f0f0] text-[#777] hover:bg-[#e8e8e8]"
                     )}
                 >
-                    {form.avatar_url ? (
-                        <img src={form.avatar_url} className="w-full h-full object-cover" />
-                    ) : (
-                        getInitials(name)
-                    )}
+                    <Avatar 
+                        src={form.avatar_url} 
+                        name={name} 
+                        className="w-full h-full rounded-inherit" 
+                        isDark={isDark} 
+                    />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <ImageIcon size={14} className="text-white" />
                     </div>
@@ -592,11 +594,12 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
                         isDark ? "bg-white/8 text-[#888] hover:bg-white/12" : "bg-[#f0f0f0] text-[#777] hover:bg-[#e8e8e8]"
                     )}
                 >
-                    {form.avatar_url ? (
-                        <img src={form.avatar_url} className="w-full h-full object-cover" />
-                    ) : (
-                        form.name.slice(0, 2).toUpperCase()
-                    )}
+                    <Avatar 
+                        src={form.avatar_url} 
+                        name={form.name} 
+                        className="w-full h-full rounded-inherit" 
+                        isDark={isDark} 
+                    />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <ImageIcon size={14} className="text-white" />
                     </div>
@@ -680,14 +683,12 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
                         {linkedContacts.map(c => (
                             <div key={c.id} className={cn("flex items-center gap-2.5 py-2 rounded-lg transition-colors",
                                 isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#f9f9f9]")}>
-                                {c.avatar_url ? (
-                                    <img src={c.avatar_url} className="w-6 h-6 rounded-lg object-cover shrink-0" />
-                                ) : (
-                                    <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-bold shrink-0",
-                                        isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]")}>
-                                        {getInitials(c.contact_person || c.company_name || '?')}
-                                    </div>
-                                )}
+                                <Avatar 
+                                    src={c.avatar_url} 
+                                    name={c.contact_person || c.company_name} 
+                                    className="w-6 h-6" 
+                                    isDark={isDark} 
+                                />
                                 <div className="min-w-0">
                                     <p className={cn("text-[11px] font-medium truncate", isDark ? "text-[#ccc]" : "text-[#222]")}>{c.contact_person || '—'}</p>
                                     {c.email && <p className={cn("text-[10px] truncate", isDark ? "text-[#555]" : "text-[#aaa]")}>{c.email}</p>}

@@ -4,12 +4,15 @@ import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { Check, ChevronDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Avatar } from '@/components/ui/Avatar';
 
 export default function WorkspaceSwitcher() {
     const { workspaces, fetchWorkspaces, createWorkspace, isLoading } = useWorkspaceStore();
     const { activeWorkspaceId, setActiveWorkspaceId, isLeftMenuExpanded, theme } = useUIStore();
+    const { profile } = useSettingsStore();
     const isDark = theme === 'dark';
     
     const [isOpen, setIsOpen] = useState(false);
@@ -80,20 +83,13 @@ export default function WorkspaceSwitcher() {
                     isLeftMenuExpanded ? "px-2 py-2 gap-2.5 rounded-xl" : "justify-center py-2 h-12 rounded-xl"
                 )}
             >
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors overflow-hidden">
-                    {activeWorkspace?.logo_url ? (
-                        <img src={activeWorkspace.logo_url} alt="Logo" className="w-full h-full object-cover" />
-                    ) : (
-                        <div className={cn(
-                            "w-full h-full rounded-lg flex items-center justify-center border transition-all",
-                            isDark ? "bg-white/5 border-white/10 text-white/40" : "bg-black/5 border-black/10 text-black/40"
-                        )}>
-                            <span className="text-[11px] font-semibold select-none">
-                                {activeWorkspace?.name?.charAt(0).toUpperCase() || 'M'}
-                            </span>
-                        </div>
-                    )}
-                </div>
+                <Avatar 
+                    src={activeWorkspace?.logo_url} 
+                    name={activeWorkspace?.name || 'M'} 
+                    className="w-7 h-7 rounded-lg" 
+                    disableBlinking={!(activeWorkspace?.logo_url && profile?.avatar_url)}
+                    isDark={isDark} 
+                />
 
                 {isLeftMenuExpanded && (
                     <>
@@ -142,15 +138,13 @@ export default function WorkspaceSwitcher() {
                                     className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-left group"
                                 >
                                     <div className="flex items-center gap-2 truncate">
-                                        <div className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center shrink-0 border border-white/5 group-hover:border-white/10 transition-colors">
-                                            {ws.logo_url ? (
-                                                <img src={ws.logo_url} alt="" className="w-full h-full object-cover rounded-md" />
-                                            ) : (
-                                                <span className="text-[10px] font-bold text-white/80">
-                                                    {ws.name.charAt(0).toUpperCase()}
-                                                </span>
-                                            )}
-                                        </div>
+                                            <Avatar 
+                                                src={ws.logo_url} 
+                                                name={ws.name} 
+                                                className="w-6 h-6 rounded-md" 
+                                                isDark={isDark} 
+                                                disableBlinking={true} 
+                                            />
                                         <div className="flex flex-col min-w-0">
                                             <span className="text-[12px] font-medium text-white/90 truncate">{ws.name}</span>
                                             {activeWorkspaceId === ws.id && (

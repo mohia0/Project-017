@@ -10,6 +10,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { Image as ImageIcon } from 'lucide-react';
+import { Avatar } from '@/components/ui/Avatar';
 
 interface Props {
     open: boolean;
@@ -180,14 +181,13 @@ export function CreateCompanyModal({ open, onClose, onCreated }: Props) {
                             <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Company logo</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            {avatarUrl ? (
-                                <img src={avatarUrl} className="w-10 h-10 rounded-lg object-cover border border-black/5" />
-                            ) : (
-                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center border border-dashed", 
-                                    isDark ? "border-[#333] text-[#444]" : "border-[#e0e0e0] text-[#ccc]")}>
-                                    <ImageIcon size={16} />
-                                </div>
-                            )}
+                            <Avatar 
+                                src={avatarUrl} 
+                                name={name} 
+                                className="w-10 h-10 rounded-lg border border-black/5" 
+                                isDark={isDark} 
+                                fallbackClassName="border border-dashed border-[#e0e0e0] dark:border-[#333]"
+                            />
                             <div className="flex flex-col">
                                 <span className={cn("text-[13px] font-medium", isDark ? "text-white/60" : "text-black/60")}>
                                     {avatarUrl ? 'Update logo' : 'Upload logo'}
