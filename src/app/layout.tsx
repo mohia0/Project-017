@@ -6,8 +6,8 @@ import { Providers } from '@/components/layout/Providers';
 import { BrandingProvider } from '@/components/settings/BrandingProvider';
 
 export const metadata: Metadata = {
-  title: 'Minimal CRM',
-  description: 'Scalable CRM operations system',
+  title: 'CRM 17',
+  description: 'A premium CRM solution for scaling operations.',
   icons: {
     icon: '/favicon.svg',
   },

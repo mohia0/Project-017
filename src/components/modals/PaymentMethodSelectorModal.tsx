@@ -184,7 +184,7 @@ export function PaymentMethodSelectorModal({
 
                 <div className="px-6 pb-6 pt-2">
                     <p className={cn("text-[10.5px] text-center opacity-30 font-medium", isDark ? "text-white" : "text-black")}>
-                        Secure encrypted payment powered by Project 017
+                        Secure encrypted payment powered by CRM 17
                     </p>
                 </div>
             </div>

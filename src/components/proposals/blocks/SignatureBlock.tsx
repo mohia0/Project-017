@@ -115,7 +115,7 @@ export function SignatureBlock({ id, data, updateData, removeBlock, addBlockAfte
                     </div>
                     {isSigned && (
                         <div className="text-xs text-[#999]">
-                            Legally binding signature via CRM
+                            Legally binding signature via CRM 17
                         </div>
                     )}
                 </div>

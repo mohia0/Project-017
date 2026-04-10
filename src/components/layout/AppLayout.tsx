@@ -26,7 +26,7 @@ function DocumentTitleSetter() {
     
     useEffect(() => {
         const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
-        const workspaceName = activeWorkspace?.name || 'CRM';
+        const workspaceName = activeWorkspace?.name || 'CRM 17';
         
         const path = pathname || '/';
         let pageTitle = '';

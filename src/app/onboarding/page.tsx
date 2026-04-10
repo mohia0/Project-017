@@ -71,14 +71,14 @@ export default function OnboardingPage() {
                     
                     {/* Logo */}
                     <div className="mb-14 flex items-center justify-center">
-                        <div className="flex items-center gap-3">
-                            <div className={cn(
-                                "w-11 h-11 rounded-2xl flex items-center justify-center font-black text-xl tracking-tighter shadow-xl transform hover:rotate-6 transition-transform",
-                                isDark ? "bg-white text-black shadow-white/5" : "bg-black text-white shadow-black/10"
-                            )}>
-                                17
-                            </div>
-                        </div>
+                        <img 
+                            src="/logo.svg" 
+                            alt="CRM 17" 
+                            className={cn(
+                                "h-11 w-auto transform hover:rotate-3 transition-transform duration-500",
+                                isDark && "invert brightness-[100]"
+                            )}
+                        />
                     </div>
 
                     <div className="w-full flex flex-col items-center text-center mb-12">
