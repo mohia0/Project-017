@@ -33,7 +33,7 @@ export function PaymentMethodSelectorModal({
     const [selectedBankAccountId, setSelectedBankAccountId] = useState<string | null>(null);
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
 
-    if (!isOpen) return null;
+
 
     const paymentMethods = invoice.meta?.paymentMethods || invoice.paymentMethods || [];
     
@@ -51,7 +51,7 @@ export function PaymentMethodSelectorModal({
     }
 
     payments?.bank_accounts?.forEach(acc => {
-        if (paymentMethods.includes(acc.id)) {
+        if (paymentMethods.includes(acc.id) && acc.is_active) {
             availableMethods.push({
                 id: acc.id,
                 name: `${acc.bank_name}`,
@@ -114,6 +114,8 @@ export function PaymentMethodSelectorModal({
         // We could auto-call handleSelectMethod, but that might cause loops or issues with React state.
         // I'll show it for now, but I can optimize it.
     }
+
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">

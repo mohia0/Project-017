@@ -898,7 +898,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                             )}
 
                                             {/* Bank Accounts */}
-                                            {payments?.bank_accounts?.map(acc => (
+                                            {payments?.bank_accounts?.filter(acc => acc.is_active).map(acc => (
                                                 <label key={acc.id} className="flex items-center gap-2 cursor-pointer group">
                                                     <input 
                                                         type="checkbox"
@@ -926,8 +926,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                 </label>
                                             ))}
 
-                                            {(!payments?.paypal_email && (!payments?.bank_accounts || payments.bank_accounts.length === 0)) && (
-                                                <p className={cn("text-[10px] opacity-30 italic px-1 py-1", isDark ? "text-white" : "text-black")}>No methods configured in settings</p>
+                                            {(!payments?.paypal_email && (!payments?.bank_accounts || !payments.bank_accounts.some(acc => acc.is_active))) && (
+                                                <p className={cn("text-[10px] opacity-30 italic px-1 py-1", isDark ? "text-white" : "text-black")}>No active methods configured in settings</p>
                                             )}
                                         </div>
                                     </MetaField>

@@ -61,22 +61,14 @@ export default function PaymentsSettingsPage() {
         }
     }, [payments]);
 
-    const hasUnsavedChanges = () => {
+    const hasBankChanges = () => {
         const compareTo = payments || DEFAULT_PAYMENTS;
-        return (
-            formData.business_name !== (compareTo.business_name || '') ||
-            formData.business_address !== (compareTo.business_address || '') ||
-            formData.tax_number !== (compareTo.tax_number || '') ||
-            formData.paypal_email !== (compareTo.paypal_email || '') ||
-            formData.bank_name !== (compareTo.bank_name || '') ||
-            formData.iban !== (compareTo.iban || '') ||
-            formData.swift !== (compareTo.swift || '') ||
-            JSON.stringify(formData.bank_accounts) !== JSON.stringify(compareTo.bank_accounts || []) ||
-            formData.default_currency !== (compareTo.default_currency || DEFAULT_PAYMENTS.default_currency) ||
-            formData.payment_terms !== (compareTo.payment_terms || DEFAULT_PAYMENTS.payment_terms) ||
-            formData.invoice_prefix !== (compareTo.invoice_prefix || DEFAULT_PAYMENTS.invoice_prefix) ||
-            formData.invoice_start_number !== (compareTo.invoice_start_number ?? DEFAULT_PAYMENTS.invoice_start_number)
-        );
+        return JSON.stringify(formData.bank_accounts) !== JSON.stringify(compareTo.bank_accounts || []);
+    };
+
+    const hasPayPalChanges = () => {
+        const compareTo = payments || DEFAULT_PAYMENTS;
+        return formData.paypal_email !== (compareTo.paypal_email || '');
     };
 
     const handleSave = async () => {
@@ -115,7 +107,7 @@ export default function PaymentsSettingsPage() {
                 description="Your bank account details for direct transfers. One account must be set as default."
                 onSave={handleSave}
                 isSaving={isSaving}
-                unsavedChanges={hasUnsavedChanges()}
+                unsavedChanges={hasBankChanges()}
                 extra={
                     <button
                         onClick={() => {
@@ -127,7 +119,8 @@ export default function PaymentsSettingsPage() {
                                 account_number: '',
                                 swift: '',
                                 iban: '',
-                                is_default: (formData.bank_accounts?.length === 0)
+                                is_default: (formData.bank_accounts?.length === 0),
+                                is_active: true
                             };
                             setFormData({
                                 ...formData,
@@ -211,6 +204,27 @@ export default function PaymentsSettingsPage() {
                                             </div>
 
                                             <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                                                <button 
+                                                    onClick={() => {
+                                                        const next = formData.bank_accounts?.map(a => 
+                                                            a.id === acc.id ? { ...a, is_active: !a.is_active } : a
+                                                        );
+                                                        setFormData({ ...formData, bank_accounts: next || [] });
+                                                    }}
+                                                    className={cn(
+                                                        "relative w-7 h-4 rounded-full transition-all duration-300",
+                                                        acc.is_active 
+                                                            ? "bg-primary" 
+                                                            : (isDark ? "bg-white/10" : "bg-black/10")
+                                                    )}
+                                                    title={acc.is_active ? "Account is active" : "Account is hidden"}
+                                                >
+                                                    <div className={cn(
+                                                        "absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all duration-300",
+                                                        acc.is_active ? "left-[13px]" : "left-0.5",
+                                                        !acc.is_active && !isDark && "bg-black/20"
+                                                    )} />
+                                                </button>
                                                 {!acc.is_default && (
                                                     <button 
                                                         onClick={() => {
@@ -331,7 +345,7 @@ export default function PaymentsSettingsPage() {
                 description="Accept payments via PayPal. Enter your PayPal email address."
                 onSave={handleSave}
                 isSaving={isSaving}
-                unsavedChanges={hasUnsavedChanges()}
+                unsavedChanges={hasPayPalChanges()}
             >
                 <SettingsField label="PayPal Email">
                     <SettingsInput 

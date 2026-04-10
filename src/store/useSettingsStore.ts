@@ -40,6 +40,7 @@ export interface WorkspacePayments {
     swift: string;
     iban: string;
     is_default: boolean;
+    is_active: boolean;
   }> | null;
   default_currency: string;
   payment_terms: string;
