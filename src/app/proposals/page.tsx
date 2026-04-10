@@ -1085,7 +1085,7 @@ export default function ProposalsPage() {
                         collisionDetection={closestCenter}
                         onDragEnd={handleDragEnd}
                     >
-                        <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-10",
+                        <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-30",
                             isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
                             style={{ gridTemplateColumns: gridTemplate }}>
                             
@@ -1119,7 +1119,8 @@ export default function ProposalsPage() {
                                 })}
                             </SortableContext>
 
-                            <div className="relative px-4 py-2 flex items-center justify-end">
+                            <div className={cn("sticky right-0 px-4 py-2 flex items-center justify-end z-40 shadow-[-10px_0_15px_-12px_rgba(0,0,0,0.1)]",
+                                isDark ? "bg-[#1a1a1a]" : "bg-[#f5f5f7]")}>
                                 Total: {fmt$(stats[statusFilter]?.amount ?? 0)}
                             </div>
                         </div>
@@ -1197,7 +1198,9 @@ export default function ProposalsPage() {
                                             return null;
                                         })}
 
-                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 relative overflow-hidden", isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors shadow-[-10px_0_15px_-12px_rgba(0,0,0,0.1)]",
+                                            isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"),
+                                            isDark ? "text-[#ccc]" : "text-[#333]")}>
                                             <span className="transition-transform group-hover:-translate-x-[90px] duration-300">
                                                 {fmt$(Number(p.amount || 0))}
                                             </span>

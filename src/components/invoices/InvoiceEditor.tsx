@@ -18,7 +18,7 @@ import {
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image, SeparatorHorizontal,
     Settings, ChevronRight, RotateCcw, Monitor, Smartphone, PanelTop,
-    Printer, LayoutTemplate
+    Printer, LayoutTemplate, CreditCard
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
@@ -35,7 +35,7 @@ import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import DatePicker from '@/components/ui/DatePicker';
 import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import { useTemplateStore } from '@/store/useTemplateStore';
-import { BankTransferModal } from '@/components/modals/BankTransferModal';
+import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSelectorModal';
 import ImageUploadModal from '../modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
@@ -84,10 +84,11 @@ interface InvoiceMeta {
     currency: string;
     discountCalc: 'before_tax' | 'after_tax';
     invoiceNumber: string;
-    status: 'Draft' | 'Pending' | 'Paid' | 'Overdue';
+    status: 'Draft' | 'Pending' | 'Paid' | 'Overdue' | 'Cancelled';
     logoUrl?: string;
     documentTitle?: string;
     design?: DocumentDesign;
+    paymentMethods?: string[];
 }
 
 type RightPanelTab = 'details' | 'appearance' | 'automation';
@@ -114,6 +115,15 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const { clients, fetchClients } = useClientStore();
     const { updateInvoice, fetchInvoices, invoices } = useInvoiceStore();
     const { addTemplate } = useTemplateStore();
+    const { payments, fetchPayments } = useSettingsStore();
+
+    const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
+
+    React.useEffect(() => {
+        if (activeWorkspaceId) {
+            fetchPayments(activeWorkspaceId);
+        }
+    }, [activeWorkspaceId, fetchPayments]);
 
     React.useEffect(() => {
         fetchClients();
@@ -164,6 +174,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
         status: 'Draft',
         logoUrl: '',
         documentTitle: 'INVOICE',
+        paymentMethods: [],
     });
 
     const [blocks, setBlocks] = useState<BlockData[]>([
@@ -194,6 +205,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
         return () => clearInterval(interval);
     }, [id, fetchInvoices]);
 
+    const lastSyncedStatusRef = useRef<InvoiceMeta['status'] | null>(null);
+
     // Enhanced sync effect: allows status to update even after load
     React.useEffect(() => {
         if (!id) return;
@@ -215,14 +228,16 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             if (invoice.blocks && Array.isArray(invoice.blocks) && invoice.blocks.length > 0) {
                 setBlocks(invoice.blocks);
             }
+            lastSyncedStatusRef.current = invoice.status as any;
             setIsLoaded(true);
         } else {
             // Background Sync: Only update specific fields that might change (Status)
-            if (invoice.status !== meta.status) {
+            if (invoice.status !== lastSyncedStatusRef.current) {
+                lastSyncedStatusRef.current = invoice.status as any;
                 setMeta(prev => ({ ...prev, status: invoice.status as any }));
             }
         }
-    }, [id, invoices, isLoaded, meta.status]);
+    }, [id, invoices, isLoaded]); // Removed meta.status from dependencies to prevent circular overwrite
 
     // Auto-save effect
     const isFirstRender = useRef(true);
@@ -849,6 +864,75 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     </MetaField>
 
                                     <MetaField
+                                        label="Payment Methods"
+                                        isDark={isDark}
+                                        icon={<CreditCard size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ paymentMethods: [] })}
+                                    >
+                                        <div className="flex flex-col gap-1.5 mt-1">
+                                            {/* PayPal Option */}
+                                            {payments?.paypal_email && (
+                                                <label className="flex items-center gap-2 cursor-pointer group">
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={meta.paymentMethods?.includes('paypal')}
+                                                        onChange={(e) => {
+                                                            const current = meta.paymentMethods || [];
+                                                            const next = e.target.checked 
+                                                                ? [...current, 'paypal']
+                                                                : current.filter(id => id !== 'paypal');
+                                                            updateMeta({ paymentMethods: next });
+                                                        }}
+                                                        className="hidden"
+                                                    />
+                                                    <div className={cn(
+                                                        "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
+                                                        meta.paymentMethods?.includes('paypal')
+                                                            ? "bg-primary border-primary text-black shadow-sm"
+                                                            : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
+                                                    )}>
+                                                        {meta.paymentMethods?.includes('paypal') && <Check size={10} strokeWidth={4} />}
+                                                    </div>
+                                                    <span className={cn("text-[11px] font-medium", isDark ? "text-white/60" : "text-black/60")}>PayPal</span>
+                                                </label>
+                                            )}
+
+                                            {/* Bank Accounts */}
+                                            {payments?.bank_accounts?.map(acc => (
+                                                <label key={acc.id} className="flex items-center gap-2 cursor-pointer group">
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={meta.paymentMethods?.includes(acc.id)}
+                                                        onChange={(e) => {
+                                                            const current = meta.paymentMethods || [];
+                                                            const next = e.target.checked 
+                                                                ? [...current, acc.id]
+                                                                : current.filter(id => id !== acc.id);
+                                                            updateMeta({ paymentMethods: next });
+                                                        }}
+                                                        className="hidden"
+                                                    />
+                                                    <div className={cn(
+                                                        "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
+                                                        meta.paymentMethods?.includes(acc.id)
+                                                            ? "bg-primary border-primary text-black shadow-sm"
+                                                            : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
+                                                    )}>
+                                                        {meta.paymentMethods?.includes(acc.id) && <Check size={10} strokeWidth={4} />}
+                                                    </div>
+                                                    <span className={cn("text-[11px] font-medium truncate", isDark ? "text-white/60" : "text-black/60")}>
+                                                        {acc.bank_name}
+                                                    </span>
+                                                </label>
+                                            ))}
+
+                                            {(!payments?.paypal_email && (!payments?.bank_accounts || payments.bank_accounts.length === 0)) && (
+                                                <p className={cn("text-[10px] opacity-30 italic px-1 py-1", isDark ? "text-white" : "text-black")}>No methods configured in settings</p>
+                                            )}
+                                        </div>
+                                    </MetaField>
+
+                                    <MetaField
                                         label="Discount Calc."
                                         isDark={isDark}
                                         icon={<Tag size={11} className="opacity-50" />}
@@ -891,12 +975,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 )}
             </div>
 
-            <BankTransferModal 
-                isOpen={isPayModalOpen}
-                onClose={() => setIsPayModalOpen(false)}
-                onMarkAsPaid={() => updateMeta({ status: 'Paid' })}
-                amountDue={fmt(totals.total, meta.currency)}
-            />
+
 
             <DeleteConfirmModal 
                 open={!!pendingStatusChange}
@@ -954,6 +1033,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                     }}
                 />
             )}
+
+            <PaymentMethodSelectorModal
+                isOpen={isPayModalOpen}
+                onClose={() => setIsPayModalOpen(false)}
+                invoice={{ ...meta, amount: totals.total, id: id }}
+                onMarkAsPaid={() => handleStatusChange('Paid')}
+            />
         </div>
     );
 }

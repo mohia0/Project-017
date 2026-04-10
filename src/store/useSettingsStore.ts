@@ -28,9 +28,19 @@ export interface WorkspacePayments {
   business_name: string | null;
   business_address: string | null;
   tax_number: string | null;
+  paypal_email: string | null;
   bank_name: string | null;
   iban: string | null;
   swift: string | null;
+  bank_accounts: Array<{
+    id: string;
+    bank_name: string;
+    account_name: string;
+    account_number: string;
+    swift: string;
+    iban: string;
+    is_default: boolean;
+  }> | null;
   default_currency: string;
   payment_terms: string;
   invoice_prefix: string;
@@ -206,6 +216,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     if (error) {
       set({ error: error.message });
+      throw error;
     } else {
       set({ payments: data });
     }

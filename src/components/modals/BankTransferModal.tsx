@@ -4,33 +4,59 @@ import React from 'react';
 import { X, ArrowRight, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { Loader2 } from 'lucide-react';
 
 interface BankTransferModalProps {
     isOpen: boolean;
     onClose: () => void;
     onMarkAsPaid: () => void;
     amountDue: string | number;
+    accountId?: string | null;
 }
 
 export function BankTransferModal({ 
     isOpen, 
     onClose, 
     onMarkAsPaid,
-    amountDue 
+    amountDue,
+    accountId
 }: BankTransferModalProps) {
-    const { theme } = useUIStore();
+    const { theme, activeWorkspaceId } = useUIStore();
+    const { payments, fetchPayments, hasFetched } = useSettingsStore();
     const isDark = theme === 'dark';
+
+    React.useEffect(() => {
+        if (isOpen && activeWorkspaceId && !hasFetched.payments) {
+            fetchPayments(activeWorkspaceId);
+        }
+    }, [isOpen, activeWorkspaceId, fetchPayments, hasFetched.payments]);
 
     if (!isOpen) return null;
 
-    // Dummy payment data as requested by user
-    const paymentInfo = {
-        bankName: "BANK OF ALEXANDRIA S A E",
-        name: "Mohi Eldeen Hassan Mohamed Hassan",
+    // Get the specific bank account or fall back to default
+    const targetAccount = accountId 
+        ? payments?.bank_accounts?.find(acc => acc.id === accountId)
+        : (payments?.bank_accounts?.find(acc => acc.is_default) || payments?.bank_accounts?.[0]);
+
+    const defaultAccount = targetAccount;
+
+    // Fallback data if no payments is set up in settings yet
+    const paymentInfo = defaultAccount ? {
+        bankName: defaultAccount.bank_name,
+        name: defaultAccount.account_name,
+        accountNumber: defaultAccount.account_number,
+        swiftCode: defaultAccount.swift,
+        iban: defaultAccount.iban
+    } : {
+        bankName: payments?.bank_name || "BANK OF ALEXANDRIA S A E",
+        name: payments?.business_name || "Mohi Eldeen Hassan Mohamed Hassan",
         accountNumber: "311146782001",
-        swiftCode: "ALEXEGCXXXX",
-        iban: "EG980005301100000311146782001"
+        swiftCode: payments?.swift || "ALEXEGCXXXX",
+        iban: payments?.iban || "EG980005301100000311146782001"
     };
+
+    const isLoading = isOpen && activeWorkspaceId && !hasFetched.payments;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -60,38 +86,48 @@ export function BankTransferModal({
                         Please transfer the amount due to the following bank account:
                     </p>
 
-                    <div className={cn(
-                        "rounded-xl border p-4 space-y-3",
-                        isDark ? "bg-[#111] border-[#333]" : "bg-[#f9f9f9] border-[#e2e2e2]"
-                    )}>
-                        <div className="space-y-1">
-                            <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Bank Name</span>
-                            <p className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-black")}>{paymentInfo.bankName}</p>
+                    {isLoading ? (
+                        <div className={cn(
+                            "rounded-xl border p-12 flex flex-col items-center justify-center gap-3",
+                            isDark ? "bg-[#111] border-[#333]" : "bg-[#f9f9f9] border-[#e2e2e2]"
+                        )}>
+                            <Loader2 className="animate-spin opacity-20" size={24} />
+                            <p className="text-[11px] font-bold uppercase tracking-widest opacity-30">Loading bank details...</p>
                         </div>
-                        
-                        <div className="space-y-1">
-                            <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Account Name</span>
-                            <p className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-black")}>{paymentInfo.name}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
+                    ) : (
+                        <div className={cn(
+                            "rounded-xl border p-4 space-y-3",
+                            isDark ? "bg-[#111] border-[#333]" : "bg-[#f9f9f9] border-[#e2e2e2]"
+                        )}>
                             <div className="space-y-1">
-                                <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Account Number</span>
-                                <p className={cn("text-[13px] font-mono font-medium", isDark ? "text-white" : "text-black")}>{paymentInfo.accountNumber}</p>
+                                <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Bank Name</span>
+                                <p className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-black")}>{paymentInfo.bankName}</p>
                             </div>
+                            
                             <div className="space-y-1">
-                                <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Swift Code</span>
-                                <p className={cn("text-[13px] font-mono font-medium", isDark ? "text-white" : "text-black")}>{paymentInfo.swiftCode}</p>
+                                <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Account Name</span>
+                                <p className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-black")}>{paymentInfo.name}</p>
                             </div>
-                        </div>
 
-                        <div className="space-y-1">
-                            <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>IBAN</span>
-                            <div className="flex items-center justify-between">
-                                <p className={cn("text-[13px] font-mono font-medium truncate pr-2", isDark ? "text-white" : "text-black")}>{paymentInfo.iban}</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Account Number</span>
+                                    <p className={cn("text-[13px] font-mono font-medium", isDark ? "text-white" : "text-black")}>{paymentInfo.accountNumber}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Swift Code</span>
+                                    <p className={cn("text-[13px] font-mono font-medium", isDark ? "text-white" : "text-black")}>{paymentInfo.swiftCode}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>IBAN</span>
+                                <div className="flex items-center justify-between">
+                                    <p className={cn("text-[13px] font-mono font-medium truncate pr-2", isDark ? "text-white" : "text-black")}>{paymentInfo.iban}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Footer */}

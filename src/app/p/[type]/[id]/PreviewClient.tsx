@@ -6,8 +6,7 @@ import { ProposalDocument } from '@/components/proposals/ProposalEditor';
 import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
-import { BankTransferModal } from '@/components/modals/BankTransferModal';
-import { gooeyToast } from 'goey-toast';
+import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSelectorModal';
 
 // Anon-key client — safe for public preview pages, used only to subscribe
 // to Realtime events. No sensitive data is written through this client.
@@ -91,50 +90,29 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     const handleUpdateStatus = async (status: string, signatureData?: any) => {
         if (isUpdating) return;
 
-        const actionLabel =
-            status === 'Accepted' ? 'Accepting' :
-            status === 'Declined' ? 'Declining' :
-            status === 'Paid'     ? 'Marking as Paid' : 'Updating';
-
-        const successMessage =
-            status === 'Accepted' ? 'Proposal Accepted & Signed!' :
-            status === 'Declined' ? 'Proposal Declined' :
-            status === 'Paid'     ? 'Invoice marked as Paid' : 'Updated';
-
         try {
             setIsUpdating(true);
-            await gooeyToast.promise(
-                (async () => {
-                    const res = await fetch(`/api/p/${type}/${data.id}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status, signatureData }),
-                    });
+            
+            // Replaced gooeyToast.promise with a silent fetch call as requested
+            const res = await fetch(`/api/p/${type}/${data.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, signatureData }),
+            });
 
-                    if (!res.ok) {
-                        const err = await res.json();
-                        throw new Error(err.error || 'Failed to update');
-                    }
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed to update');
+            }
 
-                    const updatedResponse = await res.json();
-                    // Realtime will handle the UI update automatically,
-                    // but we apply it immediately for instant client feedback.
-                    if (updatedResponse.success) {
-                        setLiveData((prev: any) => ({ ...prev, ...updatedResponse.updateData }));
-                    }
-                    return updatedResponse;
-                })(),
-                {
-                    loading: `${actionLabel}...`,
-                    success: successMessage,
-                    error: (err: any) => {
-                        if (err.message && err.code) return `Error: ${err.message} (${err.code})`;
-                        return `Error: ${err.message || 'Update failed'}`;
-                    },
-                }
-            );
+            const updatedResponse = await res.json();
+            // Realtime will handle the UI update automatically,
+            // but we apply it immediately for instant client feedback.
+            if (updatedResponse.success) {
+                setLiveData((prev: any) => ({ ...prev, ...updatedResponse.updateData }));
+            }
         } catch (e) {
-            console.error('Failed to update document status', e);
+            console.error('Failed to update document status:', e);
         } finally {
             setIsUpdating(false);
         }
@@ -301,11 +279,11 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     </div>
                 </div>
 
-                <BankTransferModal
+                <PaymentMethodSelectorModal
                     isOpen={isBankModalOpen}
                     onClose={() => setIsBankModalOpen(false)}
+                    invoice={{ ...liveData, amount: totals.total }}
                     onMarkAsPaid={() => handleUpdateStatus('Paid')}
-                    amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 2 }).format(totals.total)}
                 />
             </div>
         );

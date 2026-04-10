@@ -15,6 +15,7 @@ interface SettingsCardProps {
     unsavedChanges?: boolean;
     collapsible?: boolean;
     defaultCollapsed?: boolean;
+    extra?: React.ReactNode;
 }
 
 export function SettingsCard({ 
@@ -25,7 +26,8 @@ export function SettingsCard({
     isSaving, 
     unsavedChanges,
     collapsible = false,
-    defaultCollapsed = false
+    defaultCollapsed = false,
+    extra
 }: SettingsCardProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
@@ -80,15 +82,18 @@ export function SettingsCard({
                             </p>
                         )}
                     </div>
-                    {collapsible && (
-                        <div className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center transition-all",
-                            isDark ? "bg-white/5" : "bg-black/5",
-                            isCollapsed ? "" : "rotate-180"
-                        )}>
-                            <ChevronDown size={18} className="opacity-50" />
-                        </div>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {extra}
+                        {collapsible && (
+                            <div className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                                isDark ? "bg-white/5" : "bg-black/5",
+                                isCollapsed ? "" : "rotate-180"
+                            )}>
+                                <ChevronDown size={18} className="opacity-50" />
+                            </div>
+                        )}
+                    </div>
                 </div>
                 
                 <div className={cn(

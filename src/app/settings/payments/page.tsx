@@ -2,17 +2,23 @@
 
 import React, { useEffect, useState } from 'react';
 import { SettingsCard } from '@/components/settings/SettingsCard';
-import { SettingsField, SettingsInput, SettingsTextarea } from '@/components/settings/SettingsField';
+import { SettingsField, SettingsInput } from '@/components/settings/SettingsField';
 import { useSettingsStore, WorkspacePayments } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
+import { Plus, Trash2, Check, Star, AlertCircle, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { gooeyToast } from 'goey-toast';
+import { v4 as uuidv4 } from 'uuid';
 
 const DEFAULT_PAYMENTS: Omit<WorkspacePayments, 'workspace_id'> = {
     business_name: '',
     business_address: '',
     tax_number: '',
+    paypal_email: '',
     bank_name: '',
     iban: '',
     swift: '',
+    bank_accounts: [],
     default_currency: 'USD',
     payment_terms: 'Net 30',
     invoice_prefix: 'INV-',
@@ -20,8 +26,10 @@ const DEFAULT_PAYMENTS: Omit<WorkspacePayments, 'workspace_id'> = {
 };
 
 export default function PaymentsSettingsPage() {
-    const { activeWorkspaceId } = useUIStore();
+    const { activeWorkspaceId, theme } = useUIStore();
+    const isDark = theme === 'dark';
     const { payments, fetchPayments, updatePayments, isLoading, hasFetched } = useSettingsStore();
+    const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
     const [formData, setFormData] = useState<Omit<WorkspacePayments, 'workspace_id'>>(DEFAULT_PAYMENTS);
     const [isSaving, setIsSaving] = useState(false);
@@ -38,9 +46,11 @@ export default function PaymentsSettingsPage() {
                 business_name: payments.business_name || '',
                 business_address: payments.business_address || '',
                 tax_number: payments.tax_number || '',
+                paypal_email: payments.paypal_email || '',
                 bank_name: payments.bank_name || '',
                 iban: payments.iban || '',
                 swift: payments.swift || '',
+                bank_accounts: payments.bank_accounts || [],
                 default_currency: payments.default_currency || DEFAULT_PAYMENTS.default_currency,
                 payment_terms: payments.payment_terms || DEFAULT_PAYMENTS.payment_terms,
                 invoice_prefix: payments.invoice_prefix || DEFAULT_PAYMENTS.invoice_prefix,
@@ -57,9 +67,11 @@ export default function PaymentsSettingsPage() {
             formData.business_name !== (compareTo.business_name || '') ||
             formData.business_address !== (compareTo.business_address || '') ||
             formData.tax_number !== (compareTo.tax_number || '') ||
+            formData.paypal_email !== (compareTo.paypal_email || '') ||
             formData.bank_name !== (compareTo.bank_name || '') ||
             formData.iban !== (compareTo.iban || '') ||
             formData.swift !== (compareTo.swift || '') ||
+            JSON.stringify(formData.bank_accounts) !== JSON.stringify(compareTo.bank_accounts || []) ||
             formData.default_currency !== (compareTo.default_currency || DEFAULT_PAYMENTS.default_currency) ||
             formData.payment_terms !== (compareTo.payment_terms || DEFAULT_PAYMENTS.payment_terms) ||
             formData.invoice_prefix !== (compareTo.invoice_prefix || DEFAULT_PAYMENTS.invoice_prefix) ||
@@ -70,8 +82,20 @@ export default function PaymentsSettingsPage() {
     const handleSave = async () => {
         if (!activeWorkspaceId) return;
         setIsSaving(true);
-        await updatePayments(activeWorkspaceId, formData);
-        setIsSaving(false);
+        try {
+            await gooeyToast.promise(
+                updatePayments(activeWorkspaceId, formData),
+                {
+                    loading: 'Saving payment settings...',
+                    success: 'Settings saved successfully',
+                    error: (err) => `Failed to save: ${err.message || err}`
+                }
+            );
+        } catch (error: any) {
+            console.error('Save error:', error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (!hasFetched.payments) {
@@ -84,112 +108,241 @@ export default function PaymentsSettingsPage() {
 
     return (
         <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
+
+
             <SettingsCard
-                title="Business Details"
-                description="Information that appears on your invoices."
+                title="Bank Accounts"
+                description="Your bank account details for direct transfers. One account must be set as default."
                 onSave={handleSave}
                 isSaving={isSaving}
                 unsavedChanges={hasUnsavedChanges()}
+                extra={
+                    <button
+                        onClick={() => {
+                            const newId = uuidv4();
+                            const newAccount = {
+                                id: newId,
+                                bank_name: '',
+                                account_name: '',
+                                account_number: '',
+                                swift: '',
+                                iban: '',
+                                is_default: (formData.bank_accounts?.length === 0)
+                            };
+                            setFormData({
+                                ...formData,
+                                bank_accounts: [...(formData.bank_accounts || []), newAccount]
+                            });
+                            // Automatically expand the new account
+                            setExpandedIds(prev => new Set(prev).add(newId));
+                        }}
+                        className={cn(
+                            "flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all",
+                            activeWorkspaceId 
+                                ? (isDark ? "hover:bg-white/5 text-white/50 hover:text-white" : "hover:bg-black/5 text-black/50 hover:text-black")
+                                : "opacity-30 cursor-not-allowed"
+                        )}
+                        title="Add bank account"
+                    >
+                        <Plus size={14} strokeWidth={2.5} />
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Add</span>
+                    </button>
+                }
             >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <SettingsField label="Business Name">
-                        <SettingsInput 
-                            value={formData.business_name || ''} 
-                            onChange={e => setFormData({ ...formData, business_name: e.target.value })}
-                            placeholder="Acme Studio LLC"
-                        />
-                    </SettingsField>
-                    <SettingsField label="Tax / VAT Number">
-                        <SettingsInput 
-                            value={formData.tax_number || ''} 
-                            onChange={e => setFormData({ ...formData, tax_number: e.target.value })}
-                            placeholder="US-123456789"
-                        />
-                    </SettingsField>
-                </div>
+                <div className="space-y-6">
+                    {(!formData.bank_accounts || formData.bank_accounts.length === 0) ? (
+                        <div className={cn(
+                            "flex flex-col items-center justify-center py-8 px-4 rounded-2xl border border-dashed",
+                            isDark ? "border-white/10 bg-white/[0.02]" : "border-black/10 bg-black/[0.02]"
+                        )}>
+                            <AlertCircle size={20} className="mb-2 opacity-20" />
+                            <p className="text-xs opacity-40 font-medium">No bank accounts added yet.</p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                            {formData.bank_accounts.map((acc, index) => {
+                                const isExpanded = expandedIds.has(acc.id);
+                                return (
+                                    <div 
+                                        key={acc.id} 
+                                        className={cn(
+                                            "rounded-xl border transition-all duration-200",
+                                            isDark ? "bg-white/[0.02] border-white/5" : "bg-black/[0.02] border-black/5",
+                                            isExpanded ? (isDark ? "border-white/10 ring-1 ring-white/5" : "border-black/10 ring-1 ring-black/5 shadow-sm") : "hover:border-primary/20"
+                                        )}
+                                    >
+                                        {/* Compact Header */}
+                                        <div 
+                                            className={cn(
+                                                "px-4 py-3 flex items-center justify-between cursor-pointer group",
+                                                isExpanded && "border-b border-dashed",
+                                                isDark ? "border-white/10" : "border-black/10"
+                                            )}
+                                            onClick={() => {
+                                                const next = new Set(expandedIds);
+                                                if (isExpanded) next.delete(acc.id);
+                                                else next.add(acc.id);
+                                                setExpandedIds(next);
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn(
+                                                    "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                                                    isDark ? "bg-white/5 text-white/20" : "bg-black/5 text-black/20",
+                                                    isExpanded && (isDark ? "text-primary bg-primary/10" : "text-black bg-black/10")
+                                                )}>
+                                                    <ChevronDown size={16} className={cn("transition-transform duration-300", !isExpanded && "-rotate-90")} />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className={cn("text-[13px] font-bold leading-none mb-1", isDark ? "text-white" : "text-black")}>
+                                                        {acc.bank_name || 'Unnamed Bank'}
+                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={cn("text-[10px] font-medium opacity-40 uppercase tracking-wider", isDark ? "text-white" : "text-black")}>
+                                                            {acc.account_name || 'No account name'}
+                                                        </span>
+                                                        {acc.is_default && (
+                                                            <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[8px] font-black uppercase tracking-widest leading-none">
+                                                                Default
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                <SettingsField label="Business Address">
-                    <SettingsTextarea 
-                        value={formData.business_address || ''} 
-                        onChange={e => setFormData({ ...formData, business_address: e.target.value })}
-                        placeholder="123 Business Rd&#10;San Francisco, CA"
-                    />
-                </SettingsField>
+                                            <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                                                {!acc.is_default && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            const next = formData.bank_accounts?.map(a => ({
+                                                                ...a,
+                                                                is_default: a.id === acc.id
+                                                            }));
+                                                            setFormData({ ...formData, bank_accounts: next || [] });
+                                                        }}
+                                                        className={cn(
+                                                            "p-2 rounded-lg transition-all",
+                                                            isDark ? "hover:bg-white/5 text-white/20 hover:text-white" : "hover:bg-black/5 text-black/20 hover:text-black"
+                                                        )}
+                                                        title="Set as default"
+                                                    >
+                                                        <Star size={12} />
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    onClick={() => {
+                                                        const next = formData.bank_accounts?.filter(a => a.id !== acc.id);
+                                                        if (acc.is_default && next && next.length > 0) {
+                                                            next[0].is_default = true;
+                                                        }
+                                                        setFormData({ ...formData, bank_accounts: next || [] });
+                                                        // Remove from expanded if expanded
+                                                        const nextExpanded = new Set(expandedIds);
+                                                        nextExpanded.delete(acc.id);
+                                                        setExpandedIds(nextExpanded);
+                                                    }}
+                                                    className={cn(
+                                                        "p-2 rounded-lg transition-all",
+                                                        isDark ? "hover:bg-red-500/10 text-white/20 hover:text-red-500" : "hover:bg-red-500/10 text-black/20 hover:text-red-500"
+                                                    )}
+                                                    title="Delete account"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Form */}
+                                        {isExpanded && (
+                                            <div className="p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <SettingsField label="Bank Name">
+                                                        <SettingsInput 
+                                                            value={acc.bank_name} 
+                                                            onChange={e => {
+                                                                const next = [...(formData.bank_accounts || [])];
+                                                                next[index] = { ...next[index], bank_name: e.target.value };
+                                                                setFormData({ ...formData, bank_accounts: next });
+                                                            }}
+                                                            placeholder="Chase Bank"
+                                                        />
+                                                    </SettingsField>
+                                                    <SettingsField label="Account Name">
+                                                        <SettingsInput 
+                                                            value={acc.account_name} 
+                                                            onChange={e => {
+                                                                const next = [...(formData.bank_accounts || [])];
+                                                                next[index] = { ...next[index], account_name: e.target.value };
+                                                                setFormData({ ...formData, bank_accounts: next });
+                                                            }}
+                                                            placeholder="John Doe"
+                                                        />
+                                                    </SettingsField>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <SettingsField label="Account Number">
+                                                        <SettingsInput 
+                                                            value={acc.account_number} 
+                                                            onChange={e => {
+                                                                const next = [...(formData.bank_accounts || [])];
+                                                                next[index] = { ...next[index], account_number: e.target.value };
+                                                                setFormData({ ...formData, bank_accounts: next });
+                                                            }}
+                                                            placeholder="12345678"
+                                                        />
+                                                    </SettingsField>
+                                                    <SettingsField label="SWIFT Code">
+                                                        <SettingsInput 
+                                                            value={acc.swift} 
+                                                            onChange={e => {
+                                                                const next = [...(formData.bank_accounts || [])];
+                                                                next[index] = { ...next[index], swift: e.target.value };
+                                                                setFormData({ ...formData, bank_accounts: next });
+                                                            }}
+                                                            placeholder="CHASUS33"
+                                                        />
+                                                    </SettingsField>
+                                                </div>
+
+                                                <SettingsField label="IBAN">
+                                                    <SettingsInput 
+                                                        value={acc.iban} 
+                                                        onChange={e => {
+                                                            const next = [...(formData.bank_accounts || [])];
+                                                            next[index] = { ...next[index], iban: e.target.value };
+                                                            setFormData({ ...formData, bank_accounts: next });
+                                                        }}
+                                                        placeholder="US00 CHASE 000..."
+                                                    />
+                                                </SettingsField>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             </SettingsCard>
 
             <SettingsCard
-                title="Bank Account"
-                description="Your bank account details for direct transfers."
+                title="PayPal"
+                description="Accept payments via PayPal. Enter your PayPal email address."
                 onSave={handleSave}
                 isSaving={isSaving}
                 unsavedChanges={hasUnsavedChanges()}
             >
-                <SettingsField label="Bank Name">
+                <SettingsField label="PayPal Email">
                     <SettingsInput 
-                        value={formData.bank_name || ''} 
-                        onChange={e => setFormData({ ...formData, bank_name: e.target.value })}
-                        placeholder="Chase Bank"
+                        value={formData.paypal_email || ''} 
+                        onChange={e => setFormData({ ...formData, paypal_email: e.target.value })}
+                        placeholder="your@email.com"
                     />
                 </SettingsField>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <SettingsField label="IBAN / Account Number">
-                        <SettingsInput 
-                            value={formData.iban || ''} 
-                            onChange={e => setFormData({ ...formData, iban: e.target.value })}
-                            placeholder="US00 CHASE 123..."
-                        />
-                    </SettingsField>
-                    <SettingsField label="SWIFT / Routing">
-                        <SettingsInput 
-                            value={formData.swift || ''} 
-                            onChange={e => setFormData({ ...formData, swift: e.target.value })}
-                            placeholder="CHASUS33X"
-                        />
-                    </SettingsField>
-                </div>
             </SettingsCard>
 
-            <SettingsCard
-                title="Invoice Defaults"
-                description="Default values applied to new invoices."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasUnsavedChanges()}
-            >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <SettingsField label="Currency Code">
-                        <SettingsInput 
-                            value={formData.default_currency} 
-                            onChange={e => setFormData({ ...formData, default_currency: e.target.value })}
-                            placeholder="USD"
-                        />
-                    </SettingsField>
-                    <SettingsField label="Payment Terms">
-                        <SettingsInput 
-                            value={formData.payment_terms} 
-                            onChange={e => setFormData({ ...formData, payment_terms: e.target.value })}
-                            placeholder="Net 30"
-                        />
-                    </SettingsField>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 border-t pt-4" style={{ borderColor: 'rgba(128,128,128,0.2)' }}>
-                    <SettingsField label="Invoice Prefix">
-                        <SettingsInput 
-                            value={formData.invoice_prefix} 
-                            onChange={e => setFormData({ ...formData, invoice_prefix: e.target.value })}
-                            placeholder="INV-"
-                        />
-                    </SettingsField>
-                    <SettingsField label="Next Invoice Sequence #">
-                        <SettingsInput 
-                            type="number"
-                            min="1"
-                            value={formData.invoice_start_number} 
-                            onChange={e => setFormData({ ...formData, invoice_start_number: parseInt(e.target.value) || 1 })}
-                        />
-                    </SettingsField>
-                </div>
-            </SettingsCard>
+
         </div>
     );
 }

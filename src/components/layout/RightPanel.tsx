@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye, Search, Image as ImageIcon
+    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
@@ -135,7 +135,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                     }
                                 }}
                                 className={cn(
-                                    "flex items-start gap-3 px-4 py-3 border-b last:border-0 transition-colors cursor-pointer relative",
+                                    "flex items-start gap-2.5 px-4 py-2 border-b last:border-0 transition-colors cursor-pointer relative",
                                     isDark ? "border-[#252525] hover:bg-white/[0.02]" : "border-[#f0f0f0] hover:bg-[#f9f9f9]",
                                     !notif.read && (isDark ? "bg-white/[0.08]" : "bg-blue-500/[0.05]")
                                 )}
@@ -143,19 +143,39 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                 {!notif.read && (
                                     <div className="absolute left-2.5 top-5 w-1 h-1 rounded-full bg-primary" />
                                 )}
-                                <div className={cn("w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5", 
+                                <div className={cn("w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 mt-0.5", 
                                     isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
                                 )}>
-                                    <Eye size={12} className={isDark ? "text-[#888]" : "text-[#999]"} />
+                                    {(() => {
+                                        const isView = notif.title?.toLowerCase().includes('opened') || 
+                                                     notif.message?.toLowerCase().includes('opened');
+                                        
+                                        const isProposal = !isView && (
+                                            notif.link?.includes('proposal') || 
+                                            notif.title?.toLowerCase().includes('proposal') || 
+                                            notif.message?.toLowerCase().includes('proposal')
+                                        );
+                                        const isInvoice = !isView && (
+                                            notif.link?.includes('invoice') || 
+                                            notif.title?.toLowerCase().includes('invoice') || 
+                                            notif.message?.toLowerCase().includes('invoice')
+                                        );
+
+                                        const iconClass = isDark ? "text-[#888]" : "text-[#999]";
+
+                                        if (isProposal) return <FileText size={12} className={iconClass} />;
+                                        if (isInvoice) return <Receipt size={12} className={iconClass} />;
+                                        return <Eye size={12} className={iconClass} />;
+                                    })()}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className={cn("text-[12px] font-medium leading-snug", isDark ? "text-[#eee]" : "text-[#222]")}>
+                                    <p className={cn("text-[12px] font-medium leading-tight", isDark ? "text-[#eee]" : "text-[#222]")}>
                                         {notif.title}
                                     </p>
-                                    <p className={cn("text-[11px] mt-0.5 leading-relaxed", isDark ? "text-[#888]" : "text-[#666]")}>
+                                    <p className={cn("text-[10px] mt-0.5 leading-tight opacity-70", isDark ? "text-[#888]" : "text-[#666]")}>
                                         {notif.message}
                                     </p>
-                                    <p className={cn("text-[10px] mt-1.5 font-medium", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                                    <p className={cn("text-[9px] mt-1 font-medium", isDark ? "text-[#444]" : "text-[#aaa]")}>
                                         {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
                                     </p>
                                 </div>
@@ -171,7 +191,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                 isDark ? "border-[#252525]" : "border-[#f0f0f0]"
             )}>
                 <div className={cn(
-                    "flex items-center gap-1.5 flex-1 rounded-full px-3 py-0.5 transition-colors",
+                    "flex items-center gap-1.5 flex-1 rounded-full px-2.5 py-1 transition-colors relative group",
                     isDark ? "bg-white/5" : "bg-[#f5f5f5]"
                 )}>
                     <Search size={10} className={isDark ? "text-[#555]" : "text-[#aaa]"} />
@@ -185,6 +205,17 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                             isDark ? "text-[#ccc] placeholder:text-[#555]" : "text-[#111] placeholder:text-[#aaa]"
                         )}
                     />
+                    {searchQuery && (
+                        <button 
+                            onClick={() => setSearchQuery('')}
+                            className={cn(
+                                "flex items-center justify-center w-3.5 h-3.5 rounded-full transition-colors",
+                                isDark ? "hover:bg-white/10 text-[#555] hover:text-[#888]" : "hover:bg-black/5 text-[#ccc] hover:text-[#666]"
+                            )}
+                        >
+                            <X size={8} strokeWidth={3} />
+                        </button>
+                    )}
                 </div>
                 
                 <div 

@@ -100,14 +100,48 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
 
         if (error) {
             console.error('Supabase Update Error:', error);
-            // Return more detailed error info to help debug
             return NextResponse.json({ 
                 error: 'Failed to update document', 
                 message: error.message,
-                code: error.code,
-                details: error.details,
-                hint: error.hint
+                code: error.code
             }, { status: 500 });
+        }
+
+        // CREATE NOTIFICATION
+        try {
+            // Fetch minimal info for notification if we don't have it
+            const { data: doc } = await supabaseService
+                .from(tableName)
+                .select('workspace_id, title, client_name')
+                .eq('id', id)
+                .single();
+
+            if (doc && doc.workspace_id) {
+                let notifTitle = '';
+                let notifMsg = '';
+                const docName = doc.title || 'Untitled';
+
+                if (type === 'proposal' && body.status === 'Accepted') {
+                    notifTitle = 'Proposal Signed 🎉';
+                    notifMsg = `${doc.client_name || 'A client'} just signed the proposal "${docName}"`;
+                } else if (type === 'invoice' && body.status === 'Paid') {
+                    notifTitle = 'Invoice Paid 💸';
+                    notifMsg = `${doc.client_name || 'A client'} just marked the invoice "${docName}" as paid`;
+                }
+
+                if (notifTitle) {
+                    await supabaseService.from('notifications').insert({
+                        workspace_id: doc.workspace_id,
+                        title: notifTitle,
+                        message: notifMsg,
+                        link: `/${type}s/${id}`,
+                        read: false
+                    });
+                }
+            }
+        } catch (notifErr) {
+            console.error('Failed to create notification silent error:', notifErr);
+            // Don't fail the main request if notification fails
         }
 
         return NextResponse.json({ success: true, updateData });

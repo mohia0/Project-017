@@ -92,7 +92,7 @@ interface ProposalMeta {
     currency: string;
     discountCalc: 'before_tax' | 'after_tax';
     proposalNumber: string;
-    status: 'Draft' | 'Pending' | 'Accepted' | 'Declined' | 'Overdue';
+    status: 'Draft' | 'Pending' | 'Accepted' | 'Declined' | 'Overdue' | 'Cancelled';
     logoUrl?: string;
     documentTitle?: string;
     design?: DocumentDesign;
