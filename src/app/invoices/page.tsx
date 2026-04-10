@@ -992,7 +992,7 @@ export default function InvoicesPage() {
                 <div className={cn("flex-1 overflow-y-auto", isDark ? "bg-[#141414]" : "bg-[#fafafa]")}>
                     {isLoading ? (
                         <div className="flex flex-col">
-                            {Array.from({ length: 6 }).map((_, i) => (
+                            {Array.from({ length: 12 }).map((_, i) => (
                                 <div key={i} className={cn("flex items-center gap-3 px-4 py-3.5 border-b",
                                     isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")}>
                                     <div className={cn("w-[3px] h-10 rounded-full animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
@@ -1092,7 +1092,7 @@ export default function InvoicesPage() {
                     </DndContext>
 
                     {isLoading ? (
-                        <div className="flex flex-col">{Array.from({ length: 6 }).map((_, i) => (
+                        <div className="flex flex-col">{Array.from({ length: 25 }).map((_, i) => (
                             <div key={i} className={cn("grid px-0 border-b items-center h-[45px]", isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")} style={{ gridTemplateColumns: gridTemplate }}>
                                 <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
                                 <div className="px-4 flex items-center gap-1.5"><div className={cn("w-3 h-3 rounded-full animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /><div className={cn("h-3 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
@@ -1215,7 +1215,7 @@ export default function InvoicesPage() {
                 <div className={cn("flex-1 overflow-y-auto p-4", isDark ? "bg-[#0f0f0f]" : "bg-[#f0f0f0]")}>
                     {isLoading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
-                            {Array.from({ length: 12 }).map((_, i) => (
+                            {Array.from({ length: 30 }).map((_, i) => (
                                 <div key={i} className={cn("rounded-[8px] border flex flex-col pointer-events-none", isDark ? "border-[#2e2e2e] bg-[#1a1a1a]" : "border-transparent bg-white shadow-sm")}>
                                     <div className={cn("flex items-center justify-between px-4 py-3 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
                                         <div className={cn("h-3 w-12 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />

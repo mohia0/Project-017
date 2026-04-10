@@ -232,7 +232,7 @@ export default function ClientsPage() {
                         {isClientsLoading ? (
                             view === 'grid' ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                                    {Array.from({ length: 8 }).map((_, i) => (
+                                    {Array.from({ length: 20 }).map((_, i) => (
                                         <div key={i} className={cn("rounded-xl border overflow-hidden pointer-events-none", cardBg, cardBorder)}>
                                             <div className="flex items-center gap-3 px-4 py-3.5 border-b border-transparent">
                                                 <div className={cn("w-7 h-7 rounded-lg animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
@@ -258,7 +258,7 @@ export default function ClientsPage() {
                                     <div className={cn("grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider", isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]")} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}>
                                         <div /><div /><div>Name</div><div>Email</div><div>Phone</div><div>Company</div>
                                     </div>
-                                    {Array.from({ length: 10 }).map((_, i) => (
+                                    {Array.from({ length: 25 }).map((_, i) => (
                                         <div key={i} className={cn("grid px-4 py-2.5 items-center pointer-events-none", i !== 0 && `border-t ${isDark ? "border-[#1f1f1f]" : "border-[#f5f5f5]"}`)} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}>
                                             <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
                                             <div className={cn("w-7 h-7 rounded-lg animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
@@ -392,7 +392,7 @@ export default function ClientsPage() {
                     <>
                         {isCompaniesLoading ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                                {Array.from({ length: 8 }).map((_, i) => (
+                                {Array.from({ length: 20 }).map((_, i) => (
                                     <div key={i} className={cn("rounded-xl border overflow-hidden pointer-events-none", cardBg, cardBorder)}>
                                         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-transparent">
                                             <div className={cn("w-7 h-7 rounded-lg animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />

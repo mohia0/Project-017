@@ -37,7 +37,15 @@ export const useClientStore = create<ClientState>((set) => ({
             return;
         }
 
-        set({ isLoading: true, error: null });
+        const state = useClientStore.getState();
+        const hasData = state.clients.length > 0;
+
+        if (!hasData) {
+            set({ isLoading: true, error: null });
+        } else {
+            set({ error: null });
+        }
+
         const { data, error } = await supabase
             .from('clients')
             .select('*')

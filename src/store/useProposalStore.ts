@@ -41,7 +41,15 @@ export const useProposalStore = create<ProposalState>((set) => ({
             return;
         }
 
-        set({ isLoading: true, error: null });
+        const state = useProposalStore.getState();
+        const hasData = state.proposals.length > 0;
+
+        if (!hasData) {
+            set({ isLoading: true, error: null });
+        } else {
+            set({ error: null });
+        }
+
         const { data, error } = await supabase
             .from('proposals')
             .select('*')

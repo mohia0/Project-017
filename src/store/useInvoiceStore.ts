@@ -41,7 +41,15 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
             return;
         }
 
-        set({ isLoading: true, error: null });
+        const state = useInvoiceStore.getState();
+        const hasData = state.invoices.length > 0;
+        
+        if (!hasData) {
+            set({ isLoading: true, error: null });
+        } else {
+            set({ error: null });
+        }
+        
         const { data, error } = await supabase
             .from('invoices')
             .select('*')

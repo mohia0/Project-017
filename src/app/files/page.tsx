@@ -20,6 +20,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { formatDistanceToNow } from 'date-fns';
 import { gooeyToast } from 'goey-toast';
 import { supabase } from '@/lib/supabase';
+import { useFileStore, ItemType, FileItem } from '@/store/useFileStore';
 
 // ─── Shared Components ────────────────────────────────────────────────────────
 
@@ -54,26 +55,6 @@ const ProgressContent = ({ progress, isDark }: { progress: number; isDark: boole
         </div>
     );
 };
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type ItemType = 'folder' | 'file' | 'link' | 'image' | 'video' | 'audio' | 'doc' | 'code' | 'archive';
-
-interface FileItem {
-    id: string;
-    name: string;
-    type: ItemType;
-    parentId: string | null;
-    size?: number;
-    url?: string;
-    starred?: boolean;
-    tags?: string[];
-    createdAt: string;
-    modifiedAt: string;
-    locked?: boolean;
-    color?: string;
-    downloadUrl?: string;
-}
 
 interface UploadFile {
     id: string;
@@ -1115,7 +1096,7 @@ const FileSkeleton = ({ view, isDark }: { view: ViewMode; isDark: boolean }) => 
     if (view === 'grid') {
         return (
             <div className="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 content-start">
-                {Array.from({ length: 18 }).map((_, i) => <SkeletonItem key={i} />)}
+                {Array.from({ length: 32 }).map((_, i) => <SkeletonItem key={i} />)}
             </div>
         );
     }
@@ -1123,7 +1104,7 @@ const FileSkeleton = ({ view, isDark }: { view: ViewMode; isDark: boolean }) => 
     return (
         <div className="p-4">
             <div className={cn("rounded-xl border overflow-hidden", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
-                {Array.from({ length: 12 }).map((_, i) => <ListItemSkeleton key={i} />)}
+                {Array.from({ length: 25 }).map((_, i) => <ListItemSkeleton key={i} />)}
             </div>
         </div>
     );
@@ -1131,10 +1112,8 @@ const FileSkeleton = ({ view, isDark }: { view: ViewMode; isDark: boolean }) => 
 
 export default function FilesPage() {
     const { theme, activeWorkspaceId } = useUIStore();
+    const { items, setItems, isLoading, fetchFiles } = useFileStore();
     const isDark = theme === 'dark';
-
-    const [items, setItems] = useState<FileItem[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [currentFolderId, setCurrentFolderId] = useState('root');
     const [view, setView] = useState<ViewMode>('grid');
     const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -1161,65 +1140,8 @@ export default function FilesPage() {
     // Sync files from Supabase
     useEffect(() => {
         if (!activeWorkspaceId) return;
-        
-        const loadFiles = async () => {
-            setIsLoading(true);
-            const { data, error } = await supabase
-                .from('files')
-                .select('*')
-                .eq('workspace_id', activeWorkspaceId);
-                
-            if (error) {
-                if (!errorShown.current) {
-                    gooeyToast.error(`Database error: ${error.message}`);
-                    errorShown.current = true;
-                }
-            } else {
-                // If user has no files, seed a 'root' folder for this WORKSPACE
-                if (data.length === 0) {
-                    const rootFolder = {
-                        id: 'root',
-                        name: 'Root',
-                        type: 'folder',
-                        parent_id: null,
-                        workspace_id: activeWorkspaceId,
-                        created_at: new Date().toISOString(),
-                        modified_at: new Date().toISOString()
-                    };
-                    const { error: insertErr } = await supabase.from('files').insert([rootFolder]);
-                    if (!insertErr) {
-                        setItems([{
-                            id: rootFolder.id,
-                            name: rootFolder.name,
-                            type: rootFolder.type as ItemType,
-                            parentId: rootFolder.parent_id,
-                            createdAt: rootFolder.created_at,
-                            modifiedAt: rootFolder.modified_at
-                        }]);
-                    }
-                } else {
-                    const mappedData: FileItem[] = data.map((i: any) => ({
-                        id: i.id,
-                        name: i.name,
-                        type: i.type,
-                        parentId: i.parent_id,
-                        size: i.size,
-                        starred: i.starred,
-                        url: i.url,
-                        tags: i.tags,
-                        downloadUrl: i.download_url,
-                        color: i.color,
-                        createdAt: i.created_at,
-                        modifiedAt: i.modified_at,
-                        locked: i.locked
-                    }));
-                    setItems(mappedData);
-                }
-            }
-            setIsLoading(false);
-        };
-        loadFiles();
-    }, [activeWorkspaceId]);
+        fetchFiles();
+    }, [activeWorkspaceId, fetchFiles]);
 
     // Persistence: Sidebar
     useEffect(() => {
