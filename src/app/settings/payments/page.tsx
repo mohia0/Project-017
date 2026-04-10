@@ -88,7 +88,7 @@ export default function PaymentsSettingsPage() {
                 {
                     loading: 'Saving payment settings...',
                     success: 'Settings saved successfully',
-                    error: (err) => `Failed to save: ${err.message || err}`
+                    error: (err: any) => `Failed to save: ${err.message || err}`
                 }
             );
         } catch (error: any) {
