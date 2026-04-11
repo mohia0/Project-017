@@ -28,6 +28,7 @@ interface ProposalState {
     addProposal: (proposal: Omit<Proposal, 'id' | 'created_at' | 'workspace_id'>) => Promise<Proposal | null>;
     updateProposal: (id: string, updates: Partial<Proposal>) => Promise<void>;
     deleteProposal: (id: string) => Promise<void>;
+    bulkDeleteProposals: (ids: string[]) => Promise<void>;
 }
 
 export const useProposalStore = create<ProposalState>((set) => ({
@@ -78,7 +79,7 @@ export const useProposalStore = create<ProposalState>((set) => ({
             };
             const { data, error } = await supabase.from('proposals').insert(payload).select().single();
             if (error) {
-                console.error("Supabase insert error details (proposals):", error);
+                console.error("Supabase insert error (proposals):", error.message, error.details, error.hint);
                 set({ error: error.message });
                 return null;
             } else if (data) {
@@ -140,6 +141,18 @@ export const useProposalStore = create<ProposalState>((set) => ({
         } else {
             set((state) => ({
                 proposals: state.proposals.filter((p) => p.id !== id),
+            }));
+        }
+    },
+
+    bulkDeleteProposals: async (ids) => {
+        if (!ids.length) return;
+        const { error } = await supabase.from('proposals').delete().in('id', ids);
+        if (error) {
+            set({ error: error.message });
+        } else {
+            set((state) => ({
+                proposals: state.proposals.filter((p) => !ids.includes(p.id)),
             }));
         }
     },

@@ -11,12 +11,13 @@ import { gooeyToast } from 'goey-toast';
 import { useClientStore } from '@/store/useClientStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
+import { useProjectStore } from '@/store/useProjectStore';
 import { useRouter } from 'next/navigation';
 import DatePicker from '@/components/ui/DatePicker';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { CompanyPicker } from '@/components/companies/CompanyPicker';
 
-type EntityType = 'Client' | 'Proposal' | 'Invoice';
+type EntityType = 'Client' | 'Proposal' | 'Invoice' | 'Project';
 
 function generateProposalId() { return `P${Math.floor(Math.random() * 9000000 + 1000000)}`; }
 function generateInvoiceId() { return `INV-${Math.floor(Math.random() * 9000000 + 1000000)}`; }
@@ -28,6 +29,7 @@ function addDays(date: Date, days: number) {
 
 const TABS: { id: EntityType; icon: React.ReactNode; label: string }[] = [
     { id: 'Client',   icon: <User size={14} />,     label: 'Contact'  },
+    { id: 'Project',  icon: <Building2 size={14} />, label: 'Project'  },
     { id: 'Proposal', icon: <PenTool size={14} />,  label: 'Proposal' },
     { id: 'Invoice',  icon: <FileText size={14} />, label: 'Invoice'  },
 ];
@@ -220,9 +222,15 @@ export default function CreateEntryModal() {
     const [iIssueDate, setIIssueDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [iDueDate, setIDueDate] = useState(() => addDays(new Date(), 7));
 
+    // Project state
+    const [prName, setPrName] = useState('');
+    const [prDesc, setPrDesc] = useState('');
+    const [prDeadline, setPrDeadline] = useState('');
+
     const { addClient, fetchClients } = useClientStore();
     const { addProposal } = useProposalStore();
     const { addInvoice } = useInvoiceStore();
+    const { addProject } = useProjectStore();
 
     useEffect(() => { fetchClients(); }, [fetchClients]);
 
@@ -230,7 +238,7 @@ export default function CreateEntryModal() {
 
     const filteredTabs = TABS.filter(t => t.label.toLowerCase().includes(tabSearch.toLowerCase()));
 
-    const ctaLabel = tab === 'Client' ? 'Create contact' : tab === 'Proposal' ? 'Create proposal' : 'Create invoice';
+    const ctaLabel = tab === 'Client' ? 'Create contact' : tab === 'Project' ? 'Create project' : tab === 'Proposal' ? 'Create proposal' : 'Create invoice';
 
     const handleCreate = async () => {
         setLoading(true);
@@ -266,7 +274,7 @@ export default function CreateEntryModal() {
                 }
                 setCreateModalOpen(false);
                 router.push(`/proposals/${p.id}`);
-            } else {
+            } else if (tab === 'Invoice') {
                 const inv = await addInvoice({
                     title: iTitle,
                     client_id: iClientId,
@@ -284,6 +292,25 @@ export default function CreateEntryModal() {
                 }
                 setCreateModalOpen(false);
                 router.push(`/invoices/${inv.id}`);
+            } else if (tab === 'Project') {
+                const p = await addProject({
+                    name: prName,
+                    description: prDesc,
+                    status: 'Planning',
+                    color: '#3d0ebf',
+                    icon: 'Briefcase',
+                    client_id: null,
+                    client_name: null,
+                    deadline: prDeadline || null,
+                    members: [],
+                    is_archived: false
+                });
+                if (!p) {
+                    gooeyToast.error("Failed to create project.");
+                    return;
+                }
+                setCreateModalOpen(false);
+                router.push(`/projects/${p.id}`);
             }
         } catch (err: any) {
             console.error(err);
@@ -407,6 +434,21 @@ export default function CreateEntryModal() {
                                                 />
                                             </Field>
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* ── Project Form ── */}
+                                {tab === 'Project' && (
+                                    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
+                                        <Field label="Project name" icon={<Building2 size={11} />} isDark={isDark}>
+                                            <TextInput value={prName} onChange={setPrName} placeholder="e.g. Website Redesign" isDark={isDark} autoFocus />
+                                        </Field>
+                                        <Field label="Description" icon={<FileText size={11} />} isDark={isDark}>
+                                            <TextInput value={prDesc} onChange={setPrDesc} placeholder="Optional project details..." isDark={isDark} />
+                                        </Field>
+                                        <Field label="Deadline" icon={<Calendar size={11} />} isDark={isDark}>
+                                            <DatePicker value={prDeadline} onChange={setPrDeadline} isDark={isDark} placeholder="Set project deadline" />
+                                        </Field>
                                     </div>
                                 )}
 

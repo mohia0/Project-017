@@ -551,7 +551,7 @@ function MobileProposalRow({ p, onOpen, isDark, onStatusChange, onArchive, isArc
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function ProposalsPage() {
     const router = useRouter();
-    const { theme } = useUIStore();
+    const { theme, setImportModalOpen } = useUIStore();
     const { proposals, fetchProposals, updateProposal, addProposal, deleteProposal, isLoading } = useProposalStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
@@ -708,12 +708,18 @@ export default function ProposalsPage() {
             All: { count: 0, amount: 0 }, Draft: { count: 0, amount: 0 }, Pending: { count: 0, amount: 0 },
             Accepted: { count: 0, amount: 0 }, Overdue: { count: 0, amount: 0 }, Declined: { count: 0, amount: 0 }, Cancelled: { count: 0, amount: 0 },
         };
-        proposals.filter(p => !archivedIds.has(p.id)).forEach(p => {
+        proposals.filter(p => {
+            if (showArchived) return archivedIds.has(p.id);
+            if (archivedIds.has(p.id)) return false;
+            if (dateFilter === 'month' && !isThisMonth(p.issue_date)) return false;
+            if (dateFilter === 'year' && !isThisYear(p.issue_date)) return false;
+            return true;
+        }).forEach(p => {
             s.All.count++; s.All.amount += Number(p.amount || 0);
             if (s[p.status]) { s[p.status].count++; s[p.status].amount += Number(p.amount || 0); }
         });
         return s;
-    }, [proposals, archivedIds]);
+    }, [proposals, archivedIds, dateFilter, showArchived]);
 
     const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(p => p.id)));
     const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
@@ -952,6 +958,7 @@ export default function ProposalsPage() {
                         <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} />
                         <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
                             <div className="py-1">
+                                <DItem label="Import CSV" icon={<FileSpreadsheet size={12} />} onClick={() => { setImportModalOpen(true, 'Proposal'); setImportExportOpen(false); }} isDark={isDark} />
                                 <DItem label="Import JSON" icon={<Upload size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
                                 <DItem label="Export JSON" icon={<Download size={12} />} onClick={handleExportJSON} isDark={isDark} />
                             </div>
@@ -1328,14 +1335,11 @@ export default function ProposalsPage() {
                 onConfirm={async () => {
                     if (deletingId === 'bulk') {
                         const ids = Array.from(selectedIds);
-                        const count = ids.length;
-                        for (const id of ids) {
-                            await deleteProposal(id);
-                        }
+                        await useProposalStore.getState().bulkDeleteProposals(ids);
                         setSelectedIds(new Set());
-                        gooeyToast.error(`${count} proposal${count !== 1 ? 's' : ''} deleted`);
+                        gooeyToast.error(`${ids.length} proposal${ids.length !== 1 ? 's' : ''} deleted`);
                     } else if (deletingId) {
-                        deleteProposal(deletingId);
+                        await deleteProposal(deletingId);
                         gooeyToast.error('Proposal deleted');
                     }
                     setDeletingId(null);

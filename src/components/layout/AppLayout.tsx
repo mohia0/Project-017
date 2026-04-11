@@ -5,6 +5,7 @@ import LeftSystemMenu from './LeftSystemMenu';
 import RightToolsMenu from './RightToolsMenu';
 import RightPanel from './RightPanel';
 import CreateEntryModal from '@/components/modals/CreateEntryModal';
+import CSVImportModal from '@/components/modals/CSVImportModal';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useProposalStore } from '@/store/useProposalStore';
@@ -14,6 +15,7 @@ import { useTemplateStore } from '@/store/useTemplateStore';
 import { useMenuStore } from '@/store/useMenuStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -43,6 +45,8 @@ function DocumentTitleSetter() {
         else if (path === '/settings') pageTitle = 'Settings';
         else if (path === '/onboarding') pageTitle = 'Onboarding';
         else if (path === '/login') pageTitle = 'Login';
+        else if (path === '/projects') pageTitle = 'Projects';
+        else if (path.startsWith('/projects/')) pageTitle = 'Project Detail';
         else {
             const segment = path.split('/').filter(Boolean).pop() || '';
             pageTitle = segment.charAt(0).toUpperCase() + segment.slice(1);
@@ -63,6 +67,7 @@ function WorkspaceDataSync() {
             useInvoiceStore.getState().fetchInvoices();
             useClientStore.getState().fetchClients();
             useTemplateStore.getState().fetchTemplates();
+            useProjectStore.getState().fetchProjects();
             
             // Notifications
             useNotificationStore.getState().fetchNotifications();
@@ -161,6 +166,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
                 {/* Global Modals */}
                 <CreateEntryModal />
+                <CSVImportModal />
             </div>
         );
     }
@@ -195,6 +201,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* Global Modals */}
             <CreateEntryModal />
+            <CSVImportModal />
         </div>
     );
 }

@@ -18,6 +18,7 @@ export interface Invoice {
     blocks: any[]; // For Notion-style editor blocks
     meta?: any;
     created_at: string;
+    paid_at?: string | null;
 }
 
 interface InvoiceState {
@@ -28,6 +29,7 @@ interface InvoiceState {
     addInvoice: (invoice: Omit<Invoice, 'id' | 'created_at' | 'workspace_id'>) => Promise<Invoice | null>;
     updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<void>;
     deleteInvoice: (id: string) => Promise<void>;
+    bulkDeleteInvoices: (ids: string[]) => Promise<void>;
 }
 
 export const useInvoiceStore = create<InvoiceState>((set) => ({
@@ -78,7 +80,7 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
             };
             const { data, error } = await supabase.from('invoices').insert(payload).select().single();
             if (error) {
-                console.error("Supabase insert error (invoices):", error);
+                console.error("Supabase insert error (invoices):", error.message, error.details, error.hint);
                 set({ error: error.message });
                 return null;
             } else if (data) {
@@ -117,6 +119,16 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
             }
         }
 
+        // Auto-timestamp paid_at when status changes
+        if (updates.status) {
+            if (updates.status === 'Paid') {
+                payload.paid_at = updates.paid_at || new Date().toISOString();
+            } else if (current && current.status === 'Paid') {
+                // If it was paid and we change to something else, clear the paid date
+                payload.paid_at = null;
+            }
+        }
+
         // Optimistic update
         set((state) => ({
             invoices: state.invoices.map((i) => (i.id === id ? { ...i, ...payload } : i)),
@@ -140,6 +152,18 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
         } else {
             set((state) => ({
                 invoices: state.invoices.filter((i) => i.id !== id),
+            }));
+        }
+    },
+
+    bulkDeleteInvoices: async (ids) => {
+        if (!ids.length) return;
+        const { error } = await supabase.from('invoices').delete().in('id', ids);
+        if (error) {
+            set({ error: error.message });
+        } else {
+            set((state) => ({
+                invoices: state.invoices.filter((i) => !ids.includes(i.id)),
             }));
         }
     },

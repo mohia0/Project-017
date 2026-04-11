@@ -34,6 +34,9 @@ interface UIState {
     toggleTheme: () => void;
     isCreateModalOpen: boolean;
     setCreateModalOpen: (isOpen: boolean) => void;
+    isImportModalOpen: boolean;
+    setImportModalOpen: (isOpen: boolean, type?: 'Invoice' | 'Proposal') => void;
+    importType: 'Invoice' | 'Proposal';
 }
 
 export const useUIStore = create<UIState>()(
@@ -77,6 +80,13 @@ export const useUIStore = create<UIState>()(
 
             isCreateModalOpen: false,
             setCreateModalOpen: (isOpen) => set({ isCreateModalOpen: isOpen }),
+
+            isImportModalOpen: false,
+            importType: 'Invoice',
+            setImportModalOpen: (isOpen, type) => set({ 
+                isImportModalOpen: isOpen, 
+                importType: type || get().importType 
+            }),
         }),
         {
             name: 'ui-storage',

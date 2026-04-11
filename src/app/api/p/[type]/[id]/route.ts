@@ -35,6 +35,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ type: st
             meta: data.meta || {},
             client_name: data.client_name,
             workspace_id: data.workspace_id,
+            paid_at: data.paid_at,
         };
 
         return NextResponse.json(safeData);
@@ -67,6 +68,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
         // Allowed field: status
         if (body.status && ['Accepted', 'Declined', 'Paid'].includes(body.status)) {
             updateData.status = body.status;
+            if (body.status === 'Paid') {
+                updateData.paid_at = new Date().toISOString();
+            }
         }
 
         // If they act to accept a proposal, maybe they passed a signature block update

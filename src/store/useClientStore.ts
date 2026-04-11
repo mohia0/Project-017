@@ -25,6 +25,8 @@ interface ClientState {
     addClient: (client: Omit<Client, 'id' | 'created_at' | 'workspace_id'>) => Promise<Client | null>;
     updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
     deleteClient: (id: string) => Promise<void>;
+    bulkDeleteClients: (ids: string[]) => Promise<void>;
+    bulkDuplicateClients: (ids: string[]) => Promise<void>;
 }
 
 export const useClientStore = create<ClientState>((set) => ({
@@ -68,6 +70,7 @@ export const useClientStore = create<ClientState>((set) => ({
         const payload = { ...client, workspace_id: workspaceId };
         const { data, error } = await supabase.from('clients').insert(payload).select().single();
         if (error) {
+            console.error("Supabase insert error (clients):", error.message, error.details, error.hint);
             set({ error: error.message });
             return null;
         } else if (data) {
@@ -96,6 +99,42 @@ export const useClientStore = create<ClientState>((set) => ({
             set((state) => ({
                 clients: state.clients.filter((c) => c.id !== id),
             }));
+        }
+    },
+
+    bulkDeleteClients: async (ids) => {
+        if (!ids.length) return;
+        const { error } = await supabase.from('clients').delete().in('id', ids);
+        if (error) {
+            set({ error: error.message });
+        } else {
+            set((state) => ({
+                clients: state.clients.filter((c) => !ids.includes(c.id)),
+            }));
+        }
+    },
+
+    bulkDuplicateClients: async (ids) => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId || !ids.length) return;
+
+        const state = useClientStore.getState();
+        const clientsToDup = state.clients.filter(c => ids.includes(c.id));
+        
+        const payloads = clientsToDup.map(c => {
+            const { id, created_at, ...rest } = c;
+            return {
+                ...rest,
+                contact_person: c.contact_person ? `${c.contact_person} (Copy)` : '',
+                workspace_id: workspaceId
+            };
+        });
+
+        const { data, error } = await supabase.from('clients').insert(payloads).select();
+        if (error) {
+            set({ error: error.message });
+        } else if (data) {
+            set(s => ({ clients: [...(data as Client[]), ...s.clients] }));
         }
     },
 }));

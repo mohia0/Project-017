@@ -7,6 +7,7 @@ import {
     FileText, 
     Receipt, 
     Folder,
+    Briefcase,
     LucideIcon
 } from 'lucide-react';
 
@@ -22,7 +23,8 @@ export const ICON_MAP: Record<string, LucideIcon> = {
     Users,
     FileText,
     Receipt,
-    Folder
+    Folder,
+    Briefcase,
 };
 
 interface MenuState {
@@ -34,10 +36,11 @@ interface MenuState {
 
 const DEFAULT_NAV = [
     { id: 'dashboard', href: '/dashboard', icon: 'LayoutGrid', label: 'Dashboard' },
-    { id: 'clients', href: '/clients', icon: 'Users', label: 'Contacts' },
-    { id: 'proposals', href: '/proposals', icon: 'FileText', label: 'Proposals' },
-    { id: 'invoices', href: '/invoices', icon: 'Receipt', label: 'Invoices' },
-    { id: 'files', href: '/files', icon: 'Folder', label: 'File Manager' },
+    { id: 'clients',   href: '/clients',   icon: 'Users',       label: 'Contacts' },
+    { id: 'projects',  href: '/projects',  icon: 'Briefcase',   label: 'Projects' },
+    { id: 'proposals', href: '/proposals', icon: 'FileText',    label: 'Proposals' },
+    { id: 'invoices',  href: '/invoices',  icon: 'Receipt',     label: 'Invoices' },
+    { id: 'files',     href: '/files',     icon: 'Folder',      label: 'File Manager' },
 ];
 
 export const useMenuStore = create<MenuState>((set) => ({

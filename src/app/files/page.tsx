@@ -12,7 +12,7 @@ import {
     ArrowLeft, ArrowRight, Home, Image, Music, Video, Archive,
     Pencil, ExternalLink, FolderSymlink,
     Lock, Unlock, Link, CloudUpload, FileCheck2, AlertTriangle,
-    PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, RotateCw,
+    PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, RotateCw, RotateCcw,
     Package, Globe, ExternalLink as OpenExternal, Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { gooeyToast } from 'goey-toast';
 import { supabase } from '@/lib/supabase';
 import { useFileStore, ItemType, FileItem } from '@/store/useFileStore';
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
 import { Tooltip } from '@/components/ui/Tooltip';
 
@@ -522,7 +523,7 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    onClick={() => { setShowDeleteConfirm(true); setTimeout(() => setShowDeleteConfirm(false), 3000); }}
+                                    onClick={() => setShowDeleteConfirm(true)}
                                     className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-red-400/50 hover:text-red-500 ${isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'}`}
                                     title="Delete">
                                     <Trash2 size={14}/>
@@ -1015,8 +1016,9 @@ function ContextMenu({ menu, items, isDark, onAction, onClose }: {
                                 <div className="flex items-center justify-between mb-2">
                                     <p className={cn('text-[9px] font-bold uppercase tracking-widest', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Folder Color</p>
                                     <button onClick={() => { onAction('color-null', menu.itemId); onClose(); }} 
-                                        className={cn('text-[9px] font-bold hover:text-primary transition-colors', isDark ? 'text-[#333]' : 'text-[#ccc]')}>
-                                        Default
+                                        title="Reset to default"
+                                        className={cn('p-1 rounded hover:bg-black/5 hover:text-primary transition-colors', isDark ? 'text-[#333] hover:bg-white/5' : 'text-[#bbb]')}>
+                                        <RotateCcw size={11} strokeWidth={2.5} />
                                     </button>
                                 </div>
                                 <div className="grid grid-cols-5 gap-2">
@@ -1026,7 +1028,7 @@ function ContextMenu({ menu, items, isDark, onAction, onClose }: {
                                     ].map(c => (
                                         <button key={c} onClick={() => { onAction(`color-${c}`, menu.itemId); onClose(); }}
                                             className={cn('w-4.5 h-4.5 rounded-full transition-all hover:scale-125 border border-white/10 shadow-sm', 
-                                                item.color === c ? 'ring-2 ring-primary ring-offset-1 ring-offset-transparent scale-110' : 'opacity-80')}
+                                                item.color === c ? (isDark ? 'ring-1 ring-white' : 'ring-1 ring-black') + ' ring-offset-1 ring-offset-transparent scale-110' : 'opacity-80')}
                                             style={{ backgroundColor: c }}
                                         />
                                     ))}
@@ -1219,6 +1221,22 @@ export default function FilesPage() {
     useEffect(() => {
         localStorage.setItem('fm_sidebar_expanded', sidebarOpen.toString());
     }, [sidebarOpen]);
+
+    // Click-away listener for deletingId confirmation
+    useEffect(() => {
+        if (!deletingId) return;
+        const handleOutsideClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // Only clear if we didn't click on a delete trigger or the confirmation itself
+            if (!target.closest('.delete-trigger')) {
+                setDeletingId(null);
+            }
+        };
+        // Use capture to catch it before other stopPropagations if necessary, 
+        // or just regular bubble is fine since we use closest()
+        window.addEventListener('mousedown', handleOutsideClick);
+        return () => window.removeEventListener('mousedown', handleOutsideClick);
+    }, [deletingId]);
 
     // Migrate old direct Backblaze URLs to proxy URLs
     useEffect(() => {
@@ -1604,7 +1622,13 @@ export default function FilesPage() {
             }
             else if (action === 'rename') setRenamingId(itemId);
             else if (action === 'duplicate') duplicateItems([itemId]);
-            else if (action === 'delete') deleteItems([itemId]);
+            else if (action === 'delete') {
+                if (itemId && selectedIds.has(itemId)) {
+                    requestDelete(Array.from(selectedIds));
+                } else {
+                    requestDelete([itemId!]);
+                }
+            }
             else if (action === 'star') toggleStar(itemId);
             else if (action === 'unstar') toggleStar(itemId);
             else if (action === 'lock') toggleLock(itemId);
@@ -1798,7 +1822,7 @@ export default function FilesPage() {
                 <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
                     {/* Toolbar strip */}
-                    <div className={cn('flex items-center gap-1 px-4 py-1.5 border-b shrink-0', isDark ? 'bg-[#141414] border-[#1e1e1e]' : 'bg-white border-[#f0f0f0]')}>
+                    <div className={cn('flex items-center gap-0.5 px-4 border-b shrink-0', isDark ? 'bg-[#141414] border-[#1e1e1e]' : 'bg-white border-[#f0f0f0]')}>
                         {filterTabs.map(tab => {
                             const count = tab.id === 'all'
                                 ? items.filter(i => i.parentId === currentFolderId).length
@@ -1806,14 +1830,21 @@ export default function FilesPage() {
                                     ? items.filter(i => i.parentId === currentFolderId && i.starred).length
                                     : items.filter(i => i.parentId === currentFolderId && i.type === tab.id).length;
                             if (tab.id !== 'all' && count === 0) return null;
+                            const isActive = filter === tab.id;
                             return (
                                 <button key={tab.id} onClick={() => setFilter(tab.id)}
-                                    className={cn('flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium rounded-lg transition-all',
-                                        filter === tab.id
-                                            ? isDark ? 'bg-white/10 text-white' : 'bg-[#f0f0f0] text-[#111]'
-                                            : isDark ? 'text-[#666] hover:text-[#aaa] hover:bg-white/5' : 'text-[#999] hover:text-[#444] hover:bg-[#f5f5f5]')}>
-                                    {tab.icon}<span>{tab.label}</span>
-                                    <span className={cn('text-[9px] tabular-nums opacity-50', filter === tab.id && 'opacity-80')}>{count}</span>
+                                    className={cn(
+                                        'relative flex items-center gap-1.5 px-2.5 py-2.5 text-[11px] font-bold transition-all',
+                                        isActive
+                                            ? isDark ? 'text-white' : 'text-[#111]'
+                                            : isDark ? 'text-[#555] hover:text-[#aaa]' : 'text-[#aaa] hover:text-[#555]'
+                                    )}>
+                                    {tab.icon}
+                                    <span>{tab.label}</span>
+                                    <span className={cn('text-[9px] tabular-nums', isActive ? (isDark ? 'text-[#aaa]' : 'text-[#777]') : 'opacity-40')}>{count}</span>
+                                    {isActive && (
+                                        <span className={cn('absolute bottom-0 left-0 right-0 h-[2px] rounded-t-full', isDark ? 'bg-white' : 'bg-[#111]')} />
+                                    )}
                                 </button>
                             );
                         })}
@@ -2000,26 +2031,31 @@ export default function FilesPage() {
 
                                             {/* Expanding Action Bar */}
                                             {!isRenaming && selectedIds.size === 0 && (
-                                                <div className="w-full h-0 opacity-0 group-hover:h-8 group-hover:opacity-100 group-hover:mt-1 transition-all duration-300 overflow-hidden pointer-events-none group-hover:pointer-events-auto">
+                                                <div className={cn(
+                                                    "w-full h-0 opacity-0 group-hover:h-8 group-hover:opacity-100 group-hover:mt-1 transition-all duration-300 overflow-hidden pointer-events-none group-hover:pointer-events-auto",
+                                                    deletingId === item.id && "h-8 opacity-100 mt-1 pointer-events-auto"
+                                                )}>
                                                     <div className="flex items-center justify-center gap-1.5 py-1 border-t border-dashed border-black/5 dark:border-white/5 h-8">
                                                         <AnimatePresence mode="wait">
                                                             {deletingId === item.id ? (
                                                                 <motion.button
                                                                     key="confirm"
-                                                                    initial={{ opacity: 0, scale: 0.9, width: 0 }}
-                                                                    animate={{ opacity: 1, scale: 1, width: 'auto' }}
-                                                                    exit={{ opacity: 0, scale: 0.9, width: 0 }}
+                                                                    initial={{ opacity: 0, x: 20, scale: 0.8 }}
+                                                                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                                                                    exit={{ opacity: 0, x: 20, scale: 0.8 }}
+                                                                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                                                                     onClick={e => { e.stopPropagation(); deleteItems([item.id]); setDeletingId(null); }}
-                                                                    className="px-3 h-6.5 flex items-center justify-center rounded-lg bg-red-500 text-white text-[10px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                                                                    className="delete-trigger px-3 h-6.5 flex items-center justify-center rounded-lg bg-red-500 text-white text-[10px] font-bold shadow-lg shadow-red-500/20 active:scale-95"
                                                                 >
                                                                     Sure?
                                                                 </motion.button>
                                                             ) : (
                                                                 <motion.div 
                                                                     key="actions"
-                                                                    initial={{ opacity: 0 }}
-                                                                    animate={{ opacity: 1 }}
-                                                                    exit={{ opacity: 0 }}
+                                                                    initial={{ opacity: 0, x: -10 }}
+                                                                    animate={{ opacity: 1, x: 0 }}
+                                                                    exit={{ opacity: 0, x: -10 }}
+                                                                    transition={{ duration: 0.15 }}
                                                                     className="flex items-center gap-1.5"
                                                                 >
                                                                     <Tooltip content="Rename" side="bottom">
@@ -2048,8 +2084,8 @@ export default function FilesPage() {
                                                                         </Tooltip>
                                                                     )}
                                                                     <Tooltip content="Delete" side="bottom">
-                                                                        <button onClick={e => { e.stopPropagation(); setDeletingId(item.id); setTimeout(() => setDeletingId(curr => curr === item.id ? null : curr), 3000); }}
-                                                                            className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
+                                                                        <button onClick={e => { e.stopPropagation(); setDeletingId(item.id); }}
+                                                                            className={cn('delete-trigger w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
                                                                                 isDark ? 'text-red-500/20 hover:text-red-500 hover:bg-red-500/10' : 'text-red-200 hover:text-red-500 hover:bg-red-50')}>
                                                                             <Trash2 size={11} strokeWidth={2}/>
                                                                         </button>
@@ -2115,41 +2151,32 @@ export default function FilesPage() {
                                                         {isSelected && <Check size={9} strokeWidth={4} className="text-black"/>}
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center">{getItemIcon(item.type, 15, item.color)}</div>
-                                                <div className={cn('flex items-center gap-2 font-medium text-[12px] pr-3 min-w-0', textPrimary)}>
-                                                    {isRenaming ? (
-                                                        <RenameInput value={item.name} onConfirm={v => renameItem(item.id, v)} onCancel={() => setRenamingId(null)} isDark={isDark}/>
-                                                    ) : (
-                                                        <span className="truncate">{item.name}</span>
-                                                    )}
-                                                    {item.starred && <Star size={9} fill="#f59e0b" className="text-amber-400 shrink-0"/>}
-                                                    {item.locked && <Lock size={9} className={cn('shrink-0', muted)}/>}
-                                                </div>
-                                                <div className={cn('text-[11px]', muted)}>{getTypeLabel(item.type)}</div>
-                                                <div className={cn('text-[11px] tabular-nums', muted)}>{formatBytes(item.size)}</div>
-                                                <div className={cn('text-[11px]', muted)}>{formatDate(item.modifiedAt)}</div>
-
                                                 {/* Row actions */}
                                                 {selectedIds.size === 0 && (
-                                                    <div className="flex items-center gap-0.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className={cn(
+                                                        "flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity",
+                                                        deletingId === item.id && "opacity-100"
+                                                    )}>
                                                         <AnimatePresence mode="wait">
                                                             {deletingId === item.id ? (
                                                                 <motion.button
                                                                     key="confirm"
-                                                                    initial={{ opacity: 0, x: 10, width: 0 }}
-                                                                    animate={{ opacity: 1, x: 0, width: 'auto' }}
-                                                                    exit={{ opacity: 0, x: 10, width: 0 }}
+                                                                    initial={{ opacity: 0, x: 10, scale: 0.9 }}
+                                                                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                                                                    exit={{ opacity: 0, x: 10, scale: 0.9 }}
+                                                                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                                                                     onClick={e => { e.stopPropagation(); deleteItems([item.id]); setDeletingId(null); }}
-                                                                    className="px-2.5 h-6 flex items-center justify-center rounded-md bg-red-500 text-white text-[10px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all"
+                                                                    className="delete-trigger px-2.5 h-6 flex items-center justify-center rounded-md bg-red-500 text-white text-[10px] font-bold shadow-lg shadow-red-500/20 active:scale-95"
                                                                 >
                                                                     Sure?
                                                                 </motion.button>
                                                             ) : (
                                                                 <motion.div 
                                                                     key="actions"
-                                                                    initial={{ opacity: 0 }}
-                                                                    animate={{ opacity: 1 }}
-                                                                    exit={{ opacity: 0 }}
+                                                                    initial={{ opacity: 0, x: -5 }}
+                                                                    animate={{ opacity: 1, x: 0 }}
+                                                                    exit={{ opacity: 0, x: -5 }}
+                                                                    transition={{ duration: 0.15 }}
                                                                     className="flex items-center gap-0.5"
                                                                 >
                                                                     {/* Star */}
@@ -2175,10 +2202,10 @@ export default function FilesPage() {
                                                                         </button>
                                                                     )}
                                                                     <button onClick={e => { e.stopPropagation(); setRenamingId(item.id); }}
-                                                                        className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', isDark ? 'hover:bg-white/8 text-[#555] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#ccc] hover:text-[#444]')}
+                                                                        className={cn('w-6 h-6 flex items-center justify-center rounded-md transition-colors', isDark ? 'hover:bg-white/8 text-[#555] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#444] hover:text-black')}
                                                                         title="Rename"><Pencil size={11}/></button>
-                                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(item.id); setTimeout(() => setDeletingId(curr => curr === item.id ? null : curr), 3000); }}
-                                                                        className="w-6 h-6 flex items-center justify-center rounded-md transition-colors text-[#ccc] hover:text-red-500 hover:bg-red-500/10"
+                                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(item.id); }}
+                                                                        className="delete-trigger w-6 h-6 flex items-center justify-center rounded-md transition-colors text-[#ccc] hover:text-red-500 hover:bg-red-500/10"
                                                                         title="Delete"><Trash2 size={11}/></button>
                                                                 </motion.div>
                                                             )}
@@ -2242,37 +2269,15 @@ export default function FilesPage() {
                 />
             )}
             {/* ── Bulk Delete Warning ── */}
-            {deleteWarning && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <div className={cn('rounded-2xl border shadow-2xl p-6 w-[380px]', isDark ? 'bg-[#181818] border-[#2e2e2e]' : 'bg-white border-[#e5e5e5]')}>
-                        <div className="flex items-start gap-4 mb-5">
-                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)' }}>
-                                <Trash2 size={20} className="text-red-500"/>
-                            </div>
-                            <div>
-                                <h3 className="text-[15px] font-bold">Delete {deleteWarning.length} items?</h3>
-                                <p className={cn('text-[12px] mt-1.5 leading-relaxed', isDark ? 'text-[#666]' : 'text-[#999]')}>
-                                    This will permanently delete <strong className={isDark ? 'text-[#aaa]' : 'text-[#555]'}>{deleteWarning.length} selected items</strong> and all their contents. This action cannot be undone.
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => deleteItems(deleteWarning)}
-                                className="flex-1 h-10 rounded-xl text-[12px] font-bold bg-red-500 hover:bg-red-600 text-white transition-all active:scale-[0.98] shadow-lg shadow-red-500/20"
-                            >
-                                Delete {deleteWarning.length} items
-                            </button>
-                            <button
-                                onClick={() => setDeleteWarning(null)}
-                                className={cn('h-10 px-5 rounded-xl text-[12px] font-medium transition-colors border', isDark ? 'border-[#2e2e2e] text-[#666] hover:text-white hover:bg-white/5' : 'border-[#e5e5e5] text-[#888] hover:text-[#333] hover:bg-[#f5f5f5]')}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <DeleteConfirmModal
+                open={!!deleteWarning}
+                onClose={() => setDeleteWarning(null)}
+                onConfirm={() => deleteWarning && deleteItems(deleteWarning)}
+                title={deleteWarning ? `Delete ${deleteWarning.length} items?` : "Delete items?"}
+                description={deleteWarning ? `This will permanently delete ${deleteWarning.length} selected items and all their contents. This action cannot be undone.` : ""}
+                actionLabel={deleteWarning ? `Delete ${deleteWarning.length} items` : "Delete"}
+                isDark={isDark}
+            />
         </div>
     );
 }

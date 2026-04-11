@@ -55,18 +55,25 @@ function timeAgo(d: string | null | undefined) {
     if (!d) return '';
     const date = new Date(d);
     const now = new Date();
-    const ms = now.getTime() - date.getTime();
-    const days = Math.floor(Math.abs(ms) / 86400000);
-    const isFuture = ms < 0;
-
-    if (days === 0) return 'today';
-    if (days === 1) return isFuture ? 'tomorrow' : 'yesterday';
     
-    if (days < 30) {
-        return isFuture ? `due in ${days} days` : `${days} days ago`;
+    // Set both to midnight for accurate calendar day comparison
+    const dDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const diffDays = Math.round((dNow.getTime() - dDate.getTime()) / 86400000);
+    const ms = now.getTime() - date.getTime();
+    const isFuture = ms < 0;
+    const absDays = Math.abs(diffDays);
+
+    if (diffDays === 0) return 'today';
+    if (diffDays === -1) return 'tomorrow';
+    if (diffDays === 1) return 'yesterday';
+    
+    if (absDays < 30) {
+        return isFuture ? `due in ${absDays} days` : `${absDays} days ago`;
     }
     
-    const months = Math.floor(days / 30);
+    const months = Math.floor(absDays / 30);
     if (isFuture) return `in about ${months} month${months > 1 ? 's' : ''}`;
     return `about ${months} month${months > 1 ? 's' : ''} ago`;
 }
@@ -253,6 +260,15 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
                 <CardRow label="Expiration date" isDark={isDark}>
                     {i.due_date ? <span>{fmtDate(i.due_date)} <span className="opacity-60 font-normal">({timeAgo(i.due_date)})</span></span> : ''}
                 </CardRow>
+
+                {i.paid_at && (
+                    <CardRow label="Payment date" isDark={isDark}>
+                        <div className="flex items-center gap-1.5 text-green-500 font-bold">
+                            <CheckCircle size={10} />
+                            <span>{fmtDate(i.paid_at)}</span>
+                        </div>
+                    </CardRow>
+                )}
 
                 <CardRow label="Issue date" isDark={isDark}>
                     {i.issue_date ? <span>{fmtDate(i.issue_date)} <span className="opacity-60 font-normal">({timeAgo(i.issue_date)})</span></span> : ''}
@@ -531,7 +547,11 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
                         <span className="truncate max-w-[120px]">{inv.client_name || '—'}</span>
                     </div>
                     <span className={cn("text-[11px]", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                        {inv.due_date ? fmtDate(inv.due_date) : '—'}
+                        {inv.status === 'Paid' && inv.paid_at ? (
+                             <span className="text-green-500 font-bold flex items-center gap-1">
+                                 <Check size={10} /> {fmtDate(inv.paid_at)}
+                             </span>
+                        ) : inv.due_date ? fmtDate(inv.due_date) : '—'}
                     </span>
                 </div>
             </div>
@@ -549,7 +569,7 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function InvoicesPage() {
     const router = useRouter();
-    const { theme } = useUIStore();
+    const { theme, setImportModalOpen } = useUIStore();
     const { invoices, fetchInvoices, updateInvoice, addInvoice, deleteInvoice, isLoading } = useInvoiceStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
@@ -558,26 +578,43 @@ export default function InvoicesPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     /* ... existing state ... */
     const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('invoice_col_widths');
-            if (saved) return JSON.parse(saved);
-        }
-        return {
+        const defaults = {
             select: 44,
             name: 240,
             status: 160,
             issue: 180,
             due: 180,
+            paid: 180,
             client: 180,
             amount: 220
         };
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('invoice_col_widths');
+            if (saved) {
+                return { ...defaults, ...JSON.parse(saved) };
+            }
+        }
+        return defaults;
     });
     const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+        const defaults = ['name', 'client', 'status', 'issue', 'due', 'paid'];
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('invoice_col_order');
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved) as string[];
+                // Auto-sync new columns
+                if (!parsed.includes('paid')) {
+                    const dueIdx = parsed.indexOf('due');
+                    if (dueIdx !== -1) {
+                        parsed.splice(dueIdx + 1, 0, 'paid');
+                    } else {
+                        parsed.push('paid');
+                    }
+                }
+                return parsed;
+            }
         }
-        return ['name', 'client', 'status', 'issue', 'due'];
+        return defaults;
     });
 
     useEffect(() => {
@@ -676,12 +713,18 @@ export default function InvoicesPage() {
             All: { count: 0, amount: 0 }, Draft: { count: 0, amount: 0 }, Pending: { count: 0, amount: 0 },
             Paid: { count: 0, amount: 0 }, Overdue: { count: 0, amount: 0 }, Cancelled: { count: 0, amount: 0 },
         };
-        invoices.filter(inv => !archivedIds.has(inv.id)).forEach(inv => {
+        invoices.filter(inv => {
+            if (showArchived) return archivedIds.has(inv.id);
+            if (archivedIds.has(inv.id)) return false;
+            if (dateFilter === 'month' && !isThisMonth(inv.issue_date)) return false;
+            if (dateFilter === 'year' && !isThisYear(inv.issue_date)) return false;
+            return true;
+        }).forEach(inv => {
             s.All.count++; s.All.amount += Number(inv.amount || 0);
             if (s[inv.status]) { s[inv.status].count++; s[inv.status].amount += Number(inv.amount || 0); }
         });
         return s;
-    }, [invoices, archivedIds]);
+    }, [invoices, archivedIds, dateFilter, showArchived]);
 
     const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(i => i.id)));
     const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
@@ -920,6 +963,7 @@ export default function InvoicesPage() {
                         <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} />
                         <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
                             <div className="py-1">
+                                <DItem label="Import CSV" icon={<FileSpreadsheet size={12} />} onClick={() => { setImportModalOpen(true, 'Invoice'); setImportExportOpen(false); }} isDark={isDark} />
                                 <DItem label="Import JSON" icon={<Upload size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
                                 <DItem label="Export JSON" icon={<Download size={12} />} onClick={handleExportJSON} isDark={isDark} />
                             </div>
@@ -1082,6 +1126,7 @@ export default function InvoicesPage() {
                                     if (colId === 'status') label = 'Status';
                                     if (colId === 'issue') label = 'Issue date';
                                     if (colId === 'due') label = 'Due date';
+                                    if (colId === 'paid') label = 'Paid date';
 
                                     return (
                                         <SortableHeader 
@@ -1172,6 +1217,16 @@ export default function InvoicesPage() {
                                             if (colId === 'due') return (
                                                 <div key={colId} className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
                                                     {inv.due_date ? <span>{fmtDate(inv.due_date)} <span className="text-[10px] opacity-50">({timeAgo(inv.due_date)})</span></span> : '—'}
+                                                </div>
+                                            );
+                                            if (colId === 'paid') return (
+                                                <div key={colId} className={cn("flex items-center px-4 py-3 gap-1 animate-in fade-in slide-in-from-left-2 duration-500", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                    {inv.paid_at ? (
+                                                        <>
+                                                            <span>{fmtDate(inv.paid_at)}</span>
+                                                            <span className="text-[10px] opacity-50">({timeAgo(inv.paid_at)})</span>
+                                                        </>
+                                                    ) : <span className="opacity-20">—</span>}
                                                 </div>
                                             );
                                             return null;
@@ -1299,14 +1354,11 @@ export default function InvoicesPage() {
                 onConfirm={async () => {
                     if (deletingId === 'bulk') {
                         const ids = Array.from(selectedIds);
-                        const count = ids.length;
-                        for (const id of ids) {
-                            await deleteInvoice(id);
-                        }
+                        await useInvoiceStore.getState().bulkDeleteInvoices(ids);
                         setSelectedIds(new Set());
-                        gooeyToast.error(`${count} invoice${count !== 1 ? 's' : ''} deleted`);
+                        gooeyToast.error(`${ids.length} invoice${ids.length !== 1 ? 's' : ''} deleted`);
                     } else if (deletingId) {
-                        deleteInvoice(deletingId);
+                        await deleteInvoice(deletingId);
                         gooeyToast.error('Invoice deleted');
                     }
                     setDeletingId(null);

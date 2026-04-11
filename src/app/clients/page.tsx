@@ -5,11 +5,12 @@ import {
     Search, Plus, Filter, LayoutGrid, List,
     Users, Mail, Phone, MapPin, Building2,
     Globe, Briefcase, Trash2, Archive, ArchiveRestore,
-    Copy, Check, X, MoreHorizontal
+    Copy, Check, CheckSquare, X, MoreHorizontal
 } from 'lucide-react';
 import { useClientStore } from '@/store/useClientStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { useUIStore } from '@/store/useUIStore';
+import { motion, AnimatePresence } from 'framer-motion';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { CreateCompanyModal } from '@/components/modals/CreateCompanyModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -194,33 +195,59 @@ export default function ClientsPage() {
                     <Filter size={11} /> Filter
                 </button>
 
-                {tab === 'people' && (
-                    <div className="ml-auto flex items-center gap-1">
-                        {/* Bulk banner */}
-                        {selectedIds.size > 0 && (
-                            <div className={cn("mr-2 flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border",
-                                isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-[#f8f8f8] border-[#e8e8e8] text-[#666]")}>
-                                <span className="opacity-50">{selectedIds.size} selected</span>
-                                <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
-                                <button onClick={() => setDeletingId('bulk')} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
-                                    <Trash2 size={11} className="opacity-70" />Delete
-                                </button>
-                            </div>
-                        )}
+                <div className="flex-1" />
 
-                        {(['grid', 'list'] as ViewMode[]).map(v => (
-                            <button key={v} onClick={() => { setView(v); setSelectedIds(new Set()); }}
-                                className={cn(
-                                    "flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors",
-                                    view === v
-                                        ? (isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#111]")
-                                        : (isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]")
-                                )}>
-                                {v === 'grid' ? <LayoutGrid size={11} /> : <List size={11} />}
+                <div className="flex items-center gap-1">
+                    {/* Bulk actions */}
+                    {selectedIds.size > 0 && (
+                        <div className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border mr-2', isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}>
+                            <span className={cn('text-[11px] font-semibold mr-1', isDark ? 'text-[#aaa]' : 'text-[#666]')}>{selectedIds.size} selected</span>
+                            <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                            
+                            <button onClick={async () => {
+                                const ids = Array.from(selectedIds);
+                                const { bulkDuplicateClients } = useClientStore.getState();
+                                const { bulkDuplicateCompanies } = useCompanyStore.getState();
+                                if (tab === 'people') await bulkDuplicateClients(ids);
+                                else await bulkDuplicateCompanies(ids);
+                                gooeyToast.success(`${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated`);
+                                setSelectedIds(new Set());
+                            }} title="Duplicate"
+                                className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                <Copy size={11}/>
                             </button>
-                        ))}
-                    </div>
-                )}
+                            
+                            <button onClick={() => setDeletingId('bulk')} title="Delete"
+                                className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
+                                <Trash2 size={11}/>
+                            </button>
+
+                            {selectedIds.size >= 2 && (
+                                <button onClick={() => toggleAll(tab === 'people' ? filteredPeople : filteredCompanies)} title={selectedIds.size === (tab === 'people' ? filteredPeople.length : filteredCompanies.length) ? "Deselect All" : "Select All"}
+                                    className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                    <CheckSquare size={11}/>
+                                </button>
+                            )}
+                            <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                            <button onClick={() => setSelectedIds(new Set())} title="Clear selection"
+                                className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
+                                <X size={11}/>
+                            </button>
+                        </div>
+                    )}
+
+                    {tab === 'people' && (['grid', 'list'] as ViewMode[]).map(v => (
+                        <button key={v} onClick={() => { setView(v); setSelectedIds(new Set()); }}
+                            className={cn(
+                                "flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors",
+                                view === v
+                                    ? (isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#111]")
+                                    : (isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]")
+                            )}>
+                            {v === 'grid' ? <LayoutGrid size={11} /> : <List size={11} />}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* ── Content ── */}
@@ -282,29 +309,43 @@ export default function ClientsPage() {
                         ) : view === 'grid' ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                 {filteredPeople.map(client => {
+                                    const isSelected = selectedIds.has(client.id);
                                     const isActive = activeContactId === client.id;
                                     return (
                                         <div
                                             key={client.id}
-                                            onClick={() => openRightPanel({ type: 'contact', id: client.id })}
+                                            onClick={() => { if (selectedIds.size > 0) toggleRow(client.id); else openRightPanel({ type: 'contact', id: client.id }); }}
                                             className={cn(
-                                                "rounded-xl border overflow-hidden cursor-pointer transition-all duration-150",
+                                                "rounded-xl border overflow-hidden cursor-pointer transition-all duration-150 relative group select-none",
                                                 cardBg, cardBorder,
-                                                isActive
-                                                    ? isDark ? "border-[#3a3a3a] ring-1 ring-[#3a3a3a]" : "border-[#c0c0d0] ring-1 ring-[#c0c0d0] shadow-sm"
-                                                    : isDark ? "hover:border-[#2e2e2e] hover:bg-[#1c1c1c]" : "hover:border-[#ccc] hover:shadow-sm"
+                                                isSelected
+                                                    ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                                                    : isActive
+                                                        ? isDark ? "border-[#3a3a3a] ring-1 ring-[#3a3a3a]" : "border-[#c0c0d0] ring-1 ring-[#c0c0d0] shadow-sm"
+                                                        : isDark ? "hover:border-[#2e2e2e] hover:bg-[#1c1c1c]" : "hover:border-[#ccc] hover:shadow-sm"
                                             )}
                                         >
                                             {/* Header */}
-                                            <div className="flex items-center gap-3 px-4 py-3.5 relative group">
-                                                <div className="absolute top-3.5 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
-                                                    <button onClick={e => { e.stopPropagation(); toggleRow(client.id); }} className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded">
-                                                        <Chk checked={selectedIds.has(client.id)} isDark={isDark} />
-                                                    </button>
-                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(client.id); }} className="p-1 hover:bg-red-500/10 text-[#bbb] hover:text-red-500 rounded transition-all">
+                                            {/* Checkbox Overlay (Matches File Manager) */}
+                                            <div className={cn('absolute top-0 left-0 p-2 z-10 transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
+                                                onClick={e => { e.stopPropagation(); toggleRow(client.id); }}>
+                                                <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                                                    <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
+                                                        isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
+                                                        {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Delete Individual (Hover) */}
+                                            {!isSelected && (
+                                                <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-all">
+                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(client.id); }} className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-[#444] hover:text-red-500" : "hover:bg-red-50 text-[#ccc] hover:text-red-500")}>
                                                         <Trash2 size={12} />
                                                     </button>
                                                 </div>
+                                            )}
+                                            <div className="flex items-center gap-3 px-4 py-3.5 relative group">
                                                 <Avatar 
                                                     src={client.avatar_url} 
                                                     name={client.contact_person || client.company_name} 
@@ -338,7 +379,11 @@ export default function ClientsPage() {
                                     isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]"
                                 )} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}>
                                     <div className="flex items-center justify-center cursor-pointer" onClick={() => toggleAll(filteredPeople)}>
-                                        <Chk checked={selectedIds.size === filteredPeople.length && filteredPeople.length > 0} indeterminate={selectedIds.size > 0 && selectedIds.size < filteredPeople.length} isDark={isDark} />
+                                        <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
+                                            selectedIds.size === filteredPeople.length && filteredPeople.length > 0 ? "bg-primary border-primary" : isDark ? "border-white/10" : "border-[#ccc]")}>
+                                            {selectedIds.size === filteredPeople.length && filteredPeople.length > 0 && <Check size={9} strokeWidth={4} className="text-black" />}
+                                            {selectedIds.size > 0 && selectedIds.size < filteredPeople.length && <div className="w-2 h-0.5 bg-black rounded" />}
+                                        </div>
                                     </div>
                                     <div /><div>Name</div><div>Email</div><div>Phone</div><div>Company</div>
                                 </div>
@@ -349,16 +394,19 @@ export default function ClientsPage() {
                                             key={client.id}
                                             onClick={() => openRightPanel({ type: 'contact', id: client.id })}
                                             className={cn(
-                                                "grid px-4 py-2.5 text-[12px] cursor-pointer transition-colors group",
+                                                "grid px-4 py-2.5 text-[12px] cursor-pointer transition-colors group select-none",
                                                 selectedIds.has(client.id)
-                                                    ? isDark ? "bg-blue-900/10" : "bg-blue-50/40"
+                                                    ? "bg-primary/5"
                                                     : isDark ? "hover:bg-white/[0.025]" : "hover:bg-[#fafafa]",
                                                 i !== 0 && `border-t ${isDark ? "border-[#1f1f1f]" : "border-[#f5f5f5]"}`
                                             )}
                                             style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}
                                         >
-                                            <div className="flex items-center justify-center" onClick={e => toggleRow(client.id, e)}>
-                                                <Chk checked={selectedIds.has(client.id)} isDark={isDark} />
+                                            <div className="flex items-center justify-center" onClick={e => { e.stopPropagation(); toggleRow(client.id); }}>
+                                                <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
+                                                    selectedIds.has(client.id) ? "bg-primary border-primary" : isDark ? "border-white/10 opacity-0 group-hover:opacity-100" : "border-[#ccc] opacity-0 group-hover:opacity-100")}>
+                                                    {selectedIds.has(client.id) && <Check size={9} strokeWidth={4} className="text-black" />}
+                                                </div>
                                             </div>
                                             <Avatar 
                                                 src={client.avatar_url} 
@@ -429,29 +477,43 @@ export default function ClientsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                 {filteredCompanies.map(company => {
                                     const linkedCount = clients.filter(c => c.company_name === company.name).length;
+                                    const isSelected = selectedIds.has(company.id);
                                     const isActive = activeCompanyId === company.id;
                                     return (
                                         <div
                                             key={company.id}
-                                            onClick={() => openRightPanel({ type: 'company', id: company.id })}
+                                            onClick={() => { if (selectedIds.size > 0) toggleRow(company.id); else openRightPanel({ type: 'company', id: company.id }); }}
                                             className={cn(
-                                                "rounded-xl border overflow-hidden cursor-pointer transition-all duration-150",
+                                                "rounded-xl border overflow-hidden cursor-pointer transition-all duration-150 relative group select-none",
                                                 cardBg, cardBorder,
-                                                isActive
-                                                    ? isDark ? "border-[#3a3a3a] ring-1 ring-[#3a3a3a]" : "border-[#c0c0d0] ring-1 ring-[#c0c0d0] shadow-sm"
-                                                    : isDark ? "hover:border-[#2e2e2e] hover:bg-[#1c1c1c]" : "hover:border-[#ccc] hover:shadow-sm"
+                                                isSelected
+                                                    ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                                                    : isActive
+                                                        ? isDark ? "border-[#3a3a3a] ring-1 ring-[#3a3a3a]" : "border-[#c0c0d0] ring-1 ring-[#c0c0d0] shadow-sm"
+                                                        : isDark ? "hover:border-[#2e2e2e] hover:bg-[#1c1c1c]" : "hover:border-[#ccc] hover:shadow-sm"
                                             )}
                                         >
                                             {/* Header */}
-                                            <div className="flex items-center gap-3 px-4 py-3.5 relative group">
-                                                <div className="absolute top-3.5 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
-                                                    <button onClick={e => { e.stopPropagation(); toggleRow(company.id); }} className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded">
-                                                        <Chk checked={selectedIds.has(company.id)} isDark={isDark} />
-                                                    </button>
-                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(company.id); }} className="p-1 hover:bg-red-500/10 text-[#bbb] hover:text-red-500 rounded transition-all">
+                                            {/* Checkbox Overlay */}
+                                            <div className={cn('absolute top-0 left-0 p-2 z-10 transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
+                                                onClick={e => { e.stopPropagation(); toggleRow(company.id); }}>
+                                                <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                                                    <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
+                                                        isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
+                                                        {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Delete Individual (Hover) */}
+                                            {!isSelected && (
+                                                <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-all">
+                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(company.id); }} className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-[#444] hover:text-red-500" : "hover:bg-red-50 text-[#ccc] hover:text-red-500")}>
                                                         <Trash2 size={12} />
                                                     </button>
                                                 </div>
+                                            )}
+                                            <div className="flex items-center gap-3 px-4 py-3.5 relative group">
                                                 <Avatar 
                                                     src={company.avatar_url} 
                                                     name={company.name} 
@@ -505,14 +567,15 @@ export default function ClientsPage() {
                 }
                 onClose={() => setDeletingId(null)}
                 onConfirm={async () => {
-                    const { deleteClient } = useClientStore.getState();
-                    const { deleteCompany } = useCompanyStore.getState();
+                    const { deleteClient, bulkDeleteClients } = useClientStore.getState();
+                    const { deleteCompany, bulkDeleteCompanies } = useCompanyStore.getState();
 
                     if (deletingId === 'bulk') {
                         const ids = Array.from(selectedIds);
-                        for (const id of ids) {
-                            if (tab === 'people') await deleteClient(id);
-                            else await deleteCompany(id);
+                        if (tab === 'people') {
+                            await bulkDeleteClients(ids);
+                        } else {
+                            await bulkDeleteCompanies(ids);
                         }
                         setSelectedIds(new Set());
                     } else if (deletingId) {

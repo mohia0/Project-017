@@ -25,6 +25,8 @@ interface CompanyState {
     addCompany: (company: Omit<Company, 'id' | 'created_at' | 'workspace_id'>) => Promise<Company | null>;
     updateCompany: (id: string, updates: Partial<Company>) => Promise<void>;
     deleteCompany: (id: string) => Promise<void>;
+    bulkDeleteCompanies: (ids: string[]) => Promise<void>;
+    bulkDuplicateCompanies: (ids: string[]) => Promise<void>;
 }
 
 export const useCompanyStore = create<CompanyState>((set) => ({
@@ -95,6 +97,42 @@ export const useCompanyStore = create<CompanyState>((set) => ({
             set((state) => ({
                 companies: state.companies.filter((c) => c.id !== id),
             }));
+        }
+    },
+
+    bulkDeleteCompanies: async (ids) => {
+        if (!ids.length) return;
+        const { error } = await supabase.from('companies').delete().in('id', ids);
+        if (error) {
+            set({ error: error.message });
+        } else {
+            set((state) => ({
+                companies: state.companies.filter((c) => !ids.includes(c.id)),
+            }));
+        }
+    },
+
+    bulkDuplicateCompanies: async (ids) => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId || !ids.length) return;
+
+        const state = useCompanyStore.getState();
+        const companiesToDup = state.companies.filter(c => ids.includes(c.id));
+        
+        const payloads = companiesToDup.map(c => {
+            const { id, created_at, ...rest } = c;
+            return {
+                ...rest,
+                name: `${c.name} (Copy)`,
+                workspace_id: workspaceId
+            };
+        });
+
+        const { data, error } = await supabase.from('companies').insert(payloads).select();
+        if (error) {
+            set({ error: error.message });
+        } else if (data) {
+            set(s => ({ companies: [...(data as Company[]), ...s.companies] }));
         }
     },
 }));
