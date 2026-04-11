@@ -141,6 +141,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
     const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
@@ -566,11 +567,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     { 
                                         icon: Trash2,   
                                         label: 'Delete', 
-                                        action: async () => {
-                                            if (id) {
-                                                await deleteInvoice(id);
-                                                router.push('/invoices');
-                                            }
+                                        action: () => {
+                                            setShowActionsMenu(false);
+                                            setIsDeleteModalOpen(true);
                                         } 
                                     },
                                 ].map(({ icon: Icon, label, action }) => (
@@ -983,6 +982,20 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 onConfirm={confirmStatusChange}
                 title="Change Paid Status?"
                 description={`This invoice is currently marked as "Paid". Changing the status to "${pendingStatusChange}" might affect your financial records. Are you sure you want to proceed?`}
+                isDark={isDark}
+            />
+
+            <DeleteConfirmModal 
+                open={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={async () => {
+                    if (id) {
+                        await deleteInvoice(id);
+                        router.push('/invoices');
+                    }
+                }}
+                title="Delete Invoice"
+                description="Are you sure you want to delete this invoice? This action cannot be undone."
                 isDark={isDark}
             />
 

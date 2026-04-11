@@ -150,6 +150,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [isSignModalOpen, setIsSignModalOpen] = useState(false);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     const statusRef = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
@@ -583,12 +584,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     { 
                                         icon: Trash2,         
                                         label: 'Delete',            
-                                        action: async () => {
-                                            if (id) {
-                                                await deleteProposal(id);
-                                                router.push('/proposals');
-                                            }
-                                        } 
+                                        action: () => setIsDeleteModalOpen(true) 
                                     },
                                 ].map(({ icon: Icon, label, action }) => (
                                     <button
@@ -1139,6 +1135,20 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     });
                 }}
                 documentType="proposal"
+            />
+
+            <DeleteConfirmModal 
+                open={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={async () => {
+                    if (id) {
+                        await deleteProposal(id);
+                        router.push('/proposals');
+                    }
+                }}
+                title="Delete Proposal"
+                description="Are you sure you want to delete this proposal? This action cannot be undone."
+                isDark={isDark}
             />
             <ImageUploadModal 
                 isOpen={imageUploadOpen}

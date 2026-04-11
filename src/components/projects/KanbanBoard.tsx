@@ -18,6 +18,7 @@ import {
     sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -664,6 +665,7 @@ export default function KanbanBoard({ projectId, isDark, searchQuery, showArchiv
     const [addingGroup, setAddingGroup] = useState(false);
     const [ctxMenu,    setCtxMenu]    = useState<CtxMenuState>(null);
     const [renamingId, setRenamingId] = useState<string | null>(null);
+    const [pendingDelete, setPendingDelete] = useState<{ id: string, type: 'task' | 'group' } | null>(null);
 
     useEffect(() => {
         setLocalTasks(tasksByProject[projectId] || []);
@@ -770,12 +772,13 @@ export default function KanbanBoard({ projectId, isDark, searchQuery, showArchiv
         if (type === 'task') {
             const t = tasks.find(x => x.id === id);
             if (!t) return;
-            if (action === 'open' || action === 'edit') onTaskClick(t);
-            if (action === 'delete') deleteTask(id, projectId);
+            if (action === 'delete') {
+                setPendingDelete({ id, type: 'task' });
+            }
         } else if (type === 'group') {
             if (action === 'rename') setRenamingId(id);
             if (action === 'delete') {
-                deleteTaskGroup(id, projectId);
+                setPendingDelete({ id, type: 'group' });
             }
         }
     };

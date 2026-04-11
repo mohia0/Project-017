@@ -53,6 +53,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
     const [showActionsMenu, setShowActionsMenu] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
     const actionsRef = useRef<HTMLDivElement>(null);
 
@@ -295,10 +296,9 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                 isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]"
                             )}>
                                 <button
-                                    onClick={async () => {
+                                    onClick={() => {
                                         setShowActionsMenu(false);
-                                        await deleteTemplate(id);
-                                        router.push('/templates');
+                                        setIsDeleteModalOpen(true);
                                     }}
                                     className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-red-500 hover:bg-red-50 transition-colors"
                                 >
@@ -646,6 +646,18 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                     setImageUploadOpen(false);
                 }}
                 title={uploadTarget?.type === 'logo' ? "Upload Logo" : "Upload Image"}
+            />
+
+            <DeleteConfirmModal 
+                open={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={async () => {
+                    await deleteTemplate(id);
+                    router.push('/templates');
+                }}
+                title="Delete Template"
+                description="Are you sure you want to delete this template? This action cannot be undone."
+                isDark={isDark}
             />
 
         </div>
