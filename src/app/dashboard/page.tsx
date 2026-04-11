@@ -80,30 +80,38 @@ function BarChart({ data, isDark }: { data: BarData[]; isDark: boolean }) {
                     {data.map((d, i) => {
                         const pct = max === 0 ? 0 : (d.value / max) * 100;
                         return (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                                {/* Tooltip */}
-                                {d.value > 0 && (
-                                    <div className={cn(
-                                        "absolute bottom-[calc(100%+2px)] left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 rounded text-[10px] font-semibold",
-                                        "opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10",
-                                        isDark ? "bg-[#222] text-white border border-[#333]" : "bg-white text-[#111] border border-[#e0e0e0] shadow-md"
-                                    )}>
-                                        {fmt$(d.value)}
-                                    </div>
-                                )}
-                                <div
-                                    className="w-full rounded-t-[3px] transition-all duration-300"
-                                    style={{
-                                        height: `${Math.max(pct, pct === 0 ? 0 : 4)}%`,
-                                        backgroundColor: d.color,
-                                        opacity: d.value === 0 ? 0.15 : 1,
-                                        minHeight: d.value > 0 ? '3px' : '0'
-                                    }}
-                                />
-                                <span className={cn("text-[9px] text-center truncate w-full leading-tight",
-                                    isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                    {d.label}
-                                </span>
+                            <div key={i} className="flex-1 h-full flex flex-col group relative">
+                                {/* Bar Area */}
+                                <div className="flex-1 flex flex-col justify-end relative h-full">
+                                    {/* Tooltip */}
+                                    {d.value > 0 && (
+                                        <div className={cn(
+                                            "absolute bottom-[calc(100%+4px)] left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-1 rounded text-[10px] font-semibold",
+                                            "opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10",
+                                            isDark ? "bg-[#222] text-white border border-[#333]" : "bg-white text-[#111] border border-[#e0e0e0] shadow-md"
+                                        )}>
+                                            {fmt$(d.value)}
+                                        </div>
+                                    )}
+                                    
+                                    <div
+                                        className="w-full rounded-t-[3px] transition-all duration-300"
+                                        style={{
+                                            height: `${Math.max(pct, pct === 0 ? 0 : 4)}%`,
+                                            backgroundColor: d.color,
+                                            opacity: d.value === 0 ? 0.2 : 1,
+                                            minHeight: d.value > 0 ? '3px' : '0'
+                                        }}
+                                    />
+                                </div>
+                                
+                                {/* Label Area */}
+                                <div className="h-5 flex items-center justify-center shrink-0">
+                                    <span className={cn("text-[9px] text-center truncate w-full leading-tight",
+                                        isDark ? "text-[#555]" : "text-[#bbb]")}>
+                                        {d.label}
+                                    </span>
+                                </div>
                             </div>
                         );
                     })}
@@ -304,17 +312,46 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
                                                     const isToday = year === today.getFullYear() && monthIdx === today.getMonth() && cell.day === today.getDate();
                                                     
                                                     return (
-                                                        <div
-                                                            key={rIdx}
-                                                            title={cell.val > 0 ? `${cell.day} ${MONTH_NAMES[monthIdx]}: ${fmt$(cell.val)}` : isToday ? "Today" : undefined}
-                                                            className="rounded-[2px] cursor-default"
-                                                            style={{
-                                                                width: CELL,
-                                                                height: CELL,
-                                                                backgroundColor: cellColor(cell.val),
-                                                                boxShadow: isToday ? `0 0 0 1px ${isDark ? '#aaa' : '#666'}` : undefined
-                                                            }}
-                                                        />
+                                                        <div key={rIdx} className="relative group">
+                                                            <div
+                                                                className="rounded-[2px] cursor-pointer transition-transform hover:scale-125 hover:z-10"
+                                                                style={{
+                                                                    width: CELL,
+                                                                    height: CELL,
+                                                                    backgroundColor: cellColor(cell.val),
+                                                                    boxShadow: isToday ? `0 0 0 1px ${isDark ? '#aaa' : '#666'}` : undefined
+                                                                }}
+                                                            />
+                                                            
+                                                            {/* Custom Tooltip */}
+                                                            <div className={cn(
+                                                                "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2.5 rounded-lg shadow-2xl z-[100]",
+                                                                "opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap",
+                                                                "flex flex-col gap-0.5 min-w-[120px] scale-90 group-hover:scale-100 origin-bottom",
+                                                                isDark ? "bg-[#1c1c1c] border border-[#333] text-white" : "bg-white border border-[#eee] text-[#111]"
+                                                            )}>
+                                                                <span className={cn("text-[9px] font-bold uppercase tracking-widest opacity-40", isDark ? "text-white" : "text-black")}>
+                                                                    {cell.day} {MONTH_NAMES_FULL[monthIdx]} {year}
+                                                                </span>
+                                                                <div className="flex items-center justify-between gap-4 mt-0.5">
+                                                                    <span className={cn("text-[13px] font-black tabular-nums", cell.val > 0 ? "text-green-500" : "opacity-30")}>
+                                                                        {cell.val > 0 ? fmt$(cell.val) : "No Income"}
+                                                                    </span>
+                                                                </div>
+                                                                {isToday && (
+                                                                    <div className={cn("flex items-center gap-1.5 mt-1 pt-1 border-t", isDark ? "border-white/5" : "border-black/5")}>
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                                                        <span className="text-[9px] font-black text-blue-500 uppercase tracking-tighter">Current Day</span>
+                                                                    </div>
+                                                                )}
+                                                                
+                                                                {/* Tooltip Arrow */}
+                                                                <div className={cn(
+                                                                    "absolute top-full left-1/2 -translate-x-1/2 -mt-1.5 border-[6px] border-transparent",
+                                                                    isDark ? "border-t-[#1c1c1c]" : "border-t-white"
+                                                                )} />
+                                                            </div>
+                                                        </div>
                                                     );
                                                 })}
                                             </div>
@@ -372,7 +409,7 @@ function StatusRow({ label, count, amount, icon, iconColor, barColor, isDark }: 
 
 /* ─── Main Dashboard ─────────────────────────────────────────────── */
 export default function DashboardPage() {
-    const { theme } = useUIStore();
+    const { theme, activeWorkspaceId } = useUIStore();
     const { invoices, fetchInvoices } = useInvoiceStore();
     const { proposals, fetchProposals } = useProposalStore();
     const { user } = useAuthStore();
@@ -381,9 +418,9 @@ export default function DashboardPage() {
 
     const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
 
-    useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
-    useEffect(() => { fetchProposals(); }, [fetchProposals]);
-    useEffect(() => { fetchProfile(); }, [fetchProfile]);
+    useEffect(() => { fetchInvoices(); }, [fetchInvoices, activeWorkspaceId]);
+    useEffect(() => { fetchProposals(); }, [fetchProposals, activeWorkspaceId]);
+    useEffect(() => { fetchProfile(); }, [fetchProfile, activeWorkspaceId]);
 
     /* ── Date boundaries (memoized so they don't recreate Date objects every render) ── */
     const { now, y, m, last30Start, last30End, prior30Start, prior30End } = useMemo(() => {
@@ -450,6 +487,7 @@ export default function DashboardPage() {
         const accepted = proposals.filter(p => p.status === 'Accepted');
         const declined = proposals.filter(p => p.status === 'Declined');
         const pending = proposals.filter(p => p.status === 'Pending');
+        const overdue = proposals.filter(p => p.status === 'Overdue');
         const cancelled = proposals.filter(p => p.status === 'Cancelled');
         const draft = proposals.filter(p => p.status === 'Draft');
         const sumAmt = (arr: typeof proposals) => arr.reduce((s, p) => s + Number(p.amount || 0), 0);
@@ -462,6 +500,7 @@ export default function DashboardPage() {
             accepted: { count: accepted.length, amount: sumAmt(accepted) },
             declined: { count: declined.length, amount: sumAmt(declined) },
             pending: { count: pending.length, amount: sumAmt(pending) },
+            overdue: { count: overdue.length, amount: sumAmt(overdue) },
             cancelled: { count: cancelled.length, amount: sumAmt(cancelled) },
             draft: { count: draft.length, amount: sumAmt(draft) },
             total: { count: proposals.length, amount: sumAmt(proposals) },
@@ -472,21 +511,22 @@ export default function DashboardPage() {
     }, [proposals, last30Start, last30End, prior30Start, prior30End]);
 
     /* ── Chart data ── */
-    const invoiceChartData: BarData[] = [
+    const invoiceChartData: BarData[] = useMemo(() => [
         { label: 'Paid', value: invoiceStats.paid.amount, color: '#22c55e' },
         { label: 'Pending', value: invoiceStats.pending.amount, color: '#f59e0b' },
         { label: 'Overdue', value: invoiceStats.overdue.amount, color: '#ef4444' },
         { label: 'Draft', value: invoiceStats.draft.amount, color: '#6366f1' },
         { label: 'Cancelled', value: invoiceStats.cancelled.amount, color: '#94a3b8' },
-    ];
+    ], [invoiceStats]);
 
-    const proposalChartData: BarData[] = [
+    const proposalChartData: BarData[] = useMemo(() => [
         { label: 'Accepted', value: proposalStats.accepted.amount, color: '#22c55e' },
         { label: 'Pending', value: proposalStats.pending.amount, color: '#f59e0b' },
+        { label: 'Overdue', value: proposalStats.overdue.amount, color: '#ef4444' },
         { label: 'Declined', value: proposalStats.declined.amount, color: '#78716c' },
         { label: 'Cancelled', value: proposalStats.cancelled.amount, color: '#94a3b8' },
         { label: 'Draft', value: proposalStats.draft.amount, color: '#6366f1' },
-    ];
+    ], [proposalStats]);
 
     /* ── Heatmap data ── */
     const heatmapData = useMemo(() => {

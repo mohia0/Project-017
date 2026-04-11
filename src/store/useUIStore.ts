@@ -36,8 +36,8 @@ interface UIState {
     isCreateModalOpen: boolean;
     setCreateModalOpen: (isOpen: boolean) => void;
     isImportModalOpen: boolean;
-    setImportModalOpen: (isOpen: boolean, type?: 'Invoice' | 'Proposal') => void;
-    importType: 'Invoice' | 'Proposal';
+    setImportModalOpen: (isOpen: boolean, type?: 'Invoice' | 'Proposal' | 'Contact' | 'Company') => void;
+    importType: 'Invoice' | 'Proposal' | 'Contact' | 'Company';
     rightPanelWidth: number;
     setRightPanelWidth: (width: number) => void;
 }
@@ -85,7 +85,7 @@ export const useUIStore = create<UIState>()(
             setCreateModalOpen: (isOpen) => set({ isCreateModalOpen: isOpen }),
 
             isImportModalOpen: false,
-            importType: 'Invoice',
+            importType: 'Invoice' as 'Invoice' | 'Proposal' | 'Contact' | 'Company',
             setImportModalOpen: (isOpen, type) => set({ 
                 isImportModalOpen: isOpen, 
                 importType: type || get().importType 

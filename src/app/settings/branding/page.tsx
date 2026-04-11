@@ -20,6 +20,9 @@ const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
     favicon_url: '/favicon.svg'
 };
 
+// Visual-only subset we expose in settings (border_radius & font_family are hidden)
+type BrandingFormData = Pick<WorkspaceBranding, 'primary_color' | 'secondary_color' | 'logo_light_url' | 'logo_dark_url' | 'favicon_url'>;
+
 function ResetButton({ onClick, isDark }: { onClick: () => void, isDark: boolean }) {
     return (
         <button 
@@ -106,7 +109,13 @@ export default function BrandingSettingsPage() {
     const isDark = theme === 'dark';
     const { branding, fetchBranding, updateBranding, hasFetched } = useSettingsStore();
 
-    const [formData, setFormData] = useState<Omit<WorkspaceBranding, 'workspace_id'>>(DEFAULT_BRANDING);
+    const [formData, setFormData] = useState<BrandingFormData>({
+        primary_color: DEFAULT_BRANDING.primary_color,
+        secondary_color: DEFAULT_BRANDING.secondary_color,
+        logo_light_url: DEFAULT_BRANDING.logo_light_url,
+        logo_dark_url: DEFAULT_BRANDING.logo_dark_url,
+        favicon_url: DEFAULT_BRANDING.favicon_url,
+    });
     const [isSaving, setIsSaving] = useState(false);
 
     const [confirmingResetAll, setConfirmingResetAll] = useState(false);
@@ -129,8 +138,6 @@ export default function BrandingSettingsPage() {
             setFormData({
                 primary_color: branding.primary_color || DEFAULT_BRANDING.primary_color,
                 secondary_color: branding.secondary_color || '',
-                font_family: branding.font_family || DEFAULT_BRANDING.font_family,
-                border_radius: branding.border_radius ?? DEFAULT_BRANDING.border_radius,
                 logo_light_url: branding.logo_light_url || '',
                 logo_dark_url: branding.logo_dark_url || '',
                 favicon_url: branding.favicon_url || '',
@@ -138,12 +145,18 @@ export default function BrandingSettingsPage() {
         }
     }, [branding]);
 
-    const resetField = (field: keyof Omit<WorkspaceBranding, 'workspace_id'>) => {
-        setFormData(prev => ({ ...prev, [field]: DEFAULT_BRANDING[field] }));
+    const resetField = (field: keyof BrandingFormData) => {
+        setFormData(prev => ({ ...prev, [field]: DEFAULT_BRANDING[field as keyof typeof DEFAULT_BRANDING] }));
     };
 
     const resetAll = () => {
-        setFormData(DEFAULT_BRANDING);
+        setFormData({
+            primary_color: DEFAULT_BRANDING.primary_color,
+            secondary_color: DEFAULT_BRANDING.secondary_color,
+            logo_light_url: DEFAULT_BRANDING.logo_light_url,
+            logo_dark_url: DEFAULT_BRANDING.logo_dark_url,
+            favicon_url: DEFAULT_BRANDING.favicon_url,
+        });
         gooeyToast.success('Restored all defaults');
     };
 
@@ -151,8 +164,6 @@ export default function BrandingSettingsPage() {
         const compareTo = branding || DEFAULT_BRANDING;
         return (
             formData.primary_color !== (compareTo.primary_color || DEFAULT_BRANDING.primary_color) ||
-            formData.font_family !== (compareTo.font_family || DEFAULT_BRANDING.font_family) ||
-            formData.border_radius !== (compareTo.border_radius ?? DEFAULT_BRANDING.border_radius) ||
             formData.logo_light_url !== (compareTo.logo_light_url || '') ||
             formData.logo_dark_url !== (compareTo.logo_dark_url || '') ||
             formData.favicon_url !== (compareTo.favicon_url || '')
@@ -183,62 +194,28 @@ export default function BrandingSettingsPage() {
                 isSaving={isSaving}
                 unsavedChanges={hasUnsavedChanges()}
             >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <SettingsField 
-                        label="Primary Color" 
-                        extra={<ResetButton onClick={() => resetField('primary_color')} isDark={isDark} />}
-                    >
-                        <div className="flex gap-2 items-center">
-                            <div 
-                                className="w-10 h-10 rounded-xl cursor-pointer border relative overflow-hidden shrink-0"
-                                style={{ backgroundColor: formData.primary_color, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
-                            >
-                                <input 
-                                    type="color" 
-                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full scale-[2]"
-                                    value={formData.primary_color}
-                                    onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                />
-                            </div>
-                            <SettingsInput 
-                                value={formData.primary_color} 
-                                onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                                className="font-mono text-xs uppercase"
-                            />
-                        </div>
-                    </SettingsField>
-
-                    <SettingsField 
-                        label="Border Radius" 
-                        description={`${formData.border_radius}px`}
-                        extra={<ResetButton onClick={() => resetField('border_radius')} isDark={isDark} />}
-                    >
-                        <div className="flex gap-2 items-center h-10">
-                            <input 
-                                type="range" min="0" max="24" step="2"
-                                value={formData.border_radius}
-                                onChange={e => setFormData({ ...formData, border_radius: parseInt(e.target.value) })}
-                                className={cn(
-                                    "w-full h-1.5 rounded-full appearance-none cursor-pointer",
-                                    isDark ? "bg-white/10" : "bg-black/10"
-                                )}
-                                style={{
-                                    accentColor: formData.primary_color
-                                }}
-                            />
-                        </div>
-                    </SettingsField>
-                </div>
-
                 <SettingsField 
-                    label="Font Family"
-                    extra={<ResetButton onClick={() => resetField('font_family')} isDark={isDark} />}
+                    label="Primary Color" 
+                    extra={<ResetButton onClick={() => resetField('primary_color')} isDark={isDark} />}
                 >
-                    <SettingsInput 
-                        value={formData.font_family} 
-                        onChange={e => setFormData({ ...formData, font_family: e.target.value })}
-                        placeholder="Inter, Helvetica, sans-serif"
-                    />
+                    <div className="flex gap-2 items-center">
+                        <div 
+                            className="w-10 h-10 rounded-xl cursor-pointer border relative overflow-hidden shrink-0"
+                            style={{ backgroundColor: formData.primary_color, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+                        >
+                            <input 
+                                type="color" 
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full scale-[2]"
+                                value={formData.primary_color}
+                                onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                            />
+                        </div>
+                        <SettingsInput 
+                            value={formData.primary_color} 
+                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
+                            className="font-mono text-xs uppercase"
+                        />
+                    </div>
                 </SettingsField>
 
                 <div className="mt-8 border-t pt-8" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
