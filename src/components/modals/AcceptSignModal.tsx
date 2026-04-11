@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, PenLine, Upload, Type, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { DocumentDesign } from '@/types/design';
 
 interface AcceptSignModalProps {
     isOpen: boolean;

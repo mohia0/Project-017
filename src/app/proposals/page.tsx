@@ -132,15 +132,16 @@ function isThisYear(d: string | null | undefined) {
 }
 
 /* ─── Shared toolbar button ─────────────────────────────────────── */
-function TbBtn({ label, icon, active, hasArrow, onClick, isDark }: {
+function TbBtn({ label, icon, active, hasArrow, onClick, isDark, activeColor }: {
     label?: string; icon?: React.ReactNode; active?: boolean;
     hasArrow?: boolean; onClick?: () => void; isDark: boolean;
+    activeColor?: string;
 }) {
     return (
         <button onClick={onClick} className={cn(
             "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded transition-colors shrink-0",
             active
-                ? isDark ? "bg-white/10 text-white" : "bg-[#ebebf5] text-[#111]"
+                ? activeColor || (isDark ? "bg-white/10 text-white" : "bg-[#ebebf5] text-[#111]")
                 : isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]"
         )}>
             {icon}{label}{hasArrow && <ChevronDown size={9} className="opacity-40" />}

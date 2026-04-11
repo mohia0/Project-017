@@ -425,7 +425,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             style={sc.dynamic ? { backgroundColor: sc.dynamic.bg, color: sc.dynamic.text, borderColor: sc.dynamic.border } : {}}
                             className={cn(
                                 "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-bold transition-all border",
-                                !sc.dynamic ? (isDark ? "bg-white/[0.05] border-white/10 text-white/40" : cn(sc.bg, sc.text, sc.border)) : "hover:brightness-110"
+                                !sc.dynamic ? (isDark ? "bg-white/[0.05] border-white/10 text-white/40" : cn(sc.badge, sc.badgeText, sc.badgeBorder)) : "hover:brightness-110"
                             )}
                         >
                             <div className={cn("w-1.5 h-1.5 rounded-full bg-current opacity-70")} />

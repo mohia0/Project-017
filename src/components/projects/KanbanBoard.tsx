@@ -912,6 +912,28 @@ export default function KanbanBoard({ projectId, isDark, searchQuery, showArchiv
                     ) : null}
                 </DragOverlay>
             </DndContext>
+
+            {/* Delete Confirmation */}
+            <DeleteConfirmModal 
+                open={!!pendingDelete}
+                onClose={() => setPendingDelete(null)}
+                onConfirm={async () => {
+                    if (pendingDelete) {
+                        if (pendingDelete.type === 'task') {
+                            await deleteTask(pendingDelete.id, projectId);
+                        } else {
+                            await deleteTaskGroup(pendingDelete.id, projectId);
+                        }
+                        setPendingDelete(null);
+                    }
+                }}
+                title={pendingDelete?.type === 'task' ? "Delete Task" : "Delete Group"}
+                description={pendingDelete?.type === 'task' 
+                    ? "Are you sure you want to delete this task? This action cannot be undone."
+                    : "Are you sure you want to delete this group? All tasks within this group will also be deleted."
+                }
+                isDark={isDark}
+            />
         </div>
     );
 }
