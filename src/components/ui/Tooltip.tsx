@@ -12,9 +12,10 @@ interface TooltipProps {
     delay?: number;
     side?: 'top' | 'bottom' | 'left' | 'right';
     className?: string;
+    triggerClassName?: string;
 }
 
-export function Tooltip({ children, content, delay = 0.2, side = 'top', className }: TooltipProps) {
+export function Tooltip({ children, content, delay = 0.2, side = 'top', className, triggerClassName }: TooltipProps) {
     const [isVisible, setIsVisible] = useState(false);
     const [coords, setCoords] = useState({ x: 0, y: 0, width: 0, height: 0 });
     const triggerRef = useRef<HTMLDivElement>(null);
@@ -51,8 +52,7 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
             case 'bottom': 
                 return { 
                     top: coords.y + coords.height + offset, 
-                    left: coords.x,
-                    transform: 'translateX(-50%)'
+                    left: coords.x
                 };
             case 'left': 
                 return { 
@@ -69,8 +69,7 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
             default: // top
                 return { 
                     top: coords.y - offset, 
-                    left: coords.x,
-                    transform: 'translate(-50%, -100%)'
+                    left: coords.x
                 };
         }
     };
@@ -83,7 +82,7 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
                 ref={triggerRef}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
-                className="inline-block"
+                className={cn("inline-block", triggerClassName)}
             >
                 {children}
             </div>
@@ -95,14 +94,14 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
                             initial={{ 
                                 opacity: 0, 
                                 scale: 0.95, 
-                                x: side === 'left' ? 4 : side === 'right' ? -4 : 0,
-                                y: side === 'top' ? 4 : side === 'bottom' ? -4 : 0,
+                                x: side === 'left' ? "-95%" : side === 'right' ? "5%" : "-50%",
+                                y: side === 'top' ? "-90%" : side === 'bottom' ? "-10%" : "-50%",
                             }}
                             animate={{ 
                                 opacity: 1, 
                                 scale: 1, 
-                                x: 0, 
-                                y: 0 
+                                x: (side === 'top' || side === 'bottom') ? "-50%" : side === 'left' ? "-100%" : "0%",
+                                y: (side === 'left' || side === 'right') ? "-50%" : side === 'top' ? "-100%" : "0%"
                             }}
                             exit={{ opacity: 0, scale: 0.95 }}
                             transition={{ duration: 0.1, ease: "easeOut" }}
@@ -110,7 +109,6 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
                                 position: 'fixed',
                                 top: (posStyles as any).top,
                                 left: (posStyles as any).left,
-                                transform: (posStyles as any).transform,
                                 zIndex: 9999,
                                 pointerEvents: 'none'
                             }}

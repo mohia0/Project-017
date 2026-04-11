@@ -1713,13 +1713,14 @@ export default function FilesPage() {
                     <div className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 min-w-[224px]">
                         <div className="flex items-center justify-between px-2 pb-1">
                             <p className={cn('text-[9px] font-bold uppercase tracking-widest', muted)}>Folders</p>
-                            <button
-                                onClick={() => setSidebarOpen(false)}
-                                className={cn('w-5 h-5 flex items-center justify-center rounded-md transition-colors', isDark ? 'text-[#444] hover:text-white hover:bg-white/8' : 'text-[#ccc] hover:text-[#555] hover:bg-[#f0f0f0]')}
-                                title="Collapse sidebar"
-                            >
-                                <PanelLeftClose size={12}/>
-                            </button>
+                            <Tooltip content="Collapse sidebar" side="right">
+                                <button
+                                    onClick={() => setSidebarOpen(false)}
+                                    className={cn('w-5 h-5 flex items-center justify-center rounded-md transition-colors', isDark ? 'text-[#444] hover:text-white hover:bg-white/8' : 'text-[#ccc] hover:text-[#555] hover:bg-[#f0f0f0]')}
+                                >
+                                    <PanelLeftClose size={12}/>
+                                </button>
+                            </Tooltip>
                         </div>
                         {isLoading ? (
                             <div className="px-2 py-4 space-y-3 animate-pulse">
@@ -1780,16 +1781,17 @@ export default function FilesPage() {
 
                 {/* ── Sidebar collapsed toggle ── */}
                 {!sidebarOpen && (
-                    <button
-                        onClick={() => setSidebarOpen(true)}
-                        className={cn(
-                            'shrink-0 flex items-center justify-center w-6 self-stretch border-r transition-colors',
-                            isDark ? 'border-[#252525] text-[#444] hover:text-white hover:bg-white/5' : 'border-[#ebebeb] text-[#ccc] hover:text-[#555] hover:bg-[#f5f5f5]'
-                        )}
-                        title="Expand sidebar"
-                    >
-                        <PanelLeftOpen size={12}/>
-                    </button>
+                    <Tooltip content="Expand sidebar" side="right" triggerClassName="self-stretch flex">
+                        <button
+                            onClick={() => setSidebarOpen(true)}
+                            className={cn(
+                                'shrink-0 flex items-center justify-center w-6 h-full border-r transition-colors',
+                                isDark ? 'border-[#252525] text-[#444] hover:text-white hover:bg-white/5' : 'border-[#ebebeb] text-[#ccc] hover:text-[#555] hover:bg-[#f5f5f5]'
+                            )}
+                        >
+                            <PanelLeftOpen size={12}/>
+                        </button>
+                    </Tooltip>
                 )}
 
                 {/* ── Main Content ── */}
@@ -1941,7 +1943,7 @@ export default function FilesPage() {
                                             {/* Star + Lock */}
                                             <div className="absolute top-0 right-0 flex items-start p-1.5 z-10" onClick={e => e.stopPropagation()}>
                                                 {/* Star button */}
-                                                <Tooltip content={item.starred ? 'Remove star' : 'Add star'}>
+                                                <Tooltip content={item.starred ? 'Remove star' : 'Add star'} side="bottom">
                                                     <button
                                                         onClick={e => { e.stopPropagation(); toggleStar(item.id); }}
                                                         className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-all',
@@ -2020,7 +2022,7 @@ export default function FilesPage() {
                                                                     exit={{ opacity: 0 }}
                                                                     className="flex items-center gap-1.5"
                                                                 >
-                                                                    <Tooltip content="Rename">
+                                                                    <Tooltip content="Rename" side="bottom">
                                                                         <button onClick={e => { e.stopPropagation(); setRenamingId(item.id); }}
                                                                             className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
                                                                                 isDark ? 'text-[#444] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-black/5')}>
@@ -2028,7 +2030,7 @@ export default function FilesPage() {
                                                                         </button>
                                                                     </Tooltip>
                                                                     {item.type !== 'folder' && item.downloadUrl && (
-                                                                        <Tooltip content="Download">
+                                                                        <Tooltip content="Download" side="bottom">
                                                                             <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
                                                                                 className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
                                                                                     isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}>
@@ -2037,7 +2039,7 @@ export default function FilesPage() {
                                                                         </Tooltip>
                                                                     )}
                                                                     {(item.downloadUrl || item.url) && (
-                                                                        <Tooltip content="Copy link">
+                                                                        <Tooltip content="Copy link" side="bottom">
                                                                             <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
                                                                                 className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
                                                                                     isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}>
@@ -2045,7 +2047,7 @@ export default function FilesPage() {
                                                                             </button>
                                                                         </Tooltip>
                                                                     )}
-                                                                    <Tooltip content="Delete">
+                                                                    <Tooltip content="Delete" side="bottom">
                                                                         <button onClick={e => { e.stopPropagation(); setDeletingId(item.id); setTimeout(() => setDeletingId(curr => curr === item.id ? null : curr), 3000); }}
                                                                             className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
                                                                                 isDark ? 'text-red-500/20 hover:text-red-500 hover:bg-red-500/10' : 'text-red-200 hover:text-red-500 hover:bg-red-50')}>
