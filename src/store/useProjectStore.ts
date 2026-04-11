@@ -369,15 +369,33 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     },
 
     reorderTaskGroup: async (id, projectId, newPosition) => {
-        set((s) => ({
-            groupsByProject: {
-                ...s.groupsByProject,
-                [projectId]: (s.groupsByProject[projectId] || []).map((g) =>
-                    g.id === id ? { ...g, position: newPosition } : g
-                ),
-            },
+        set((s) => {
+            const projectGroups = [...(s.groupsByProject[projectId] || [])].sort((a, b) => a.position - b.position);
+            const groupIndex = projectGroups.findIndex((g) => g.id === id);
+            if (groupIndex === -1) return s;
+
+            const [group] = projectGroups.splice(groupIndex, 1);
+            projectGroups.splice(newPosition, 0, group);
+
+            projectGroups.forEach((g, i) => { g.position = i; });
+
+            return {
+                groupsByProject: {
+                    ...s.groupsByProject,
+                    [projectId]: projectGroups,
+                },
+            };
+        });
+
+        // Supabase sync
+        const s = get();
+        const groups = s.groupsByProject[projectId] || [];
+        const updates = groups.map((g) => ({
+            id: g.id,
+            position: g.position,
         }));
-        await supabase.from('project_task_groups').update({ position: newPosition }).eq('id', id);
+
+        await supabase.from('project_task_groups').upsert(updates);
     },
 
     // ── Linked Items ──────────────────────────────────────────────────────────

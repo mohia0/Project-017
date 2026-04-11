@@ -136,7 +136,7 @@ function Dropdown({ open, onClose, isDark, children }: { open: boolean; onClose:
     }, [open, onClose]);
     if (!open) return null;
     return (
-        <div ref={ref} className={cn("absolute top-full right-0 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
+        <div ref={ref} className={cn("absolute top-full left-1/2 -translate-x-1/2 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
             isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
             {children}
         </div>
@@ -296,9 +296,12 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
                     <div className="relative flex-1">
                         <button
                             onClick={(e) => { e.stopPropagation(); setStatusOpen(!statusOpen); }}
-                            className={cn("flex items-center justify-between min-w-[100px] px-2.5 py-1.5 rounded-[6px] font-semibold border",
-                                isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(sc.badge, sc.badgeText, sc.badgeBorder))}
-                            style={!isDark && (sc as any).dynamic ? dynamicStyle : {}}
+                            className="flex items-center justify-between min-w-[100px] px-2.5 py-1.5 rounded-[6px] font-semibold border"
+                            style={sc.dynamic ? {
+                                backgroundColor: sc.dynamic.bg,
+                                color: sc.dynamic.text,
+                                borderColor: sc.dynamic.border
+                            } : {}}
                         >
                             <span>{i.status}</span>
                             <ChevronsUpDown size={11} className="opacity-70" />
@@ -369,9 +372,12 @@ function StatusCell({ status, onStatusChange, isDark, customStatuses = [] }: {
         <div className="relative">
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-                className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border",
-                    isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(sc.badge, sc.badgeText, sc.badgeBorder))}
-                style={!isDark && (sc as any).dynamic ? dynamicStyle : {}}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors"
+                style={sc.dynamic ? {
+                    backgroundColor: sc.dynamic.bg,
+                    color: sc.dynamic.text,
+                    borderColor: sc.dynamic.border
+                } : {}}
             >
                 {status}<ChevronDown size={10} className="opacity-50" />
             </button>

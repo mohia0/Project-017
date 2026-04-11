@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Plus, X, MoreHorizontal, GripVertical, CheckSquare, Square,
+    Plus, X, MoreHorizontal, CheckSquare, Square, Check,
     Flag, Calendar, Trash2, Edit3, AlignLeft, CheckCircle2,
     PlayCircle, Eye, Inbox, RotateCcw, Circle
 } from 'lucide-react';
@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { useProjectStore, ProjectTask, ProjectTaskGroup, TaskStatus, TaskPriority } from '@/store/useProjectStore';
 import {
     DndContext, closestCenter, PointerSensor, KeyboardSensor,
-    useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent
+    useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent
 } from '@dnd-kit/core';
 import {
     SortableContext, verticalListSortingStrategy, horizontalListSortingStrategy, useSortable,
@@ -52,7 +52,7 @@ function shortId(id: string) { return `#${id.slice(-3).toUpperCase()}`; }
 function fmtDate(d: string | null | undefined) {
     if (!d) return null;
     const dt = new Date(d);
-    return `${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`;
+    return `${String(dt.getDate()).padStart(2, '0')}-${String(dt.getMonth() + 1).padStart(2, '0')}-${dt.getFullYear()}`;
 }
 
 type CtxMenuState = { x: number; y: number; id: string; type: 'task' | 'group' } | null;
@@ -170,11 +170,13 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
 
 // ─── Task Card ────────────────────────────────────────────────────────────────
 
-function TaskCard({ task, isDark, onCtx, onAction }: {
+function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast }: {
     task: ProjectTask;
     isDark: boolean;
     onCtx: (e: React.MouseEvent, id: string, type: 'task' | 'group') => void;
     onAction: (a: string, t: ProjectTask) => void;
+    isFirst?: boolean;
+    isLast?: boolean;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: task.id,
@@ -190,65 +192,95 @@ function TaskCard({ task, isDark, onCtx, onAction }: {
             ref={setNodeRef}
             style={style}
             {...attributes}
+            {...listeners}
             onContextMenu={e => onCtx(e, task.id, 'task')}
             onClick={() => onAction('open', task)}
             className={cn(
-                'relative rounded-[14px] border cursor-pointer select-none group/card transition-all duration-150 overflow-hidden',
+                'relative cursor-pointer select-none group/card transition-all duration-150 overflow-hidden',
                 isDragging
-                    ? 'opacity-30 scale-[0.97] shadow-2xl ring-2 ring-primary/30 z-20'
+                    ? 'opacity-[0.05] scale-[0.98] z-20 rounded-[14px] bg-primary/5 border border-primary/20'
                     : isDark
-                        ? 'bg-[#1a1a1a] border-[#252525] hover:border-[#343434] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
-                        : 'bg-white border-[#ebebeb] hover:border-[#d8d8d8] hover:shadow-[0_6px_24px_rgba(0,0,0,0.07)] shadow-sm shadow-black/[0.025]'
+                        ? 'hover:bg-white/[0.025]'
+                        : 'hover:bg-[#f9f9f9]',
+                isFirst && 'rounded-t-[14px]',
+                isLast  && 'rounded-b-[14px]',
             )}
         >
-            {/* Priority bar */}
+            {/* Priority left accent */}
             {task.priority !== 'none' && (
                 <div
-                    className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-[14px]"
+                    className={cn(
+                        'absolute left-0 top-[14px] bottom-[14px] w-[2.5px]',
+                        isFirst && 'top-[8px]',
+                        isLast  && 'bottom-[8px]',
+                    )}
                     style={{ background: pri.color }}
                 />
             )}
 
-            <div className="flex items-start gap-2 pl-[18px] pr-3 pt-3 pb-3">
-                {/* Drag handle */}
-                <div
-                    {...listeners}
-                    className="mt-[1px] shrink-0 opacity-0 group-hover/card:opacity-20 hover:!opacity-50 cursor-grab active:cursor-grabbing transition-opacity"
-                    onClick={e => e.stopPropagation()}
+            <div className="flex items-center gap-2.5 pl-4 pr-3 py-[14px]">
+
+                {/* Checkbox toggle */}
+                <button
+                    onClick={e => {
+                        e.stopPropagation();
+                        updateTask(task.id, task.project_id, { status: isDone ? 'todo' : 'done' });
+                    }}
+                    className={cn(
+                        'shrink-0 w-[16px] h-[16px] rounded-[5px] border flex items-center justify-center transition-all duration-200',
+                        isDone
+                            ? 'bg-emerald-500 border-emerald-500 text-white'
+                            : isDark
+                                ? 'border-white/10 hover:border-white/30'
+                                : 'border-black/10 hover:border-black/20'
+                    )}
                 >
-                    <GripVertical size={11} className={isDark ? 'text-[#666]' : 'text-[#bbb]'} />
-                </div>
+                    <AnimatePresence mode="wait">
+                        {isDone && (
+                            <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                            >
+                                <Check size={10} strokeWidth={3.5} />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </button>
 
                 <div className="flex-1 min-w-0">
                     {/* Title */}
                     <p className={cn(
-                        'text-[12px] font-semibold leading-[1.4] mb-2 pr-10',
+                        'text-[12.5px] font-semibold leading-relaxed',
                         isDone
-                            ? isDark ? 'line-through text-[#383838]' : 'line-through text-[#c8c8c8]'
-                            : isDark ? 'text-[#e8e8e8]' : 'text-[#1a1a1a]'
+                            ? isDark ? 'line-through text-[#383838]' : 'line-through text-[#c0c0c0]'
+                            : isDark ? 'text-[#e0e0e0]' : 'text-[#1a1a1a]'
                     )}>
                         {task.title}
                     </p>
 
                     {/* Chips row */}
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        {/* Status + ID */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        {/* Status + ID chip */}
                         <span className={cn(
-                            'inline-flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-[3px] rounded-md tabular-nums',
-                            isDark ? 'bg-white/[0.04] text-[#4a4a4a]' : 'bg-[#f5f5f5] text-[#aaa]'
+                            'inline-flex items-center gap-[5px] text-[9.5px] font-bold px-2 py-[3px] rounded-md tabular-nums',
+                            isDark
+                                ? 'bg-[#252525] text-[#4a4a4a] border border-[#2e2e2e]'
+                                : 'bg-[#f0f0f0] text-[#aaa] border border-[#e8e8e8]'
                         )}>
                             {STATUS_ICON_MAP[task.status]}
                             {shortId(task.id)}
                         </span>
 
-                        {/* Description dot */}
+                        {/* Description indicator */}
                         {task.description && (
-                            <span className={cn(isDark ? 'text-[#333]' : 'text-[#d5d5d5]')}>
+                            <span className={cn(isDark ? 'text-[#383838]' : 'text-[#d0d0d0]')}>
                                 <AlignLeft size={9} />
                             </span>
                         )}
 
-                        {/* Priority */}
+                        {/* Priority chip */}
                         {task.priority !== 'none' && (
                             <span
                                 className="inline-flex items-center gap-[3px] text-[9.5px] font-bold px-1.5 py-[3px] rounded-md"
@@ -262,170 +294,38 @@ function TaskCard({ task, isDark, onCtx, onAction }: {
                         {/* Due date */}
                         {task.due_date && (
                             <span className={cn(
-                                'inline-flex items-center gap-[3px] text-[9.5px] font-medium',
-                                isDark ? 'text-[#484848]' : 'text-[#c0c0c0]'
+                                'inline-flex items-center gap-[3px] text-[9.5px] font-bold',
+                                isDark ? 'text-[#4a4a4a]' : 'text-[#aaa]'
                             )}>
-                                <Calendar size={8} />
+                                <Calendar size={8} strokeWidth={2.5} />
                                 {fmtDate(task.due_date)}
                             </span>
                         )}
                     </div>
                 </div>
-            </div>
 
-            {/* Hover actions */}
-            <div className={cn(
-                'absolute top-2 right-2 flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity z-10',
-                isDone && 'opacity-100'
-            )}>
-                <button
-                    onClick={e => { e.stopPropagation(); onCtx(e, task.id, 'task'); }}
-                    className={cn(
-                        'w-6 h-6 flex items-center justify-center rounded-lg transition-colors',
-                        isDark ? 'text-[#3a3a3a] hover:text-[#aaa] hover:bg-white/[0.07]' : 'text-[#d0d0d0] hover:text-[#777] hover:bg-black/[0.05]'
-                    )}
-                >
-                    <MoreHorizontal size={12} />
-                </button>
-                <button
-                    onClick={e => {
-                        e.stopPropagation();
-                        updateTask(task.id, task.project_id, { status: isDone ? 'todo' : 'done' });
-                    }}
-                    className={cn(
-                        'w-6 h-6 flex items-center justify-center rounded-lg transition-colors',
-                        isDone
-                            ? 'text-emerald-500 hover:bg-emerald-500/10'
-                            : isDark
-                                ? 'text-[#3a3a3a] hover:text-white hover:bg-white/[0.07]'
-                                : 'text-[#d0d0d0] hover:text-[#555] hover:bg-black/[0.05]'
-                    )}
-                >
-                    {isDone ? <CheckSquare size={12} /> : <Square size={12} />}
-                </button>
-            </div>
-        </div>
-    );
-}
-
-// ─── Column Header ────────────────────────────────────────────────────────────
-
-function ColHeader({ group, isUngrouped, isDark, projectId, onCtx, dragListeners, dragAttributes }: {
-    group: ProjectTaskGroup | null;
-    isUngrouped: boolean;
-    isDark: boolean;
-    projectId: string;
-    onCtx: (e: React.MouseEvent, id: string, type: 'group') => void;
-    dragListeners?: object;
-    dragAttributes?: object;
-    taskCount: number;
-}) {
-    const { updateTaskGroup } = useProjectStore();
-    const [editing, setEditing] = useState(false);
-    const [draft,   setDraft]   = useState(group?.name || '');
-
-    const baseColor = group?.color || (isUngrouped ? '#5a6270' : '#374151');
-
-    const commitRename = async () => {
-        setEditing(false);
-        if (!group) return;
-        if (draft.trim() && draft !== group.name) {
-            await updateTaskGroup(group.id, projectId, { name: draft.trim() });
-        } else {
-            setDraft(group.name);
-        }
-    };
-
-    return (
-        <div
-            className="rounded-[18px] overflow-hidden relative group/hdr select-none"
-            style={{ background: baseColor }}
-            onContextMenu={e => !isUngrouped && group && onCtx(e, group.id, 'group')}
-        >
-            {/* Highlight shine */}
-            <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                    background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.22) 0%, transparent 65%)',
-                }}
-            />
-
-            {/* Drag + Options — visible on hover */}
-            {!isUngrouped && group && (
-                <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2 z-10 opacity-0 group-hover/hdr:opacity-100 transition-opacity duration-150">
-                    <div
-                        {...dragListeners}
-                        {...dragAttributes}
-                        className="w-6 h-6 flex items-center justify-center rounded-lg cursor-grab active:cursor-grabbing text-white/40 hover:text-white hover:bg-white/15 transition-colors"
-                    >
-                        <GripVertical size={12} />
-                    </div>
+                {/* Hover actions */}
+                <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity z-10 shrink-0">
                     <button
-                        onClick={e => onCtx(e, group.id, 'group')}
-                        className="w-6 h-6 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/15 transition-colors"
+                        onClick={e => { e.stopPropagation(); onCtx(e, task.id, 'task'); }}
+                        className={cn(
+                            'w-6 h-6 flex items-center justify-center rounded-lg transition-colors',
+                            isDark ? 'text-[#3a3a3a] hover:text-[#aaa] hover:bg-white/[0.07]' : 'text-[#d0d0d0] hover:text-[#777] hover:bg-black/[0.05]'
+                        )}
                     >
                         <MoreHorizontal size={12} />
                     </button>
                 </div>
-            )}
-
-            {/* Center pill */}
-            <div className="flex items-center justify-center pt-5 pb-[10px] px-4">
-                <div
-                    className="flex items-center gap-1.5 px-3.5 py-[7px] rounded-full"
-                    style={{ background: 'rgba(0,0,0,0.20)' }}
-                >
-                    {isUngrouped
-                        ? <Inbox    size={11} className="text-white/75 shrink-0" />
-                        : <AlignLeft size={11} className="text-white/75 shrink-0" />
-                    }
-                    {editing ? (
-                        <input
-                            autoFocus
-                            value={draft}
-                            onChange={e => setDraft(e.target.value)}
-                            onBlur={commitRename}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter') commitRename();
-                                if (e.key === 'Escape') { setDraft(group?.name ?? ''); setEditing(false); }
-                            }}
-                            className="text-[11.5px] font-bold text-white bg-transparent outline-none w-[90px] border-b border-white/40 text-center placeholder:text-white/40"
-                        />
-                    ) : (
-                        <span
-                            onDoubleClick={() => !isUngrouped && setEditing(true)}
-                            className="text-[11.5px] font-bold text-white tracking-[0.02em] cursor-text whitespace-nowrap"
-                        >
-                            {isUngrouped ? 'Ungrouped' : group?.name}
-                        </span>
-                    )}
-                </div>
-            </div>
-
-            {/* Footer strip */}
-            <div
-                className="flex items-center justify-between px-3.5 py-[9px]"
-                style={{ background: 'rgba(0,0,0,0.22)' }}
-            >
-                <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-[6px] h-[6px] rounded-full bg-white/35 shrink-0" />
-                    <span className="text-[10.5px] font-semibold text-white/55 truncate">
-                        {isUngrouped ? 'Ungrouped' : group?.name}
-                    </span>
-                </div>
-                <span className="text-[10px] font-bold text-white/45 tabular-nums bg-white/[0.12] px-2 py-[2px] rounded-md ml-2 shrink-0">
-                    {/* taskCount is passed as a prop from parent — read via closure */}
-                    0
-                </span>
             </div>
         </div>
     );
 }
 
+
 // ─── Task Group Column ────────────────────────────────────────────────────────
 
 function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceEditing, onRenameDone }: {
-    group: ProjectTaskGroup | null;
+    group: ProjectTaskGroup;
     tasks: ProjectTask[];
     isDark: boolean;
     projectId: string;
@@ -439,19 +339,25 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
     const [titleStr, setTitleStr] = useState('');
     const [saving,   setSaving]   = useState(false);
     const [editing,  setEditing]  = useState(false);
-    const [draft,    setDraft]    = useState(group?.name ?? '');
+    const [draft,    setDraft]    = useState(group.name);
+    const addFormRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (forceEditing) { setEditing(true); setDraft(group?.name ?? ''); }
-    }, [forceEditing, group?.name]);
+        if (forceEditing) { setEditing(true); setDraft(group.name); }
+    }, [forceEditing, group.name]);
 
-    const isUngrouped = !group;
-    const sortId = isUngrouped ? 'ungrouped' : group.id;
+    useEffect(() => {
+        if (!adding) return;
+        const h = (e: MouseEvent) => {
+            if (addFormRef.current && !addFormRef.current.contains(e.target as Node)) setAdding(false);
+        };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [adding]);
 
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-        id: sortId,
+        id: group.id,
         data: { type: 'group' },
-        disabled: isUngrouped,
     });
 
     const commitRename = async () => {
@@ -470,7 +376,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
         setSaving(true);
         await addTask({
             project_id:    projectId,
-            task_group_id: isUngrouped ? null : group.id,
+            task_group_id: group.id,
             title:         titleStr.trim(),
             status:        'todo',
             priority:      'none',
@@ -483,7 +389,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
         setAdding(false);
     };
 
-    const baseColor = group?.color || (isUngrouped ? '#5a6270' : '#374151');
+    const baseColor = group.color || '#374151';
 
     return (
         <div
@@ -493,9 +399,11 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
         >
             {/* ── Header ── */}
             <div
-                className="rounded-[18px] overflow-hidden relative group/hdr select-none mb-3"
+                {...listeners}
+                {...attributes}
+                className="rounded-t-[18px] overflow-hidden relative group/hdr select-none duration-150 cursor-grab active:cursor-grabbing hover:brightness-105"
                 style={{ background: baseColor }}
-                onContextMenu={e => !isUngrouped && group && onCtx(e, group.id, 'group')}
+                onContextMenu={e => onCtx(e, group.id, 'group')}
             >
                 {/* Shine */}
                 <div
@@ -503,35 +411,23 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                     style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.2) 0%, transparent 70%)' }}
                 />
 
-                {/* Drag + options */}
-                {!isUngrouped && group && (
-                    <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2 z-10 opacity-0 group-hover/hdr:opacity-100 transition-opacity duration-150">
-                        <div
-                            {...listeners}
-                            {...attributes}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg cursor-grab active:cursor-grabbing text-white/40 hover:text-white hover:bg-white/15 transition-colors"
-                        >
-                            <GripVertical size={12} />
-                        </div>
-                        <button
-                            onClick={e => onCtx(e, group.id, 'group')}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/15 transition-colors"
-                        >
-                            <MoreHorizontal size={12} />
-                        </button>
-                    </div>
-                )}
+                {/* Options button */}
+                <div className="absolute right-0 top-0 p-2 z-10 opacity-0 group-hover/hdr:opacity-100 transition-opacity duration-150">
+                    <button
+                        onClick={e => { e.stopPropagation(); onCtx(e, group.id, 'group'); }}
+                        className="w-6 h-6 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/15 transition-colors"
+                    >
+                        <MoreHorizontal size={12} />
+                    </button>
+                </div>
 
                 {/* Center pill */}
-                <div className="flex items-center justify-center pt-5 pb-[10px] px-4">
+                <div className="flex items-center justify-center pt-3 pb-2 px-4">
                     <div
-                        className="flex items-center gap-1.5 px-3.5 py-[7px] rounded-full"
-                        style={{ background: 'rgba(0,0,0,0.20)' }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px]"
+                        style={{ background: 'rgba(0,0,0,0.18)' }}
                     >
-                        {isUngrouped
-                            ? <Inbox     size={11} className="text-white/70 shrink-0" />
-                            : <AlignLeft size={11} className="text-white/70 shrink-0" />
-                        }
+                        <AlignLeft size={11} className="text-white/70 shrink-0" />
                         {editing ? (
                             <input
                                 autoFocus
@@ -540,16 +436,16 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                                 onBlur={commitRename}
                                 onKeyDown={e => {
                                     if (e.key === 'Enter')  commitRename();
-                                    if (e.key === 'Escape') { setDraft(group?.name ?? ''); setEditing(false); }
+                                    if (e.key === 'Escape') { setDraft(group.name); setEditing(false); }
                                 }}
                                 className="text-[11.5px] font-bold text-white bg-transparent outline-none w-[90px] border-b border-white/40 text-center"
                             />
                         ) : (
                             <span
-                                onDoubleClick={() => !isUngrouped && setEditing(true)}
+                                onDoubleClick={() => setEditing(true)}
                                 className="text-[11.5px] font-bold text-white tracking-[0.015em] cursor-text whitespace-nowrap"
                             >
-                                {isUngrouped ? 'Ungrouped' : group?.name}
+                                {group.name}
                             </span>
                         )}
                     </div>
@@ -557,29 +453,22 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
 
                 {/* Footer strip */}
                 <div
-                    className="flex items-center justify-between px-3.5 py-[9px]"
+                    className="flex items-center justify-end px-3.5 py-1.5"
                     style={{ background: 'rgba(0,0,0,0.22)' }}
                 >
-                    <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-[6px] h-[6px] rounded-full bg-white/35 shrink-0" />
-                        <span className="text-[10.5px] font-semibold text-white/55 truncate">
-                            {isUngrouped ? 'Ungrouped' : group?.name}
-                        </span>
-                    </div>
-                    <span className="text-[10px] font-bold text-white/45 tabular-nums bg-white/[0.12] px-2 py-[2px] rounded-md ml-2 shrink-0">
+                    <span className="text-[10px] font-bold text-white/45 tabular-nums bg-white/[0.12] px-2 py-[2px] rounded-md shrink-0">
                         {tasks.length}
                     </span>
                 </div>
             </div>
 
-            {/* ── Add task button ── */}
             <button
                 onClick={() => setAdding(true)}
                 className={cn(
-                    'flex items-center gap-1.5 px-3 py-2 mb-3 rounded-[12px] text-[11px] font-semibold transition-all duration-150 border border-dashed group/add',
+                    'flex items-center gap-1.5 px-4 py-2 mb-3 rounded-b-[18px] text-[11px] font-semibold transition-all duration-150 border-x border-b border-dashed group/add',
                     isDark
-                        ? 'border-[#272727] text-[#3a3a3a] hover:border-[#3a3a3a] hover:text-[#888] hover:bg-white/[0.025]'
-                        : 'border-[#e6e6e6] text-[#c8c8c8] hover:border-[#c8c8c8] hover:text-[#555] hover:bg-black/[0.015]'
+                        ? 'border-[#272727] text-[#3a3a3a] hover:border-[#3a3a3a] hover:text-[#888] hover:bg-white/[0.02]'
+                        : 'border-[#e6e6e6] text-[#c8c8c8] hover:border-[#c8c8c8] hover:text-[#555] hover:bg-black/[0.01]'
                 )}
             >
                 <Plus size={11} strokeWidth={2.5} className="transition-colors" />
@@ -591,6 +480,8 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                 <AnimatePresence>
                     {adding && (
                         <motion.div
+                            key="add-form"
+                            ref={addFormRef}
                             initial={{ opacity: 0, y: -8, height: 0 }}
                             animate={{ opacity: 1, y: 0, height: 'auto' }}
                             exit={{ opacity: 0, y: -4, height: 0 }}
@@ -640,17 +531,35 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                 </AnimatePresence>
 
                 <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-                    <div className="flex flex-col gap-2">
-                        {tasks.map(t => (
-                            <TaskCard
-                                key={t.id}
-                                task={t}
-                                isDark={isDark}
-                                onCtx={onCtx}
-                                onAction={onAction}
-                            />
-                        ))}
-                    </div>
+                    {tasks.length > 0 && (
+                        <div className={cn(
+                            'rounded-[14px] border overflow-hidden',
+                            isDark
+                                ? 'bg-[#181818] border-[#252525]'
+                                : 'bg-white border-[#e8e8e8] shadow-sm shadow-black/[0.03]'
+                        )}>
+                            {tasks.map((t, i) => (
+                                <React.Fragment key={t.id}>
+                                    <TaskCard
+                                        task={t}
+                                        isDark={isDark}
+                                        onCtx={onCtx}
+                                        onAction={onAction}
+                                        isFirst={i === 0}
+                                        isLast={i === tasks.length - 1}
+                                    />
+                                    {i < tasks.length - 1 && (
+                                        <div
+                                            className={cn(
+                                                'mx-4 h-px',
+                                                isDark ? 'bg-[#222]' : 'bg-[#f0f0f0]'
+                                            )}
+                                        />
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    )}
                 </SortableContext>
             </div>
         </div>
@@ -749,11 +658,16 @@ export default function KanbanBoard({ projectId, isDark, searchQuery, showArchiv
         [groupsByProject, projectId]
     );
 
+    const [localTasks, setLocalTasks] = useState<ProjectTask[]>([]);
     const [activeId,   setActiveId]   = useState<string | null>(null);
     const [activeType, setActiveType] = useState<'task' | 'group' | null>(null);
     const [addingGroup, setAddingGroup] = useState(false);
     const [ctxMenu,    setCtxMenu]    = useState<CtxMenuState>(null);
     const [renamingId, setRenamingId] = useState<string | null>(null);
+
+    useEffect(() => {
+        setLocalTasks(tasksByProject[projectId] || []);
+    }, [tasksByProject, projectId]);
 
     useEffect(() => {
         fetchTasks(projectId);
@@ -770,27 +684,77 @@ export default function KanbanBoard({ projectId, isDark, searchQuery, showArchiv
         setActiveType(e.active.data.current?.type ?? null);
     };
 
+    const handleDragOver = (event: DragOverEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const activeData = active.data.current;
+        const overData = over.data.current;
+
+        if (activeData?.type === 'task') {
+            const activeIdStr = active.id as string;
+            const overIdStr = over.id as string;
+
+            setLocalTasks(prev => {
+                const activeTask = prev.find(t => t.id === activeIdStr);
+                if (!activeTask) return prev;
+
+                // If over a group column
+                if (overData?.type === 'group') {
+                    if (activeTask.task_group_id !== overIdStr) {
+                        return prev.map(t => 
+                            t.id === activeIdStr ? { ...t, task_group_id: overIdStr, position: 0 } : t
+                        );
+                    }
+                } 
+                // If over another task
+                else {
+                    const overTask = prev.find(t => t.id === overIdStr);
+                    if (overTask && activeTask.task_group_id !== overTask.task_group_id) {
+                        return prev.map(t => 
+                            t.id === activeIdStr 
+                                ? { ...t, task_group_id: overTask.task_group_id, position: overTask.position } 
+                                : t
+                        );
+                    }
+                }
+                return prev;
+            });
+        }
+    };
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         setActiveId(null);
         setActiveType(null);
-        if (!over || active.id === over.id) return;
+        if (!over) {
+            setLocalTasks(tasksByProject[projectId] || []);
+            return;
+        }
 
         const type = active.data.current?.type;
 
         if (type === 'group') {
+            const overId = over.id as string;
+            let ni = groups.findIndex(g => g.id === overId);
+            if (ni === -1) {
+                const overTask = localTasks.find(t => t.id === overId);
+                if (overTask) ni = groups.findIndex(g => g.id === overTask.task_group_id);
+            }
             const oi = groups.findIndex(g => g.id === active.id);
-            const ni = groups.findIndex(g => g.id === over.id);
-            if (oi !== -1 && ni !== -1) reorderTaskGroup(active.id as string, projectId, ni);
+            if (oi !== -1 && ni !== -1 && oi !== ni) reorderTaskGroup(active.id as string, projectId, ni);
         } else if (type === 'task') {
-            const from = tasks.find(t => t.id === active.id);
-            const to   = tasks.find(t => t.id === over.id);
-            if (from && to) {
-                if (from.task_group_id !== to.task_group_id || from.position !== to.position) {
-                    reorderTask(from.id, projectId, to.task_group_id ?? null, to.position);
+            const task = localTasks.find(t => t.id === active.id);
+            if (task) {
+                const overId = over.id as string;
+                const overTask = localTasks.find(t => t.id === overId);
+                
+                if (overTask) {
+                    reorderTask(task.id, projectId, overTask.task_group_id ?? null, overTask.position);
+                } else {
+                    // Over a group
+                    reorderTask(task.id, projectId, overId, 0);
                 }
-            } else if (from && !to) {
-                reorderTask(from.id, projectId, over.id as string, 0);
             }
         }
     };
@@ -829,11 +793,12 @@ export default function KanbanBoard({ projectId, isDark, searchQuery, showArchiv
     const activeGroup = activeType === 'group' ? groups.find(g => g.id === activeId)  : null;
 
     return (
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ zoom: 0.9 }}>
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
             >
                 <div
@@ -842,7 +807,7 @@ export default function KanbanBoard({ projectId, isDark, searchQuery, showArchiv
                 >
                     <SortableContext items={groups.map(g => g.id)} strategy={horizontalListSortingStrategy}>
                         {groups.map(g => {
-                            const colTasks = tasks
+                            const colTasks = localTasks
                                 .filter(t =>
                                     t.task_group_id === g.id
                                     && (showArchived ? t.is_archived : !t.is_archived)

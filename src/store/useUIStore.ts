@@ -40,6 +40,8 @@ interface UIState {
     importType: 'Invoice' | 'Proposal' | 'Contact' | 'Company';
     rightPanelWidth: number;
     setRightPanelWidth: (width: number) => void;
+    isRightPanelCollapsed: boolean;
+    toggleRightPanelCollapse: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -93,6 +95,8 @@ export const useUIStore = create<UIState>()(
 
             rightPanelWidth: 320,
             setRightPanelWidth: (width) => set({ rightPanelWidth: width }),
+            isRightPanelCollapsed: false,
+            toggleRightPanelCollapse: () => set((state) => ({ isRightPanelCollapsed: !state.isRightPanelCollapsed })),
         }),
         {
             name: 'ui-storage',
@@ -101,7 +105,8 @@ export const useUIStore = create<UIState>()(
                 theme: state.theme,
                 isLeftMenuExpanded: state.isLeftMenuExpanded,
                 isToolsMenuExpanded: state.isToolsMenuExpanded,
-                rightPanelWidth: state.rightPanelWidth
+                rightPanelWidth: state.rightPanelWidth,
+                isRightPanelCollapsed: state.isRightPanelCollapsed
             }),
         }
     )

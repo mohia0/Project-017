@@ -104,27 +104,28 @@ export const STATUS_COLORS: Record<StatusKey | 'All', StatusColors> = {
  * Helper — get colors for a status key, falling back to Draft.
  * Now supports dynamic custom statuses from workspace settings.
  */
-export function getStatusColors(statusName: string, customStatuses?: any[]): StatusColors {
+export function getStatusColors(statusName: string, customStatuses?: any[]): StatusColors & { dynamic?: { bg: string, text: string, border: string } } {
   // 1. Try to find in custom statuses from store
   const custom = customStatuses?.find(s => s.name === statusName);
   
-  if (custom && custom.color) {
-    const c = custom.color;
-    return {
-      badge:       '', // Not used for custom colors
-      badgeText:   '', // Not used for custom colors
-      badgeBorder: '', // Not used for custom colors
-      bar:         c,
-      label:       custom.name,
-      // Provide object for inline styling
-      dynamic: {
-        bg: `${c}15`,     // 8% opacity
-        text: c,
-        border: `${c}30` // 18% opacity
+  const baseColors = custom && custom.color 
+    ? {
+        badge:       '', 
+        badgeText:   '', 
+        badgeBorder: '', 
+        bar:         custom.color,
+        label:       custom.name,
       }
-    } as any;
-  }
+    : (STATUS_COLORS[statusName as StatusKey] ?? STATUS_COLORS.Draft);
 
-  // 2. Fallback to hardcoded defaults
-  return STATUS_COLORS[statusName as StatusKey] ?? STATUS_COLORS.Draft;
+  const c = baseColors.bar;
+  return {
+    ...baseColors,
+    dynamic: {
+      bg: `${c}15`,     // 8% opacity
+      text: c,
+      border: `${c}30` // 18% opacity
+    }
+  };
 }
+

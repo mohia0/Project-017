@@ -17,7 +17,7 @@ import {
     User, Calendar, DollarSign, Tag, AlignLeft,
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image, SeparatorHorizontal,
-    Settings, ChevronRight, RotateCcw, Monitor, Smartphone, PanelTop,
+    Settings, ChevronRight, ChevronLeft, RotateCcw, Monitor, Smartphone, PanelTop,
     Printer, LayoutTemplate, CreditCard
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -144,6 +144,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [copied, setCopied] = useState(false);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
     const [pendingStatusChange, setPendingStatusChange] = useState<InvoiceMeta['status'] | null>(null);
+    const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
     const statusRef = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
@@ -570,86 +571,59 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden relative">
-                <div 
-                    className="flex-1 overflow-auto relative w-full"
-                    style={{ 
-                        backgroundColor: isMobilePreview 
-                            ? (isDark ? '#080808' : '#f7f7f7') 
-                            : (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                        backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundAttachment: 'fixed',
-                    }}
-                >
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+                {/* ── ACTION BAR (Above both Canvas and Right Panel) ── */}
+                {!isPreview && (
                     <div className={cn(
-                        "flex flex-col items-center min-h-full",
-                        isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
+                        "z-20 border-b flex justify-center",
+                        isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#f0f0f0]"
                     )}>
-                        {isMobilePreview ? (
-                            <div className="flex flex-col items-center">
-                                <div className={cn(
-                                    "relative rounded-[44px] border-[4px] shadow-2xl overflow-hidden shrink-0 w-[390px] h-[844px] transition-all duration-300 bg-black",
-                                    isDark ? "border-[#1a1a1a]" : "border-[#000]"
-                                )}>
-                                    <div className={cn(
-                                        "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10 bg-white/[0.05]"
-                                    )} />
-                                    <div className="absolute inset-x-0 top-[52px] bottom-0 overflow-y-auto scrollbar-none"
-                                         style={{ 
-                                             backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                                             backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
-                                             backgroundSize: 'cover',
-                                             backgroundPosition: 'center',
-                                         }}
-                                    >
-                                        <ClientActionBar
-                                            type="invoice"
-                                            status={meta.status as any}
-                                            amountDue={fmt(totals.total, meta.currency)}
-                                            paidAt="July 4, 2026"
-                                            isMobile={true}
-                                            inline={true}
-                                            design={meta.design}
-                                            onDownloadPDF={() => console.log('Download PDF')}
-                                            onPrint={() => window.print()}
-                                            onPay={() => setIsPayModalOpen(true)}
-                                            className="pt-4"
-                                        />
-                                        <InvoiceDocument
-                                            meta={meta}
-                                            blocks={blocks}
-                                            totals={totals}
-                                            isDark={isDark}
-                                            isPreview={true}
-                                            isMobile={true}
-                                            updateBlock={updateBlock}
-                                            removeBlock={removeBlock}
-                                            addBlock={addBlock}
-                                            openInsertMenu={null}
-                                            setOpenInsertMenu={() => {}}
-                                            updateMeta={updateMeta}
-                                            setBlocks={setBlocks}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <>
-                                {!isMobilePreview && (
-                                    <ClientActionBar
-                                        type="invoice"
-                                        status={meta.status as any}
-                                        amountDue={fmt(totals.total, meta.currency)}
-                                        paidAt="July 4, 2026"
-                                        inline={true}
-                                        design={meta.design}
-                                        onDownloadPDF={() => console.log('Download PDF')}
-                                        onPrint={() => window.print()}
-                                        onPay={() => setIsPayModalOpen(true)}
-                                    />
-                                )}
+                        <ClientActionBar
+                            type="invoice"
+                            status={meta.status as any}
+                            amountDue={fmt(totals.total, meta.currency)}
+                            paidAt="July 4, 2026"
+                            inline={true}
+                            design={meta.design}
+                            onDownloadPDF={() => console.log('Download PDF')}
+                            onPrint={() => window.print()}
+                            onPay={() => setIsPayModalOpen(true)}
+                            className="!my-2"
+                        />
+                    </div>
+                )}
+
+                <div className="flex-1 flex overflow-hidden relative">
+                    <div 
+                        className="flex-1 overflow-auto relative w-full"
+                        style={{ 
+                            backgroundColor: isMobilePreview 
+                                ? (isDark ? '#080808' : '#f7f7f7') 
+                                : (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
+                            backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            backgroundAttachment: 'fixed',
+                        }}
+                    >
+                        <div className={cn(
+                            "flex flex-col items-center min-h-full",
+                            isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
+                        )}>
+                             {/* In mobile preview, keep it inline. In desktop edit mode, it's now above. */}
+                             {isPreview && !isMobilePreview && (
+                                <ClientActionBar
+                                    type="invoice"
+                                    status={meta.status as any}
+                                    amountDue={fmt(totals.total, meta.currency)}
+                                    paidAt="July 4, 2026"
+                                    inline={true}
+                                    design={meta.design}
+                                    onDownloadPDF={() => console.log('Download PDF')}
+                                    onPrint={() => window.print()}
+                                    onPay={() => setIsPayModalOpen(true)}
+                                />
+                            )}
                                 {/* Desktop canvas */}
                                 <div 
                                     className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
@@ -684,8 +658,24 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 </div>
 
                 {!isPreview && (
-                    <div className={cn("w-[240px] shrink-0 flex flex-col overflow-hidden border-l", isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]")}>
-                        <div className="flex items-center p-1.5 gap-1">
+                    <div className={cn(
+                        "hidden md:flex flex-col overflow-hidden border-l transition-all duration-300 relative",
+                        isRightPanelCollapsed ? "w-0 border-l-0" : "w-[240px]",
+                        isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
+                    )}>
+                        {/* Collapse Toggle Button */}
+                        <button
+                            onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
+                            className={cn(
+                                "absolute -left-3 top-1/2 -translate-y-1/2 z-30 w-6 h-6 rounded-full border shadow-md flex items-center justify-center transition-all",
+                                isDark ? "bg-[#1a1a1a] border-[#333] text-white/40 hover:text-white" : "bg-white border-[#e0e0e0] text-[#999] hover:text-[#555]",
+                                isRightPanelCollapsed && "left-auto right-4"
+                            )}
+                        >
+                            {isRightPanelCollapsed ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+                        </button>
+
+                        <div className={cn("flex items-center p-1.5 gap-1", isRightPanelCollapsed && "opacity-0 invisible")}>
                             <button 
                                 onClick={() => setRightTab('details')} 
                                 className={cn(

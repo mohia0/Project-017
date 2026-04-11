@@ -15,6 +15,7 @@ import { useProjectStore, ProjectTask, TaskStatus, TaskPriority } from '@/store/
 import { KANBAN_COLS } from './KanbanBoard';
 import { gooeyToast } from 'goey-toast';
 import { ContentBlock } from '../proposals/blocks/ContentBlock';
+import DatePicker from '../ui/DatePicker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -79,10 +80,18 @@ function InlineSelect<T extends string>({ value, options, onChange, isDark, rend
     renderLabel?: (opt: { value: T; label: string; color?: string; bg?: string }) => React.ReactNode;
 }) {
     const [open, setOpen] = useState(false);
+    const containerRef = React.useRef<HTMLDivElement>(null);
     const cur = options.find(o => o.value === value);
 
+    useEffect(() => {
+        if (!open) return;
+        const h = (e: MouseEvent) => { if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [open]);
+
     return (
-        <div className="relative">
+        <div className="relative" ref={containerRef}>
             <button
                 onClick={() => setOpen(v => !v)}
                 className={cn(
@@ -213,11 +222,11 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     ] as const;
 
     const panelInitial = viewMode === 'center'
-        ? { opacity: 0, scale: 0.97, y: 12 }
+        ? { opacity: 0, scale: 0.96, y: 24 }
         : { opacity: 0, x: '100%' };
 
     const panelExit = viewMode === 'center'
-        ? { opacity: 0, scale: 0.97, y: 12 }
+        ? { opacity: 0, scale: 0.96, y: 24 }
         : { opacity: 0, x: '100%' };
 
     const panelVariants = {
@@ -243,7 +252,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                 animate={viewMode}
                 exit={panelExit}
                 variants={panelVariants}
-                transition={{ type: 'spring', damping: 32, stiffness: 380 }}
+                transition={{ type: 'spring', damping: 30, stiffness: 500 }}
                 className={cn(
                     "flex flex-col relative pointer-events-auto overflow-hidden shadow-2xl",
                     isDark
@@ -273,13 +282,24 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                             save({ status: newStatus });
                         }}
                         className={cn(
-                            "w-[20px] h-[20px] rounded-[5px] border-2 flex items-center justify-center shrink-0 transition-all",
+                            "w-[22px] h-[22px] rounded-[6px] border-2 flex items-center justify-center shrink-0 transition-all duration-200",
                             status === 'done'
-                                ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/30"
-                                : isDark ? "border-[#3a3a3a] hover:border-[#588]" : "border-[#ccc] hover:border-[#999]"
+                                ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/20"
+                                : isDark ? "border-white/10 hover:border-white/30" : "border-black/10 hover:border-black/20"
                         )}
                     >
-                        {status === 'done' && <Check size={11} strokeWidth={3} />}
+                        <AnimatePresence mode="wait">
+                            {status === 'done' && (
+                                <motion.div
+                                    initial={{ scale: 0, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0, opacity: 0 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                >
+                                    <Check size={12} strokeWidth={4} />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </button>
 
                     {/* Title */}
@@ -322,32 +342,38 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                         </button>
 
                         {/* Delete with confirm */}
-                        <AnimatePresence mode="wait">
-                            {showDeleteConfirm ? (
-                                <motion.button
-                                    key="confirm"
-                                    initial={{ opacity: 0, width: 0 }}
-                                    animate={{ opacity: 1, width: 'auto' }}
-                                    exit={{ opacity: 0, width: 0 }}
-                                    onClick={handleDelete}
-                                    disabled={deleting}
-                                    className="overflow-hidden px-3 h-8 flex items-center gap-1.5 rounded-lg bg-red-500 text-white text-[11px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all"
-                                >
-                                    {deleting ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={12} />}
-                                    {deleting ? 'Deleting…' : 'Confirm delete'}
-                                </motion.button>
-                            ) : (
-                                <motion.button
-                                    key="delete"
-                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                    onClick={() => setShowDeleteConfirm(true)}
-                                    className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
-                                        isDark ? "text-red-400/40 hover:text-red-400 hover:bg-red-500/10" : "text-red-300 hover:text-red-500 hover:bg-red-50")}
-                                >
-                                    <Trash2 size={13} />
-                                </motion.button>
-                            )}
-                        </AnimatePresence>
+                        <div className="relative flex items-center justify-center">
+                            <AnimatePresence initial={false}>
+                                {showDeleteConfirm ? (
+                                    <motion.button
+                                        key="confirm"
+                                        initial={{ opacity: 0, scale: 0.8, x: 10 }}
+                                        animate={{ opacity: 1, scale: 1, x: 0 }}
+                                        exit={{ opacity: 0, scale: 0.8, x: 10 }}
+                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                        onClick={handleDelete}
+                                        disabled={deleting}
+                                        className="px-3 h-8 flex items-center gap-1.5 rounded-lg bg-red-500 text-white text-[11px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all whitespace-nowrap"
+                                    >
+                                        {deleting ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={12} />}
+                                        {deleting ? 'Deleting…' : 'Confirm delete'}
+                                    </motion.button>
+                                ) : (
+                                    <motion.button
+                                        key="delete"
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.8 }}
+                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                        onClick={() => setShowDeleteConfirm(true)}
+                                        className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
+                                            isDark ? "text-red-400/40 hover:text-red-400 hover:bg-red-500/10" : "text-red-300 hover:text-red-500 hover:bg-red-50")}
+                                    >
+                                        <Trash2 size={13} />
+                                    </motion.button>
+                                )}
+                            </AnimatePresence>
+                        </div>
 
                         <button onClick={onClose}
                             className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
@@ -369,15 +395,10 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                             {/* Description */}
                             <div>
-                                <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-2", isDark ? "text-[#444]" : "text-[#bbb]")}>
+                                <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-2", isDark ? "text-[#4a4a4a]" : "text-[#888]")}>
                                     Description
                                 </p>
-                                <div className={cn(
-                                    "w-full rounded-xl p-3 outline-none transition-all border",
-                                    isDark
-                                        ? "bg-white/[0.03] border-[#252525] focus-within:border-[#363636] focus-within:bg-white/[0.05]"
-                                        : "bg-[#fafafa] border-[#f0f0f0] focus-within:border-[#ddd] focus-within:bg-white"
-                                )}>
+                                <div className="w-full transition-all">
                                     <ContentBlock 
                                         id={task.id} 
                                         data={blockData} 
@@ -395,7 +416,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                             {/* Properties */}
                             <div>
-                                <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-3", isDark ? "text-[#444]" : "text-[#bbb]")}>
+                                <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-3", isDark ? "text-[#4a4a4a]" : "text-[#888]")}>
                                     Properties
                                 </p>
                                 <div className="space-y-0.5">
@@ -409,7 +430,6 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                             isDark={isDark}
                                             renderLabel={opt => (
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: opt?.color }} />
                                                     <span style={opt?.color ? { color: opt.color } : {}} className="font-semibold text-[11.5px]">{opt?.label}</span>
                                                 </div>
                                             )}
@@ -425,7 +445,6 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                             isDark={isDark}
                                             renderLabel={opt => (
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: opt?.color }} />
                                                     <span style={opt?.color ? { color: opt.color } : {}} className="font-semibold text-[11.5px]">{opt?.label}</span>
                                                 </div>
                                             )}
@@ -445,7 +464,6 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                             isDark={isDark}
                                             renderLabel={opt => (
                                                 <div className="flex items-center gap-1.5 text-[11.5px]">
-                                                    {opt?.color && opt.value !== 'ungrouped' && <div className="w-2 h-2 rounded-[3px] shrink-0" style={{ backgroundColor: opt.color }} />}
                                                     <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#333]")}>{opt?.label}</span>
                                                 </div>
                                             )}
@@ -454,29 +472,23 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                                     {/* Start date */}
                                     <FieldRow label="Start date" icon={<Calendar size={13} />} isDark={isDark}>
-                                        <input
-                                            type="date"
+                                        <DatePicker
                                             value={startDate}
-                                            onChange={e => { setStartDate(e.target.value); save({ start_date: e.target.value || null }); }}
-                                            className={cn(
-                                                "px-2.5 py-1 text-[12px] outline-none cursor-pointer rounded-lg transition-colors font-medium",
-                                                isDark ? "bg-transparent text-[#ccc] hover:bg-white/[0.06]" : "bg-transparent text-[#333] hover:bg-black/[0.04]"
-                                            )}
-                                            style={{ colorScheme: isDark ? 'dark' : 'light' }}
+                                            onChange={val => { setStartDate(val); save({ start_date: val || null }); }}
+                                            isDark={isDark}
+                                            placeholder="Select start date"
+                                            className="px-0.5"
                                         />
                                     </FieldRow>
 
                                     {/* Due date */}
                                     <FieldRow label="Due date" icon={<Calendar size={13} />} isDark={isDark}>
-                                        <input
-                                            type="date"
+                                        <DatePicker
                                             value={dueDate}
-                                            onChange={e => { setDueDate(e.target.value); save({ due_date: e.target.value || null }); }}
-                                            className={cn(
-                                                "px-2.5 py-1 text-[12px] outline-none cursor-pointer rounded-lg transition-colors font-medium",
-                                                isDark ? "bg-transparent text-[#ccc] hover:bg-white/[0.06]" : "bg-transparent text-[#333] hover:bg-black/[0.04]"
-                                            )}
-                                            style={{ colorScheme: isDark ? 'dark' : 'light' }}
+                                            onChange={val => { setDueDate(val); save({ due_date: val || null }); }}
+                                            isDark={isDark}
+                                            placeholder="Select due date"
+                                            className="px-0.5"
                                         />
                                     </FieldRow>
 
@@ -505,7 +517,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                             {/* Followers */}
                             <div>
-                                <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-3", isDark ? "text-[#444]" : "text-[#bbb]")}>
+                                <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-3", isDark ? "text-[#4a4a4a]" : "text-[#888]")}>
                                     People
                                 </p>
                                 <div className="space-y-0.5">
@@ -681,30 +693,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                         </div>
 
-                        {/* Footer: metadata bar */}
-                        <div className={cn(
-                            "px-4 py-2.5 border-t shrink-0 flex items-center gap-3",
-                            isDark ? "border-[#1e1e1e]" : "border-[#eeeeee]"
-                        )}>
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: statMeta.color }} />
-                                <span className="text-[10px] font-semibold" style={{ color: statMeta.color }}>{statMeta.label}</span>
-                            </div>
-                            <div className={cn("h-3 w-px", isDark ? "bg-[#252525]" : "bg-[#e5e5e5]")} />
-                            <div className="flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: priMeta.color }} />
-                                <span className="text-[10px] font-semibold" style={{ color: priMeta.color }}>{priMeta.label}</span>
-                            </div>
-                            {dueDate && (
-                                <>
-                                    <div className={cn("h-3 w-px", isDark ? "bg-[#252525]" : "bg-[#e5e5e5]")} />
-                                    <span className={cn("text-[10px] font-medium flex items-center gap-1", isDark ? "text-[#555]" : "text-[#aaa]")}>
-                                        <Calendar size={9} />
-                                        {new Date(dueDate).toLocaleDateString('en-GB')}
-                                    </span>
-                                </>
-                            )}
-                        </div>
+
                     </div>
                 </div>
             </motion.div>

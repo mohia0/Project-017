@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback } from 'react';
-import { BlockNoteView } from "@blocknote/mantine";
+import { BlockNoteView, lightDefaultTheme, darkDefaultTheme } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import "@blocknote/mantine/style.css";
 import { useUIStore } from '@/store/useUIStore';
@@ -15,13 +15,11 @@ export interface ContentBlockProps {
 
 export function ContentBlock({ id, data, updateData, backgroundColor }: ContentBlockProps) {
     // Determine if the background is dark to switch editor theme (for readable text)
-    // Common dark colors in our palette: #1a1f2e (Slate), #1e1e1e (Charcoal), #111827 (Ink)
-    const isDarkBg = backgroundColor && (
-        backgroundColor === '#1a1f2e' || 
-        backgroundColor === '#1e1e1e' || 
-        backgroundColor === '#111827' ||
-        backgroundColor.startsWith('var') // Document dark themes usually define this
-    );
+    const isDarkBg = backgroundColor ? (
+        backgroundColor.includes('dark') || 
+        ['#1a1f2e', '#1e1e1e', '#111827', '#161616', '#0d0d0d', '#080808'].includes(backgroundColor) ||
+        (backgroundColor.startsWith('#') && parseInt(backgroundColor.replace('#', ''), 16) < 0x888888)
+    ) : false;
 
     // Prefer saved BlockNote blocks; fall back to a blank paragraph if no content at all
     const editor = useCreateBlockNote({
@@ -37,27 +35,35 @@ export function ContentBlock({ id, data, updateData, backgroundColor }: ContentB
         updateData(id, { blocks: editorBlocks, content: html });
     }, [editor, id, updateData]);
 
+    // Define a custom theme to ensure text contrast and transparent background
+    const baseTheme = isDarkBg ? darkDefaultTheme : lightDefaultTheme;
+    const customTheme = {
+        ...baseTheme,
+        colors: {
+            ...baseTheme.colors,
+            editor: {
+                ...baseTheme.colors.editor,
+                text: isDarkBg ? "#ffffff" : "#111111",
+                background: "transparent",
+            },
+        },
+    };
+
     return (
         <div className="w-full max-w-full relative blocknote-editor">
             <BlockNoteView 
                 editor={editor} 
-                theme={isDarkBg ? "dark" : "light"}
+                theme={customTheme}
                 onChange={onChange}
                 className="min-h-[50px]"
             />
-
             <style jsx global>{`
-                .blocknote-editor .bn-container,
-                .blocknote-editor .bn-editor {
+                .bn-container {
                     background: transparent !important;
-                    padding: 0 !important;
                 }
-                .blocknote-editor .bn-editor {
-                    min-height: 50px;
-                }
-                .bn-block-content[data-is-empty-and-focused] .bn-inline-content:before {
-                    color: #ccc;
-                    opacity: 0.5;
+                .bn-editor {
+                    padding-inline: 0 !important;
+                    background: transparent !important;
                 }
             `}</style>
         </div>

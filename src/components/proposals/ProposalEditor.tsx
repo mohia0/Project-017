@@ -17,7 +17,7 @@ import {
     User, Calendar, DollarSign, Tag, AlignLeft,
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image as ImageIcon, SeparatorHorizontal,
-    Settings, ChevronRight, RotateCcw, Monitor, Smartphone, PanelTop,
+    Settings, ChevronRight, ChevronLeft, RotateCcw, Monitor, Smartphone, PanelTop,
     X, Upload, LayoutTemplate
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -150,6 +150,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [isSignModalOpen, setIsSignModalOpen] = useState(false);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
+    const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
     const statusRef = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
@@ -602,36 +603,58 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden relative">
-                {/* ── LEFT: CANVAS ── */}
-                <div 
-                    className="flex-1 overflow-auto relative w-full pb-11 md:pb-0"
-                    style={{ 
-                        backgroundColor: isMobilePreview 
-                            ? (isDark ? '#080808' : '#f7f7f7') 
-                            : (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                        backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundAttachment: 'fixed',
-                    }}
-                >
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+                {/* ── ACTION BAR (Above both Canvas and Right Panel) ── */}
+                {!isPreview && (
                     <div className={cn(
-                        "flex flex-col items-center min-h-full",
-                        isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
+                        "z-20 border-b flex justify-center",
+                        isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#f0f0f0]"
                     )}>
-                        {!isMobilePreview && (
-                            <ClientActionBar
-                                type="proposal"
-                                status={meta.status as any}
-                                inline={true}
-                                design={meta.design}
-                                onAccept={() => setIsSignModalOpen(true)}
-                                onDecline={() => updateMeta({ status: 'Declined' as any })}
-                                onDownloadPDF={() => console.log('Download PDF pressed')}
-                                onPrint={() => window.print()}
-                            />
-                        )}
+                        <ClientActionBar
+                            type="proposal"
+                            status={meta.status as any}
+                            inline={true}
+                            design={meta.design}
+                            onAccept={() => setIsSignModalOpen(true)}
+                            onDecline={() => updateMeta({ status: 'Declined' as any })}
+                            onDownloadPDF={() => console.log('Download PDF pressed')}
+                            onPrint={() => window.print()}
+                            className="!my-2"
+                        />
+                    </div>
+                )}
+
+                <div className="flex-1 flex overflow-hidden relative">
+                    {/* ── LEFT: CANVAS ── */}
+                    <div 
+                        className="flex-1 overflow-auto relative w-full pb-11 md:pb-0"
+                        style={{ 
+                            backgroundColor: isMobilePreview 
+                                ? (isDark ? '#080808' : '#f7f7f7') 
+                                : (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
+                            backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            backgroundAttachment: 'fixed',
+                        }}
+                    >
+                        <div className={cn(
+                            "flex flex-col items-center min-h-full",
+                            isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
+                        )}>
+                            {/* In mobile preview, keep it inline. In desktop edit mode, it's now above. */}
+                            {isPreview && !isMobilePreview && (
+                                <ClientActionBar
+                                    type="proposal"
+                                    status={meta.status as any}
+                                    inline={true}
+                                    design={meta.design}
+                                    onAccept={() => setIsSignModalOpen(true)}
+                                    onDecline={() => updateMeta({ status: 'Declined' as any })}
+                                    onDownloadPDF={() => console.log('Download PDF pressed')}
+                                    onPrint={() => window.print()}
+                                />
+                            )}
                         {/* Mobile phone frame wrapper */}
                         {isMobilePreview ? (
                             <div className="flex flex-col items-center">
@@ -748,10 +771,23 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 {/* ── RIGHT: METADATA PANEL (desktop only) ── */}
                 {!isPreview && (
                     <div className={cn(
-                        "hidden md:flex w-[240px] shrink-0 flex-col overflow-hidden border-l",
+                        "hidden md:flex flex-col overflow-hidden border-l transition-all duration-300 relative",
+                        isRightPanelCollapsed ? "w-0 border-l-0" : "w-[240px]",
                         isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                     )}>
-                        <div className="flex items-center shrink-0 p-1.5 gap-1">
+                        {/* Collapse Toggle Button */}
+                        <button
+                            onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
+                            className={cn(
+                                "absolute -left-3 top-1/2 -translate-y-1/2 z-30 w-6 h-6 rounded-full border shadow-md flex items-center justify-center transition-all",
+                                isDark ? "bg-[#1a1a1a] border-[#333] text-white/40 hover:text-white" : "bg-white border-[#e0e0e0] text-[#999] hover:text-[#555]",
+                                isRightPanelCollapsed && "left-auto right-4"
+                            )}
+                        >
+                            {isRightPanelCollapsed ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
+                        </button>
+
+                        <div className={cn("flex items-center shrink-0 p-1.5 gap-1", isRightPanelCollapsed && "opacity-0 invisible")}>
                             {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => (
                                 <button
                                     key={tab}

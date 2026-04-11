@@ -106,7 +106,7 @@ function StatusBadge({ status, isDark }: { status: ProjectStatus; isDark: boolea
     const cfg = STATUS_CFG[status];
     return (
         <span className={cn(
-            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border shrink-0",
+            "inline-flex items-center gap-1.5 px-1.5 py-[1px] rounded-[4px] text-[9.5px] font-semibold border shrink-0",
             isDark ? "bg-white/[0.04] border-white/5" : cn(cfg.badge, cfg.badgeBorder)
         )} style={isDark ? { color: cfg.color } : {}}>
             <span className={isDark ? '' : cfg.badgeText}>{status}</span>
@@ -122,7 +122,7 @@ function StatusCell({ status, onStatusChange, isDark }: { status: ProjectStatus;
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
                 className={cn(
-                    "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border shrink-0 transition-colors",
+                    "inline-flex items-center gap-1.5 px-1.5 py-[1px] rounded-[4px] text-[9.5px] font-semibold border shrink-0 transition-colors",
                     isDark ? "bg-white/[0.04] border-white/5 hover:bg-white/[0.08]" : cn(cfg.badge, cfg.badgeBorder, "hover:brightness-95")
                 )}
                 style={isDark ? { color: cfg.color } : {}}
@@ -677,7 +677,7 @@ export default function ProjectsPage() {
                                 key={s}
                                 onClick={() => setStatusFilter(s)}
                                 className={cn(
-                                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition-all shrink-0",
+                                    "flex items-center gap-1.5 px-2.5 py-0.5 rounded-[6px] text-[10px] font-medium border transition-all shrink-0",
                                     isActive
                                         ? isDark ? "bg-white/10 border-white/15 text-white" : "bg-[#ebebf5] border-[#d8d8f0] text-[#111]"
                                         : isDark ? "border-transparent text-[#555] hover:text-[#aaa]" : "border-transparent text-[#aaa] hover:text-[#555]"

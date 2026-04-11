@@ -79,7 +79,7 @@ function TbBtn({ label, icon, active, hasArrow, onClick, isDark, danger }: {
 }) {
     return (
         <button onClick={onClick} className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all shrink-0",
+            "flex items-center gap-1.5 px-1.5 py-0 text-[9px] font-medium rounded-md transition-all shrink-0",
             danger
                 ? "text-red-400 hover:bg-red-500/10"
                 : active
@@ -451,25 +451,6 @@ export default function ProjectDetailPage() {
                 "flex items-center gap-2 px-5 border-b shrink-0 h-[44px]",
                 isDark ? "bg-[#141414] border-[#1e1e1e]" : "bg-white border-[#eaeaea]"
             )}>
-                {/* Back */}
-                <button
-                    onClick={() => router.push('/projects')}
-                    className={cn(
-                        "w-6 h-6 rounded-md flex items-center justify-center transition-colors shrink-0",
-                        isDark ? "text-[#444] hover:text-[#ccc] hover:bg-white/5" : "text-[#ccc] hover:text-[#444] hover:bg-[#f5f5f5]"
-                    )}
-                >
-                    <ChevronLeft size={13} />
-                </button>
-
-                {/* Breadcrumb */}
-                <div className={cn("flex items-center gap-1 text-[11px] shrink-0", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>
-                    <button onClick={() => router.push('/projects')} className={cn("transition-colors", isDark ? "hover:text-[#666]" : "hover:text-[#888]")}>
-                        Projects
-                    </button>
-                    <ChevronRight size={10} className="opacity-40" />
-                </div>
-
                 {/* Project identity */}
                 <div className="flex items-center gap-2 min-w-0 flex-1 group/name">
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ background: project.color }} />
@@ -543,7 +524,7 @@ export default function ProjectDetailPage() {
                         <button
                             onClick={() => setStatusOpen(v => !v)}
                             className={cn(
-                                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all",
+                                "flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] text-[10px] font-semibold border transition-all",
                                 isDark ? "bg-white/[0.04] border-white/5 hover:bg-white/[0.08]" : cn(STATUS_CFG[project.status]?.badge, STATUS_CFG[project.status]?.badgeBorder, STATUS_CFG[project.status]?.badgeText, "hover:brightness-95")
                             )}
                             style={isDark ? { color: statusColor } : {}}
@@ -641,17 +622,16 @@ export default function ProjectDetailPage() {
             {/* ── TASKS TOOLBAR ── */}
             {activeTab === 'tasks' && (
                 <div className={cn(
-                    "flex items-center gap-1 px-4 py-1.5 border-b shrink-0",
+                    "flex items-center gap-1 px-4 py-1 border-b shrink-0",
                     isDark ? "bg-[#141414] border-[#1e1e1e]" : "bg-white border-[#eaeaea]"
                 )}>
-                    <TbBtn label="Kanban"   icon={<LayoutGrid size={10} />} isDark={isDark} active />
-                    <TbBtn label="Filter"   icon={<Filter size={10} />}     isDark={isDark} onClick={() => gooeyToast('Filter settings coming soon')} />
-                    <TbBtn label="Group"    icon={<Layers size={10} />}     isDark={isDark} onClick={() => gooeyToast('Group settings coming soon')} />
-                    <TbBtn label="Order"    icon={<ArrowUpDown size={10} />} hasArrow isDark={isDark} onClick={() => gooeyToast('Sorting options coming soon')} />
-                    <TbBtn label="Archived" active={showArchived} icon={showArchived ? <ArchiveRestore size={10} /> : <Archive size={10} />} isDark={isDark} onClick={() => setShowArchived(v => !v)} />
+                    <TbBtn label="Filter"   icon={<Filter size={9} />}     isDark={isDark} onClick={() => gooeyToast('Filter settings coming soon')} />
+                    <TbBtn label="Group"    icon={<Layers size={9} />}     isDark={isDark} onClick={() => gooeyToast('Group settings coming soon')} />
+                    <TbBtn label="Order"    icon={<ArrowUpDown size={9} />} hasArrow isDark={isDark} onClick={() => gooeyToast('Sorting options coming soon')} />
+                    <TbBtn label="Archived" active={showArchived} icon={showArchived ? <ArchiveRestore size={9} /> : <Archive size={9} />} isDark={isDark} onClick={() => setShowArchived(v => !v)} />
 
                     <div className={cn("h-3 w-px mx-1", isDark ? "bg-[#252525]" : "bg-[#e5e5e5]")} />
-                    <TbBtn label="Import / Export" icon={<Upload size={10} />} isDark={isDark} onClick={() => gooeyToast('Import / Export coming soon')} />
+                    <TbBtn label="Import / Export" icon={<Upload size={9} />} isDark={isDark} onClick={() => gooeyToast('Import / Export coming soon')} />
 
                     <div className="flex-1" />
 

@@ -6,13 +6,14 @@ import {
     Users, Mail, Phone, MapPin, Building2,
     Globe, Briefcase, Trash2, Archive, ArchiveRestore,
     Copy, Check, CheckSquare, X, MoreHorizontal,
-    FileSpreadsheet, Upload, Download, ChevronRight
+    FileSpreadsheet, Upload, Download, ChevronRight, ArrowUpDown
 } from 'lucide-react';
 import { gooeyToast } from 'goey-toast';
 import { useClientStore } from '@/store/useClientStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { useUIStore } from '@/store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMemo } from 'react';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { CreateCompanyModal } from '@/components/modals/CreateCompanyModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -120,6 +121,9 @@ export default function ClientsPage() {
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const [orderBy, setOrderBy] = useState<'name' | 'name-desc' | 'recent' | 'oldest'>('recent');
+    const [orderOpen, setOrderOpen] = useState(false);
 
     useEffect(() => { fetchClients(); fetchCompanies(); }, [fetchClients, fetchCompanies]);
 
@@ -231,17 +235,47 @@ export default function ClientsPage() {
         }
     };
 
-    const filteredPeople = clients.filter(c =>
-        c.company_name?.toLowerCase().includes(search.toLowerCase()) ||
-        c.contact_person?.toLowerCase().includes(search.toLowerCase()) ||
-        c.email?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredPeople = useMemo(() => {
+        let items = clients.filter(c =>
+            c.company_name?.toLowerCase().includes(search.toLowerCase()) ||
+            c.contact_person?.toLowerCase().includes(search.toLowerCase()) ||
+            c.email?.toLowerCase().includes(search.toLowerCase())
+        );
 
-    const filteredCompanies = companies.filter(c =>
-        c.name?.toLowerCase().includes(search.toLowerCase()) ||
-        c.industry?.toLowerCase().includes(search.toLowerCase()) ||
-        c.email?.toLowerCase().includes(search.toLowerCase())
-    );
+        if (orderBy === 'name') {
+            items = [...items].sort((a, b) => (a.contact_person || '').localeCompare(b.contact_person || ''));
+        } else if (orderBy === 'name-desc') {
+            items = [...items].sort((a, b) => (b.contact_person || '').localeCompare(a.contact_person || ''));
+        } else if (orderBy === 'oldest') {
+            items = [...items].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        } else {
+            // Default to newest first
+            items = [...items].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        }
+
+        return items;
+    }, [clients, search, orderBy]);
+
+    const filteredCompanies = useMemo(() => {
+        let items = companies.filter(c =>
+            c.name?.toLowerCase().includes(search.toLowerCase()) ||
+            c.industry?.toLowerCase().includes(search.toLowerCase()) ||
+            c.email?.toLowerCase().includes(search.toLowerCase())
+        );
+
+        if (orderBy === 'name') {
+            items = [...items].sort((a, b) => a.name.localeCompare(b.name));
+        } else if (orderBy === 'name-desc') {
+            items = [...items].sort((a, b) => b.name.localeCompare(a.name));
+        } else if (orderBy === 'oldest') {
+            items = [...items].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        } else {
+            // Default to newest first
+            items = [...items].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        }
+
+        return items;
+    }, [companies, search, orderBy]);
 
     /* ── Theme tokens ── */
     const pageBg     = isDark ? 'bg-[#141414]' : 'bg-white';
@@ -309,12 +343,24 @@ export default function ClientsPage() {
                     />
                 </div>
 
-                <button className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded transition-colors shrink-0",
-                    isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]"
-                )}>
-                    <Filter size={11} /> Filter
-                </button>
+                <div className="relative">
+                    <button 
+                        onClick={() => setOrderOpen(!orderOpen)}
+                        className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded transition-colors shrink-0",
+                        orderOpen ? (isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#111]") : (isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]")
+                    )}>
+                        <ArrowUpDown size={11} /> Order by
+                    </button>
+                    <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
+                        <div className="py-1">
+                            <DItem label="Alphabetical (A-Z)" active={orderBy === 'name'} onClick={() => { setOrderBy('name'); setOrderOpen(false); }} isDark={isDark} />
+                            <DItem label="Alphabetical (Z-A)" active={orderBy === 'name-desc'} onClick={() => { setOrderBy('name-desc'); setOrderOpen(false); }} isDark={isDark} />
+                            <DItem label="Recently Added" active={orderBy === 'recent'} onClick={() => { setOrderBy('recent'); setOrderOpen(false); }} isDark={isDark} />
+                            <DItem label="Oldest Added" active={orderBy === 'oldest'} onClick={() => { setOrderBy('oldest'); setOrderOpen(false); }} isDark={isDark} />
+                        </div>
+                    </Dropdown>
+                </div>
 
                 <div className="flex-1" />
 

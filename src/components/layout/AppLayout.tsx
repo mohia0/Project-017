@@ -84,7 +84,7 @@ function WorkspaceDataSync() {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-    const { theme } = useUIStore();
+    const { theme, isRightPanelCollapsed, rightPanel } = useUIStore();
     const { user, isLoading } = useAuthStore();
     const { fetchMenu } = useMenuStore();
     const { fetchWorkspaces, workspaces, isLoading: wsLoading, hasFetched: wsFetched } = useWorkspaceStore();
@@ -194,9 +194,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* RIGHT SIDEBAR UNIT — A unified rounded container */}
             <div className={cn(
                 "flex shrink-0 transition-all duration-300 rounded-2xl overflow-hidden border",
-                isDark ? "bg-[#0d0d0d] border-[#222]" : "bg-[#f5f5f5] border-[#e4e4e4]"
+                isDark ? "bg-[#0d0d0d] border-[#222]" : "bg-[#f5f5f5] border-[#e4e4e4]",
+                (isRightPanelCollapsed || !rightPanel) && "w-auto"
             )}>
-                <RightPanel />
+                {!isRightPanelCollapsed && <RightPanel />}
                 <RightToolsMenu />
             </div>
 

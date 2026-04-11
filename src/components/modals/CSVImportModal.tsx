@@ -24,10 +24,10 @@ interface Mapping {
 
 const SYSTEM_FIELDS: { id: string; label: string; icon: React.ReactNode; required?: boolean; aliases?: string[] }[] = [
     { id: 'title',       label: 'Title / Reference', icon: <Tag size={12} />, required: true, aliases: ['name', 'reference', 'ref', 'invoice no', 'proposal no'] },
-    { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name'] },
+    { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name', 'for'] },
     { id: 'amount',      label: 'Amount',            icon: <DollarSign size={12} />, aliases: ['total', 'price', 'cost', 'sum'] },
     { id: 'issue_date',  label: 'Issue Date',        icon: <Calendar size={12} />, aliases: ['date', 'created', 'issued'] },
-    { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline'] },
+    { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline', 'expiry date'] },
     { id: 'paid_at',     label: 'Paid Date',         icon: <CheckCircle2 size={12} />, aliases: ['paid', 'payment date', 'settled'] },
     { id: 'status',      label: 'Status',            icon: <AlertCircle size={12} />, aliases: ['state'] },
     { id: 'notes',       label: 'Notes',             icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] },
@@ -78,10 +78,10 @@ export default function CSVImportModal() {
         if (type === 'Invoice') {
             return [
                 { id: 'title',       label: 'Title / Reference', icon: <Tag size={12} />, required: true, aliases: ['name', 'reference', 'ref', 'invoice no'] },
-                { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name'] },
+                { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name', 'for'] },
                 { id: 'amount',      label: 'Amount',            icon: <DollarSign size={12} />, aliases: ['total', 'price', 'cost', 'sum'] },
                 { id: 'issue_date',  label: 'Issue Date',        icon: <Calendar size={12} />, aliases: ['date', 'created', 'issued'] },
-                { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline'] },
+                { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline', 'expiry date'] },
                 { id: 'paid_at',     label: 'Paid Date',         icon: <CheckCircle2 size={12} />, aliases: ['paid', 'payment date', 'settled'] },
                 { id: 'status',      label: 'Status',            icon: <AlertCircle size={12} />, aliases: ['state'] },
                 { id: 'notes',       label: 'Notes',             icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] }
@@ -90,11 +90,11 @@ export default function CSVImportModal() {
         if (type === 'Proposal') {
             return [
                 { id: 'title',       label: 'Title / Reference', icon: <Tag size={12} />, required: true, aliases: ['name', 'reference', 'ref', 'proposal no'] },
-                { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name'] },
+                { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name', 'for'] },
                 { id: 'amount',      label: 'Amount',            icon: <DollarSign size={12} />, aliases: ['total', 'price', 'cost', 'sum'] },
                 { id: 'issue_date',  label: 'Issue Date',        icon: <Calendar size={12} />, aliases: ['date', 'created', 'issued'] },
-                { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline'] },
-                { id: 'accepted_at', label: 'Accepted Date',     icon: <CheckCircle2 size={12} />, aliases: ['accepted', 'approval date', 'signed date'] },
+                { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline', 'expiry date'] },
+                { id: 'accepted_at', label: 'Accepted Date',     icon: <CheckCircle2 size={12} />, aliases: ['accepted', 'approval date', 'signed date', 'approved date'] },
                 { id: 'status',      label: 'Status',            icon: <AlertCircle size={12} />, aliases: ['state'] },
                 { id: 'notes',       label: 'Notes',             icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] }
             ];
