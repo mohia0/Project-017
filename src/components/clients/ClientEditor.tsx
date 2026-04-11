@@ -12,6 +12,7 @@ import { CompanyPicker } from '@/components/companies/CompanyPicker';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { Image as ImageIcon } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
+import { CountryPicker } from '@/components/ui/CountryPicker';
 
 interface ClientFormData {
     company_name: string;
@@ -19,6 +20,7 @@ interface ClientFormData {
     email: string;
     phone?: string;
     address?: string;
+    country?: string;
     tax_number?: string;
     notes?: string;
     avatar_url?: string;
@@ -86,6 +88,7 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
         email:          initialData?.email          || '',
         phone:          initialData?.phone          || '',
         address:        initialData?.address        || '',
+        country:        initialData?.country        || '',
         tax_number:     initialData?.tax_number     || '',
         notes:          initialData?.notes          || '',
         avatar_url:     initialData?.avatar_url || '',
@@ -223,14 +226,21 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
                         />
                     </div>
 
-                    <FormField
-                        isDark={isDark}
-                        label="Address"
-                        icon={<MapPin size={11} />}
-                        value={form.address || ''}
-                        onChange={update('address')}
-                        placeholder="Street, city, country"
-                    />
+                    <div className="grid grid-cols-2 gap-2.5">
+                        <FormField
+                            isDark={isDark}
+                            label="Address"
+                            icon={<MapPin size={11} />}
+                            value={form.address || ''}
+                            onChange={update('address')}
+                            placeholder="Street, city"
+                        />
+                        <CountryPicker
+                            isDark={isDark}
+                            value={form.country || ''}
+                            onChange={update('country')}
+                        />
+                    </div>
 
                     {/* Notes — inlined textarea */}
                     <div className={cn(

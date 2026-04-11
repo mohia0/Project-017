@@ -17,6 +17,7 @@ export interface Proposal {
     notes: string;
     blocks: any[]; 
     meta?: any; 
+    accepted_at?: string | null;
     created_at: string;
 }
 

@@ -78,7 +78,7 @@ function Dropdown({ open, onClose, isDark, children }: {
     if (!open) return null;
     return (
         <div ref={ref} className={cn(
-            "absolute top-full left-0 mt-1 z-50 min-w-[170px] rounded-xl border shadow-xl overflow-hidden",
+            "absolute top-full right-0 mt-1 z-50 min-w-[170px] rounded-xl border shadow-xl overflow-hidden",
             isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
         )}>
             {children}

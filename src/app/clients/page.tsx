@@ -426,16 +426,17 @@ export default function ClientsPage() {
                                 </div>
                             ) : (
                                 <div className={cn("rounded-xl border overflow-hidden", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
-                                    <div className={cn("grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider", isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]")} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}>
-                                        <div /><div /><div>Name</div><div>Email</div><div>Phone</div><div>Company</div>
+                                    <div className={cn("grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider", isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]")} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
+                                        <div /><div /><div>Name</div><div>Email</div><div>Phone</div><div>Country</div><div>Company</div>
                                     </div>
                                     {Array.from({ length: 25 }).map((_, i) => (
-                                        <div key={i} className={cn("grid px-4 py-2.5 items-center pointer-events-none", i !== 0 && `border-t ${isDark ? "border-[#1f1f1f]" : "border-[#f5f5f5]"}`)} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}>
+                                        <div key={i} className={cn("grid px-4 py-2.5 items-center pointer-events-none", i !== 0 && `border-t ${isDark ? "border-[#1f1f1f]" : "border-[#f5f5f5]"}`)} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
                                             <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
                                             <div className={cn("w-7 h-7 rounded-lg animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
                                             <div className="px-2"><div className={cn("h-3 w-28 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
                                             <div className="px-2"><div className={cn("h-3 w-36 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
                                             <div className="px-2"><div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                            <div className="px-2"><div className={cn("h-3 w-16 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
                                             <div className="px-2"><div className={cn("h-3 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
                                         </div>
                                     ))}
@@ -507,6 +508,7 @@ export default function ClientsPage() {
                                             {client.company_name && <CardRow label="Company" value={client.company_name} isDark={isDark} />}
                                             {client.email        && <CardRow label="Email"   value={client.email}        isDark={isDark} isLink />}
                                             {client.phone        && <CardRow label="Phone"   value={client.phone}        isDark={isDark} />}
+                                            {client.country      && <CardRow label="Country" value={client.country}      isDark={isDark} />}
                                             {client.address      && <CardRow label="Address" value={client.address}      isDark={isDark} />}
                                             {!client.company_name && !client.email && !client.phone && !client.address && (
                                                 <div className={cn("border-t px-4 py-2 text-[11px]",
@@ -524,7 +526,7 @@ export default function ClientsPage() {
                                 <div className={cn(
                                     "grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider",
                                     isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]"
-                                )} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}>
+                                )} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
                                     <div className="flex items-center justify-center cursor-pointer" onClick={() => toggleAll(filteredPeople)}>
                                         <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
                                             selectedIds.size === filteredPeople.length && filteredPeople.length > 0 ? "bg-primary border-primary" : isDark ? "border-white/10" : "border-[#ccc]")}>
@@ -532,7 +534,7 @@ export default function ClientsPage() {
                                             {selectedIds.size > 0 && selectedIds.size < filteredPeople.length && <div className="w-2 h-0.5 bg-black rounded" />}
                                         </div>
                                     </div>
-                                    <div /><div>Name</div><div>Email</div><div>Phone</div><div>Company</div>
+                                    <div /><div>Name</div><div>Email</div><div>Phone</div><div>Country</div><div>Company</div>
                                 </div>
                                 {filteredPeople.map((client, i) => {
                                     const isActive = activeContactId === client.id;
@@ -547,7 +549,7 @@ export default function ClientsPage() {
                                                     : isDark ? "hover:bg-white/[0.025]" : "hover:bg-[#fafafa]",
                                                 i !== 0 && `border-t ${isDark ? "border-[#1f1f1f]" : "border-[#f5f5f5]"}`
                                             )}
-                                            style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 140px' }}
+                                            style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}
                                         >
                                             <div className="flex items-center justify-center" onClick={e => { e.stopPropagation(); toggleRow(client.id); }}>
                                                 <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
@@ -566,6 +568,7 @@ export default function ClientsPage() {
                                             </div>
                                             <div className="flex items-center truncate text-[#3b82f6]">{client.email || <span className={textSecondary}>—</span>}</div>
                                             <div className={cn("flex items-center truncate", textSecondary)}>{client.phone || '—'}</div>
+                                            <div className={cn("flex items-center truncate", textSecondary)}>{client.country || '—'}</div>
                                             <div className={cn("flex items-center truncate relative", muted)}>
                                                 {client.company_name || '—'}
                                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all bg-inherit">

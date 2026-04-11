@@ -11,6 +11,7 @@ export interface Client {
     email: string;
     phone: string;
     address: string;
+    country?: string;
     tax_number: string;
     notes: string;
     avatar_url?: string;

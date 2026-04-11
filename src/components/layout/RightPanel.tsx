@@ -16,6 +16,7 @@ import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { CompanyPicker } from '@/components/companies/CompanyPicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '@/components/ui/Avatar';
+import { CountryPicker } from '@/components/ui/CountryPicker';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useHookStore, Hook } from '@/store/useHookStore';
 import { formatDistanceToNow } from 'date-fns';
@@ -315,13 +316,13 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
     const [showDelete, setShowDelete] = useState(false);
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details');
-    const [form, setForm] = useState({ contact_person: '', company_name: '', email: '', phone: '', address: '', tax_number: '', notes: '', avatar_url: '' });
+    const [form, setForm] = useState({ contact_person: '', company_name: '', email: '', phone: '', address: '', country: '', tax_number: '', notes: '', avatar_url: '' });
 
     const { proposals } = useProposalStore();
     const { invoices } = useInvoiceStore();
 
     useEffect(() => {
-        if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', tax_number: client.tax_number || '', notes: client.notes || '', avatar_url: client.avatar_url || '' });
+        if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', country: client.country || '', tax_number: client.tax_number || '', notes: client.notes || '', avatar_url: client.avatar_url || '' });
     }, [client]);
 
     const u = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -470,6 +471,14 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             />
                         </Field>
                         <Field label="Address" icon={<MapPin size={11} />}   value={form.address}    editing={editing} onChange={u('address')}    placeholder="Street, city"   isDark={isDark} />
+                        <Field label="Country" icon={<Globe size={11} />}    value={form.country}    editing={editing} onChange={u('country')}    placeholder="Country"        isDark={isDark}>
+                            <CountryPicker 
+                                minimal
+                                isDark={isDark}
+                                value={form.country}
+                                onChange={u('country')}
+                            />
+                        </Field>
                         <Field label="Tax/VAT" icon={<Hash size={11} />}     value={form.tax_number} editing={editing} onChange={u('tax_number')} placeholder="VAT123"         isDark={isDark} />
                         <Field label="Notes"   icon={<FileText size={11} />} value={form.notes}      editing={editing} onChange={u('notes')}      placeholder="Notes…"         isDark={isDark} textarea />
                     </>
@@ -542,7 +551,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             <Trash2 size={13} />
                         </button>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => { setEditing(false); if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', tax_number: client.tax_number || '', notes: client.notes || '', avatar_url: client.avatar_url || '' }); }}
+                            <button onClick={() => { setEditing(false); if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', country: client.country || '', tax_number: client.tax_number || '', notes: client.notes || '', avatar_url: client.avatar_url || '' }); }}
                                 className={cn("text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors",
                                     isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>
                                 Cancel
@@ -597,7 +606,7 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
     const [showDelete, setShowDelete] = useState(false);
     const [showIndustry, setShowIndustry] = useState(false);
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-    const [form, setForm] = useState({ name: '', industry: '', website: '', email: '', phone: '', address: '', tax_number: '', notes: '', avatar_url: '' });
+    const [form, setForm] = useState({ name: '', industry: '', website: '', email: '', phone: '', address: '', country: '', tax_number: '', notes: '', avatar_url: '' });
 
     useEffect(() => {
         if (company) setForm({ 
@@ -607,6 +616,7 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
             email: company.email || '', 
             phone: company.phone || '', 
             address: company.address || '', 
+            country: company.country || '',
             tax_number: company.tax_number || '', 
             notes: company.notes || '',
             avatar_url: company.avatar_url || ''
@@ -727,6 +737,14 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
                 <Field label="Phone"   icon={<Phone size={11} />}   value={form.phone}    editing={editing} onChange={u('phone')}    placeholder="+1 234 567 890" isDark={isDark} />
                 <Field label="Website" icon={<Globe size={11} />}   value={form.website}  editing={editing} onChange={u('website')}  placeholder="https://company.com" isDark={isDark} isLink />
                 <Field label="Address" icon={<MapPin size={11} />}  value={form.address}  editing={editing} onChange={u('address')}  placeholder="Street, city"   isDark={isDark} />
+                <Field label="Country" icon={<Globe size={11} />}   value={form.country}  editing={editing} onChange={u('country')}  placeholder="Country"        isDark={isDark}>
+                    <CountryPicker 
+                        minimal
+                        isDark={isDark}
+                        value={form.country}
+                        onChange={u('country')}
+                    />
+                </Field>
                 <Field label="Tax/VAT" icon={<Hash size={11} />}    value={form.tax_number} editing={editing} onChange={u('tax_number')} placeholder="VAT123"     isDark={isDark} />
                 <Field label="Notes"   icon={<FileText size={11} />} value={form.notes}   editing={editing} onChange={u('notes')}    placeholder="Notes…"         isDark={isDark} textarea />
 
@@ -763,7 +781,7 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             <Trash2 size={13} />
                         </button>
                         <div className="flex items-center gap-2">
-                            <button onClick={() => { setEditing(false); if (company) setForm({ name: company.name || '', industry: company.industry || '', website: company.website || '', email: company.email || '', phone: company.phone || '', address: company.address || '', tax_number: company.tax_number || '', notes: company.notes || '', avatar_url: company.avatar_url || '' }); }}
+                            <button onClick={() => { setEditing(false); if (company) setForm({ name: company.name || '', industry: company.industry || '', website: company.website || '', email: company.email || '', phone: company.phone || '', address: company.address || '', country: company.country || '', tax_number: company.tax_number || '', notes: company.notes || '', avatar_url: company.avatar_url || '' }); }}
                                 className={cn("text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors",
                                     isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>
                                 Cancel

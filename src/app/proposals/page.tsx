@@ -294,8 +294,8 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
                     </div>
                 </CardRow>
 
-                <CardRow label="Signed" isDark={isDark} noBorder>
-                    {/* Placeholder */}
+                <CardRow label="Accepted" isDark={isDark} noBorder>
+                    {p.accepted_at ? <span>{fmtDate(p.accepted_at)} <span className="opacity-60 font-normal">({timeAgo(p.accepted_at)})</span></span> : '—'}
                 </CardRow>
             </div>
 
@@ -604,7 +604,8 @@ export default function ProposalsPage() {
             issue: 180,
             due: 180,
             client: 180,
-            amount: 220
+            amount: 220,
+            accepted: 160
         };
     });
     const [columnOrder, setColumnOrder] = useState<string[]>(() => {
@@ -612,7 +613,7 @@ export default function ProposalsPage() {
             const saved = localStorage.getItem('proposal_col_order');
             if (saved) return JSON.parse(saved);
         }
-        return ['name', 'client', 'status', 'issue', 'due'];
+        return ['name', 'client', 'status', 'issue', 'due', 'accepted'];
     });
 
     useEffect(() => {
@@ -1129,6 +1130,7 @@ export default function ProposalsPage() {
                                     if (colId === 'status') label = 'Status';
                                     if (colId === 'issue') label = 'Issue date';
                                     if (colId === 'due') label = 'Expiration date';
+                                    if (colId === 'accepted') label = 'Accepted date';
 
                                     return (
                                         <SortableHeader 
@@ -1218,6 +1220,16 @@ export default function ProposalsPage() {
                                             if (colId === 'due') return (
                                                 <div key={colId} className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
                                                     {p.due_date ? <span>{fmtDate(p.due_date)} <span className="text-[10px] opacity-50">({timeAgo(p.due_date)})</span></span> : '—'}
+                                                </div>
+                                            );
+                                            if (colId === 'accepted') return (
+                                                <div key={colId} className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                    {p.accepted_at ? (
+                                                        <>
+                                                            <span>{fmtDate(p.accepted_at)}</span>
+                                                            <span className="text-[10px] opacity-50">({timeAgo(p.accepted_at)})</span>
+                                                        </>
+                                                    ) : '—'}
                                                 </div>
                                             );
                                             return null;

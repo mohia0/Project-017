@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { gooeyToast } from 'goey-toast';
 import Papa from 'papaparse';
 import { useCompanyStore } from '@/store/useCompanyStore';
+import { parse, isValid, format } from 'date-fns';
 
 type Step = 'upload' | 'mapping' | 'preview';
 
@@ -59,6 +60,7 @@ export default function CSVImportModal() {
                 { id: 'phone', label: 'Phone', icon: <Phone size={12} />, aliases: ['phone number', 'mobile'] },
                 { id: 'address', label: 'Address', icon: <MapPin size={12} />, aliases: ['location'] },
                 { id: 'tax_number', label: 'Tax Number', icon: <FileSpreadsheet size={12} />, aliases: ['vat', 'tax/vat'] },
+                { id: 'country', label: 'Country', icon: <Globe size={12} />, aliases: ['nation', 'state', 'location'] },
                 { id: 'notes', label: 'Notes', icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] },
             ];
         }
@@ -70,18 +72,34 @@ export default function CSVImportModal() {
                 { id: 'phone', label: 'Phone', icon: <Phone size={12} />, aliases: ['phone number'] },
                 { id: 'website', label: 'Website', icon: <Globe size={12} />, aliases: ['url', 'site'] },
                 { id: 'address', label: 'Address', icon: <MapPin size={12} />, aliases: ['location'] },
+                { id: 'country', label: 'Country', icon: <Globe size={12} />, aliases: ['nation', 'state', 'location'] },
             ];
         }
-        return [
-            { id: 'title',       label: 'Title / Reference', icon: <Tag size={12} />, required: true, aliases: ['name', 'reference', 'ref', 'invoice no', 'proposal no'] },
-            { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name'] },
-            { id: 'amount',      label: 'Amount',            icon: <DollarSign size={12} />, aliases: ['total', 'price', 'cost', 'sum'] },
-            { id: 'issue_date',  label: 'Issue Date',        icon: <Calendar size={12} />, aliases: ['date', 'created', 'issued'] },
-            { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline'] },
-            { id: 'paid_at',     label: 'Paid Date',         icon: <CheckCircle2 size={12} />, aliases: ['paid', 'payment date', 'settled'] },
-            { id: 'status',      label: 'Status',            icon: <AlertCircle size={12} />, aliases: ['state'] },
-            { id: 'notes',       label: 'Notes',             icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] }
-        ];
+        if (type === 'Invoice') {
+            return [
+                { id: 'title',       label: 'Title / Reference', icon: <Tag size={12} />, required: true, aliases: ['name', 'reference', 'ref', 'invoice no'] },
+                { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name'] },
+                { id: 'amount',      label: 'Amount',            icon: <DollarSign size={12} />, aliases: ['total', 'price', 'cost', 'sum'] },
+                { id: 'issue_date',  label: 'Issue Date',        icon: <Calendar size={12} />, aliases: ['date', 'created', 'issued'] },
+                { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline'] },
+                { id: 'paid_at',     label: 'Paid Date',         icon: <CheckCircle2 size={12} />, aliases: ['paid', 'payment date', 'settled'] },
+                { id: 'status',      label: 'Status',            icon: <AlertCircle size={12} />, aliases: ['state'] },
+                { id: 'notes',       label: 'Notes',             icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] }
+            ];
+        }
+        if (type === 'Proposal') {
+            return [
+                { id: 'title',       label: 'Title / Reference', icon: <Tag size={12} />, required: true, aliases: ['name', 'reference', 'ref', 'proposal no'] },
+                { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name'] },
+                { id: 'amount',      label: 'Amount',            icon: <DollarSign size={12} />, aliases: ['total', 'price', 'cost', 'sum'] },
+                { id: 'issue_date',  label: 'Issue Date',        icon: <Calendar size={12} />, aliases: ['date', 'created', 'issued'] },
+                { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline'] },
+                { id: 'accepted_at', label: 'Accepted Date',     icon: <CheckCircle2 size={12} />, aliases: ['accepted', 'approval date', 'signed date'] },
+                { id: 'status',      label: 'Status',            icon: <AlertCircle size={12} />, aliases: ['state'] },
+                { id: 'notes',       label: 'Notes',             icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] }
+            ];
+        }
+        return [];
     };
 
     const currentSystemFields = getSystemFields(importType);
@@ -162,10 +180,43 @@ export default function CSVImportModal() {
     };
 
     const normalizeDate = (dateStr: string) => {
-        if (!dateStr) return null;
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return null;
-        return d.toISOString().split('T')[0]; // YYYY-MM-DD
+        if (!dateStr || typeof dateStr !== 'string') return null;
+        const trimmed = dateStr.trim();
+        if (!trimmed) return null;
+
+        // 1. Try standard ISO/Native parsing first
+        const d = new Date(trimmed);
+        if (!isNaN(d.getTime())) {
+            // Check if it's a "real" full date (not just a year or partial)
+            if (trimmed.length >= 8) {
+                return d.toISOString().split('T')[0];
+            }
+        }
+
+        // 2. Try common CSV formats using date-fns
+        // Using common delimiters and orderings
+        const formats = [
+            'dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy/MM/dd',
+            'dd-MM-yyyy', 'MM-dd-yyyy', 'yyyy-MM-dd',
+            'dd.MM.yyyy', 'MM.dd.yyyy', 'yyyy.MM.dd',
+            'd/M/yyyy', 'M/d/yyyy', 'd-M-yyyy', 'M-d-yyyy'
+        ];
+
+        for (const f of formats) {
+            try {
+                const parsed = parse(trimmed, f, new Date());
+                if (isValid(parsed)) {
+                    // Extra safety: ensure it's not a crazy year like 0024
+                    if (parsed.getFullYear() > 1900 && parsed.getFullYear() < 2100) {
+                        return format(parsed, 'yyyy-MM-dd');
+                    }
+                }
+            } catch (e) {
+                // Ignore parsing errors for specific patterns
+            }
+        }
+
+        return null;
     };
 
     const proceedToPreview = () => {
@@ -192,20 +243,43 @@ export default function CSVImportModal() {
                     val = normalizeDate(val.toString()) || new Date().toISOString().split('T')[0];
                 }
                 
-                if (f.id === 'paid_at') {
+                if (f.id === 'paid_at' || f.id === 'accepted_at') {
                     val = val ? normalizeDate(val.toString()) : null;
                 }
                 
                 if (f.id === 'status') {
                     const s = val.toString().trim().toLowerCase();
+                    
                     if (importType === 'Invoice') {
-                        const valid = ['draft', 'pending', 'paid', 'overdue', 'cancelled'];
-                        const match = valid.find(v => v === s);
-                        val = match ? match.charAt(0).toUpperCase() + match.slice(1) : 'Draft';
+                        // Invoice Mappings
+                        const paidAliases = ['paid', 'success', 'completed', 'received', 'settled', 'done'];
+                        const pendingAliases = ['pending', 'unpaid', 'waiting', 'sent', 'partial'];
+                        const overdueAliases = ['overdue', 'late', 'expired'];
+                        const cancelledAliases = ['cancelled', 'void', 'refunded', 'deleted'];
+                        const draftAliases = ['draft', 'new', 'temp'];
+
+                        if (paidAliases.includes(s)) val = 'Paid';
+                        else if (pendingAliases.includes(s)) val = 'Pending';
+                        else if (overdueAliases.includes(s)) val = 'Overdue';
+                        else if (cancelledAliases.includes(s)) val = 'Cancelled';
+                        else if (draftAliases.includes(s)) val = 'Draft';
+                        else val = 'Draft';
                     } else {
-                        const valid = ['draft', 'pending', 'accepted', 'overdue', 'declined', 'cancelled'];
-                        const match = valid.find(v => v === s);
-                        val = match ? match.charAt(0).toUpperCase() + match.slice(1) : 'Draft';
+                        // Proposal/Contact Mappings (Draft, Pending, Accepted, Overdue, Declined, Cancelled)
+                        const acceptedAliases = ['accepted', 'approved', 'yes', 'signed', 'win', 'won', 'completed', 'active'];
+                        const declinedAliases = ['declined', 'rejected', 'no', 'denied', 'lost', 'fail'];
+                        const pendingAliases = ['pending', 'sent', 'waiting', 'new'];
+                        const overdueAliases = ['overdue', 'late', 'expired'];
+                        const cancelledAliases = ['cancelled', 'void', 'archived'];
+                        const draftAliases = ['draft', 'temp'];
+
+                        if (acceptedAliases.includes(s)) val = 'Accepted';
+                        else if (declinedAliases.includes(s)) val = 'Declined';
+                        else if (pendingAliases.includes(s)) val = 'Pending';
+                        else if (overdueAliases.includes(s)) val = 'Overdue';
+                        else if (cancelledAliases.includes(s)) val = 'Cancelled';
+                        else if (draftAliases.includes(s)) val = 'Draft';
+                        else val = 'Draft';
                     }
                 }
 
@@ -224,99 +298,140 @@ export default function CSVImportModal() {
         let successCount = 0;
         let errorCount = 0;
 
-        try {
-            for (let i = 0; i < previewData.length; i++) {
-                const item = previewData[i];
-                let result = null;
+        const CHUNK_SIZE = 50;
 
-                if (importType === 'Contact') {
-                    const payload = {
-                        contact_person: item.contact_person,
-                        company_name: item.company_name || '',
-                        email: item.email || '',
-                        phone: item.phone || '',
-                        address: item.address || '',
-                        tax_number: item.tax_number || '',
-                        notes: item.notes || ''
-                    };
-                    result = await addClient(payload);
-                } else if (importType === 'Company') {
-                    const payload = {
-                        name: item.name,
-                        industry: item.industry || '',
-                        email: item.email || '',
-                        phone: item.phone || '',
-                        website: item.website || '',
-                        address: item.address || ''
-                    };
-                    result = await addCompany(payload);
-                } else {
-                    // 1. Resolve Client
-                    let clientId = null;
-                    const nameLower = item.client_name?.toLowerCase();
-                    const existingClient = clients.find(c => 
+        try {
+            // 1. If importing Invoices/Proposals, pre-create unknown clients/companies first
+            // This prevents duplicate creation when items are processed in parallel batches
+            if (importType === 'Invoice' || importType === 'Proposal') {
+                const uniqueClientNames = Array.from(new Set(
+                    previewData
+                        .map(item => item.client_name?.trim())
+                        .filter(Boolean)
+                ));
+
+                // Get fresh state for resolution
+                const currentClients = useClientStore.getState().clients;
+                const currentCompanies = useCompanyStore.getState().companies;
+
+                const clientsToCreate = uniqueClientNames.filter(name => {
+                    const nameLower = name.toLowerCase();
+                    const exists = currentClients.some(c => 
                         c.contact_person?.toLowerCase() === nameLower || 
                         c.company_name?.toLowerCase() === nameLower
-                    );
-                    const existingCompany = companies.find(c =>
+                    ) || currentCompanies.some(c => 
                         c.name?.toLowerCase() === nameLower
                     );
+                    return !exists;
+                });
 
-                    if (existingClient || existingCompany) {
-                        clientId = existingClient ? existingClient.id : existingCompany?.id;
-                    } else {
-                        // Auto-create depending on createUnknownAs
+                if (clientsToCreate.length > 0) {
+                    for (const name of clientsToCreate) {
                         if (createUnknownAs === 'company') {
-                            const newCompany = await addCompany({
-                                name: item.client_name,
+                            await addCompany({
+                                name,
                                 industry: '',
                                 email: '',
                                 phone: '',
                                 website: '',
                                 address: '',
+                                country: '',
                                 tax_number: '',
                                 notes: 'Automatically created during CSV import'
-                            });
-                            if (newCompany) clientId = newCompany.id;
+                            } as any);
                         } else {
-                            const newClient = await addClient({
-                                contact_person: item.client_name,
+                            await addClient({
+                                contact_person: name,
                                 company_name: '',
                                 email: '',
                                 phone: '',
                                 address: '',
+                                country: '',
                                 tax_number: '',
                                 notes: 'Automatically created during CSV import'
-                            });
-                            if (newClient) clientId = newClient.id;
+                            } as any);
                         }
                     }
-
-                    // 2. Add Entry
-                    const payload: any = {
-                        title: item.title,
-                        client_id: clientId,
-                        client_name: item.client_name,
-                        amount: item.amount || 0,
-                        issue_date: item.issue_date || new Date().toISOString().split('T')[0],
-                        due_date: item.due_date || new Date().toISOString().split('T')[0],
-                        status: item.status || 'Draft',
-                        notes: item.notes || '',
-                        blocks: []
-                    };
-                    
-                    if (importType === 'Invoice') {
-                        payload.paid_at = item.paid_at || null;
-                        result = await addInvoice(payload as any);
-                    } else {
-                        result = await addProposal(payload as any);
-                    }
                 }
+            }
 
-                if (result) successCount++;
-                else errorCount++;
+            // 2. Process all items in batches of 50
+            for (let i = 0; i < previewData.length; i += CHUNK_SIZE) {
+                const chunk = previewData.slice(i, i + CHUNK_SIZE);
                 
-                setProgress(Math.round(((i + 1) / previewData.length) * 100));
+                const results = await Promise.all(chunk.map(async (item) => {
+                    let result = null;
+
+                    if (importType === 'Contact') {
+                        const payload = {
+                            contact_person: item.contact_person,
+                            company_name: item.company_name || '',
+                            email: item.email || '',
+                            phone: item.phone || '',
+                            address: item.address || '',
+                            country: item.country || '',
+                            tax_number: item.tax_number || '',
+                            notes: item.notes || ''
+                        };
+                        result = await addClient(payload);
+                    } else if (importType === 'Company') {
+                        const payload = {
+                            name: item.name,
+                            industry: item.industry || '',
+                            email: item.email || '',
+                            phone: item.phone || '',
+                            website: item.website || '',
+                            address: item.address || '',
+                            country: item.country || ''
+                        };
+                        result = await addCompany(payload);
+                    } else {
+                        // Resolve Client using fresh state from store
+                        const currentClients = useClientStore.getState().clients;
+                        const currentCompanies = useCompanyStore.getState().companies;
+                        
+                        let clientId = null;
+                        const nameLower = item.client_name?.toLowerCase()?.trim();
+                        
+                        const existingClient = currentClients.find(c => 
+                            c.contact_person?.toLowerCase()?.trim() === nameLower || 
+                            c.company_name?.toLowerCase()?.trim() === nameLower
+                        );
+                        const existingCompany = currentCompanies.find(c =>
+                            c.name?.toLowerCase()?.trim() === nameLower
+                        );
+
+                        clientId = existingClient ? existingClient.id : existingCompany?.id;
+
+                        const payload: any = {
+                            title: item.title,
+                            client_id: clientId,
+                            client_name: item.client_name,
+                            amount: item.amount || 0,
+                            issue_date: item.issue_date || new Date().toISOString().split('T')[0],
+                            due_date: item.due_date || new Date().toISOString().split('T')[0],
+                            status: item.status || 'Draft',
+                            notes: item.notes || '',
+                            blocks: []
+                        };
+                        
+                        if (importType === 'Invoice') {
+                            payload.paid_at = item.paid_at || null;
+                            result = await addInvoice(payload as any);
+                        } else {
+                            payload.accepted_at = item.accepted_at || null;
+                            result = await addProposal(payload as any);
+                        }
+                    }
+                    return result;
+                }));
+
+                results.forEach(res => {
+                    if (res) successCount++;
+                    else errorCount++;
+                });
+                
+                setProgress(Math.round((Math.min(i + CHUNK_SIZE, previewData.length) / previewData.length) * 100));
             }
 
             if (successCount > 0) {
@@ -501,7 +616,7 @@ export default function CSVImportModal() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <p className={cn("text-[13px] font-bold truncate", isDark ? "text-white" : "text-[#111]")}>
-                                                    {item.title || item.contact_person || item.name || "Untitled Entry"}
+                                                    { item.title || item.contact_person || item.name || "Untitled Entry" }
                                                 </p>
                                                 {!['Contact', 'Company'].includes(importType) && (
                                                     <span className={cn(
@@ -512,31 +627,17 @@ export default function CSVImportModal() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-4 text-[11px] flex-wrap">
-                                                {item.client_name && (
-                                                    <div className="flex items-center gap-1.5 opacity-40">
-                                                        <User size={11} />
-                                                        <span className="truncate max-w-[120px]">{item.client_name}</span>
-                                                    </div>
-                                                )}
-                                                {item.email && (
-                                                    <div className="flex items-center gap-1.5 opacity-40">
-                                                        <Mail size={11} />
-                                                        <span className="truncate max-w-[120px]">{item.email}</span>
-                                                    </div>
-                                                )}
-                                                {item.issue_date && (
-                                                    <div className="flex items-center gap-1.5 opacity-40">
-                                                        <Calendar size={11} />
-                                                        <span>{item.issue_date}</span>
-                                                    </div>
-                                                )}
-                                                {item.phone && (
-                                                    <div className="flex items-center gap-1.5 opacity-40">
-                                                        <Phone size={11} />
-                                                        <span>{item.phone}</span>
-                                                    </div>
-                                                )}
+                                            <div className="flex items-center gap-4 text-[11px] flex-wrap mt-1">
+                                                {currentSystemFields.map(field => {
+                                                    const val = item[field.id];
+                                                    if (!val || ['title', 'contact_person', 'name', 'amount'].includes(field.id)) return null;
+                                                    return (
+                                                        <div key={field.id} className="flex items-center gap-1.5 opacity-50 hover:opacity-80 transition-opacity">
+                                                            <span className="opacity-80">{field.icon}</span>
+                                                            <span className="truncate max-w-[150px]" title={val}>{val}</span>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                         {!['Contact', 'Company'].includes(importType) && (

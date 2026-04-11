@@ -11,6 +11,7 @@ export interface Company {
     phone?: string;
     email?: string;
     address?: string;
+    country?: string;
     tax_number?: string;
     notes?: string;
     avatar_url?: string;
