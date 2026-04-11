@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { gooeyToast } from 'goey-toast';
 import CreateProjectModal from '@/components/projects/CreateProjectModal';
 import { Avatar } from '@/components/ui/Avatar';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -114,6 +115,51 @@ function StatusBadge({ status, isDark }: { status: ProjectStatus; isDark: boolea
     );
 }
 
+function StatusCell({ status, onStatusChange, isDark }: { status: ProjectStatus; onStatusChange: (s: ProjectStatus) => void; isDark: boolean }) {
+    const [open, setOpen] = useState(false);
+    const cfg = STATUS_CFG[status];
+    return (
+        <div className="relative inline-block">
+            <button
+                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+                className={cn(
+                    "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border shrink-0 transition-colors",
+                    isDark ? "bg-white/[0.04] border-white/5 hover:bg-white/[0.08]" : cn(cfg.badge, cfg.badgeBorder, "hover:brightness-95")
+                )}
+                style={isDark ? { color: cfg.color } : {}}
+            >
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: cfg.color }} />
+                <span className={isDark ? '' : cfg.badgeText}>{status}</span>
+                <ChevronDown size={10} className="opacity-50" />
+            </button>
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
+                <div className="py-1">
+                    {STATUS_ORDER.map(s => {
+                        const sCfg = STATUS_CFG[s];
+                        const isActive = s === status;
+                        return (
+                            <button
+                                key={s}
+                                onClick={(e) => { e.stopPropagation(); onStatusChange(s); setOpen(false); }}
+                                className={cn(
+                                    "w-full flex items-center gap-2 px-3.5 py-2 text-[11.5px] font-semibold text-left transition-colors",
+                                    isActive
+                                        ? isDark ? "bg-white/10" : "bg-black/5"
+                                        : isDark ? "hover:bg-white/5" : "hover:bg-black/[0.02]"
+                                )}
+                            >
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sCfg.color }} />
+                                <span className={cn("flex-1", isDark ? "text-white" : "text-black")}>{s}</span>
+                                {isActive && <Check size={12} className={cn("opacity-50", isDark ? "text-white" : "text-black")} />}
+                            </button>
+                        );
+                    })}
+                </div>
+            </Dropdown>
+        </div>
+    );
+}
+
 // ─── Circular Progress ────────────────────────────────────────────────────────
 
 function CircleProgress({ pct, color, size = 44, isDark }: { pct: number; color: string; size?: number; isDark: boolean }) {
@@ -134,11 +180,11 @@ function CircleProgress({ pct, color, size = 44, isDark }: { pct: number; color:
 
 // ─── Project Card ─────────────────────────────────────────────────────────────
 
-function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle }: {
+function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle, onStatusChange }: {
     project: Project; isDark: boolean; onClick: () => void;
     onArchive: () => void; onDelete: () => void;
     taskProgress: { total: number; done: number; pct: number };
-    isSelected: boolean; onToggle: () => void;
+    isSelected: boolean; onToggle: () => void; onStatusChange: (status: ProjectStatus) => void;
 }) {
     const dl = deadlineMeta(project.deadline);
     const cfg = STATUS_CFG[project.status];
@@ -200,7 +246,7 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
                     </div>
                 </div>
                 <div className="flex-1 min-w-0 space-y-1.5">
-                    <StatusBadge status={project.status} isDark={isDark} />
+                    <StatusCell status={project.status} onStatusChange={onStatusChange} isDark={isDark} />
                     <p className={cn("text-[10.5px]", isDark ? "text-[#555]" : "text-[#aaa]")}>
                         {taskProgress.done} / {taskProgress.total} tasks done
                     </p>
@@ -245,11 +291,11 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
                 onClick={e => { e.stopPropagation(); onArchive(); }}
                 title="Archive"
                 className={cn(
-                    "absolute top-3.5 right-9 w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all",
-                    isDark ? "bg-[#2a2a2a] text-[#777] hover:text-[#ccc]" : "bg-[#f5f5f5] border border-[#e0e0e0] text-[#aaa] hover:text-[#555]"
+                    "absolute top-4 right-9 w-4 h-4 rounded-[4px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all",
+                    isDark ? "text-[#555] hover:text-red-400 hover:bg-red-500/10" : "text-[#bbb] hover:text-red-500 hover:bg-red-50"
                 )}
             >
-                <Archive size={10} />
+                <Archive size={11} />
             </button>
         </motion.div>
     );
@@ -257,11 +303,11 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
 
 // ─── Table Row ────────────────────────────────────────────────────────────────
 
-function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle }: {
+function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle, onStatusChange }: {
     project: Project; isDark: boolean; onClick: () => void;
     onArchive: () => void; onDelete: () => void;
     taskProgress: { total: number; done: number; pct: number };
-    isSelected: boolean; onToggle: () => void;
+    isSelected: boolean; onToggle: () => void; onStatusChange: (status: ProjectStatus) => void;
 }) {
     const dl  = deadlineMeta(project.deadline);
     const cfg = STATUS_CFG[project.status];
@@ -292,7 +338,7 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress,
             </div>
             {/* Status */}
             <div className="shrink-0 py-3 pr-4 self-center">
-                <StatusBadge status={project.status} isDark={isDark} />
+                <StatusCell status={project.status} onStatusChange={onStatusChange} isDark={isDark} />
             </div>
             {/* Progress */}
             <div className="shrink-0 py-3 pr-4 self-center">
@@ -574,36 +620,39 @@ export default function ProjectsPage() {
                             </span>
                             <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
                             
-                            <button
-                                onClick={async () => {
-                                    const ids = Array.from(selectedIds);
-                                    await bulkDuplicateProjects(ids);
-                                    gooeyToast.success(`${totalSelected} project${totalSelected > 1 ? 's' : ''} duplicated`);
-                                    setSelectedIds(new Set());
-                                }}
-                                className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-[#777] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-[#333] hover:bg-[#ececec]")}
-                                title="Duplicate"
-                            >
-                                <Copy size={11} strokeWidth={2.5} />
-                            </button>
+                            <Tooltip content="Duplicate" side="bottom">
+                                <button
+                                    onClick={async () => {
+                                        const ids = Array.from(selectedIds);
+                                        await bulkDuplicateProjects(ids);
+                                        gooeyToast.success(`${totalSelected} project${totalSelected > 1 ? 's' : ''} duplicated`);
+                                        setSelectedIds(new Set());
+                                    }}
+                                    className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-[#777] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-[#333] hover:bg-[#ececec]")}
+                                >
+                                    <Copy size={11} strokeWidth={2.5} />
+                                </button>
+                            </Tooltip>
                             
-                            <button
-                                onClick={() => setDeletingId('bulk')}
-                                className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-red-400 hover:text-red-400 hover:bg-red-500/10" : "text-red-400 hover:bg-red-50 focus:text-red-500")}
-                                title="Delete"
-                            >
-                                <Trash2 size={11} strokeWidth={2.5} />
-                            </button>
+                            <Tooltip content="Delete" side="bottom">
+                                <button
+                                    onClick={() => setDeletingId('bulk')}
+                                    className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-red-400 hover:text-red-400 hover:bg-red-500/10" : "text-red-400 hover:bg-red-50 focus:text-red-500")}
+                                >
+                                    <Trash2 size={11} strokeWidth={2.5} />
+                                </button>
+                            </Tooltip>
                             
                             <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
                             
-                            <button
-                                onClick={() => setSelectedIds(new Set())}
-                                className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-[#555] hover:text-white hover:bg-white/5" : "text-[#bbb] hover:text-[#333] hover:bg-[#ececec]")}
-                                title="Clear selection"
-                            >
-                                <X size={11} strokeWidth={3} />
-                            </button>
+                            <Tooltip content="Clear selection" side="bottom">
+                                <button
+                                    onClick={() => setSelectedIds(new Set())}
+                                    className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-[#555] hover:text-white hover:bg-white/5" : "text-[#bbb] hover:text-[#333] hover:bg-[#ececec]")}
+                                >
+                                    <X size={11} strokeWidth={3} />
+                                </button>
+                            </Tooltip>
                         </motion.div>
                     )}
                 </AnimatePresence>

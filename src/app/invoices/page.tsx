@@ -19,6 +19,7 @@ import { CreateInvoiceModal } from '@/components/modals/CreateInvoiceModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { gooeyToast } from 'goey-toast';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import {
     DndContext,
@@ -978,15 +979,21 @@ export default function InvoicesPage() {
                             <span className="opacity-50">{selectedIds.size} selected</span>
                             <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
                             <div className="flex items-center gap-3">
-                                <button onClick={handleBulkDuplicate} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
-                                    <Copy size={11} className="opacity-70" />Duplicate
-                                </button>
-                                <button onClick={handleBulkArchive} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
-                                    <Archive size={11} className="opacity-70" />Archive
-                                </button>
-                                <button onClick={handleBulkDelete} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
-                                    <Trash2 size={11} className="opacity-70" />Delete
-                                </button>
+                                <Tooltip content="Duplicate" side="bottom">
+                                    <button onClick={handleBulkDuplicate} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
+                                        <Copy size={11} className="opacity-70" />Duplicate
+                                    </button>
+                                </Tooltip>
+                                <Tooltip content="Archive" side="bottom">
+                                    <button onClick={handleBulkArchive} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
+                                        <Archive size={11} className="opacity-70" />Archive
+                                    </button>
+                                </Tooltip>
+                                <Tooltip content="Delete" side="bottom">
+                                    <button onClick={handleBulkDelete} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
+                                        <Trash2 size={11} className="opacity-70" />Delete
+                                    </button>
+                                </Tooltip>
                             </div>
                         </div>
                     )}

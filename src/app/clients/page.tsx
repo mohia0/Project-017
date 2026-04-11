@@ -17,6 +17,7 @@ import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { cn } from '@/lib/utils';
 
 import { Avatar } from '@/components/ui/Avatar';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 type Tab = 'people' | 'companies';
 type ViewMode = 'grid' | 'list';
@@ -204,35 +205,43 @@ export default function ClientsPage() {
                             <span className={cn('text-[11px] font-semibold mr-1', isDark ? 'text-[#aaa]' : 'text-[#666]')}>{selectedIds.size} selected</span>
                             <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
                             
-                            <button onClick={async () => {
-                                const ids = Array.from(selectedIds);
-                                const { bulkDuplicateClients } = useClientStore.getState();
-                                const { bulkDuplicateCompanies } = useCompanyStore.getState();
-                                if (tab === 'people') await bulkDuplicateClients(ids);
-                                else await bulkDuplicateCompanies(ids);
-                                gooeyToast.success(`${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated`);
-                                setSelectedIds(new Set());
-                            }} title="Duplicate"
-                                className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
-                                <Copy size={11}/>
-                            </button>
+                            <Tooltip content="Duplicate" side="bottom">
+                                <button onClick={async () => {
+                                    const ids = Array.from(selectedIds);
+                                    const { bulkDuplicateClients } = useClientStore.getState();
+                                    const { bulkDuplicateCompanies } = useCompanyStore.getState();
+                                    if (tab === 'people') await bulkDuplicateClients(ids);
+                                    else await bulkDuplicateCompanies(ids);
+                                    gooeyToast.success(`${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated`);
+                                    setSelectedIds(new Set());
+                                }}
+                                    className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                    <Copy size={11}/>
+                                </button>
+                            </Tooltip>
                             
-                            <button onClick={() => setDeletingId('bulk')} title="Delete"
-                                className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
-                                <Trash2 size={11}/>
-                            </button>
+                            <Tooltip content="Delete" side="bottom">
+                                <button onClick={() => setDeletingId('bulk')}
+                                    className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
+                                    <Trash2 size={11}/>
+                                </button>
+                            </Tooltip>
 
                             {selectedIds.size >= 2 && (
-                                <button onClick={() => toggleAll(tab === 'people' ? filteredPeople : filteredCompanies)} title={selectedIds.size === (tab === 'people' ? filteredPeople.length : filteredCompanies.length) ? "Deselect All" : "Select All"}
-                                    className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
-                                    <CheckSquare size={11}/>
-                                </button>
+                                <Tooltip content={selectedIds.size === (tab === 'people' ? filteredPeople.length : filteredCompanies.length) ? "Deselect All" : "Select All"} side="bottom">
+                                    <button onClick={() => toggleAll(tab === 'people' ? filteredPeople : filteredCompanies)}
+                                        className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                        <CheckSquare size={11}/>
+                                    </button>
+                                </Tooltip>
                             )}
                             <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
-                            <button onClick={() => setSelectedIds(new Set())} title="Clear selection"
-                                className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
-                                <X size={11}/>
-                            </button>
+                            <Tooltip content="Clear selection" side="bottom">
+                                <button onClick={() => setSelectedIds(new Set())}
+                                    className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
+                                    <X size={11}/>
+                                </button>
+                            </Tooltip>
                         </div>
                     )}
 

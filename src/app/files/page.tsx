@@ -17,13 +17,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import { gooeyToast } from 'goey-toast';
 import { supabase } from '@/lib/supabase';
 import { useFileStore, ItemType, FileItem } from '@/store/useFileStore';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
-
-import { Tooltip } from '@/components/ui/Tooltip';
 
 // ─── Shared Components ────────────────────────────────────────────────────────
 
@@ -1856,18 +1855,26 @@ export default function FilesPage() {
                             <div className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border mr-2', isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}>
                                 <span className={cn('text-[11px] font-semibold mr-1', isDark ? 'text-[#aaa]' : 'text-[#666]')}>{selectedIds.size} selected</span>
                                 <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
-                                <button onClick={() => duplicateItems(Array.from(selectedIds))} title="Duplicate"
-                                    className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
-                                    <Copy size={11}/>
-                                </button>
-                                <button onClick={() => requestDelete(Array.from(selectedIds))} title="Delete"
-                                    className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
-                                    <Trash2 size={11}/>
-                                </button>
-                                <button onClick={clearSelection} title="Clear selection"
-                                    className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
-                                    <X size={11}/>
-                                </button>
+                                <Tooltip content="Duplicate" side="bottom">
+                                    <button onClick={() => duplicateItems(Array.from(selectedIds))}
+                                        className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                        <Copy size={11}/>
+                                    </button>
+                                </Tooltip>
+                                
+                                <Tooltip content="Delete" side="bottom">
+                                    <button onClick={() => requestDelete(Array.from(selectedIds))}
+                                        className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
+                                        <Trash2 size={11}/>
+                                    </button>
+                                </Tooltip>
+                                
+                                <Tooltip content="Clear selection" side="bottom">
+                                    <button onClick={clearSelection}
+                                        className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
+                                        <X size={11}/>
+                                    </button>
+                                </Tooltip>
                             </div>
                         )}
 

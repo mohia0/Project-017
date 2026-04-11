@@ -34,10 +34,10 @@ interface MenuState {
     updateMenu: (items: NavItem[]) => Promise<void>;
 }
 
-const DEFAULT_NAV = [
+export const DEFAULT_NAV = [
     { id: 'dashboard', href: '/dashboard', icon: 'LayoutGrid', label: 'Dashboard' },
-    { id: 'clients',   href: '/clients',   icon: 'Users',       label: 'Contacts' },
     { id: 'projects',  href: '/projects',  icon: 'Briefcase',   label: 'Projects' },
+    { id: 'clients',   href: '/clients',   icon: 'Users',       label: 'Contacts' },
     { id: 'proposals', href: '/proposals', icon: 'FileText',    label: 'Proposals' },
     { id: 'invoices',  href: '/invoices',  icon: 'Receipt',     label: 'Invoices' },
     { id: 'files',     href: '/files',     icon: 'Folder',      label: 'File Manager' },
