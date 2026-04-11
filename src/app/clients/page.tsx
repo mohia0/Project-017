@@ -326,25 +326,28 @@ export default function ClientsPage() {
                                             )}
                                         >
                                             {/* Header */}
-                                            {/* Checkbox Overlay (Matches File Manager) */}
-                                            <div className={cn('absolute top-0 left-0 p-2 z-10 transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
-                                                onClick={e => { e.stopPropagation(); toggleRow(client.id); }}>
-                                                <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-                                                    <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
-                                                        isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
-                                                        {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                            {/* Actions Overlay (Checkbox + Delete) */}
+                                            <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 z-20">
+                                                {/* Checkbox */}
+                                                <div className={cn('transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
+                                                    onClick={e => { e.stopPropagation(); toggleRow(client.id); }}>
+                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                                                        <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
+                                                            isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
+                                                            {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Delete Individual (Hover) */}
-                                            {!isSelected && (
-                                                <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-all">
-                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(client.id); }} className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-[#444] hover:text-red-500" : "hover:bg-red-50 text-[#ccc] hover:text-red-500")}>
-                                                        <Trash2 size={12} />
-                                                    </button>
-                                                </div>
-                                            )}
+                                                {/* Delete Individual (Hover) */}
+                                                {!isSelected && (
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-all">
+                                                        <button onClick={e => { e.stopPropagation(); setDeletingId(client.id); }} className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-[#444] hover:text-red-500" : "hover:bg-red-50 text-[#ccc] hover:text-red-500")}>
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <div className="flex items-center gap-3 px-4 py-3.5 relative group">
                                                 <Avatar 
                                                     src={client.avatar_url} 
@@ -494,25 +497,28 @@ export default function ClientsPage() {
                                             )}
                                         >
                                             {/* Header */}
-                                            {/* Checkbox Overlay */}
-                                            <div className={cn('absolute top-0 left-0 p-2 z-10 transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
-                                                onClick={e => { e.stopPropagation(); toggleRow(company.id); }}>
-                                                <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-                                                    <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
-                                                        isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
-                                                        {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                            {/* Actions Overlay (Checkbox + Delete) */}
+                                            <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 z-20">
+                                                {/* Checkbox */}
+                                                <div className={cn('transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
+                                                    onClick={e => { e.stopPropagation(); toggleRow(company.id); }}>
+                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                                                        <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
+                                                            isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
+                                                            {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Delete Individual (Hover) */}
-                                            {!isSelected && (
-                                                <div className="absolute top-2.5 right-2.5 opacity-0 group-hover:opacity-100 transition-all">
-                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(company.id); }} className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-[#444] hover:text-red-500" : "hover:bg-red-50 text-[#ccc] hover:text-red-500")}>
-                                                        <Trash2 size={12} />
-                                                    </button>
-                                                </div>
-                                            )}
+                                                {/* Delete Individual (Hover) */}
+                                                {!isSelected && (
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-all">
+                                                        <button onClick={e => { e.stopPropagation(); setDeletingId(company.id); }} className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-[#444] hover:text-red-500" : "hover:bg-red-50 text-[#ccc] hover:text-red-500")}>
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <div className="flex items-center gap-3 px-4 py-3.5 relative group">
                                                 <Avatar 
                                                     src={company.avatar_url} 
