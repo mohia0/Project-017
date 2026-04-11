@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore, ProposalStatus, Proposal } from '@/store/useProposalStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { useClientStore } from '@/store/useClientStore';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
@@ -208,13 +209,25 @@ function CardRow({ label, children, isDark, noBorder }: { label: string; childre
     );
 }
 
-function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onClientChange }: {
+function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onClientChange, customStatuses = [] }: {
     p: Proposal; onOpen: () => void; onArchive: () => void; isDark: boolean;
     onStatusChange: (s: ProposalStatus) => void; isSelected: boolean; onToggle: () => void;
     onClientChange: (clientId: string, clientName: string) => void;
+    customStatuses: any[];
 }) {
     const [statusOpen, setStatusOpen] = useState(false);
-    const sc = getStatusColors(p.status);
+    const sc = getStatusColors(p.status, customStatuses);
+    
+    // Sort and filter active statuses
+    const activeStatues = customStatuses
+        .filter(s => s.is_active || s.name === p.status) // Keep current status even if inactive
+        .sort((a,b) => a.position - b.position);
+
+    const dynamicStyle = (sc as any).dynamic ? {
+        backgroundColor: (sc as any).dynamic.bg,
+        color: (sc as any).dynamic.text,
+        borderColor: (sc as any).dynamic.border
+    } : {};
     return (
         <div
             onClick={onOpen}
@@ -265,25 +278,30 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
                     <div className="relative flex-1">
                         <button
                             onClick={(e) => { e.stopPropagation(); setStatusOpen(!statusOpen); }}
-                            className={cn("flex items-center justify-between w-full px-2.5 py-1.5 rounded-[6px] font-semibold border",
+                            className={cn("flex items-center justify-between min-w-[100px] px-2.5 py-1.5 rounded-[6px] font-semibold border",
                                 isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(sc.badge, sc.badgeText, sc.badgeBorder))}
+                            style={!isDark && (sc as any).dynamic ? dynamicStyle : {}}
                         >
                             <span>{p.status}</span>
                             <ChevronsUpDown size={11} className="opacity-70" />
                         </button>
                         <Dropdown open={statusOpen} onClose={() => setStatusOpen(false)} isDark={isDark}>
-                            <div className="py-1">
-                                {STATUS_ORDER.map(s => {
-                                    const sSc = getStatusColors(s);
-                                    const isActive = s === p.status;
+                            <div className="py-1 min-w-[140px]">
+                                {activeStatues.map(s => {
+                                    const sSc = getStatusColors(s.name, customStatuses);
+                                    const isActive = s.name === p.status;
+                                    const sDynamic = (sSc as any).dynamic;
                                     return (
-                                        <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setStatusOpen(false); }}
+                                        <button key={s.name} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setStatusOpen(false); }}
                                             className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
                                                 isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                             )}
                                         >
-                                            <span className={cn("font-medium", isDark ? "" : sSc.badgeText)} style={isDark ? { color: sSc.bar } : {}}>
-                                                {s}
+                                            <span 
+                                                className={cn("font-medium", isDark ? "" : sSc.badgeText)} 
+                                                style={isDark ? { color: sSc.bar } : (sDynamic ? { color: sDynamic.text } : {})}
+                                            >
+                                                {s.name}
                                             </span>
                                             {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
                                         </button>
@@ -315,31 +333,51 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
 }
 
 
-function StatusCell({ status, onStatusChange, isDark }: { status: ProposalStatus; onStatusChange: (s: ProposalStatus) => void; isDark: boolean }) {
+function StatusCell({ status, onStatusChange, isDark, customStatuses = [] }: { 
+    status: ProposalStatus; 
+    onStatusChange: (s: ProposalStatus) => void; 
+    isDark: boolean;
+    customStatuses: any[];
+}) {
     const [open, setOpen] = useState(false);
-    const sc = getStatusColors(status);
+    const sc = getStatusColors(status, customStatuses);
+    const activeStatues = customStatuses
+        .filter(s => s.is_active || s.name === status)
+        .sort((a,b) => a.position - b.position);
+
+    const dynamicStyle = (sc as any).dynamic ? {
+        backgroundColor: (sc as any).dynamic.bg,
+        color: (sc as any).dynamic.text,
+        borderColor: (sc as any).dynamic.border
+    } : {};
+
     return (
         <div className="relative">
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
                 className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border",
                     isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(sc.badge, sc.badgeText, sc.badgeBorder))}
+                style={!isDark && (sc as any).dynamic ? dynamicStyle : {}}
             >
                 {status}<ChevronDown size={10} className="opacity-50" />
             </button>
             <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
-                <div className="py-1">
-                    {STATUS_ORDER.map(s => {
-                        const sSc = getStatusColors(s);
-                        const isActive = s === status;
+                <div className="py-1 min-w-[140px]">
+                    {activeStatues.map(s => {
+                        const sSc = getStatusColors(s.name, customStatuses);
+                        const isActive = s.name === status;
+                        const sDynamic = (sSc as any).dynamic;
                         return (
-                            <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setOpen(false); }}
+                            <button key={s.name} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setOpen(false); }}
                                 className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
                                     isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                 )}
                             >
-                                <span className={cn("font-medium", isDark ? "" : sSc.badgeText)} style={isDark ? { color: sSc.bar } : {}}>
-                                    {s}
+                                <span 
+                                    className={cn("font-medium", isDark ? "" : sSc.badgeText)} 
+                                    style={isDark ? { color: sSc.bar } : (sDynamic ? { color: sDynamic.text } : {})}
+                                >
+                                    {s.name}
                                 </span>
                                 {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
                             </button>
@@ -552,8 +590,17 @@ function MobileProposalRow({ p, onOpen, isDark, onStatusChange, onArchive, isArc
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function ProposalsPage() {
     const router = useRouter();
-    const { theme, setImportModalOpen } = useUIStore();
+    const { theme, setImportModalOpen, activeWorkspaceId } = useUIStore();
     const { proposals, fetchProposals, updateProposal, addProposal, deleteProposal, isLoading } = useProposalStore();
+    const { statuses, fetchStatuses } = useSettingsStore();
+
+    useEffect(() => {
+        if (activeWorkspaceId) fetchStatuses(activeWorkspaceId);
+    }, [activeWorkspaceId]);
+
+    const customStatuses = useMemo(() => statuses.filter(s => s.tool === 'proposals'), [statuses]);
+    const activeStatues = useMemo(() => customStatuses.filter(s => s.is_active).sort((a,b) => a.position - b.position), [customStatuses]);
+
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
     const [view, setView] = useState<'table' | 'cards'>('table');
@@ -667,7 +714,7 @@ export default function ProposalsPage() {
     };
 
     const gridTemplate = `${colWidths.select}px ${columnOrder.map(c => `${colWidths[c as keyof typeof colWidths]}px`).join(' ')} minmax(${colWidths.amount}px, 1fr)`;
-    const [statusFilter, setStatusFilter] = useState<ProposalStatus | 'All'>('All');
+    const [statusFilter, setStatusFilter] = useState<string | 'All'>('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -707,9 +754,12 @@ export default function ProposalsPage() {
 
     const stats = useMemo(() => {
         const s: Record<string, { count: number; amount: number }> = {
-            All: { count: 0, amount: 0 }, Draft: { count: 0, amount: 0 }, Pending: { count: 0, amount: 0 },
-            Accepted: { count: 0, amount: 0 }, Overdue: { count: 0, amount: 0 }, Declined: { count: 0, amount: 0 }, Cancelled: { count: 0, amount: 0 },
+            All: { count: 0, amount: 0 }
         };
+        
+        // Initialize with active statuses
+        activeStatues.forEach(st => s[st.name] = { count: 0, amount: 0 });
+
         proposals.filter(p => {
             if (showArchived) return archivedIds.has(p.id);
             if (archivedIds.has(p.id)) return false;
@@ -718,10 +768,11 @@ export default function ProposalsPage() {
             return true;
         }).forEach(p => {
             s.All.count++; s.All.amount += Number(p.amount || 0);
-            if (s[p.status]) { s[p.status].count++; s[p.status].amount += Number(p.amount || 0); }
+            if (!s[p.status]) s[p.status] = { count: 0, amount: 0 };
+            s[p.status].count++; s[p.status].amount += Number(p.amount || 0);
         });
         return s;
-    }, [proposals, archivedIds, dateFilter, showArchived]);
+    }, [proposals, archivedIds, dateFilter, showArchived, activeStatues]);
 
     const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(p => p.id)));
     const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
@@ -1005,42 +1056,47 @@ export default function ProposalsPage() {
                     "flex gap-1.5 px-3 py-2 overflow-x-auto no-scrollbar shrink-0 border-b",
                     isDark ? "border-[#252525] bg-[#141414]" : "border-[#f0f0f0] bg-white"
                 )}>
-                    {Object.entries(STATUS_COLORS).filter(([k]) => k !== 'Paid').map(([key, cfg]) => {
-                        const s = stats[key] || { count: 0, amount: 0 };
-                        const isActive = statusFilter === key;
-                        return (
-                            <button
-                                key={key}
-                                onClick={() => { setStatusFilter(key as any); setShowArchived(false); }}
-                                className={cn(
-                                    "shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all border",
-                                    isActive
-                                        ? "text-white border-transparent"
-                                        : isDark ? "bg-white/[0.04] border-white/10 text-[#666] hover:text-[#aaa]" : "bg-[#f5f5f5] border-transparent text-[#aaa] hover:text-[#666]"
-                                )}
-                                style={isActive ? { backgroundColor: cfg.bar } : {}}
-                            >
-                                <span className="font-bold tabular-nums">{s.count}</span>
-                                <span className="opacity-90">{key === 'All' ? 'All' : cfg.label}</span>
-                            </button>
-                        );
-                    })}
+                    <TbBtn label={`All (${stats.All.count})`} active={statusFilter === 'All'} onClick={() => setStatusFilter('All')} isDark={isDark} />
+                    {activeStatues.map(s => (
+                        <TbBtn 
+                            key={s.name} 
+                            label={`${s.name} (${stats[s.name]?.count || 0})`} 
+                            active={statusFilter === s.name} 
+                            onClick={() => setStatusFilter(s.name as any)} 
+                            isDark={isDark} 
+                        />
+                    ))}
+                    <div className={cn("w-[1px] h-3 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />
+                    <TbBtn 
+                        label="Archived" 
+                        icon={<Archive size={11} />} 
+                        active={showArchived} 
+                        onClick={() => setShowArchived(!showArchived)} 
+                        isDark={isDark} 
+                        activeColor="bg-amber-500/10 text-amber-500"
+                    />
                 </div>
             ) : (
                 /* Desktop: full-width colored bar */
                 <div className="flex items-stretch h-[26px] shrink-0">
-                    {Object.entries(STATUS_COLORS).filter(([k]) => k !== 'Paid').map(([key, cfg]) => {
-                        const s = stats[key] || { count: 0, amount: 0 };
-                        const isActive = statusFilter === key;
-                        const barStyle = { backgroundColor: cfg.bar };
-                        const activeStyle = isActive ? { filter: 'brightness(1.1)' } : { filter: 'brightness(0.88)' };
+                    <button onClick={() => { setStatusFilter('All'); setShowArchived(false); }}
+                        className={cn("flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all hover:brightness-110",
+                            statusFilter === 'All' ? (isDark ? "bg-[#333] text-white" : "bg-[#e0e0e0] text-black") : (isDark ? "bg-[#252525] text-[#666]" : "bg-[#f0f0f0] text-[#aaa]"))}>
+                        <span className="font-bold tabular-nums">{stats.All.count}</span>
+                        <span className="opacity-80 font-medium">Proposals</span>
+                        {stats.All.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">{fmt$(stats.All.amount)}</span>}
+                    </button>
+                    {activeStatues.map(s => {
+                        const st = stats[s.name] || { count: 0, amount: 0 };
+                        const isActive = statusFilter === s.name;
                         return (
-                            <button key={key} onClick={() => { setStatusFilter(key as any); setShowArchived(false); }}
-                                style={{ ...barStyle, ...activeStyle }}
-                                className="flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all text-white hover:brightness-100">
-                                <span className="font-bold tabular-nums">{s.count}</span>
-                                <span className="opacity-80 font-medium">{key === 'All' ? 'Proposals' : cfg.label}</span>
-                                {s.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">{fmt$(s.amount)}</span>}
+                            <button key={s.name} onClick={() => { setStatusFilter(s.name); setShowArchived(false); }}
+                                style={isActive ? { backgroundColor: s.color } : {}}
+                                className={cn("flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all hover:brightness-110",
+                                    isActive ? "text-white" : (isDark ? "bg-[#252525] text-[#666]" : "bg-[#f0f0f0] text-[#aaa]"))}>
+                                <span className="font-bold tabular-nums">{st.count}</span>
+                                <span className="opacity-80 font-medium">{s.name}</span>
+                                {st.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">{fmt$(st.amount)}</span>}
                             </button>
                         );
                     })}
@@ -1208,7 +1264,7 @@ export default function ProposalsPage() {
                                             );
                                             if (colId === 'status') return (
                                                 <div key={colId} className="flex items-center px-4 py-3">
-                                                    <StatusCell status={p.status} onStatusChange={(s) => handleStatusChangeRequest(p.id, s)} isDark={isDark} />
+                                                    <StatusCell status={p.status} onStatusChange={(s) => handleStatusChangeRequest(p.id, s)} isDark={isDark} customStatuses={customStatuses} />
                                                 </div>
                                             );
                                             if (colId === 'issue') return (
@@ -1336,6 +1392,7 @@ export default function ProposalsPage() {
                                         n.has(p.id) ? n.delete(p.id) : n.add(p.id);
                                         setSelectedIds(n);
                                     }}
+                                    customStatuses={customStatuses}
                                     isDark={isDark} />
                             ))}
                         </div>

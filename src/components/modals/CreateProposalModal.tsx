@@ -16,18 +16,17 @@ interface Props {
     onClose: () => void;
 }
 
-function generatePrefix() {
-    return `P${Math.floor(Math.random() * 9000000 + 1000000)}`;
-}
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 export function CreateProposalModal({ open, onClose }: Props) {
-    const { theme } = useUIStore();
+    const { theme, activeWorkspaceId } = useUIStore();
     const isDark = theme === 'dark';
     const { addProposal, error: storeError } = useProposalStore();
     const { clients, fetchClients } = useClientStore();
+    const { generateNextId, fetchToolSettings, hasFetched } = useSettingsStore();
     const router = useRouter();
 
-    const [title, setTitle] = useState(generatePrefix);
+    const [title, setTitle] = useState('');
     const [clientQuery, setClientQuery] = useState('');
     const [selectedClient, setSelectedClient] = useState<string>('');
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -38,7 +37,27 @@ export function CreateProposalModal({ open, onClose }: Props) {
     const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
     const clientRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => { fetchClients(); }, [fetchClients]);
+    useEffect(() => {
+        if (open && activeWorkspaceId) {
+            fetchClients();
+            const initTitle = (settings: any) => {
+                const assignToDraft = settings?.assign_to_draft ?? true;
+                if (assignToDraft) {
+                    setTitle(useSettingsStore.getState().generateNextId('proposals'));
+                } else {
+                    setTitle('New Proposal');
+                }
+            };
+
+            if (!hasFetched['toolSettings_proposals']) {
+                fetchToolSettings(activeWorkspaceId, 'proposals').then(() => {
+                    initTitle(useSettingsStore.getState().toolSettings['proposals']);
+                });
+            } else {
+                initTitle(useSettingsStore.getState().toolSettings['proposals']);
+            }
+        }
+    }, [open, activeWorkspaceId, fetchClients, fetchToolSettings, hasFetched]);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -59,7 +78,7 @@ export function CreateProposalModal({ open, onClose }: Props) {
         setLoading(true);
         try {
             const newProposal = await addProposal({
-                title: title || generatePrefix(),
+                title: title || useSettingsStore.getState().generateNextId('proposals'),
                 client_id: selectedClientId,
                 client_name: selectedClient || clientQuery,
                 status: 'Draft',

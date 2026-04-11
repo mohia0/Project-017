@@ -749,7 +749,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 {!isPreview && (
                     <div className={cn(
                         "hidden md:flex w-[240px] shrink-0 flex-col overflow-hidden border-l",
-                        isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#f7f7f7] border-[#e4e4e4]"
+                        isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                     )}>
                         <div className="flex items-center shrink-0 p-1.5 gap-1">
                             {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => (

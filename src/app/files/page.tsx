@@ -1022,8 +1022,8 @@ function ContextMenu({ menu, items, isDark, onAction, onClose }: {
                                 </div>
                                 <div className="grid grid-cols-5 gap-2">
                                     {[
-                                        '#F59E0B', '#EF4444', '#EC4899', '#8B5CF6', '#6366F1', 
-                                        '#3B82F6', '#06B6D4', '#10B981', '#22C55E', '#71717A'
+                                        '#F5A623', '#F85359', '#E95F91', '#A85CF9', '#8289F1', 
+                                        '#5D9CEC', '#4FC1E9', '#48CFAD', '#4DBF39', '#9B9B9B'
                                     ].map(c => (
                                         <button key={c} onClick={() => { onAction(`color-${c}`, menu.itemId); onClose(); }}
                                             className={cn('w-4.5 h-4.5 rounded-full transition-all hover:scale-125 border border-white/10 shadow-sm', 

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import { useInvoiceStore, InvoiceStatus, Invoice } from '@/store/useInvoiceStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { useClientStore } from '@/store/useClientStore';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
@@ -168,7 +169,7 @@ function CardRow({ label, children, isDark, noBorder }: { label: string; childre
 }
 
 /* ─── Config ─────────────────────────────────────────────────────── */
-const STATUS_ORDER: InvoiceStatus[] = ['Draft', 'Pending', 'Paid', 'Overdue', 'Cancelled'];
+
 
 function SortableHeader({ id, children, onResizeStart, isDark, width }: { 
     id: string; 
@@ -217,13 +218,25 @@ function SortableHeader({ id, children, onResizeStart, isDark, width }: {
     );
 }
 
-function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onClientChange }: {
+function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onClientChange, customStatuses = [] }: {
     i: Invoice; onOpen: () => void; onArchive: () => void; isDark: boolean;
     onStatusChange: (s: InvoiceStatus) => void; isSelected: boolean; onToggle: () => void;
     onClientChange: (clientId: string, clientName: string) => void;
+    customStatuses: any[];
 }) {
     const [statusOpen, setStatusOpen] = useState(false);
-    const sc = getStatusColors(i.status);
+    const sc = getStatusColors(i.status, customStatuses);
+
+    // Sort and filter active statuses
+    const activeStatues = customStatuses
+        .filter(s => s.is_active || s.name === i.status)
+        .sort((a,b) => a.position - b.position);
+
+    const dynamicStyle = (sc as any).dynamic ? {
+        backgroundColor: (sc as any).dynamic.bg,
+        color: (sc as any).dynamic.text,
+        borderColor: (sc as any).dynamic.border
+    } : {};
     return (
         <div
             onClick={onOpen}
@@ -283,25 +296,30 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
                     <div className="relative flex-1">
                         <button
                             onClick={(e) => { e.stopPropagation(); setStatusOpen(!statusOpen); }}
-                            className={cn("flex items-center justify-between w-full px-2.5 py-1.5 rounded-[6px] font-semibold border",
+                            className={cn("flex items-center justify-between min-w-[100px] px-2.5 py-1.5 rounded-[6px] font-semibold border",
                                 isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(sc.badge, sc.badgeText, sc.badgeBorder))}
+                            style={!isDark && (sc as any).dynamic ? dynamicStyle : {}}
                         >
                             <span>{i.status}</span>
                             <ChevronsUpDown size={11} className="opacity-70" />
                         </button>
                         <Dropdown open={statusOpen} onClose={() => setStatusOpen(false)} isDark={isDark}>
-                            <div className="py-1">
-                                {STATUS_ORDER.map(s => {
-                                    const sSc = getStatusColors(s);
-                                    const isActive = s === i.status;
+                            <div className="py-1 min-w-[140px]">
+                                {activeStatues.map(s => {
+                                    const sSc = getStatusColors(s.name, customStatuses);
+                                    const isActive = s.name === i.status;
+                                    const sDynamic = (sSc as any).dynamic;
                                     return (
-                                        <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setStatusOpen(false); }}
+                                        <button key={s.name} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setStatusOpen(false); }}
                                             className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
                                                 isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                             )}
                                         >
-                                            <span className={cn("font-medium", isDark ? "" : sSc.badgeText)} style={isDark ? { color: sSc.bar } : {}}>
-                                                {s}
+                                            <span 
+                                                className={cn("font-medium", isDark ? "" : sSc.badgeText)} 
+                                                style={isDark ? { color: sSc.bar } : (sDynamic ? { color: sDynamic.text } : {})}
+                                            >
+                                                {s.name}
                                             </span>
                                             {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
                                         </button>
@@ -329,31 +347,51 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
 
 }
 
-function StatusCell({ status, onStatusChange, isDark }: { status: InvoiceStatus; onStatusChange: (s: InvoiceStatus) => void; isDark: boolean }) {
+function StatusCell({ status, onStatusChange, isDark, customStatuses = [] }: { 
+    status: InvoiceStatus; 
+    onStatusChange: (s: InvoiceStatus) => void; 
+    isDark: boolean;
+    customStatuses: any[];
+}) {
     const [open, setOpen] = useState(false);
-    const sc = getStatusColors(status);
+    const sc = getStatusColors(status, customStatuses);
+    const activeStatues = customStatuses
+        .filter(s => s.is_active || s.name === status)
+        .sort((a,b) => a.position - b.position);
+
+    const dynamicStyle = (sc as any).dynamic ? {
+        backgroundColor: (sc as any).dynamic.bg,
+        color: (sc as any).dynamic.text,
+        borderColor: (sc as any).dynamic.border
+    } : {};
+
     return (
         <div className="relative">
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
                 className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border",
                     isDark ? "bg-white/[0.04] text-[#888] border-white/5" : cn(sc.badge, sc.badgeText, sc.badgeBorder))}
+                style={!isDark && (sc as any).dynamic ? dynamicStyle : {}}
             >
                 {status}<ChevronDown size={10} className="opacity-50" />
             </button>
             <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
-                <div className="py-1">
-                    {STATUS_ORDER.map(s => {
-                        const sSc = getStatusColors(s);
-                        const isActive = s === status;
+                <div className="py-1 min-w-[140px]">
+                    {activeStatues.map(s => {
+                        const sSc = getStatusColors(s.name, customStatuses);
+                        const isActive = s.name === status;
+                        const sDynamic = (sSc as any).dynamic;
                         return (
-                            <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setOpen(false); }}
+                            <button key={s.name} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setOpen(false); }}
                                 className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
                                     isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                 )}
                             >
-                                <span className={cn("font-medium", isDark ? "" : sSc.badgeText)} style={isDark ? { color: sSc.bar } : {}}>
-                                    {s}
+                                <span 
+                                    className={cn("font-medium", isDark ? "" : sSc.badgeText)} 
+                                    style={isDark ? { color: sSc.bar } : (sDynamic ? { color: sDynamic.text } : {})}
+                                >
+                                    {s.name}
                                 </span>
                                 {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
                             </button>
@@ -570,8 +608,17 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function InvoicesPage() {
     const router = useRouter();
-    const { theme, setImportModalOpen } = useUIStore();
+    const { theme, setImportModalOpen, activeWorkspaceId } = useUIStore();
     const { invoices, fetchInvoices, updateInvoice, addInvoice, deleteInvoice, isLoading } = useInvoiceStore();
+    const { statuses, fetchStatuses } = useSettingsStore();
+
+    useEffect(() => {
+        if (activeWorkspaceId) fetchStatuses(activeWorkspaceId);
+    }, [activeWorkspaceId]);
+
+    const customStatuses = useMemo(() => statuses.filter(s => s.tool === 'invoices'), [statuses]);
+    const activeStatues = useMemo(() => customStatuses.filter(s => s.is_active).sort((a,b) => a.position - b.position), [customStatuses]);
+
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
     const [view, setView] = useState<'table' | 'cards'>('table');
@@ -669,7 +716,7 @@ export default function InvoicesPage() {
     };
 
     const gridTemplate = `${colWidths.select}px ${columnOrder.map(c => `${colWidths[c as keyof typeof colWidths]}px`).join(' ')} minmax(${colWidths.amount}px, 1fr)`;
-    const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'All'>('All');
+    const [statusFilter, setStatusFilter] = useState<string | 'All'>('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -711,9 +758,12 @@ export default function InvoicesPage() {
 
     const stats = useMemo(() => {
         const s: Record<string, { count: number; amount: number }> = {
-            All: { count: 0, amount: 0 }, Draft: { count: 0, amount: 0 }, Pending: { count: 0, amount: 0 },
-            Paid: { count: 0, amount: 0 }, Overdue: { count: 0, amount: 0 }, Cancelled: { count: 0, amount: 0 },
+            All: { count: 0, amount: 0 }
         };
+        
+        // Initialize with active statuses
+        activeStatues.forEach(st => s[st.name] = { count: 0, amount: 0 });
+
         invoices.filter(inv => {
             if (showArchived) return archivedIds.has(inv.id);
             if (archivedIds.has(inv.id)) return false;
@@ -722,10 +772,11 @@ export default function InvoicesPage() {
             return true;
         }).forEach(inv => {
             s.All.count++; s.All.amount += Number(inv.amount || 0);
-            if (s[inv.status]) { s[inv.status].count++; s[inv.status].amount += Number(inv.amount || 0); }
+            if (!s[inv.status]) s[inv.status] = { count: 0, amount: 0 };
+            s[inv.status].count++; s[inv.status].amount += Number(inv.amount || 0);
         });
         return s;
-    }, [invoices, archivedIds, dateFilter, showArchived]);
+    }, [invoices, archivedIds, dateFilter, showArchived, activeStatues]);
 
     const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(i => i.id)));
     const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
@@ -1214,7 +1265,7 @@ export default function InvoicesPage() {
                                             );
                                             if (colId === 'status') return (
                                                 <div key={colId} className="flex items-center px-4 py-3">
-                                                    <StatusCell status={inv.status} onStatusChange={(s) => updateInvoice(inv.id, { status: s })} isDark={isDark} />
+                                                    <StatusCell status={inv.status} onStatusChange={(s) => updateInvoice(inv.id, { status: s })} isDark={isDark} customStatuses={customStatuses} />
                                                 </div>
                                             );
                                             if (colId === 'issue') return (
@@ -1343,6 +1394,7 @@ export default function InvoicesPage() {
                                         n.has(inv.id) ? n.delete(inv.id) : n.add(inv.id);
                                         setSelectedIds(n);
                                     }}
+                                    customStatuses={customStatuses}
                                     isDark={isDark} />
                             ))}
                         </div>

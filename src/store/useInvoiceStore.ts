@@ -7,6 +7,7 @@ export type InvoiceStatus = 'Draft' | 'Pending' | 'Paid' | 'Overdue' | 'Cancelle
 export interface Invoice {
     id: string;
     workspace_id: string;
+    invoice_number?: string;
     client_id?: string | null;
     client_name: string;
     title: string;
@@ -15,7 +16,7 @@ export interface Invoice {
     issue_date: string;
     due_date: string;
     notes: string;
-    blocks: any[]; // For Notion-style editor blocks
+    blocks: any[]; 
     meta?: any;
     created_at: string;
     paid_at?: string | null;
@@ -70,21 +71,38 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) return null;
 
+        const { generateNextId, incrementCounter, hasFetched, fetchToolSettings } = (await import('./useSettingsStore')).useSettingsStore.getState();
+        
+        // Ensure settings are loaded
+        if (!hasFetched['toolSettings_invoices']) {
+            await fetchToolSettings(workspaceId, 'invoices');
+        }
+
+        const invoiceNumber = generateNextId('invoices');
+
         try {
             const payload = {
                 ...invoice,
                 client_id: invoice.client_id || null,
                 due_date: invoice.due_date || null,
                 issue_date: invoice.issue_date || null,
-                workspace_id: workspaceId,
+                workspace_id: workspaceId
             };
             const { data, error } = await supabase.from('invoices').insert(payload).select().single();
             if (error) {
-                console.error("Supabase insert error (invoices):", error.message, error.details, error.hint);
+                console.error("Supabase insert error (invoices):", error.message);
                 set({ error: error.message });
                 return null;
             } else if (data) {
                 set((state) => ({ invoices: [data, ...state.invoices] }));
+                
+                // Increment counter after successful creation
+                // Increment counter after successful creation if assign_to_draft is enabled
+                const settings = (await import('./useSettingsStore')).useSettingsStore.getState().toolSettings['invoices'];
+                if (settings?.assign_to_draft !== false) {
+                    await incrementCounter(workspaceId, 'invoices');
+                }
+                
                 return data;
             }
             return null;

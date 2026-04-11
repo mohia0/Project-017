@@ -7,6 +7,7 @@ export type ProposalStatus = 'Draft' | 'Pending' | 'Accepted' | 'Overdue' | 'Dec
 export interface Proposal {
     id: string;
     workspace_id: string;
+    proposal_number?: string;
     client_id?: string | null;
     client_name: string; 
     title: string;
@@ -70,6 +71,15 @@ export const useProposalStore = create<ProposalState>((set) => ({
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) return null;
 
+        const { generateNextId, incrementCounter, hasFetched, fetchToolSettings } = (await import('./useSettingsStore')).useSettingsStore.getState();
+        
+        // Ensure settings are loaded
+        if (!hasFetched['toolSettings_proposals']) {
+            await fetchToolSettings(workspaceId, 'proposals');
+        }
+
+        const proposalNumber = generateNextId('proposals');
+
         try {
             const payload = {
                 ...proposal,
@@ -85,6 +95,14 @@ export const useProposalStore = create<ProposalState>((set) => ({
                 return null;
             } else if (data) {
                 set((state) => ({ proposals: [data, ...state.proposals] }));
+                
+                // Increment counter after successful creation
+                // Increment counter after successful creation if assign_to_draft is enabled
+                const settings = (await import('./useSettingsStore')).useSettingsStore.getState().toolSettings['proposals'];
+                if (settings?.assign_to_draft !== false) {
+                    await incrementCounter(workspaceId, 'proposals');
+                }
+                
                 return data;
             }
             return null;

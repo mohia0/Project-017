@@ -5,6 +5,7 @@ import { useSettingsStore, WorkspaceStatus } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
 import { GripVertical, Plus, Trash2, Check, Info, Pencil, FileText, Receipt, FolderKanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ColorisInput } from '@/components/ui/ColorisInput';
 import { gooeyToast } from 'goey-toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,22 +21,13 @@ const TABS: { key: Tool; label: string; icon: React.ReactNode }[] = [
 // ─── ColorSwatch ──────────────────────────────────────────────────────────────
 
 function ColorSwatch({ color, onChange }: { color: string; onChange: (c: string) => void }) {
-    const inputRef = useRef<HTMLInputElement>(null);
     return (
-        <div
-            className="w-7 h-7 rounded-lg shrink-0 cursor-pointer border border-black/10 dark:border-white/10 relative overflow-hidden transition-transform hover:scale-110 active:scale-95"
-            style={{ backgroundColor: color }}
-            onClick={() => inputRef.current?.click()}
-            title="Click to change color"
-        >
-            <input
-                ref={inputRef}
-                type="color"
-                value={color}
-                onChange={e => onChange(e.target.value)}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-            />
-        </div>
+        <ColorisInput
+            value={color}
+            onChange={onChange}
+            compact
+            className="w-auto shrink-0"
+        />
     );
 }
 
@@ -221,7 +213,8 @@ function ToolStatusList({ tool, isDark }: { tool: Tool; isDark: boolean }) {
     const handleSaveOrder = async () => {
         setIsSaving(true);
         const reordered = localList.map((s, i) => ({ ...s, position: i }));
-        await reorderStatuses(tool, reordered);
+        if (!activeWorkspaceId) return;
+        await reorderStatuses(activeWorkspaceId, tool, reordered);
         setIsSaving(false);
         gooeyToast.success('Order saved');
     };

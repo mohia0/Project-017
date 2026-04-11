@@ -16,9 +16,7 @@ interface Props {
     onClose: () => void;
 }
 
-function generateInvoiceNumber() {
-    return `INV${Math.floor(Math.random() * 9000000 + 1000000)}`;
-}
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 function addDays(date: Date, days: number) {
     const d = new Date(date);
@@ -27,21 +25,44 @@ function addDays(date: Date, days: number) {
 }
 
 export function CreateInvoiceModal({ open, onClose }: Props) {
-    const { theme } = useUIStore();
+    const { theme, activeWorkspaceId } = useUIStore();
     const isDark = theme === 'dark';
     const { clients, fetchClients } = useClientStore();
     const { addInvoice } = useInvoiceStore();
+    const { generateNextId, fetchToolSettings, hasFetched } = useSettingsStore();
     const router = useRouter();
 
     const today = new Date().toISOString().split('T')[0];
 
-    const [title, setTitle] = useState(generateInvoiceNumber);
+    const [title, setTitle] = useState('');
     const [clientQuery, setClientQuery] = useState('');
     const [selectedClient, setSelectedClient] = useState<string>('');
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [showClientDrop, setShowClientDrop] = useState(false);
     const [issueDate, setIssueDate] = useState(today);
     const [dueDate, setDueDate] = useState(() => addDays(new Date(), 7));
+
+    useEffect(() => {
+        if (open && activeWorkspaceId) {
+            fetchClients();
+            const initTitle = (settings: any) => {
+                const assignToDraft = settings?.assign_to_draft ?? true;
+                if (assignToDraft) {
+                    setTitle(useSettingsStore.getState().generateNextId('invoices'));
+                } else {
+                    setTitle('New Invoice');
+                }
+            };
+
+            if (!hasFetched['toolSettings_invoices']) {
+                fetchToolSettings(activeWorkspaceId, 'invoices').then(() => {
+                    initTitle(useSettingsStore.getState().toolSettings['invoices']);
+                });
+            } else {
+                initTitle(useSettingsStore.getState().toolSettings['invoices']);
+            }
+        }
+    }, [open, activeWorkspaceId, fetchClients, fetchToolSettings, hasFetched]);
     const [loading, setLoading] = useState(false);
     const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
     const clientRef = useRef<HTMLDivElement>(null);
@@ -66,7 +87,7 @@ export function CreateInvoiceModal({ open, onClose }: Props) {
         setLoading(true);
         try {
             const newInvoice = await addInvoice({
-                title: title || generateInvoiceNumber(),
+                title: title || useSettingsStore.getState().generateNextId('invoices'),
                 client_id: selectedClientId,
                 client_name: selectedClient || clientQuery,
                 status: 'Draft',

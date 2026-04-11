@@ -52,13 +52,13 @@ export function SettingsCard({
 
     return (
         <div className={cn(
-            "w-full rounded-2xl overflow-hidden mb-8 shadow-sm transition-all duration-300",
-            isDark ? "bg-[#111] border border-white/10" : "bg-white border border-black/10",
-            isCollapsed && "mb-4"
+            "w-full rounded-2xl mb-8 shadow-sm transition-all duration-300",
+            isDark ? "bg-[#1a1a1a] border border-[#252525]" : "bg-white border border-[#ebebeb]",
+            isCollapsed && "mb-4 overflow-hidden"
         )}>
             <div 
                 className={cn(
-                    "p-6",
+                    "p-6 rounded-t-2xl",
                     collapsible && "cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
                 )}
                 onClick={() => collapsible && setIsCollapsed(!isCollapsed)}
@@ -95,23 +95,23 @@ export function SettingsCard({
                         )}
                     </div>
                 </div>
-                
-                <div className={cn(
-                    "grid transition-all duration-300 ease-in-out",
-                    isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100 mt-6"
-                )}>
-                    <div className="overflow-hidden">
-                        <div className="flex flex-col gap-6">
-                            {children}
-                        </div>
+            </div>
+            
+            <div className={cn(
+                "grid transition-all duration-300 ease-in-out px-6",
+                isCollapsed ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100 pb-6"
+            )}>
+                <div className={cn(isCollapsed && "overflow-hidden")}>
+                    <div className="flex flex-col gap-6">
+                        {children}
                     </div>
                 </div>
             </div>
 
             {onSave && !isCollapsed && (
                 <div className={cn(
-                    "px-6 py-4 flex items-center justify-between border-t",
-                    isDark ? "bg-[#1a1a1a] border-white/10" : "bg-[#f8f8f8] border-black/10"
+                    "px-6 py-4 flex items-center justify-between border-t rounded-b-2xl",
+                    isDark ? "bg-[#141414] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]"
                 )}>
                     <div className={cn("text-sm font-medium", isDark ? "text-white/40" : "text-black/40")}>
                         {unsavedChanges ? 'You have unsaved changes' : 'All changes saved.'}

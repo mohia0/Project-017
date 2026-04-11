@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SettingsCard } from '@/components/settings/SettingsCard';
-import { SettingsField, SettingsInput, SettingsTextarea, SettingsToggle } from '@/components/settings/SettingsField';
+import { SettingsField, SettingsInput, SettingsTextarea, SettingsToggle, SettingsSelect } from '@/components/settings/SettingsField';
 import { useWorkspaceStore, Workspace } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
 import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, FileText, Code } from 'lucide-react';
@@ -51,6 +51,10 @@ export default function WorkspaceSettingsPage() {
     const [isSaving, setIsSaving] = useState<Record<string, boolean>>({});
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
+    
+    // Deletion workflow state
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [confirmText, setConfirmText] = useState('');
 
     useEffect(() => {
         setMounted(true);
@@ -267,24 +271,21 @@ export default function WorkspaceSettingsPage() {
                                             setEmails(next);
                                         }}
                                     />
-                                    <div className="w-[120px] relative">
-                                        <select 
-                                            className={cn(
-                                                "w-full h-10 px-3 appearance-none bg-transparent border rounded-xl text-sm focus:outline-none",
-                                                isDark ? "border-white/10" : "border-black/10"
-                                            )}
+                                    <div className="w-[120px]">
+                                        <SettingsSelect
+                                            isDark={isDark}
                                             value={em.type}
-                                            onChange={e => {
+                                            onChange={val => {
                                                 const next = [...emails];
-                                                next[idx].type = e.target.value;
+                                                next[idx].type = val;
                                                 setEmails(next);
                                             }}
-                                        >
-                                            <option value="Email">Work</option>
-                                            <option value="Support">Support</option>
-                                            <option value="Billing">Billing</option>
-                                        </select>
-                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" />
+                                            options={[
+                                                { label: 'Work', value: 'Email' },
+                                                { label: 'Support', value: 'Support' },
+                                                { label: 'Billing', value: 'Billing' }
+                                            ]}
+                                        />
                                     </div>
                                     <button 
                                         onClick={() => setEmails(emails.length === 1 ? [{ value: '', type: 'Email' }] : emails.filter((_, i) => i !== idx))}
@@ -321,24 +322,21 @@ export default function WorkspaceSettingsPage() {
                                             setPhones(next);
                                         }}
                                     />
-                                    <div className="w-[120px] relative">
-                                        <select 
-                                            className={cn(
-                                                "w-full h-10 px-3 appearance-none bg-transparent border rounded-xl text-sm focus:outline-none",
-                                                isDark ? "border-white/10" : "border-black/10"
-                                            )}
+                                    <div className="w-[120px]">
+                                        <SettingsSelect
+                                            isDark={isDark}
                                             value={ph.type}
-                                            onChange={e => {
+                                            onChange={val => {
                                                 const next = [...phones];
-                                                next[idx].type = e.target.value;
+                                                next[idx].type = val;
                                                 setPhones(next);
                                             }}
-                                        >
-                                            <option value="Mobile number">Mobile</option>
-                                            <option value="Work">Work</option>
-                                            <option value="Home">Home</option>
-                                        </select>
-                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 pointer-events-none" />
+                                            options={[
+                                                { label: 'Mobile', value: 'Mobile number' },
+                                                { label: 'Work', value: 'Work' },
+                                                { label: 'Home', value: 'Home' }
+                                            ]}
+                                        />
                                     </div>
                                     <button 
                                         onClick={() => setPhones(phones.length === 1 ? [{ value: '', type: 'Mobile number' }] : phones.filter((_, i) => i !== idx))}
@@ -596,23 +594,72 @@ export default function WorkspaceSettingsPage() {
                 title="Upload Workspace Logo"
             />
 
-            {/* Delete Section */}
+            {/* Danger Zone */}
             <div className={cn(
                 "w-full rounded-2xl overflow-hidden border transition-all duration-300",
                 isDark 
-                    ? "bg-[#111] border-red-500/10 hover:border-red-500/30" 
-                    : "bg-white border-red-500/10 hover:border-red-500/30 shadow-sm"
+                    ? "bg-[#1a1a1a] border-red-500/20" 
+                    : "bg-white border-red-500/20 shadow-sm"
             )}>
-                <button 
-                    onClick={handleForceDelete}
-                    className="w-full flex items-center justify-between p-6 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/5 group"
-                >
-                    <div className="flex flex-col items-start gap-0.5">
-                        <span>Permanently delete this workspace</span>
-                        <span className="text-[10px] font-medium opacity-50">All data, invoices, and settings will be lost forever.</span>
+                {!isDeleting ? (
+                    <button 
+                        onClick={() => setIsDeleting(true)}
+                        className="w-full flex items-center justify-between p-6 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/5 group"
+                    >
+                        <div className="flex flex-col items-start gap-0.5">
+                            <span>Permanently delete this workspace</span>
+                            <span className="text-[10px] font-medium opacity-50">All data, invoices, and settings will be lost forever.</span>
+                        </div>
+                        <X size={18} className="opacity-30 group-hover:opacity-100 transition-all group-hover:rotate-90" />
+                    </button>
+                ) : (
+                    <div className="p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-1">
+                                <h4 className="text-sm font-bold text-red-500">Confirm workspace deletion</h4>
+                                <p className={cn("text-xs opacity-60", isDark ? "text-white" : "text-black")}>
+                                    To permanently delete <span className="font-bold underline"> {activeWorkspace.name}</span>, please type its name below.
+                                </p>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                                <SettingsInput 
+                                    autoFocus
+                                    placeholder={activeWorkspace.name}
+                                    value={confirmText}
+                                    onChange={e => setConfirmText(e.target.value)}
+                                    className={cn(
+                                        "flex-1",
+                                        isDark ? "bg-[#141414] border-red-500/20" : "bg-[#fafafa] border-red-500/20"
+                                    )}
+                                />
+                                <button 
+                                    disabled={confirmText !== activeWorkspace.name}
+                                    onClick={async () => {
+                                        if (!activeWorkspaceId) return;
+                                        const success = await deleteWorkspace(activeWorkspaceId);
+                                        if (success) router.push('/');
+                                    }}
+                                    className="px-6 h-10 rounded-xl bg-red-500 text-white text-[13px] font-bold transition-all disabled:opacity-30 active:scale-95"
+                                >
+                                    Permanently Delete
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        setIsDeleting(false);
+                                        setConfirmText('');
+                                    }}
+                                    className={cn(
+                                        "px-4 h-10 rounded-xl text-[13px] font-bold transition-colors",
+                                        isDark ? "bg-white/5 text-white/40 hover:text-white" : "bg-black/5 text-black/40 hover:text-black"
+                                    )}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <X size={18} className="opacity-30 group-hover:opacity-100 transition-all group-hover:rotate-90" />
-                </button>
+                )}
             </div>
         </div>
     );

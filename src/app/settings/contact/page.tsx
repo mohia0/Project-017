@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { SettingsCard } from '@/components/settings/SettingsCard';
-import { SettingsField, SettingsInput, SettingsTextarea } from '@/components/settings/SettingsField';
+import { SettingsField, SettingsInput, SettingsTextarea, SettingsSelect } from '@/components/settings/SettingsField';
 import { useSettingsStore, UserProfile } from '@/store/useSettingsStore';
+import { useUIStore } from '@/store/useUIStore';
 
 // We'll augment the UserProfile inline for the form state since it covers social links via jsonb in the DB
 interface ContactFormState {
@@ -17,6 +18,8 @@ interface ContactFormState {
 }
 
 export default function ContactSettingsPage() {
+    const { theme } = useUIStore();
+    const isDark = theme === 'dark';
     const { profile, fetchProfile, updateProfile, isLoading } = useSettingsStore();
 
     const [formData, setFormData] = useState<ContactFormState>({
@@ -114,21 +117,35 @@ export default function ContactSettingsPage() {
                         />
                     </SettingsField>
                     
-                    <div className="flex gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <SettingsField label="Timezone">
-                            {/* A real app would use a select here */}
-                            <SettingsInput 
-                                value={formData.timezone} 
-                                onChange={e => setFormData({ ...formData, timezone: e.target.value })}
-                                placeholder="America/New_York"
+                            <SettingsSelect
+                                isDark={isDark}
+                                value={formData.timezone}
+                                onChange={val => setFormData({ ...formData, timezone: val })}
+                                options={[
+                                    { label: 'UTC', value: 'UTC' },
+                                    { label: 'America/New_York (EST)', value: 'America/New_York' },
+                                    { label: 'America/Los_Angeles (PST)', value: 'America/Los_Angeles' },
+                                    { label: 'Europe/London (GMT)', value: 'Europe/London' },
+                                    { label: 'Europe/Paris (CET)', value: 'Europe/Paris' },
+                                    { label: 'Asia/Tokyo (JST)', value: 'Asia/Tokyo' },
+                                    { label: 'Asia/Dubai (GST)', value: 'Asia/Dubai' }
+                                ]}
                             />
                         </SettingsField>
                         <SettingsField label="Language">
-                            {/* A real app would use a select here */}
-                            <SettingsInput 
-                                value={formData.language} 
-                                onChange={e => setFormData({ ...formData, language: e.target.value })}
-                                placeholder="en"
+                            <SettingsSelect
+                                isDark={isDark}
+                                value={formData.language}
+                                onChange={val => setFormData({ ...formData, language: val })}
+                                options={[
+                                    { label: 'English', value: 'en' },
+                                    { label: 'French', value: 'fr' },
+                                    { label: 'Spanish', value: 'es' },
+                                    { label: 'German', value: 'de' },
+                                    { label: 'Arabic', value: 'ar' }
+                                ]}
                             />
                         </SettingsField>
                     </div>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { SettingsCard } from '@/components/settings/SettingsCard';
-import { SettingsField, SettingsToggle } from '@/components/settings/SettingsField';
+import { SettingsField, SettingsToggle, SettingsSelect } from '@/components/settings/SettingsField';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
 import { Info, ChevronDown } from 'lucide-react';
@@ -52,7 +52,7 @@ function SelectField({
             'flex items-center justify-between px-4 py-4 rounded-xl border transition-colors',
             isDark ? 'border-white/8 bg-white/[0.02]' : 'border-black/8 bg-black/[0.02]'
         )}>
-            <div>
+            <div className="flex-1 pr-4">
                 <p className="text-sm font-semibold">{label}</p>
                 {description && (
                     <p className={cn('text-xs mt-0.5', isDark ? 'text-white/40' : 'text-black/40')}>
@@ -60,22 +60,13 @@ function SelectField({
                     </p>
                 )}
             </div>
-            <div className="relative shrink-0">
-                <select
+            <div className="w-[180px] shrink-0">
+                <SettingsSelect
+                    isDark={isDark}
                     value={value}
-                    onChange={e => onChange(e.target.value)}
-                    className={cn(
-                        'appearance-none h-9 pl-3 pr-8 rounded-lg border text-sm font-medium focus:outline-none transition-all cursor-pointer',
-                        isDark
-                            ? 'bg-white/5 border-white/10 text-white hover:border-white/20'
-                            : 'bg-black/5 border-black/10 text-black hover:border-black/20'
-                    )}
-                >
-                    {options.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                </select>
-                <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-40 pointer-events-none" />
+                    onChange={onChange}
+                    options={options}
+                />
             </div>
         </div>
     );

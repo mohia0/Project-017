@@ -157,12 +157,16 @@ interface SettingsState {
   addStatus: (workspaceId: string, data: Omit<WorkspaceStatus, 'id' | 'workspace_id' | 'created_at'>) => Promise<WorkspaceStatus | null>;
   updateStatus: (id: string, updates: Partial<WorkspaceStatus>) => Promise<void>;
   deleteStatus: (id: string) => Promise<void>;
-  reorderStatuses: (tool: WorkspaceStatus['tool'], ordered: WorkspaceStatus[]) => Promise<void>;
+  reorderStatuses: (workspaceId: string, tool: WorkspaceStatus['tool'], ordered: WorkspaceStatus[]) => Promise<void>;
 
   // Tool Settings (proposals, invoices, projects)
   toolSettings: Record<string, Record<string, any>>;
   fetchToolSettings: (workspaceId: string, tool: string) => Promise<void>;
   updateToolSettings: (workspaceId: string, tool: string, settings: Record<string, any>) => Promise<void>;
+  
+  // Smart ID Helpers
+  generateNextId: (tool: 'proposals' | 'invoices') => string;
+  incrementCounter: (workspaceId: string, tool: 'proposals' | 'invoices') => Promise<void>;
 
   hasFetched: Record<string, boolean>;
 }
@@ -403,34 +407,42 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       .eq('workspace_id', workspaceId)
       .order('position', { ascending: true });
 
-    // Only replace defaults with real DB data if fetch succeeded and returned rows
-    if (!error && data && data.length > 0) {
-      set({ statuses: data });
+    // Merge DB results with our defaults
+    if (!error && data) {
+      set(s => {
+        const dbTools = new Set(data.map(d => d.tool));
+        // Keep defaults for tools that have NO database records yet
+        const localToKeep = s.statuses.filter(st => !dbTools.has(st.tool));
+        return { 
+          statuses: [...localToKeep, ...data],
+          hasFetched: { ...s.hasFetched, statuses: true }
+        };
+      });
     } else if (error && error.code !== 'PGRST116' && !error.message?.includes('does not exist')) {
-      // Log unexpected errors (auth, connection, etc.) but don't wipe pre-seeded defaults
       console.warn('[fetchStatuses] failed, keeping defaults:', error.message);
+      set(s => ({ hasFetched: { ...s.hasFetched, statuses: true } }));
+    } else {
+      set(s => ({ hasFetched: { ...s.hasFetched, statuses: true } }));
     }
-    // In all other cases (empty table, table missing) we keep the pre-seeded defaults
-    set(s => ({ hasFetched: { ...s.hasFetched, statuses: true } }));
   },
 
   addStatus: async (workspaceId, data) => {
-    const { data: result, error } = await supabase
-      .from('workspace_statuses')
-      .insert({ workspace_id: workspaceId, ...data })
-      .select()
-      .single();
-
-    if (error) {
-      // Optimistic local add if DB table doesn't exist yet
-      const localStatus: WorkspaceStatus = {
-        ...data, id: `local-${Date.now()}`, workspace_id: workspaceId, created_at: new Date().toISOString()
-      };
-      set(s => ({ statuses: [...s.statuses, localStatus] }));
-      return localStatus;
-    }
-    set(s => ({ statuses: [...s.statuses, result] }));
-    return result;
+    // Optimistic local creation
+    const localStatus: WorkspaceStatus = {
+      ...data, 
+      id: `local-${Date.now()}`, 
+      workspace_id: workspaceId, 
+      created_at: new Date().toISOString()
+    };
+    
+    // Append to current tool list
+    const currentList = get().statuses.filter(s => s.tool === data.tool).sort((a,b) => a.position - b.position);
+    const updatedList = [...currentList, localStatus].map((s, i) => ({ ...s, position: i }));
+    
+    // Save everything. This converts any `local-` defaults to real DB rows seamlessly
+    await get().reorderStatuses(workspaceId, data.tool, updatedList);
+    
+    return localStatus;
   },
 
   updateStatus: async (id, updates) => {
@@ -450,14 +462,48 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
-  reorderStatuses: async (tool, ordered) => {
-    // Replace only the statuses for this tool, keep the rest
+  reorderStatuses: async (workspaceId, tool, ordered) => {
+    // 1. Optimistic UI update
     set(s => ({ statuses: [...s.statuses.filter(st => st.tool !== tool), ...ordered] }));
-    const updates = ordered
-      .filter(s => !s.id.startsWith('local-'))
-      .map((s, i) => ({ id: s.id, position: i }));
+
+    if (!workspaceId) return;
+
+    // 2. Prepare updates
+    // If an ID is 'local-', we treat it as a new record (UPSERT will create it)
+    // but the ID must be removed or replaced with a real UUID if we want Supabase to generate it.
+    // However, for bulk reorder, it's safer to just send them all.
+    const updates = ordered.map((s, i) => {
+      const isLocal = s.id.startsWith('local-');
+      const { id, created_at, ...rest } = s;
+      
+      const item: any = { 
+        ...rest, 
+        workspace_id: workspaceId,
+        position: i 
+      };
+      
+      if (!isLocal) item.id = id;
+      return item;
+    });
+
     if (updates.length > 0) {
-      await supabase.from('workspace_statuses').upsert(updates);
+      const { data, error } = await supabase
+        .from('workspace_statuses')
+        .upsert(updates, { onConflict: 'id' })
+        .select();
+        
+      if (error) {
+        console.error('[reorderStatuses] DB Error:', error.message);
+        set({ error: error.message });
+      } else if (data) {
+        // Update store with the real IDs assigned by Postgres
+        set(s => ({ 
+          statuses: [
+            ...s.statuses.filter(st => st.tool !== tool),
+            ...data.sort((a,b) => a.position - b.position)
+          ] 
+        }));
+      }
     }
   },
 
@@ -480,12 +526,53 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   updateToolSettings: async (workspaceId, tool, settings) => {
-    // Optimistic
-    set(s => ({ toolSettings: { ...s.toolSettings, [tool]: settings } }));
-    const { error } = await supabase
-      .from('workspace_tool_settings')
-      .upsert({ workspace_id: workspaceId, tool, settings, updated_at: new Date().toISOString() });
-    if (error) set({ error: error.message });
+    set((state) => ({ toolSettings: { ...state.toolSettings, [tool]: settings } }));
+    const { error } = await supabase.from('workspace_tool_settings').upsert({
+      workspace_id: workspaceId,
+      tool,
+      settings
+    }, { onConflict: 'workspace_id, tool' });
+    if (error) {
+      console.error(`Error updating tool settings for ${tool}:`, error.message);
+    }
+  },
+
+  generateNextId: (tool) => {
+    const settings = get().toolSettings[tool] || {};
+    let { prefix, counter, suffix } = settings;
+    
+    if (tool === 'proposals') {
+        prefix = prefix ?? 'PROP-';
+        counter = counter ?? '0001';
+        suffix = suffix ?? '';
+    } else if (tool === 'invoices') {
+        prefix = prefix ?? 'INV-';
+        counter = counter ?? '0001';
+        suffix = suffix ?? '';
+    }
+    
+    return `${prefix}${counter}${suffix}`;
+  },
+
+  incrementCounter: async (workspaceId, tool) => {
+    let settings = get().toolSettings[tool];
+    if (!settings) {
+        settings = {
+            prefix: tool === 'proposals' ? 'PROP-' : 'INV-',
+            counter: '0001',
+            suffix: ''
+        };
+    }
+
+    const currentCounter = settings.counter || '1';
+    const num = parseInt(currentCounter, 10);
+    const nextNum = (num + 1).toString();
+    
+    // Maintain padding if current counter has leading zeros
+    const padded = nextNum.padStart(currentCounter.length, '0');
+    
+    const newSettings = { ...settings, counter: padded };
+    await get().updateToolSettings(workspaceId, tool, newSettings);
   },
 
 }));

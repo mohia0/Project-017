@@ -12,6 +12,7 @@ interface ColorPickerProps {
     onChange: (val: string) => void;
     className?: string;
     isDark?: boolean;
+    compact?: boolean;
 }
 
 // ── COLOR UTILS ──
@@ -89,10 +90,13 @@ function rgbaToHex(r: number, g: number, b: number, a: number) {
     return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
 }
 
-export function ColorisInput({ value, onChange, className, isDark: isDarkProp }: ColorPickerProps) {
+export function ColorisInput({ value, onChange, className, isDark: isDarkProp, compact }: ColorPickerProps) {
     const { theme } = useUIStore();
+
     const isDark = isDarkProp ?? (theme === 'dark');
     const [isOpen, setIsOpen] = useState(false);
+    
+
     const [coords, setCoords] = useState({ top: 0, left: 0, width: 0, direction: 'down' as 'up' | 'down' });
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -114,32 +118,7 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
     };
 
     const updateCoords = useCallback(() => {
-        if (containerRef.current) {
-            const rect = containerRef.current.getBoundingClientRect();
-            const pickerWidth = 180;
-            const pickerHeight = 240; // Approx height with swatches
-            
-            // Calculate horizontal center relative to the input but clamp to viewport
-            let left = rect.left + (rect.width / 2) - (pickerWidth / 2);
-            
-            // Ensure it doesn't go off-screen
-            const padding = 12;
-            if (left < padding) left = padding;
-            if (left + pickerWidth > window.innerWidth - padding) {
-                left = window.innerWidth - pickerWidth - padding;
-            }
-
-            const spaceBelow = window.innerHeight - rect.bottom;
-            const spaceAbove = rect.top;
-            const direction = spaceBelow < pickerHeight && spaceAbove > spaceBelow ? 'up' : 'down';
-            
-            setCoords({
-                top: direction === 'down' ? rect.bottom : rect.top - pickerHeight,
-                left: left,
-                width: rect.width,
-                direction
-            });
-        }
+        // Centering is now handled by CSS, no need for complex calculations
     }, []);
 
     useEffect(() => {
@@ -195,25 +174,40 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
                 }}
             >
                 <div className="w-5 h-5 rounded shadow-inner border border-black/5 shrink-0" style={{ backgroundColor: value }} />
-                <div className="flex flex-col min-w-0 flex-1">
-                    <span className={cn("text-[11px] font-mono font-medium truncate", isDark ? "text-white/90" : "text-gray-700")}>{value}</span>
-                </div>
+                {!compact && (
+                    <div className="flex flex-col min-w-0 flex-1">
+                        <span className={cn("text-[11px] font-mono font-medium truncate", isDark ? "text-white/90" : "text-gray-700")}>{value}</span>
+                    </div>
+                )}
             </div>
 
             {typeof document !== 'undefined' && createPortal(
                 <AnimatePresence>
                     {isOpen && (
+                        <>
+                        {/* Backdrop */}
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => {
+                                addToHistory(value);
+                                setIsOpen(false);
+                            }}
+                            className="fixed inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-[1px] z-[99998]"
+                        />
+
                         <motion.div
                             id="color-picker-portal-content"
-                            initial={{ opacity: 0, y: coords.direction === 'down' ? 4 : -4, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: coords.direction === 'down' ? 4 : -4, scale: 0.98 }}
-                            transition={{ type: "spring", damping: 40, stiffness: 800 }}
+                            initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-40%' }}
+                            animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+                            exit={{ opacity: 0, scale: 0.9, x: '-50%', y: '-40%' }}
+                            transition={{ type: "spring", damping: 25, stiffness: 400 }}
                             style={{ 
                                 position: 'fixed',
-                                top: coords.direction === 'down' ? coords.top + 6 : coords.top - 6,
-                                left: coords.left,
-                                width: 180, // Scaled down width
+                                top: '50%',
+                                left: '50%',
+                                width: 210, 
                                 zIndex: 99999
                             }}
                             className={cn(
@@ -260,6 +254,9 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
                                 />
                             </div>
 
+
+
+
                             {/* Color History / Recent Colors */}
                             <div className="mt-1">
                                 <div className={cn("text-[9px] font-bold uppercase tracking-wider opacity-40 mb-1 pl-0.5", isDark ? "text-white" : "text-black")}>
@@ -287,17 +284,22 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp }:
                                     System
                                 </div>
                                 <div className="flex flex-wrap gap-1.5 justify-start">
-                                    {['#FFFFFF', '#000000', '#4DBF39', '#2563EB', '#D97706', '#E11D48'].map((color) => (
+                                    {[
+                                        '#F5A623', '#F85359', '#E95F91', '#A85CF9', '#8289F1', // Row 1
+                                        '#5D9CEC', '#4FC1E9', '#48CFAD', '#4DBF39', '#9B9B9B', // Row 2
+                                        '#FFFFFF', '#000000'                                  // Neutrals
+                                    ].map((color) => (
                                         <button
                                             key={color}
                                             className="w-4 h-4 rounded border border-black/5 hover:scale-110 active:scale-95 transition-all outline-none"
                                             style={{ backgroundColor: color }}
-                                            onClick={(e) => { e.stopPropagation(); onChange(color); }}
+                                            onClick={(e) => { e.stopPropagation(); onChange(color); addToHistory(color); }}
                                         />
                                     ))}
                                 </div>
                             </div>
                         </motion.div>
+                        </>
                     )}
                 </AnimatePresence>,
                 document.body

@@ -33,7 +33,10 @@ export default function SettingsSidebar() {
     const isDark = theme === 'dark';
 
     return (
-        <aside className="w-[220px] shrink-0 h-full overflow-y-auto hidden md:block">
+        <aside className={cn(
+            "w-[220px] shrink-0 h-full overflow-y-auto hidden md:block border-r",
+            isDark ? "border-[#222]" : "border-[#e8e8e8]"
+        )}>
             <div className="flex flex-col gap-6 p-4">
                 
                 <div>
@@ -46,11 +49,11 @@ export default function SettingsSidebar() {
                             const Icon = link.icon;
                             // Make active items stand out depending on theme
                             const activeClasses = isDark 
-                                ? "bg-white/10 text-white font-medium" 
-                                : "bg-black/5 text-black font-semibold";
+                                ? "bg-[#252525] text-white font-medium" 
+                                : "bg-[#ebebeb] text-black font-semibold";
                             const inactiveClasses = isDark
-                                ? "text-white/60 hover:text-white hover:bg-white/5"
-                                : "text-[#555] hover:text-black hover:bg-black/5";
+                                ? "text-white/60 hover:text-white hover:bg-[#1a1a1a]"
+                                : "text-[#555] hover:text-black hover:bg-[#f5f5f5]";
 
                             return (
                                 <Link
@@ -79,11 +82,11 @@ export default function SettingsSidebar() {
                             const Icon = link.icon;
                             
                             const activeClasses = isDark 
-                                ? "bg-white/10 text-white font-medium" 
-                                : "bg-black/5 text-black font-semibold";
+                                ? "bg-[#252525] text-white font-medium" 
+                                : "bg-[#ebebeb] text-black font-semibold";
                             const inactiveClasses = isDark
-                                ? "text-white/60 hover:text-white hover:bg-white/5"
-                                : "text-[#555] hover:text-black hover:bg-black/5";
+                                ? "text-white/60 hover:text-white hover:bg-[#1a1a1a]"
+                                : "text-[#555] hover:text-black hover:bg-[#f5f5f5]";
 
                             return (
                                 <Link
@@ -112,11 +115,11 @@ export default function SettingsSidebar() {
                             const Icon = link.icon;
 
                             const activeClasses = isDark
-                                ? "bg-white/10 text-white font-medium"
-                                : "bg-black/5 text-black font-semibold";
+                                ? "bg-[#252525] text-white font-medium"
+                                : "bg-[#ebebeb] text-black font-semibold";
                             const inactiveClasses = isDark
-                                ? "text-white/60 hover:text-white hover:bg-white/5"
-                                : "text-[#555] hover:text-black hover:bg-black/5";
+                                ? "text-white/60 hover:text-white hover:bg-[#1a1a1a]"
+                                : "text-[#555] hover:text-black hover:bg-[#f5f5f5]";
 
                             return (
                                 <Link

@@ -684,7 +684,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 </div>
 
                 {!isPreview && (
-                    <div className={cn("w-[240px] shrink-0 flex flex-col overflow-hidden", isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]")}>
+                    <div className={cn("w-[240px] shrink-0 flex flex-col overflow-hidden border-l", isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]")}>
                         <div className="flex items-center p-1.5 gap-1">
                             <button 
                                 onClick={() => setRightTab('details')} 

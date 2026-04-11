@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronLeft, ChevronRight, ChevronDown, Check, X,
     Briefcase, Calendar, Users, Archive, Trash2, Plus,
-    LayoutGrid, List, Filter, ArrowUpDown, Search,
+    LayoutGrid, Filter, ArrowUpDown, Search,
     MoreHorizontal, RefreshCw, Edit3, Link2, FileText, Receipt,
     ArchiveRestore, Upload, Download, Copy, Zap,
     Target, TrendingUp, Clock, CheckCircle2, AlertCircle, Layers,
@@ -644,7 +644,7 @@ export default function ProjectDetailPage() {
                     "flex items-center gap-1 px-4 py-1.5 border-b shrink-0",
                     isDark ? "bg-[#141414] border-[#1e1e1e]" : "bg-white border-[#eaeaea]"
                 )}>
-                    <TbBtn label="Kanban"   icon={<LayoutGrid size={10} />} hasArrow isDark={isDark} active />
+                    <TbBtn label="Kanban"   icon={<LayoutGrid size={10} />} isDark={isDark} active />
                     <TbBtn label="Filter"   icon={<Filter size={10} />}     isDark={isDark} onClick={() => gooeyToast('Filter settings coming soon')} />
                     <TbBtn label="Group"    icon={<Layers size={10} />}     isDark={isDark} onClick={() => gooeyToast('Group settings coming soon')} />
                     <TbBtn label="Order"    icon={<ArrowUpDown size={10} />} hasArrow isDark={isDark} onClick={() => gooeyToast('Sorting options coming soon')} />

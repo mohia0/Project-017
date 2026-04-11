@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsField, SettingsInput } from '@/components/settings/SettingsField';
+import { ColorisInput } from '@/components/ui/ColorisInput';
 import { useSettingsStore, WorkspaceBranding } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
 import { RotateCcw, Upload, Image as ImageIcon, Check, Trash2 } from 'lucide-react';
@@ -33,11 +34,12 @@ function ResetButton({ onClick, isDark }: { onClick: () => void, isDark: boolean
             }}
             title="Reset to default"
             className={cn(
-                "p-1 rounded transition-colors group",
-                isDark ? "hover:bg-white/5 text-white/20 hover:text-white" : "hover:bg-black/5 text-black/20 hover:text-black"
+                "flex items-center gap-1 px-1 rounded transition-colors group opacity-20 hover:opacity-100",
+                isDark ? "hover:bg-white/10 text-white" : "hover:bg-black/10 text-black"
             )}
         >
-            <RotateCcw size={10} />
+            <RotateCcw size={8} strokeWidth={3} />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Reset</span>
         </button>
     );
 }
@@ -60,21 +62,24 @@ function LogoUpload({
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     return (
-        <div className="flex flex-col gap-2 shadow-sm rounded-2xl p-4 border transition-all" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
-            <div className="flex items-center justify-between">
-                <div className="flex flex-col">
+        <div className={cn(
+            "flex flex-col gap-0.5 shadow-sm rounded-2xl p-3 border transition-all",
+            isDark ? "bg-[#141414] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]"
+        )}>
+            <div className="flex flex-col">
+                <div className="flex items-center gap-2">
                     <label className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-black")}>{label}</label>
-                    {description && <p className={cn("text-[11px]", isDark ? "text-white/40" : "text-black/40")}>{description}</p>}
+                    <ResetButton onClick={onReset} isDark={isDark} />
                 </div>
-                <ResetButton onClick={onReset} isDark={isDark} />
+                {description && <p className={cn("text-[11px]", isDark ? "text-white/40" : "text-black/40")}>{description}</p>}
             </div>
             <div 
                 onClick={() => setIsModalOpen(true)}
                 className={cn(
-                    "w-full h-24 rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all overflow-hidden relative group mt-2",
+                    "w-full h-24 rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all overflow-hidden relative group mt-1",
                     isDark 
-                        ? "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/[0.07]" 
-                        : "bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/[0.07]"
+                        ? "bg-[#1c1c1c] border-[#252525] hover:border-white/20 hover:bg-[#222]" 
+                        : "bg-[#f5f5f5] border-[#ebebeb] hover:border-black/20 hover:bg-[#efeff5]"
                 )}
             >
                 {value ? (
@@ -87,7 +92,7 @@ function LogoUpload({
                     </>
                 ) : (
                     <>
-                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", isDark ? "bg-white/5" : "bg-black/5")}>
+                        <div className={cn("w-8 h-8 rounded-full flex items-center justify-center", isDark ? "bg-[#252525]" : "bg-[#ebebeb]")}>
                             <ImageIcon size={16} className={isDark ? "text-white/20" : "text-black/20"} />
                         </div>
                         <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "text-white/20" : "text-black/20")}>Upload logo</span>
@@ -199,29 +204,36 @@ export default function BrandingSettingsPage() {
                     extra={<ResetButton onClick={() => resetField('primary_color')} isDark={isDark} />}
                 >
                     <div className="flex gap-2 items-center">
-                        <div 
-                            className="w-10 h-10 rounded-xl cursor-pointer border relative overflow-hidden shrink-0"
-                            style={{ backgroundColor: formData.primary_color, borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
-                        >
-                            <input 
-                                type="color" 
-                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full scale-[2]"
-                                value={formData.primary_color}
-                                onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                            />
-                        </div>
-                        <SettingsInput 
-                            value={formData.primary_color} 
-                            onChange={e => setFormData({ ...formData, primary_color: e.target.value })}
-                            className="font-mono text-xs uppercase"
+                        <ColorisInput 
+                            value={formData.primary_color}
+                            onChange={val => setFormData({ ...formData, primary_color: val })}
+                            className="w-48"
                         />
                     </div>
                 </SettingsField>
 
-                <div className="mt-8 border-t pt-8" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
-                    <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] mb-6 opacity-20">Logos & Icons</h3>
+                <div className="mt-8 border-t pt-8" style={{ borderColor: isDark ? '#252525' : '#ebebeb' }}>
+                    <div className="flex items-center gap-2 mb-6">
+                        <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-20">Logos & Icons</h3>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (!confirmingResetAll) setConfirmingResetAll(true);
+                                else { resetAll(); setConfirmingResetAll(false); }
+                            }}
+                            className={cn(
+                                "flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all",
+                                confirmingResetAll
+                                    ? isDark ? "bg-red-500/20 text-red-500" : "bg-red-50 text-red-600"
+                                    : isDark ? "text-white/10 hover:text-white/40" : "text-black/10 hover:text-black/40"
+                            )}
+                        >
+                            <RotateCcw size={8} strokeWidth={3} />
+                            {confirmingResetAll ? "Confirm Reset" : "Reset All"}
+                        </button>
+                    </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         <LogoUpload 
                             label="Light Logo"
                             description="For dark backgrounds"
@@ -239,51 +251,21 @@ export default function BrandingSettingsPage() {
                             onReset={() => resetField('logo_dark_url')}
                             isDark={isDark}
                         />
+
+                        <LogoUpload 
+                            label="Favicon"
+                            description="Browser tab icon (32x32)"
+                            value={formData.favicon_url || ''}
+                            onChange={(url) => setFormData({ ...formData, favicon_url: url })}
+                            onReset={() => resetField('favicon_url')}
+                            isDark={isDark}
+                        />
                     </div>
 
-                    <div className="mt-8">
-                        <SettingsField 
-                            label="Favicon URL" 
-                            description="32x32 ICO or PNG format"
-                            extra={<ResetButton onClick={() => resetField('favicon_url')} isDark={isDark} />}
-                        >
-                            <div className="flex gap-3 items-center">
-                                <div className={cn("w-10 h-10 shrink-0 rounded-xl flex items-center justify-center border", isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10")}>
-                                    {formData.favicon_url ? <img src={formData.favicon_url} className="w-6 h-6 object-contain" /> : <ImageIcon size={16} className="opacity-20" />}
-                                </div>
-                                <SettingsInput 
-                                    value={formData.favicon_url || ''} 
-                                    onChange={e => setFormData({ ...formData, favicon_url: e.target.value })}
-                                    placeholder="https://example.com/favicon.ico"
-                                />
-                            </div>
-                        </SettingsField>
-                    </div>
+
                 </div>
 
-                {/* Main Reset Button at bottom of card content */}
-                <div className="mt-10 flex justify-center">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (!confirmingResetAll) {
-                                setConfirmingResetAll(true);
-                            } else {
-                                resetAll();
-                                setConfirmingResetAll(false);
-                            }
-                        }}
-                        className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-bold tracking-wider uppercase transition-all active:scale-95",
-                            confirmingResetAll
-                                ? isDark ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-red-50 text-red-600 border border-red-100"
-                                : isDark ? "text-white/15 hover:text-white/40" : "text-black/15 hover:text-black/40"
-                        )}
-                    >
-                        <RotateCcw size={10} strokeWidth={confirmingResetAll ? 3 : 2.5} />
-                        {confirmingResetAll ? "Confirm Reset (No Undo)" : "Reset all branding"}
-                    </button>
-                </div>
+
             </SettingsCard>
         </div>
     );
