@@ -162,7 +162,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     const [comment, setComment]   = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    const [viewMode, setViewMode] = useState<'right' | 'center'>('center');
+    const [viewMode, setViewMode] = useState<'right' | 'center'>('right');
 
     useEffect(() => {
         const saved = localStorage.getItem('task_panel_view_mode');
@@ -227,8 +227,8 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
     return (
         <div className={cn(
-            "fixed inset-0 z-[100] flex p-0 sm:p-3 overflow-hidden pointer-events-none",
-            viewMode === 'center' ? "items-center justify-center" : "items-start justify-end"
+            "fixed inset-0 z-[100] flex p-0 sm:p-2.5 overflow-hidden pointer-events-none",
+            viewMode === 'center' ? "items-center justify-center" : "items-stretch justify-end"
         )}>
             {/* Overlay */}
             <motion.div
@@ -251,7 +251,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                         : "bg-white border-[#e0e0e0]",
                     viewMode === 'center'
                         ? "w-[92vw] max-w-[1320px] h-[88vh] rounded-2xl border"
-                        : "w-[820px] max-w-[92vw] h-[calc(100vh-24px)] rounded-2xl border"
+                        : "w-[820px] max-w-[92vw] h-full rounded-2xl border shadow-none"
                 )}
                 onClick={e => e.stopPropagation()}
                 style={{

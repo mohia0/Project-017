@@ -8,11 +8,12 @@ import { useProposalStore } from '@/store/useProposalStore';
 import {
     X, ChevronRight, FileSpreadsheet, Upload, AlertCircle, 
     CheckCircle2, ArrowLeft, MoreHorizontal, HelpCircle, 
-    Calendar, User, DollarSign, Tag, Info, AlertTriangle
+    Calendar, User, DollarSign, Tag, Info, AlertTriangle, Building2, Mail, Phone, MapPin, Globe, Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { gooeyToast } from 'goey-toast';
 import Papa from 'papaparse';
+import { useCompanyStore } from '@/store/useCompanyStore';
 
 type Step = 'upload' | 'mapping' | 'preview';
 
@@ -36,6 +37,9 @@ export default function CSVImportModal() {
     const { clients, addClient } = useClientStore();
     const { addInvoice } = useInvoiceStore();
     const { addProposal } = useProposalStore();
+    const { companies, addCompany } = useCompanyStore();
+
+    const [createUnknownAs, setCreateUnknownAs] = useState<'contact' | 'company'>('contact');
 
     const [step, setStep] = useState<Step>('upload');
     const [file, setFile] = useState<File | null>(null);
@@ -45,6 +49,42 @@ export default function CSVImportModal() {
     const [importing, setImporting] = useState(false);
     const [progress, setProgress] = useState(0);
     const [previewData, setPreviewData] = useState<any[]>([]);
+
+    const getSystemFields = (type: string) => {
+        if (type === 'Contact') {
+            return [
+                { id: 'contact_person', label: 'Contact Person', icon: <User size={12} />, required: true, aliases: ['name', 'full name', 'person'] },
+                { id: 'company_name', label: 'Company Name', icon: <Building2 size={12} />, aliases: ['company', 'organization'] },
+                { id: 'email', label: 'Email', icon: <Mail size={12} />, aliases: ['email address'] },
+                { id: 'phone', label: 'Phone', icon: <Phone size={12} />, aliases: ['phone number', 'mobile'] },
+                { id: 'address', label: 'Address', icon: <MapPin size={12} />, aliases: ['location'] },
+                { id: 'tax_number', label: 'Tax Number', icon: <FileSpreadsheet size={12} />, aliases: ['vat', 'tax/vat'] },
+                { id: 'notes', label: 'Notes', icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] },
+            ];
+        }
+        if (type === 'Company') {
+            return [
+                { id: 'name', label: 'Company Name', icon: <Building2 size={12} />, required: true, aliases: ['company'] },
+                { id: 'industry', label: 'Industry', icon: <Briefcase size={12} />, aliases: ['sector'] },
+                { id: 'email', label: 'Email', icon: <Mail size={12} />, aliases: ['email address'] },
+                { id: 'phone', label: 'Phone', icon: <Phone size={12} />, aliases: ['phone number'] },
+                { id: 'website', label: 'Website', icon: <Globe size={12} />, aliases: ['url', 'site'] },
+                { id: 'address', label: 'Address', icon: <MapPin size={12} />, aliases: ['location'] },
+            ];
+        }
+        return [
+            { id: 'title',       label: 'Title / Reference', icon: <Tag size={12} />, required: true, aliases: ['name', 'reference', 'ref', 'invoice no', 'proposal no'] },
+            { id: 'client_name', label: 'Client Name',       icon: <User size={12} />, required: true, aliases: ['client', 'customer', 'company', 'client name'] },
+            { id: 'amount',      label: 'Amount',            icon: <DollarSign size={12} />, aliases: ['total', 'price', 'cost', 'sum'] },
+            { id: 'issue_date',  label: 'Issue Date',        icon: <Calendar size={12} />, aliases: ['date', 'created', 'issued'] },
+            { id: 'due_date',    label: 'Due Date',          icon: <Calendar size={12} />, aliases: ['due', 'expiration', 'deadline'] },
+            { id: 'paid_at',     label: 'Paid Date',         icon: <CheckCircle2 size={12} />, aliases: ['paid', 'payment date', 'settled'] },
+            { id: 'status',      label: 'Status',            icon: <AlertCircle size={12} />, aliases: ['state'] },
+            { id: 'notes',       label: 'Notes',             icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] }
+        ];
+    };
+
+    const currentSystemFields = getSystemFields(importType);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isDark = theme === 'dark';
@@ -91,7 +131,7 @@ export default function CSVImportModal() {
                 const newMapping: Mapping = {};
                 const csvHeaders = results.meta.fields || [];
                 
-                SYSTEM_FIELDS.forEach(field => {
+                currentSystemFields.forEach(field => {
                     const match = csvHeaders.find(h => {
                         const headerLower = h.toLowerCase().trim();
                         const matchesLower = [
@@ -130,7 +170,7 @@ export default function CSVImportModal() {
 
     const proceedToPreview = () => {
         // Validate required mappings
-        const missing = SYSTEM_FIELDS.filter(f => f.required && !mapping[f.id]);
+        const missing = currentSystemFields.filter(f => f.required && !mapping[f.id]);
         if (missing.length > 0) {
             gooeyToast.error(`Please map required fields: ${missing.map(f => f.label).join(', ')}`);
             return;
@@ -139,7 +179,7 @@ export default function CSVImportModal() {
         // Generate preview
         const generated = csvData.map(row => {
             const item: any = {};
-            SYSTEM_FIELDS.forEach(f => {
+            currentSystemFields.forEach(f => {
                 const csvKey = mapping[f.id];
                 let val = csvKey ? row[csvKey] : '';
                 
@@ -187,49 +227,91 @@ export default function CSVImportModal() {
         try {
             for (let i = 0; i < previewData.length; i++) {
                 const item = previewData[i];
-                // 1. Resolve Client
-                let clientId = null;
-                const existingClient = clients.find(c => 
-                    c.contact_person?.toLowerCase() === item.client_name?.toLowerCase() || 
-                    c.company_name?.toLowerCase() === item.client_name?.toLowerCase()
-                );
+                let result = null;
 
-                if (existingClient) {
-                    clientId = existingClient.id;
+                if (importType === 'Contact') {
+                    const payload = {
+                        contact_person: item.contact_person,
+                        company_name: item.company_name || '',
+                        email: item.email || '',
+                        phone: item.phone || '',
+                        address: item.address || '',
+                        tax_number: item.tax_number || '',
+                        notes: item.notes || ''
+                    };
+                    result = await addClient(payload);
+                } else if (importType === 'Company') {
+                    const payload = {
+                        name: item.name,
+                        industry: item.industry || '',
+                        email: item.email || '',
+                        phone: item.phone || '',
+                        website: item.website || '',
+                        address: item.address || ''
+                    };
+                    result = await addCompany(payload);
                 } else {
-                    // Auto-create contact
-                    const newClient = await addClient({
-                        contact_person: item.client_name,
-                        company_name: '',
-                        email: '',
-                        phone: '',
-                        address: '',
-                        tax_number: '',
-                        notes: 'Automatically created during CSV import'
-                    });
-                    if (newClient) clientId = newClient.id;
-                }
+                    // 1. Resolve Client
+                    let clientId = null;
+                    const nameLower = item.client_name?.toLowerCase();
+                    const existingClient = clients.find(c => 
+                        c.contact_person?.toLowerCase() === nameLower || 
+                        c.company_name?.toLowerCase() === nameLower
+                    );
+                    const existingCompany = companies.find(c =>
+                        c.name?.toLowerCase() === nameLower
+                    );
 
-                // 2. Add Entry
-                const payload: any = {
-                    title: item.title,
-                    client_id: clientId,
-                    client_name: item.client_name,
-                    amount: item.amount || 0,
-                    issue_date: item.issue_date || new Date().toISOString().split('T')[0],
-                    due_date: item.due_date || new Date().toISOString().split('T')[0],
-                    status: item.status || 'Draft',
-                    notes: item.notes || '',
-                    blocks: []
-                };
-                
-                if (importType === 'Invoice') {
-                    payload.paid_at = item.paid_at || null;
-                }
+                    if (existingClient || existingCompany) {
+                        clientId = existingClient ? existingClient.id : existingCompany?.id;
+                    } else {
+                        // Auto-create depending on createUnknownAs
+                        if (createUnknownAs === 'company') {
+                            const newCompany = await addCompany({
+                                name: item.client_name,
+                                industry: '',
+                                email: '',
+                                phone: '',
+                                website: '',
+                                address: '',
+                                tax_number: '',
+                                notes: 'Automatically created during CSV import'
+                            });
+                            if (newCompany) clientId = newCompany.id;
+                        } else {
+                            const newClient = await addClient({
+                                contact_person: item.client_name,
+                                company_name: '',
+                                email: '',
+                                phone: '',
+                                address: '',
+                                tax_number: '',
+                                notes: 'Automatically created during CSV import'
+                            });
+                            if (newClient) clientId = newClient.id;
+                        }
+                    }
 
-                const result = importType === 'Invoice' 
-                    ? await addInvoice(payload as any)
-                    : await addProposal(payload as any);
+                    // 2. Add Entry
+                    const payload: any = {
+                        title: item.title,
+                        client_id: clientId,
+                        client_name: item.client_name,
+                        amount: item.amount || 0,
+                        issue_date: item.issue_date || new Date().toISOString().split('T')[0],
+                        due_date: item.due_date || new Date().toISOString().split('T')[0],
+                        status: item.status || 'Draft',
+                        notes: item.notes || '',
+                        blocks: []
+                    };
+                    
+                    if (importType === 'Invoice') {
+                        payload.paid_at = item.paid_at || null;
+                        result = await addInvoice(payload as any);
+                    } else {
+                        result = await addProposal(payload as any);
+                    }
+                }
 
                 if (result) successCount++;
                 else errorCount++;
@@ -335,7 +417,7 @@ export default function CSVImportModal() {
                     {step === 'mapping' && (
                         <div className="p-6 animate-in fade-in slide-in-from-right-4 duration-300">
                             <div className="flex flex-col gap-4">
-                                {SYSTEM_FIELDS.map(field => (
+                                {currentSystemFields.map(field => (
                                     <div key={field.id} className={cn(
                                         "flex items-center gap-4 p-4 rounded-xl border transition-all",
                                         mapping[field.id] 
@@ -393,6 +475,15 @@ export default function CSVImportModal() {
                                         {previewData.length} entries found
                                     </p>
                                     <div className="flex items-center gap-2">
+                                        {!['Contact', 'Company'].includes(importType) && (
+                                            <div className="flex items-center gap-2 mr-3">
+                                                <span className={cn("text-[10px] font-semibold opacity-50", isDark ? "text-white" : "text-[#111]")}>Create unknown names as:</span>
+                                                <div className={cn("flex items-center p-0.5 rounded-lg border", isDark ? "border-[#333] bg-[#000]" : "border-[#e0e0e0] bg-[#f0f0f0]")}>
+                                                    <button onClick={() => setCreateUnknownAs('contact')} className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-md transition-all", createUnknownAs === 'contact' ? "bg-white text-black shadow-sm" : (isDark ? "text-[#888]" : "text-[#666]"))}>Contacts</button>
+                                                    <button onClick={() => setCreateUnknownAs('company')} className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-md transition-all", createUnknownAs === 'company' ? "bg-white text-black shadow-sm" : (isDark ? "text-[#888]" : "text-[#666]"))}>Companies</button>
+                                                </div>
+                                            </div>
+                                        )}
                                         <span className="w-2 h-2 rounded-full bg-green-500" />
                                         <span className={cn("text-[10px] font-bold uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#aaa]")}>
                                             Ready to import
@@ -410,34 +501,54 @@ export default function CSVImportModal() {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <p className={cn("text-[13px] font-bold truncate", isDark ? "text-white" : "text-[#111]")}>
-                                                    {item.title || "Untitled Entry"}
+                                                    {item.title || item.contact_person || item.name || "Untitled Entry"}
                                                 </p>
-                                                <span className={cn(
-                                                    "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider",
-                                                    isDark ? "bg-white/5 text-[#666]" : "bg-[#f5f5f7] text-[#aaa]"
-                                                )}>
-                                                    {item.status || 'Draft'}
-                                                </span>
+                                                {!['Contact', 'Company'].includes(importType) && (
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider",
+                                                        isDark ? "bg-white/5 text-[#666]" : "bg-[#f5f5f7] text-[#aaa]"
+                                                    )}>
+                                                        {item.status || 'Draft'}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <div className="flex items-center gap-4 text-[11px]">
-                                                <div className="flex items-center gap-1.5 opacity-40">
-                                                    <User size={11} />
-                                                    <span className="truncate max-w-[120px]">{item.client_name}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 opacity-40">
-                                                    <Calendar size={11} />
-                                                    <span>{item.issue_date}</span>
-                                                </div>
+                                            <div className="flex items-center gap-4 text-[11px] flex-wrap">
+                                                {item.client_name && (
+                                                    <div className="flex items-center gap-1.5 opacity-40">
+                                                        <User size={11} />
+                                                        <span className="truncate max-w-[120px]">{item.client_name}</span>
+                                                    </div>
+                                                )}
+                                                {item.email && (
+                                                    <div className="flex items-center gap-1.5 opacity-40">
+                                                        <Mail size={11} />
+                                                        <span className="truncate max-w-[120px]">{item.email}</span>
+                                                    </div>
+                                                )}
+                                                {item.issue_date && (
+                                                    <div className="flex items-center gap-1.5 opacity-40">
+                                                        <Calendar size={11} />
+                                                        <span>{item.issue_date}</span>
+                                                    </div>
+                                                )}
+                                                {item.phone && (
+                                                    <div className="flex items-center gap-1.5 opacity-40">
+                                                        <Phone size={11} />
+                                                        <span>{item.phone}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className={cn("text-[14px] font-black", isDark ? "text-primary" : "text-primary")}>
-                                                ${parseFloat(item.amount || 0).toLocaleString()}
-                                            </p>
-                                            <p className={cn("text-[10px] opacity-30 font-bold uppercase tracking-widest mt-0.5", isDark ? "text-white" : "text-[#111]")}>
-                                                Amount
-                                            </p>
-                                        </div>
+                                        {!['Contact', 'Company'].includes(importType) && (
+                                            <div className="text-right">
+                                                <p className={cn("text-[14px] font-black", isDark ? "text-primary" : "text-primary")}>
+                                                    ${parseFloat(item.amount || 0).toLocaleString()}
+                                                </p>
+                                                <p className={cn("text-[10px] opacity-30 font-bold uppercase tracking-widest mt-0.5", isDark ? "text-white" : "text-[#111]")}>
+                                                    Amount
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

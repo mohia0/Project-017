@@ -18,6 +18,7 @@ import { useProposalStore } from '@/store/useProposalStore';
 import { useRouter, useParams } from 'next/navigation';
 import { gooeyToast } from 'goey-toast';
 import { Avatar } from '@/components/ui/Avatar';
+import EditProjectModal from '@/components/projects/EditProjectModal';
 import dynamic from 'next/dynamic';
 
 const KanbanBoard = dynamic(() => import('@/components/projects/KanbanBoard'), { ssr: false });
@@ -43,7 +44,15 @@ const STATUS_BG: Record<ProjectStatus, string> = {
     Cancelled: 'rgba(107,114,128,0.1)',
 };
 
-type Tab = 'tasks' | 'linked' | 'edit';
+const STATUS_CFG: Record<ProjectStatus, { color: string; badge: string; badgeText: string; badgeBorder: string }> = {
+    Planning:  { color: '#6366f1', badge: 'bg-indigo-50',  badgeText: 'text-indigo-700',  badgeBorder: 'border-indigo-200'  },
+    Active:    { color: '#10b981', badge: 'bg-emerald-50', badgeText: 'text-emerald-700', badgeBorder: 'border-emerald-200' },
+    'On Hold': { color: '#f59e0b', badge: 'bg-amber-50',   badgeText: 'text-amber-700',   badgeBorder: 'border-amber-200'   },
+    Completed: { color: '#3d0ebf', badge: 'bg-violet-50',  badgeText: 'text-violet-700',  badgeBorder: 'border-violet-200'  },
+    Cancelled: { color: '#9ca3af', badge: 'bg-gray-50',    badgeText: 'text-gray-500',    badgeBorder: 'border-gray-200'    },
+};
+
+type Tab = 'tasks' | 'linked';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -375,82 +384,6 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
     );
 }
 
-// ─── Edit Tab ─────────────────────────────────────────────────────────────────
-
-function EditTab({ project, isDark }: { project: Project; isDark: boolean }) {
-    const { updateProject } = useProjectStore();
-    const [name, setName]         = useState(project.name);
-    const [desc, setDesc]         = useState(project.description || '');
-    const [deadline, setDeadline] = useState(project.deadline || '');
-    const [saving, setSaving]     = useState(false);
-
-    const handleSave = async () => {
-        setSaving(true);
-        await updateProject(project.id, { name: name.trim() || project.name, description: desc.trim() || null, deadline: deadline || null });
-        setSaving(false);
-        gooeyToast.success('Project updated');
-    };
-
-    const inputCls = cn(
-        "w-full px-4 py-2.5 rounded-xl text-[13px] border outline-none transition-all",
-        isDark
-            ? "bg-white/[0.04] border-[#2a2a2a] text-white placeholder:text-[#3a3a3a] focus:border-[#444] focus:bg-white/[0.06]"
-            : "bg-white border-[#e0e0e0] text-[#111] placeholder:text-[#bbb] focus:border-[#bbb] shadow-sm"
-    );
-    const labelCls = cn("text-[10.5px] font-bold mb-2 block uppercase tracking-wider", isDark ? "text-[#444]" : "text-[#aaa]");
-
-    return (
-        <div className={cn("flex-1 overflow-y-auto min-h-0", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
-            <div className="max-w-2xl mx-auto p-6">
-                {/* Header */}
-                <div className="mb-6">
-                    <h3 className={cn("text-[15px] font-bold tracking-tight", isDark ? "text-white" : "text-[#111]")}>Edit Project</h3>
-                    <p className={cn("text-[11px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>Update project details and settings</p>
-                </div>
-
-                <div className={cn("rounded-2xl border p-6 space-y-5", isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb] shadow-sm")}>
-                    <div>
-                        <label className={labelCls}>Project Name</label>
-                        <input value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="Project name…" />
-                    </div>
-                    <div>
-                        <label className={labelCls}>Description</label>
-                        <textarea value={desc} onChange={e => setDesc(e.target.value)} rows={4} className={cn(inputCls, "resize-none")} placeholder="Describe what this project is about…" />
-                    </div>
-                    <div>
-                        <label className={labelCls}>Deadline</label>
-                        <div className="relative">
-                            <Calendar size={13} className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none", isDark ? "text-[#444]" : "text-[#bbb]")} />
-                            <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className={cn(inputCls, "pl-9 cursor-pointer")} style={{ colorScheme: isDark ? 'dark' : 'light' }} />
-                        </div>
-                    </div>
-                    <div className="pt-2">
-                        <button onClick={handleSave} disabled={saving}
-                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-white text-[13px] font-bold transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-50 shadow-lg shadow-primary/20">
-                            {saving ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
-                            Save Changes
-                        </button>
-                    </div>
-                </div>
-
-                {/* Danger Zone */}
-                <div className={cn("mt-6 rounded-2xl border p-5", isDark ? "bg-red-500/5 border-red-500/20" : "bg-red-50 border-red-200")}>
-                    <p className="text-[12px] font-bold text-red-500 mb-1">Danger Zone</p>
-                    <p className={cn("text-[11px] mb-4", isDark ? "text-[#666]" : "text-[#888]")}>These actions cannot be undone.</p>
-                    <div className="flex gap-2">
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[11px] font-bold border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all">
-                            <Archive size={11} /> Archive Project
-                        </button>
-                        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[11px] font-bold bg-red-500 hover:bg-red-600 text-white transition-all active:scale-95 shadow-md shadow-red-500/20">
-                            <Trash2 size={11} /> Delete Project
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
 // ─── Main Project Detail Page ─────────────────────────────────────────────────
 
 export default function ProjectDetailPage() {
@@ -466,6 +399,9 @@ export default function ProjectDetailPage() {
     const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
     const [statusOpen, setStatusOpen]     = useState(false);
     const [actionsOpen, setActionsOpen]   = useState(false);
+    const [searchQuery, setSearchQuery]   = useState('');
+    const [showArchived, setShowArchived] = useState(false);
+    const [showEdit, setShowEdit]         = useState(false);
     const statusRef  = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
 
@@ -505,7 +441,6 @@ export default function ProjectDetailPage() {
     const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
         { id: 'tasks',  label: 'Tasks',        icon: <Layers size={13} /> },
         { id: 'linked', label: 'Linked Items', icon: <Link2 size={13} /> },
-        { id: 'edit',   label: 'Edit',         icon: <Edit3 size={13} /> },
     ];
 
     return (
@@ -573,23 +508,6 @@ export default function ProjectDetailPage() {
                 {/* Right controls */}
                 <div className="flex items-center gap-1 shrink-0">
 
-                    {/* Progress pill */}
-                    <div className={cn(
-                        "hidden lg:flex items-center gap-2 px-2.5 py-1 rounded-lg border",
-                        isDark ? "border-[#1e1e1e] bg-[#181818]" : "border-[#ebebeb] bg-[#fafafa] shadow-sm"
-                    )}>
-                        <div className="relative shrink-0">
-                            <CircleProgress pct={progress.pct} color={project.color} size={20} isDark={isDark} />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <span className={cn("text-[5px] font-bold tabular-nums", isDark ? "text-[#999]" : "text-[#555]")}>{progress.pct}%</span>
-                            </div>
-                        </div>
-                        <div className="leading-none">
-                            <p className={cn("text-[8px] font-bold uppercase tracking-widest leading-none mb-0.5", isDark ? "text-[#3a3a3a]" : "text-[#bbb]")}>Progress</p>
-                            <p className={cn("text-[10.5px] font-semibold tabular-nums leading-none", isDark ? "text-[#bbb]" : "text-[#222]")}>{progress.done}/{progress.total} tasks</p>
-                        </div>
-                    </div>
-
                     {/* Deadline chip */}
                     {project.deadline && (
                         <div className={cn(
@@ -624,12 +542,14 @@ export default function ProjectDetailPage() {
                     <div className="relative" ref={statusRef}>
                         <button
                             onClick={() => setStatusOpen(v => !v)}
-                            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold border transition-all"
-                            style={{ background: `${statusColor}10`, borderColor: `${statusColor}25`, color: statusColor }}
+                            className={cn(
+                                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all",
+                                isDark ? "bg-white/[0.04] border-white/5 hover:bg-white/[0.08]" : cn(STATUS_CFG[project.status]?.badge, STATUS_CFG[project.status]?.badgeBorder, STATUS_CFG[project.status]?.badgeText, "hover:brightness-95")
+                            )}
+                            style={isDark ? { color: statusColor } : {}}
                         >
-                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: statusColor }} />
                             {project.status}
-                            <ChevronDown size={8} className="opacity-50" />
+                            <ChevronDown size={10} className="opacity-50" />
                         </button>
 
                         <AnimatePresence>
@@ -653,7 +573,6 @@ export default function ProjectDetailPage() {
                                                 )}
                                                 style={{ color: STATUS_COLORS[s] }}
                                             >
-                                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: STATUS_COLORS[s] }} />
                                                 {s}
                                                 {s === project.status && <Check size={10} className="ml-auto opacity-40" />}
                                             </button>
@@ -677,7 +596,7 @@ export default function ProjectDetailPage() {
                         </button>
                         <Dropdown open={actionsOpen} onClose={() => setActionsOpen(false)} isDark={isDark} right>
                             <div className="py-1">
-                                <DItem label="Edit project" icon={<Edit3 size={12} />} onClick={() => { setActiveTab('edit'); setActionsOpen(false); }} isDark={isDark} />
+                                <DItem label="Edit project" icon={<Edit3 size={12} />} onClick={() => { setShowEdit(true); setActionsOpen(false); }} isDark={isDark} />
                                 <DItem label="Archive project" icon={<Archive size={12} />} onClick={() => { updateProject(project.id, { is_archived: true }); router.push('/projects'); }} isDark={isDark} />
                                 <div className={cn("h-px mx-2 my-1", isDark ? "bg-[#252525]" : "bg-[#f0f0f0]")} />
                                 <DItem label="Delete project" icon={<Trash2 size={12} />} onClick={() => setActionsOpen(false)} isDark={isDark} danger />
@@ -717,19 +636,6 @@ export default function ProjectDetailPage() {
                 ))}
 
                 <div className="flex-1" />
-
-                {activeTab === 'tasks' && progress.total > 0 && (
-                    <div className="hidden md:flex items-center gap-3 mr-1">
-                        <span className="text-[10px] font-medium flex items-center gap-1 text-emerald-500">
-                            <CheckCircle2 size={9} /> {progress.done} done
-                        </span>
-                        {progress.doing > 0 && (
-                            <span className="text-[10px] font-medium flex items-center gap-1 text-blue-500">
-                                <Zap size={9} /> {progress.doing} doing
-                            </span>
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* ── TASKS TOOLBAR ── */}
@@ -738,26 +644,34 @@ export default function ProjectDetailPage() {
                     "flex items-center gap-1 px-4 py-1.5 border-b shrink-0",
                     isDark ? "bg-[#141414] border-[#1e1e1e]" : "bg-white border-[#eaeaea]"
                 )}>
-                    {/* Search */}
-                    <div className={cn(
-                        "relative flex items-center rounded-md border h-6 px-2 gap-1.5 mr-1",
-                        isDark ? "bg-white/[0.03] border-[#242424]" : "bg-[#f8f8f8] border-[#eaeaea]"
-                    )}>
-                        <Search size={10} className={isDark ? "text-[#333]" : "text-[#ccc]"} />
-                        <input
-                            placeholder="Search tasks…"
-                            className={cn("bg-transparent text-[11px] outline-none w-28", isDark ? "text-[#bbb] placeholder:text-[#2a2a2a]" : "text-[#333] placeholder:text-[#ccc]")}
-                        />
-                    </div>
-
-                    <TbBtn label="Kanban"   icon={<LayoutGrid size={10} />} hasArrow isDark={isDark} />
-                    <TbBtn label="Filter"   icon={<Filter size={10} />}     isDark={isDark} />
-                    <TbBtn label="Group"    icon={<Layers size={10} />}     isDark={isDark} />
-                    <TbBtn label="Order"    icon={<ArrowUpDown size={10} />} hasArrow isDark={isDark} />
-                    <TbBtn label="Archived" icon={<Archive size={10} />}    isDark={isDark} />
+                    <TbBtn label="Kanban"   icon={<LayoutGrid size={10} />} hasArrow isDark={isDark} active />
+                    <TbBtn label="Filter"   icon={<Filter size={10} />}     isDark={isDark} onClick={() => gooeyToast('Filter settings coming soon')} />
+                    <TbBtn label="Group"    icon={<Layers size={10} />}     isDark={isDark} onClick={() => gooeyToast('Group settings coming soon')} />
+                    <TbBtn label="Order"    icon={<ArrowUpDown size={10} />} hasArrow isDark={isDark} onClick={() => gooeyToast('Sorting options coming soon')} />
+                    <TbBtn label="Archived" active={showArchived} icon={showArchived ? <ArchiveRestore size={10} /> : <Archive size={10} />} isDark={isDark} onClick={() => setShowArchived(v => !v)} />
 
                     <div className={cn("h-3 w-px mx-1", isDark ? "bg-[#252525]" : "bg-[#e5e5e5]")} />
-                    <TbBtn label="Import / Export" icon={<Upload size={10} />} isDark={isDark} />
+                    <TbBtn label="Import / Export" icon={<Upload size={10} />} isDark={isDark} onClick={() => gooeyToast('Import / Export coming soon')} />
+
+                    <div className="flex-1" />
+
+                    <div className="flex items-center gap-2">
+                        <div className="relative">
+                            <Search className={cn("absolute left-2.5 top-1/2 -translate-y-1/2", isDark ? "opacity-30" : "opacity-35")} size={11}/>
+                            <input 
+                                value={searchQuery} 
+                                onChange={e => setSearchQuery(e.target.value)} 
+                                placeholder="Search tasks…"
+                                className={cn('pl-7 pr-3 py-1.5 text-[11px] rounded-lg border focus:outline-none transition-all w-36 focus:w-52',
+                                    isDark ? 'bg-white/5 border-white/8 text-white placeholder:text-white/25 focus:border-white/15'
+                                           : 'bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]')}/>
+                            {searchQuery && (
+                                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80 transition-opacity">
+                                    <X size={10}/>
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -768,11 +682,12 @@ export default function ProjectDetailPage() {
                         projectId={projectId}
                         projectColor={project.color}
                         isDark={isDark}
+                        searchQuery={searchQuery}
+                        showArchived={showArchived}
                         onTaskClick={setSelectedTask}
                     />
                 )}
                 {activeTab === 'linked' && <LinkedItemsTab projectId={projectId} isDark={isDark} />}
-                {activeTab === 'edit'   && <EditTab project={project} isDark={isDark} />}
             </div>
 
             {/* Task detail panel */}
@@ -788,6 +703,13 @@ export default function ProjectDetailPage() {
                     />
                 )}
             </AnimatePresence>
+
+            {/* Edit Project Modal */}
+            <EditProjectModal
+                open={showEdit}
+                onClose={() => setShowEdit(false)}
+                project={project}
+            />
         </div>
     );
 }

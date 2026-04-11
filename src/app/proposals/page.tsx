@@ -176,7 +176,7 @@ function Dropdown({ open, onClose, isDark, children }: { open: boolean; onClose:
     }, [open, onClose]);
     if (!open) return null;
     return (
-        <div ref={ref} className={cn("absolute top-full left-0 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
+        <div ref={ref} className={cn("absolute top-full right-0 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
             isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
             {children}
         </div>
@@ -955,6 +955,8 @@ export default function ProposalsPage() {
                     <TbBtn label="Archived" icon={showArchived ? <ArchiveRestore size={11} /> : <Archive size={11} />}
                         active={showArchived} onClick={() => { setShowArchived(v => !v); setSelectedIds(new Set()); }} isDark={isDark} />
 
+                    <div className="flex-1" />
+
                     <div className="relative">
                         <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} />
                         <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
@@ -969,7 +971,7 @@ export default function ProposalsPage() {
 
                     {/* Bulk banner */}
                     {selectedIds.size > 0 && (
-                        <div className={cn("ml-auto flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border",
+                        <div className={cn("flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border",
                             isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-[#f8f8f8] border-[#e8e8e8] text-[#666]")}>
                             <span className="opacity-50">{selectedIds.size} selected</span>
                             <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />

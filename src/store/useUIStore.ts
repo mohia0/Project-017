@@ -12,7 +12,8 @@ export type RightPanelState =
     | null
     | { type: 'notifications' }
     | { type: 'contact'; id: string }
-    | { type: 'company'; id: string };
+    | { type: 'company'; id: string }
+    | { type: 'hook'; id: string };
 
 interface UIState {
     activeWorkspaceId: string | null;
@@ -37,6 +38,8 @@ interface UIState {
     isImportModalOpen: boolean;
     setImportModalOpen: (isOpen: boolean, type?: 'Invoice' | 'Proposal') => void;
     importType: 'Invoice' | 'Proposal';
+    rightPanelWidth: number;
+    setRightPanelWidth: (width: number) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -87,6 +90,9 @@ export const useUIStore = create<UIState>()(
                 isImportModalOpen: isOpen, 
                 importType: type || get().importType 
             }),
+
+            rightPanelWidth: 320,
+            setRightPanelWidth: (width) => set({ rightPanelWidth: width }),
         }),
         {
             name: 'ui-storage',
@@ -94,7 +100,8 @@ export const useUIStore = create<UIState>()(
                 activeWorkspaceId: state.activeWorkspaceId,
                 theme: state.theme,
                 isLeftMenuExpanded: state.isLeftMenuExpanded,
-                isToolsMenuExpanded: state.isToolsMenuExpanded
+                isToolsMenuExpanded: state.isToolsMenuExpanded,
+                rightPanelWidth: state.rightPanelWidth
             }),
         }
     )

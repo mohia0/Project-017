@@ -109,7 +109,6 @@ function StatusBadge({ status, isDark }: { status: ProjectStatus; isDark: boolea
             "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border shrink-0",
             isDark ? "bg-white/[0.04] border-white/5" : cn(cfg.badge, cfg.badgeBorder)
         )} style={isDark ? { color: cfg.color } : {}}>
-            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: cfg.color }} />
             <span className={isDark ? '' : cfg.badgeText}>{status}</span>
         </span>
     );
@@ -128,7 +127,6 @@ function StatusCell({ status, onStatusChange, isDark }: { status: ProjectStatus;
                 )}
                 style={isDark ? { color: cfg.color } : {}}
             >
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: cfg.color }} />
                 <span className={isDark ? '' : cfg.badgeText}>{status}</span>
                 <ChevronDown size={10} className="opacity-50" />
             </button>
@@ -148,7 +146,6 @@ function StatusCell({ status, onStatusChange, isDark }: { status: ProjectStatus;
                                         : isDark ? "hover:bg-white/5" : "hover:bg-black/[0.02]"
                                 )}
                             >
-                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: sCfg.color }} />
                                 <span className={cn("flex-1", isDark ? "text-white" : "text-black")}>{s}</span>
                                 {isActive && <Check size={12} className={cn("opacity-50", isDark ? "text-white" : "text-black")} />}
                             </button>
@@ -197,7 +194,7 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
             exit={{ opacity: 0, scale: 0.96 }}
             onClick={onClick}
             className={cn(
-                "relative rounded-[10px] border cursor-pointer transition-all duration-150 group flex flex-col overflow-hidden select-none",
+                "relative rounded-[10px] border cursor-pointer transition-all duration-150 group flex flex-col select-none",
                 isSelected
                     ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
                     : isDark
@@ -206,7 +203,7 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
             )}
         >
             {/* Left accent vertical line */}
-            <div className="absolute left-0 top-0 bottom-0 w-[3.5px] rounded-r-full" style={{ background: project.color }} />
+            <div className="absolute left-[-1px] top-[-1px] bottom-[-1px] w-[4.5px] rounded-l-[10px]" style={{ background: project.color }} />
 
             {/* Card header */}
             <div className={cn(
@@ -720,6 +717,7 @@ export default function ProjectsPage() {
                                     taskProgress={progressMap[p.id] ?? { total: 0, done: 0, pct: 0 }}
                                     isSelected={selectedIds.has(p.id)}
                                     onToggle={() => toggleRow(p.id)}
+                                    onStatusChange={(status) => updateProject(p.id, { status })}
                                 />
                             ))}
                         </AnimatePresence>
@@ -759,6 +757,7 @@ export default function ProjectsPage() {
                                     taskProgress={progressMap[p.id] ?? { total: 0, done: 0, pct: 0 }}
                                     isSelected={selectedIds.has(p.id)}
                                     onToggle={() => toggleRow(p.id)}
+                                    onStatusChange={(status) => updateProject(p.id, { status })}
                                 />
                             ))}
                         </AnimatePresence>

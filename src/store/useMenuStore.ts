@@ -8,6 +8,7 @@ import {
     Receipt, 
     Folder,
     Briefcase,
+    Zap,
     LucideIcon
 } from 'lucide-react';
 
@@ -25,6 +26,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
     Receipt,
     Folder,
     Briefcase,
+    Zap,
 };
 
 interface MenuState {
@@ -41,6 +43,7 @@ export const DEFAULT_NAV = [
     { id: 'proposals', href: '/proposals', icon: 'FileText',    label: 'Proposals' },
     { id: 'invoices',  href: '/invoices',  icon: 'Receipt',     label: 'Invoices' },
     { id: 'files',     href: '/files',     icon: 'Folder',      label: 'File Manager' },
+    { id: 'hooks',     href: '/hooks',     icon: 'Zap',         label: 'Hook Generator' },
 ];
 
 export const useMenuStore = create<MenuState>((set) => ({
@@ -59,7 +62,17 @@ export const useMenuStore = create<MenuState>((set) => ({
                 .single();
 
             if (data && data.value) {
-                set({ navItems: data.value });
+                // Merge default items into saved items to ensure new tools appear
+                const savedItems: NavItem[] = data.value;
+                const merged = [...savedItems];
+                
+                DEFAULT_NAV.forEach(def => {
+                    const exists = merged.some(item => item.id === def.id || item.href === def.href);
+                    if (!exists) {
+                        merged.push(def);
+                    }
+                });
+                set({ navItems: merged });
             } else {
                 set({ navItems: DEFAULT_NAV });
             }

@@ -457,10 +457,12 @@ interface KanbanBoardProps {
     projectId: string;
     projectColor: string;
     isDark: boolean;
+    searchQuery: string;
+    showArchived: boolean;
     onTaskClick: (task: ProjectTask) => void;
 }
 
-export default function KanbanBoard({ projectId, isDark, onTaskClick }: KanbanBoardProps) {
+export default function KanbanBoard({ projectId, isDark, searchQuery, showArchived, onTaskClick }: KanbanBoardProps) {
     const { 
         tasksByProject, groupsByProject, fetchTasks, fetchTaskGroups, 
         addTaskGroup, reorderTask, reorderTaskGroup, deleteTask, deleteTaskGroup
@@ -586,7 +588,10 @@ export default function KanbanBoard({ projectId, isDark, onTaskClick }: KanbanBo
                         <TaskGroupCol
                             key={g.id}
                             group={g}
-                            tasks={tasks.filter(t => t.task_group_id === g.id && !t.is_archived).sort((a,b) => a.position - b.position)}
+                            tasks={tasks.filter(t => t.task_group_id === g.id 
+                                && (showArchived ? t.is_archived : !t.is_archived)
+                                && (searchQuery ? t.title.toLowerCase().includes(searchQuery.toLowerCase()) : true)
+                            ).sort((a,b) => a.position - b.position)}
                             isDark={isDark}
                             projectId={projectId}
                             onCtx={handleOpenCtx}

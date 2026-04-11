@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import {
     X, ChevronRight, User, PenTool, FileText,
-    Mail, Phone, Building2, Calendar, Plus, Search
+    Mail, Phone, Building2, Calendar, Plus, Search, Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { gooeyToast } from 'goey-toast';
@@ -12,12 +12,14 @@ import { useClientStore } from '@/store/useClientStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useHookStore } from '@/store/useHookStore';
 import { useRouter } from 'next/navigation';
 import DatePicker from '@/components/ui/DatePicker';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { CompanyPicker } from '@/components/companies/CompanyPicker';
+import { ColorisInput } from '@/components/ui/ColorisInput';
 
-type EntityType = 'Client' | 'Proposal' | 'Invoice' | 'Project';
+type EntityType = 'Client' | 'Proposal' | 'Invoice' | 'Project' | 'Hook';
 
 function generateProposalId() { return `P${Math.floor(Math.random() * 9000000 + 1000000)}`; }
 function generateInvoiceId() { return `INV-${Math.floor(Math.random() * 9000000 + 1000000)}`; }
@@ -32,6 +34,7 @@ const TABS: { id: EntityType; icon: React.ReactNode; label: string }[] = [
     { id: 'Project',  icon: <Building2 size={14} />, label: 'Project'  },
     { id: 'Proposal', icon: <PenTool size={14} />,  label: 'Proposal' },
     { id: 'Invoice',  icon: <FileText size={14} />, label: 'Invoice'  },
+    { id: 'Hook',     icon: <Zap size={14} fill="currentColor" />,  label: 'Hook'    },
 ];
 
 // ─── Shared Field ────────────────────────────────────────────────────────────
@@ -227,10 +230,17 @@ export default function CreateEntryModal() {
     const [prDesc, setPrDesc] = useState('');
     const [prDeadline, setPrDeadline] = useState('');
 
+    // Hook state
+    const [hName, setHName] = useState('');
+    const [hTitle, setHTitle] = useState('Someone opened your page');
+    const [hLink, setHLink] = useState('');
+    const [hColor, setHColor] = useState('#4dbf39');
+
     const { addClient, fetchClients } = useClientStore();
     const { addProposal } = useProposalStore();
     const { addInvoice } = useInvoiceStore();
     const { addProject } = useProjectStore();
+    const { addHook } = useHookStore();
 
     useEffect(() => { fetchClients(); }, [fetchClients]);
 
@@ -238,7 +248,7 @@ export default function CreateEntryModal() {
 
     const filteredTabs = TABS.filter(t => t.label.toLowerCase().includes(tabSearch.toLowerCase()));
 
-    const ctaLabel = tab === 'Client' ? 'Create contact' : tab === 'Project' ? 'Create project' : tab === 'Proposal' ? 'Create proposal' : 'Create invoice';
+    const ctaLabel = tab === 'Client' ? 'Create contact' : tab === 'Project' ? 'Create project' : tab === 'Proposal' ? 'Create proposal' : tab === 'Hook' ? 'Create hook' : 'Create invoice';
 
     const handleCreate = async () => {
         setLoading(true);
@@ -311,6 +321,19 @@ export default function CreateEntryModal() {
                 }
                 setCreateModalOpen(false);
                 router.push(`/projects/${p.id}`);
+            } else if (tab === 'Hook') {
+                const h = await addHook({
+                    name: hName,
+                    title: hTitle,
+                    link: hLink || null,
+                    color: hColor
+                });
+                if (!h) {
+                    gooeyToast.error("Failed to create hook.");
+                    return;
+                }
+                setCreateModalOpen(false);
+                router.push(`/hooks`);
             }
         } catch (err: any) {
             console.error(err);
@@ -494,6 +517,29 @@ export default function CreateEntryModal() {
                                             <Field label="Due date" icon={<Calendar size={11} />} isDark={isDark}>
                                                 <DatePicker value={iDueDate} onChange={setIDueDate} isDark={isDark} align="right" />
                                             </Field>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ── Hook Form ── */}
+                                {tab === 'Hook' && (
+                                    <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
+                                        <Field label="Hook name" icon={<Zap size={11} fill="currentColor" />} isDark={isDark}>
+                                            <TextInput value={hName} onChange={setHName} placeholder="e.g. Website tracker" isDark={isDark} autoFocus />
+                                        </Field>
+                                        <Field label="Notification title" icon={<FileText size={11} />} isDark={isDark}>
+                                            <TextInput value={hTitle} onChange={setHTitle} placeholder="Someone opened your page" isDark={isDark} />
+                                        </Field>
+                                        <Field label="Placement URL (optional)" icon={<Building2 size={11} />} isDark={isDark}>
+                                            <TextInput value={hLink} onChange={setHLink} placeholder="https://example.com" isDark={isDark} />
+                                        </Field>
+                                        <div className="flex flex-col gap-1.5 px-1 mt-1">
+                                            <span className={cn("text-[11px] font-semibold opacity-40", isDark ? "text-white" : "text-[#333]")}>Display Color</span>
+                                            <ColorisInput 
+                                                value={hColor}
+                                                onChange={setHColor}
+                                                isDark={isDark}
+                                            />
                                         </div>
                                     </div>
                                 )}

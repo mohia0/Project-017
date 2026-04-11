@@ -47,6 +47,7 @@ function DocumentTitleSetter() {
         else if (path === '/login') pageTitle = 'Login';
         else if (path === '/projects') pageTitle = 'Projects';
         else if (path.startsWith('/projects/')) pageTitle = 'Project Detail';
+        else if (path === '/hooks') pageTitle = 'Hook Generator';
         else {
             const segment = path.split('/').filter(Boolean).pop() || '';
             pageTitle = segment.charAt(0).toUpperCase() + segment.slice(1);

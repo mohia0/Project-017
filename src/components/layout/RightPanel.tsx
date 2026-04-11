@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon
+    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
@@ -17,16 +17,20 @@ import { CompanyPicker } from '@/components/companies/CompanyPicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '@/components/ui/Avatar';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useHookStore, Hook } from '@/store/useHookStore';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter, usePathname } from 'next/navigation';
+import { Radio, Copy } from 'lucide-react';
+import { gooeyToast } from 'goey-toast';
 
 /* ─── Shared helpers ─── */
 function getInitials(name: string) {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
 }
 
-function PanelHeader({ title, isDark, onClose, onAction, actionIcon: ActionIcon }: { 
+function PanelHeader({ title, icon: Icon, isDark, onClose, onAction, actionIcon: ActionIcon }: { 
     title: string; 
+    icon?: any;
     isDark: boolean; 
     onClose: () => void;
     onAction?: () => void;
@@ -37,7 +41,16 @@ function PanelHeader({ title, isDark, onClose, onAction, actionIcon: ActionIcon 
             "flex items-center justify-between px-4 py-3 border-b shrink-0",
             isDark ? "border-[#222]" : "border-[#e4e4e4]"
         )}>
-            <span className={cn("text-[13px] font-semibold", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>{title}</span>
+            <div className="flex items-center gap-2">
+                {Icon && (
+                    <Icon 
+                        size={14} 
+                        className="text-primary" 
+                        fill={Icon === Zap || Icon === Bell || Icon === Users ? "currentColor" : "none"} 
+                    />
+                )}
+                <span className={cn("text-[13px] font-semibold", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>{title}</span>
+            </div>
             <div className="flex items-center gap-1">
                 {onAction && ActionIcon && (
                     <button
@@ -790,15 +803,129 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
     );
 }
 
+/* ─── Hook Detail Panel ─── */
+function HookPanel({ id, isDark }: { id: string; isDark: boolean }) {
+    const { hooks } = useHookStore();
+    const hook = hooks.find(h => h.id === id);
+    const [copied, setCopied] = useState(false);
+
+    if (!hook) return (
+        <div className={cn("flex-1 flex items-center justify-center text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>
+            Hook not found
+        </div>
+    );
+
+    const getBaseUrl = () => typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '');
+    const pixelUrl = `${getBaseUrl()}/api/h/${hook.id}`;
+    const embedCode = `<img src="${pixelUrl}" width="1" height="1" style="display:none;width:1px;height:1px;border:0;" alt="" />`;
+
+    const copy = (text: string) => {
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        gooeyToast.success('Copied to clipboard');
+    };
+
+    return (
+        <div className="flex-1 flex flex-col overflow-y-auto px-4 py-5 gap-5">
+            {/* Pixel URL */}
+            <div>
+                <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Pixel URL</p>
+                <div className={cn('flex items-center gap-2 rounded-xl border px-3 py-2', isDark ? 'bg-[#1a1a1a] border-[#2e2e2e]' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
+                    <span className={cn('text-[11px] font-mono flex-1 truncate', isDark ? 'text-[#888]' : 'text-[#666]')}>
+                        {pixelUrl}
+                    </span>
+                    <button onClick={() => copy(pixelUrl)} className={cn('p-1 rounded-lg transition-colors shrink-0', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-black/5')}>
+                        {copied ? <Check size={11} className="text-primary" /> : <Copy size={11} />}
+                    </button>
+                </div>
+            </div>
+
+            {/* Embed Code */}
+            <div>
+                <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>HTML embed code</p>
+                <div className={cn('rounded-xl border overflow-hidden', isDark ? 'bg-[#1a1a1a] border-[#2e2e2e]' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
+                    <div className={cn('flex items-center justify-between px-3 py-1.5 border-b', isDark ? 'border-[#252525]' : 'border-[#e8e8e8]')}>
+                        <span className={cn('text-[9px] font-bold uppercase tracking-wider', isDark ? 'text-[#444]' : 'text-[#ccc]')}>HTML</span>
+                        <button onClick={() => copy(embedCode)} className={cn('flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#aaa] hover:text-[#333] hover:bg-black/5')}>
+                            {copied ? <Check size={8} className="text-primary" /> : <Copy size={8} />}
+                            Copy
+                        </button>
+                    </div>
+                    <pre className={cn('px-3 py-3 text-[10px] font-mono leading-relaxed whitespace-pre-wrap break-all select-all', isDark ? 'text-[#8ec07c]' : 'text-[#555]')}>
+                        {embedCode}
+                    </pre>
+                </div>
+            </div>
+
+            {/* Instructions */}
+            <div className={cn('rounded-xl border p-4', isDark ? 'bg-[#1a1a1a] border-[#252525]' : 'bg-[#f7f7f9] border-[#e8e8f0]')}>
+                <p className={cn('text-[11px] font-bold mb-3', isDark ? 'text-[#aaa]' : 'text-[#555]')}>How to use</p>
+                {[
+                    'Copy the HTML embed code above.',
+                    'Paste it anywhere inside the <body> of a page.',
+                    'When the page loads, the hook fires silently.',
+                ].map((step, i) => (
+                    <div key={i} className="flex items-start gap-3 mb-2 last:mb-0">
+                        <span className={cn('w-4 h-4 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold mt-0.5', isDark ? 'bg-white/8 text-[#666]' : 'bg-[#eaeaef] text-[#999]')}>
+                            {i + 1}
+                        </span>
+                        <p className={cn('text-[11px] leading-relaxed', isDark ? 'text-[#666]' : 'text-[#888]')}>{step}</p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Placement link */}
+            {hook.link && (
+                <div>
+                    <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Currently tracking</p>
+                    <a
+                        href={hook.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn('flex items-center gap-2 text-[11px] hover:underline', isDark ? 'text-primary' : 'text-primary')}
+                    >
+                        <ExternalLink size={10} />
+                        {hook.link}
+                    </a>
+                </div>
+            )}
+        </div>
+    );
+}
+
 /* ─── Main RightPanel export ─── */
 export default function RightPanel({ mobileMode = false }: { mobileMode?: boolean }) {
-    const { rightPanel, closeRightPanel, theme } = useUIStore();
+    const { rightPanel, closeRightPanel, theme, rightPanelWidth, setRightPanelWidth } = useUIStore();
     const isDark = theme === 'dark';
     const pathname = usePathname();
 
-    // Close contact/company panel when navigating to a new page
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!rightPanel || rightPanel.type === 'notifications') return;
+        
+        const startX = e.pageX;
+        const startWidth = rightPanelWidth;
+        
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            const delta = startX - moveEvent.pageX;
+            const newWidth = Math.max(280, Math.min(800, startWidth + delta));
+            setRightPanelWidth(newWidth);
+        };
+        
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'default';
+        };
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'col-resize';
+    };
+
+    // Close any active right panel when navigating to a new page
     useEffect(() => {
-        if (rightPanel?.type === 'contact' || rightPanel?.type === 'company') {
+        if (rightPanel) {
             closeRightPanel();
         }
     }, [pathname]);
@@ -807,6 +934,14 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
         notifications: 'Notifications',
         contact: 'Contact',
         company: 'Company',
+        hook: 'Hook Details',
+    };
+
+    const panelIcons: Record<string, any> = {
+        notifications: Bell,
+        contact: Users,
+        company: Building2,
+        hook: Zap,
     };
 
     /* Mobile: render panel content directly (drawer handles the container) */
@@ -816,6 +951,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
             <div className="flex flex-col h-full overflow-hidden">
                 <PanelHeader
                     title={titles[rightPanel.type] || 'Details'}
+                    icon={panelIcons[rightPanel.type]}
                     isDark={isDark}
                     onClose={closeRightPanel}
                     onAction={rightPanel.type === 'notifications' ? useNotificationStore.getState().clearAll : undefined}
@@ -824,6 +960,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                 {rightPanel.type === 'notifications' && <NotificationsPanel isDark={isDark} />}
                 {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
                 {rightPanel.type === 'company' && <CompanyPanel id={rightPanel.id} isDark={isDark} />}
+                {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} isDark={isDark} />}
             </div>
         );
     }
@@ -835,17 +972,40 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                 <motion.div
                     key="right-panel"
                     initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: 280, opacity: 1 }}
+                    animate={{ 
+                        width: rightPanel.type === 'notifications' ? 280 : rightPanelWidth,
+                        opacity: 1 
+                    }}
                     exit={{ width: 0, opacity: 0 }}
                     transition={{
                         type: "tween",
                         duration: 0.2
                     }}
-                    className="h-full shrink-0 flex flex-col overflow-hidden"
+                    className="h-full shrink-0 flex flex-row overflow-hidden relative"
                 >
-                    <div className="w-[280px] h-full flex flex-col overflow-hidden">
+                    {/* Resize handle */}
+                    {rightPanel.type !== 'notifications' && (
+                        <div 
+                            onMouseDown={handleMouseDown}
+                            className={cn(
+                                "absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-[100] transition-colors group",
+                                "hover:bg-primary/30 active:bg-primary/50"
+                            )}
+                        >
+                            <div className={cn(
+                                "absolute left-[2px] top-1/2 -translate-y-1/2 w-[1px] h-8 rounded-full transition-colors",
+                                isDark ? "bg-[#333] group-hover:bg-primary" : "bg-[#eee] group-hover:bg-primary"
+                            )} />
+                        </div>
+                    )}
+
+                    <div 
+                        className="h-full flex flex-col overflow-hidden"
+                        style={{ width: rightPanel.type === 'notifications' ? 280 : rightPanelWidth }}
+                    >
                         <PanelHeader
                             title={titles[rightPanel.type] || 'Details'}
+                            icon={panelIcons[rightPanel.type]}
                             isDark={isDark}
                             onClose={closeRightPanel}
                             onAction={rightPanel.type === 'notifications' ? useNotificationStore.getState().clearAll : undefined}
@@ -855,6 +1015,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                         {rightPanel.type === 'notifications' && <NotificationsPanel isDark={isDark} />}
                         {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
                         {rightPanel.type === 'company' && <CompanyPanel id={rightPanel.id} isDark={isDark} />}
+                        {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} isDark={isDark} />}
                     </div>
                 </motion.div>
             )}

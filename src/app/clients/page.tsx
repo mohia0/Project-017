@@ -5,8 +5,10 @@ import {
     Search, Plus, Filter, LayoutGrid, List,
     Users, Mail, Phone, MapPin, Building2,
     Globe, Briefcase, Trash2, Archive, ArchiveRestore,
-    Copy, Check, CheckSquare, X, MoreHorizontal
+    Copy, Check, CheckSquare, X, MoreHorizontal,
+    FileSpreadsheet, Upload, Download, ChevronRight
 } from 'lucide-react';
+import { gooeyToast } from 'goey-toast';
 import { useClientStore } from '@/store/useClientStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -58,7 +60,7 @@ function Chk({ checked, indeterminate, isDark }: { checked: boolean, indetermina
     );
 }
 
-function TbBtn({ label, icon, active, onClick, isDark }: { label: string; icon: React.ReactNode; active?: boolean; onClick?: () => void; isDark: boolean }) {
+function TbBtn({ label, icon, active, onClick, isDark, hasArrow }: { label: string; icon: React.ReactNode; active?: boolean; onClick?: () => void; isDark: boolean; hasArrow?: boolean; }) {
     return (
         <button onClick={onClick} className={cn(
             "flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-medium rounded transition-all",
@@ -68,6 +70,37 @@ function TbBtn({ label, icon, active, onClick, isDark }: { label: string; icon: 
         )}>
             {icon}
             <span>{label}</span>
+            {hasArrow && <ChevronRight size={11} className={cn("opacity-40 transition-transform", active ? "rotate-90" : "rotate-0")} />}
+        </button>
+    );
+}
+
+function Dropdown({ open, onClose, isDark, children }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode }) {
+    const ref = React.useRef<HTMLDivElement>(null);
+    React.useEffect(() => {
+        if (!open) return;
+        const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [open, onClose]);
+    if (!open) return null;
+    return (
+        <div ref={ref} className={cn("absolute top-full right-0 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
+            isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+            {children}
+        </div>
+    );
+}
+
+function DItem({ label, icon, active, onClick, isDark }: { label: string; icon?: React.ReactNode; active?: boolean; onClick: () => void; isDark: boolean }) {
+    return (
+        <button onClick={onClick} className={cn("w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] transition-colors text-left",
+            active
+                ? isDark ? "bg-white/8 text-white font-medium" : "bg-[#f0f0f0] text-[#111] font-medium"
+                : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")}>
+            {icon && <span className="opacity-60">{icon}</span>}
+            <span className="flex-1">{label}</span>
+            {active && <Check size={11} className="text-primary" />}
         </button>
     );
 }
@@ -75,18 +108,105 @@ function TbBtn({ label, icon, active, onClick, isDark }: { label: string; icon: 
 export default function ClientsPage() {
     const { clients, addClient, fetchClients, isLoading: isClientsLoading } = useClientStore();
     const { companies, fetchCompanies, isLoading: isCompaniesLoading } = useCompanyStore();
-    const { theme, openRightPanel, rightPanel } = useUIStore();
+    const { theme, openRightPanel, rightPanel, setImportModalOpen } = useUIStore();
     const isDark = theme === 'dark';
     const [tab, setTab] = useState<Tab>('people');
     const [view, setView] = useState<ViewMode>('grid');
     const [search, setSearch] = useState('');
     const [isContactEditorOpen, setIsContactEditorOpen] = useState(false);
     const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+    const [importExportOpen, setImportExportOpen] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
     useEffect(() => { fetchClients(); fetchCompanies(); }, [fetchClients, fetchCompanies]);
+
+    const handleExportJSON = () => {
+        const data = tab === 'people' ? clients : companies;
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `${tab}_export_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+        gooeyToast.success('Exported successfully');
+        setImportExportOpen(false);
+    };
+
+    const handleExportCSV = () => {
+        const data = tab === 'people' ? clients : companies;
+        if (data.length === 0) {
+            gooeyToast.error('No data to export');
+            return;
+        }
+        
+        let csvContent = "";
+        if (tab === 'people') {
+            csvContent += "contact_person,company_name,email,phone,address,tax_number,notes\n";
+            data.forEach((c: any) => {
+                const row = [c.contact_person, c.company_name, c.email, c.phone, c.address, c.tax_number, c.notes]
+                    .map(v => v ? `"${String(v).replace(/"/g, '""')}"` : "")
+                    .join(",");
+                csvContent += row + "\n";
+            });
+        } else {
+            csvContent += "name,industry,email,phone,website,address\n";
+            data.forEach((c: any) => {
+                const row = [c.name, c.industry, c.email, c.phone, c.website, c.address]
+                    .map(v => v ? `"${String(v).replace(/"/g, '""')}"` : "")
+                    .join(",");
+                csvContent += row + "\n";
+            });
+        }
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${tab}_export_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        gooeyToast.success('CSV exported successfully');
+        setImportExportOpen(false);
+    };
+
+    const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const json = JSON.parse(event.target?.result as string);
+                if (Array.isArray(json)) {
+                    const promise = (async () => {
+                        for (const item of json) {
+                            const { id, created_at, workspace_id, ...payload } = item;
+                            if (tab === 'people') {
+                                await addClient(payload);
+                            } else {
+                                const { addCompany } = useCompanyStore.getState();
+                                await addCompany(payload);
+                            }
+                        }
+                    })();
+                    gooeyToast.promise(promise, {
+                        loading: 'Importing...',
+                        success: 'Imported successfully',
+                        error: 'Import failed'
+                    });
+                    await promise;
+                }
+            } catch (error) {
+                gooeyToast.error('Invalid JSON file');
+            }
+        };
+        reader.readAsText(file);
+        if (e.target) e.target.value = '';
+    };
 
     const handleSaveClient = async (data: any) => {
         await addClient(data);
@@ -156,7 +276,7 @@ export default function ClientsPage() {
             </div>
 
             {/* ── Toolbar ── */}
-            <div className={cn("flex items-center gap-0 px-3 md:px-4 py-1.5 shrink-0 overflow-x-auto no-scrollbar", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-[#f7f7f7]")}>
+            <div className={cn("flex items-center gap-0 px-3 md:px-4 py-1.5 shrink-0 overflow-visible flex-wrap", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-[#f7f7f7]")}>
                 {(['people', 'companies'] as Tab[]).map(t => (
                     <button
                         key={t}
@@ -256,6 +376,21 @@ export default function ClientsPage() {
                             {v === 'grid' ? <LayoutGrid size={11} /> : <List size={11} />}
                         </button>
                     ))}
+
+                    <div className={cn("w-[1px] h-4 mx-2 hidden md:block", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
+                    
+                    <div className="relative">
+                        <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} active={importExportOpen} />
+                        <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
+                            <div className="py-1">
+                                <DItem label="Import CSV" icon={<FileSpreadsheet size={12} />} onClick={() => { setImportModalOpen(true, tab === 'people' ? 'Contact' : 'Company'); setImportExportOpen(false); }} isDark={isDark} />
+                                <DItem label="Export CSV" icon={<Download size={12} />} onClick={handleExportCSV} isDark={isDark} />
+                                <DItem label="Import JSON" icon={<Upload size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
+                                <DItem label="Export JSON" icon={<Download size={12} />} onClick={handleExportJSON} isDark={isDark} />
+                            </div>
+                        </Dropdown>
+                        <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
+                    </div>
                 </div>
             </div>
 
