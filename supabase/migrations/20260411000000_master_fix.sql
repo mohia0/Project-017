@@ -6,6 +6,17 @@
 -- ============================================================
 
 -- ──────────────────────────────────────────────────────────
+-- 0. WORKSPACES — Add missing fields that UI patches on save
+-- ──────────────────────────────────────────────────────────
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS contact_emails JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS contact_phones JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS contact_address JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS links JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS working_hours JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE workspaces ADD COLUMN IF NOT EXISTS additional_details JSONB DEFAULT '{}'::jsonb;
+
+-- ──────────────────────────────────────────────────────────
 -- 1. CLIENTS — Create table if it never existed
 -- ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS clients (

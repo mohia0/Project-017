@@ -20,6 +20,7 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
     const [tab, setTab] = useState<'upload' | 'url'>('upload');
     const [url, setUrl] = useState('');
     const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -36,31 +37,53 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
         setError(null);
         setTab('upload');
 
+        setUploadProgress(0);
+
         try {
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
+            const data = await new Promise<any>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = Math.round((event.loaded / event.total) * 100);
+                        setUploadProgress(percentComplete);
+                    }
+                });
+                
+                xhr.addEventListener('load', () => {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(response);
+                        } else {
+                            reject(new Error(response.details || response.error || 'Upload failed'));
+                        }
+                    } catch (e) {
+                        reject(new Error('Invalid response from server'));
+                    }
+                });
+                
+                xhr.addEventListener('error', () => {
+                    reject(new Error('Network error occurred during upload.'));
+                });
+                
+                xhr.open('POST', '/api/upload');
+                xhr.send(formData);
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.details || errorData.error || 'Upload failed');
-            }
-
-            const data = await response.json();
             
             // The API returns { success: true, url: "/api/files/..." }
-            // We need to make sure we use the full URL if needed, but relative should work in common cases.
             onUpload(data.url);
             setUploading(false);
+            setUploadProgress(0);
             onClose();
         } catch (err: any) {
             console.error("Upload error:", err);
             setError(err.message || "Failed to upload image");
             setUploading(false);
+            setUploadProgress(0);
         }
     }, [onUpload, onClose]);
 
@@ -185,9 +208,19 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                             />
                             
                             {uploading ? (
-                                <div className="flex flex-col items-center gap-2">
-                                    <Loader2 size={32} className="text-primary animate-spin" />
-                                    <span className="text-[12px] font-medium text-white/40">Uploading...</span>
+                                <div className="flex flex-col items-center gap-4 w-full px-8">
+                                    <div className="w-full bg-black/5 dark:bg-white/10 rounded-full h-2 overflow-hidden shadow-inner">
+                                        <div 
+                                            className="bg-primary h-2 rounded-full transition-all duration-300 ease-out" 
+                                            style={{ width: `${Math.max(uploadProgress, 5)}%` }} // Minimum width 5% when uploading starts
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Loader2 size={14} className="text-primary animate-spin" />
+                                        <span className={cn("text-[12px] font-bold", isDark ? "text-white/60" : "text-black/60")}>
+                                            Uploading {uploadProgress}%
+                                        </span>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center gap-3">

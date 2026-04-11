@@ -306,7 +306,7 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
                                                     return (
                                                         <div
                                                             key={rIdx}
-                                                            title={cell.val > 0 ? `${MONTH_NAMES[monthIdx]} ${cell.day}: ${fmt$(cell.val)}` : isToday ? "Today" : undefined}
+                                                            title={cell.val > 0 ? `${cell.day} ${MONTH_NAMES[monthIdx]}: ${fmt$(cell.val)}` : isToday ? "Today" : undefined}
                                                             className="rounded-[2px] cursor-default"
                                                             style={{
                                                                 width: CELL,
@@ -538,7 +538,12 @@ export default function DashboardPage() {
                 <div>
                     <h1 className="text-[15px] font-semibold tracking-tight">Dashboard</h1>
                     <p className={cn("text-[11px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                        {greeting}, {firstName} · {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        {greeting}, {firstName} · {(() => {
+                            const day = now.getDate();
+                            const month = now.toLocaleDateString('en-GB', { month: 'long' });
+                            const weekday = now.toLocaleDateString('en-GB', { weekday: 'long' });
+                            return `${weekday}, ${day} ${month}`;
+                        })()}
                     </p>
                 </div>
             </div>

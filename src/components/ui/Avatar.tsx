@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 interface AvatarProps {
@@ -9,11 +9,34 @@ interface AvatarProps {
     className?: string;
     isDark?: boolean;
     fallbackClassName?: string;
-    disableBlinking?: boolean;
 }
 
-export function Avatar({ src, name, className, isDark, fallbackClassName, disableBlinking }: AvatarProps) {
-    const [isLoading, setIsLoading] = useState(!!src && !disableBlinking);
+const loadedImages = new Set<string>();
+
+export function Avatar({ src, name, className, isDark, fallbackClassName }: AvatarProps) {
+    const isAlreadyLoaded = src ? loadedImages.has(src) : false;
+    const [isLoading, setIsLoading] = useState(!isAlreadyLoaded && !!src);
+    
+    useEffect(() => {
+        if (!src) {
+            setIsLoading(false);
+            return;
+        }
+        if (loadedImages.has(src)) {
+            setIsLoading(false);
+        } else {
+            setIsLoading(true);
+        }
+    }, [src]);
+
+    const handleLoad = () => {
+        if (src) loadedImages.add(src);
+        setIsLoading(false);
+    };
+
+    const handleError = () => {
+        setIsLoading(false);
+    };
 
     const getInitials = (name: string | null) => {
         if (!name) return '?';
@@ -37,8 +60,8 @@ export function Avatar({ src, name, className, isDark, fallbackClassName, disabl
                             "w-full h-full object-cover transition-opacity duration-300",
                             isLoading ? "opacity-0" : "opacity-100"
                         )}
-                        onLoad={() => setIsLoading(false)}
-                        onError={() => setIsLoading(false)}
+                        onLoad={handleLoad}
+                        onError={handleError}
                     />
                 </>
             ) : (

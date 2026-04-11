@@ -70,7 +70,6 @@ export function MobileTopBar() {
                         name={activeWorkspace?.name || 'M'} 
                         className="w-[30px] h-[30px] rounded-[9px] shadow-sm" 
                         isDark={isDark} 
-                        disableBlinking={!(hasWorkspaceLogo && avatarUrl)}
                     />
                     <div>
                         <h1 className={cn(
@@ -117,7 +116,6 @@ export function MobileTopBar() {
                             name={displayName} 
                             className="w-[36px] h-[36px] rounded-[10px]" 
                             isDark={isDark} 
-                            disableBlinking={!(hasWorkspaceLogo && avatarUrl)}
                         />
                     </button>
                 </div>
@@ -153,7 +151,6 @@ export function MobileTopBar() {
                                     name={displayName} 
                                     className="w-10 h-10 rounded-xl" 
                                     isDark={isDark} 
-                                    disableBlinking={true}
                                 />
                             <div className="min-w-0">
                                 <p className={cn("text-[13px] font-semibold truncate", isDark ? "text-white" : "text-[#111]")}>

@@ -13,6 +13,7 @@ import { useClientStore } from '@/store/useClientStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
+import { CompanyPicker } from '@/components/companies/CompanyPicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '@/components/ui/Avatar';
 import { useNotificationStore } from '@/store/useNotificationStore';
@@ -250,11 +251,11 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
 
 /* ─── Editable field row ─── */
 function Field({
-    label, icon, value, editing, onChange, type = 'text', placeholder = '', isDark, textarea = false, isLink = false
+    label, icon, value, editing, onChange, type = 'text', placeholder = '', isDark, textarea = false, isLink = false, children
 }: {
     label: string; icon: React.ReactNode; value: string; editing: boolean;
     onChange: (v: string) => void; type?: string; placeholder?: string;
-    isDark: boolean; textarea?: boolean; isLink?: boolean;
+    isDark: boolean; textarea?: boolean; isLink?: boolean; children?: React.ReactNode;
 }) {
     if (!value && !editing) return null;
     return (
@@ -266,13 +267,15 @@ function Field({
             <div className="min-w-0 flex-1">
                 <p className={cn("text-[10px] font-semibold uppercase tracking-wide mb-0.5", isDark ? "text-[#444]" : "text-[#bbb]")}>{label}</p>
                 {editing ? (
-                    textarea
-                        ? <textarea value={value} onChange={e => onChange(e.target.value)} rows={3} placeholder={placeholder}
-                            className={cn("bg-transparent outline-none text-[12px] w-full resize-none border-b pb-0.5",
-                                isDark ? "text-white placeholder:text-[#444] border-[#333]" : "text-[#111] placeholder:text-[#ccc] border-[#e0e0e0]")} />
-                        : <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-                            className={cn("bg-transparent outline-none text-[12px] w-full border-b pb-0.5",
-                                isDark ? "text-white placeholder:text-[#444] border-[#333]" : "text-[#111] placeholder:text-[#ccc] border-[#e0e0e0]")} />
+                    children ? children : (
+                        textarea
+                            ? <textarea value={value} onChange={e => onChange(e.target.value)} rows={3} placeholder={placeholder}
+                                className={cn("bg-transparent outline-none text-[12px] w-full resize-none border-b pb-0.5",
+                                    isDark ? "text-white placeholder:text-[#444] border-[#333]" : "text-[#111] placeholder:text-[#ccc] border-[#e0e0e0]")} />
+                            : <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+                                className={cn("bg-transparent outline-none text-[12px] w-full border-b pb-0.5",
+                                    isDark ? "text-white placeholder:text-[#444] border-[#333]" : "text-[#111] placeholder:text-[#ccc] border-[#e0e0e0]")} />
+                    )
                 ) : isLink && value ? (
                     <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noopener noreferrer"
                         className="text-[12px] text-primary hover:underline flex items-center gap-1 group">
@@ -288,6 +291,7 @@ function Field({
 
 /* ─── Contact Detail Panel ─── */
 function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
+    const router = useRouter();
     const { clients, updateClient, deleteClient } = useClientStore();
     const { closeRightPanel } = useUIStore();
     const client = clients.find(c => c.id === id);
@@ -443,7 +447,15 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                         )}
                         {editing && <Field label="Email" icon={<Mail size={11} />} value={form.email} editing onChange={u('email')} type="email" placeholder="email@example.com" isDark={isDark} />}
                         <Field label="Phone"   icon={<Phone size={11} />}    value={form.phone}      editing={editing} onChange={u('phone')}      placeholder="+1 234 567 890" isDark={isDark} />
-                        {editing && <Field label="Company" icon={<Building2 size={11} />} value={form.company_name} editing onChange={u('company_name')} placeholder="Company name" isDark={isDark} />}
+                        <Field label="Company" icon={<Building2 size={11} />} value={form.company_name} editing={editing} onChange={u('company_name')} placeholder="Company name" isDark={isDark}>
+                            <CompanyPicker
+                                minimal
+                                isDark={isDark}
+                                value={form.company_name}
+                                onChange={u('company_name')}
+                                placeholder="Company name"
+                            />
+                        </Field>
                         <Field label="Address" icon={<MapPin size={11} />}   value={form.address}    editing={editing} onChange={u('address')}    placeholder="Street, city"   isDark={isDark} />
                         <Field label="Tax/VAT" icon={<Hash size={11} />}     value={form.tax_number} editing={editing} onChange={u('tax_number')} placeholder="VAT123"         isDark={isDark} />
                         <Field label="Notes"   icon={<FileText size={11} />} value={form.notes}      editing={editing} onChange={u('notes')}      placeholder="Notes…"         isDark={isDark} textarea />
@@ -456,16 +468,20 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             <div className="space-y-1">
                                 {proposals.filter(p => p.client_id === client.id || p.client_name === client.contact_person).length > 0 ? (
                                     proposals.filter(p => p.client_id === client.id || p.client_name === client.contact_person).map(p => (
-                                        <div key={p.id} className={cn("flex items-center justify-between p-2 rounded-lg text-[11px]", isDark ? "hover:bg-white/5" : "hover:bg-gray-50")}>
+                                        <button 
+                                            key={p.id} 
+                                            onClick={() => { router.push(`/proposals/${p.id}`); closeRightPanel(); }}
+                                            className={cn("w-full flex items-center justify-between p-2 rounded-lg text-[11px] text-left transition-colors", isDark ? "hover:bg-white/5 text-white/70" : "hover:bg-gray-50 text-gray-700")}
+                                        >
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <FileText size={12} className="text-primary" />
-                                                <span className={cn("truncate font-medium", isDark ? "text-white/70" : "text-gray-700")}>{p.title}</span>
+                                                <span className="truncate font-medium">{p.title}</span>
                                             </div>
                                             <span className={cn("text-[10px] px-1.5 py-0.5 rounded uppercase font-bold", 
                                                 p.status === 'Accepted' ? "bg-primary/20 text-primary" : isDark ? "bg-white/5 text-white/30" : "bg-gray-100 text-gray-400")}>
                                                 {p.status}
                                             </span>
-                                        </div>
+                                        </button>
                                     ))
                                 ) : (
                                     <p className={cn("text-[11px] italic", isDark ? "text-white/10" : "text-gray-300")}>No proposals found.</p>
@@ -479,16 +495,20 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             <div className="space-y-1">
                                 {invoices.filter(i => i.client_id === client.id || i.client_name === client.contact_person).length > 0 ? (
                                     invoices.filter(i => i.client_id === client.id || i.client_name === client.contact_person).map(i => (
-                                        <div key={i.id} className={cn("flex items-center justify-between p-2 rounded-lg text-[11px]", isDark ? "hover:bg-white/5" : "hover:bg-gray-50")}>
+                                        <button 
+                                            key={i.id} 
+                                            onClick={() => { router.push(`/invoices/${i.id}`); closeRightPanel(); }}
+                                            className={cn("w-full flex items-center justify-between p-2 rounded-lg text-[11px] text-left transition-colors", isDark ? "hover:bg-white/5 text-white/70" : "hover:bg-gray-50 text-gray-700")}
+                                        >
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <Hash size={12} className="text-primary" />
-                                                <span className={cn("truncate font-medium", isDark ? "text-white/70" : "text-gray-700")}>{i.title}</span>
+                                                <span className="truncate font-medium">{i.title}</span>
                                             </div>
                                             <span className={cn("text-[10px] px-1.5 py-0.5 rounded uppercase font-bold", 
                                                 i.status === 'Paid' ? "bg-primary/20 text-primary" : isDark ? "bg-white/5 text-white/30" : "bg-gray-100 text-gray-400")}>
                                                 {i.status}
                                             </span>
-                                        </div>
+                                        </button>
                                     ))
                                 ) : (
                                     <p className={cn("text-[11px] italic", isDark ? "text-white/10" : "text-gray-300")}>No invoices found.</p>

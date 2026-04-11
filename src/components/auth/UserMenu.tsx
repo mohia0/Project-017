@@ -84,7 +84,6 @@ export default function UserMenu() {
                         name={displayName} 
                         className="w-full h-full" 
                         isDark={isDark} 
-                        disableBlinking={!(avatarUrl && hasWorkspaceLogo)}
                     />
                 ) : (
                     <User size={14} strokeWidth={2.5} className="transition-transform duration-300 group-hover:scale-110" />

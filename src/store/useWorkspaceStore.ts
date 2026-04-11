@@ -107,6 +107,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             .single();
 
         if (error) {
+            console.error("WORKSPACE UPDATE ERROR", error);
+            alert("Database Error: " + error.message);
             set({ error: error.message });
             return;
         }

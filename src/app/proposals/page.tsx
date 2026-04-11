@@ -93,16 +93,29 @@ function fmt$(val: number) {
 }
 function fmtDate(d: string | null | undefined) {
     if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+    const date = new Date(d);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
 }
 function timeAgo(d: string | null | undefined) {
     if (!d) return '';
-    const ms = Date.now() - new Date(d).getTime();
-    const days = Math.floor(ms / 86400000);
+    const date = new Date(d);
+    const now = new Date();
+    const ms = now.getTime() - date.getTime();
+    const days = Math.floor(Math.abs(ms) / 86400000);
+    const isFuture = ms < 0;
+
     if (days === 0) return 'today';
-    if (days === 1) return 'yesterday';
-    if (days < 30) return `${days} days ago`;
+    if (days === 1) return isFuture ? 'tomorrow' : 'yesterday';
+    
+    if (days < 30) {
+        return isFuture ? `due in ${days} days` : `${days} days ago`;
+    }
+    
     const months = Math.floor(days / 30);
+    if (isFuture) return `in about ${months} month${months > 1 ? 's' : ''}`;
     return `about ${months} month${months > 1 ? 's' : ''} ago`;
 }
 

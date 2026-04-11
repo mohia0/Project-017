@@ -87,7 +87,6 @@ export default function WorkspaceSwitcher() {
                     src={activeWorkspace?.logo_url} 
                     name={activeWorkspace?.name || 'M'} 
                     className="w-7 h-7 rounded-lg" 
-                    disableBlinking={!(activeWorkspace?.logo_url && profile?.avatar_url)}
                     isDark={isDark} 
                 />
 
@@ -143,7 +142,6 @@ export default function WorkspaceSwitcher() {
                                                 name={ws.name} 
                                                 className="w-6 h-6 rounded-md" 
                                                 isDark={isDark} 
-                                                disableBlinking={true} 
                                             />
                                         <div className="flex flex-col min-w-0">
                                             <span className="text-[12px] font-medium text-white/90 truncate">{ws.name}</span>

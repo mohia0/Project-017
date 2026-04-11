@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
+import { CompanyPicker } from '@/components/companies/CompanyPicker';
 
 interface Client {
     id: string;
@@ -47,11 +48,11 @@ function getInitials(name: string) {
 }
 
 function Field({
-    label, icon, value, editing, onChange, type = 'text', placeholder = '', isDark, textarea = false
+    label, icon, value, editing, onChange, type = 'text', placeholder = '', isDark, textarea = false, children
 }: {
     label: string; icon: React.ReactNode; value: string; editing: boolean;
     onChange: (v: string) => void; type?: string; placeholder?: string;
-    isDark: boolean; textarea?: boolean;
+    isDark: boolean; textarea?: boolean; children?: React.ReactNode;
 }) {
     if (!value && !editing) return null;
     return (
@@ -65,11 +66,13 @@ function Field({
             <div className="min-w-0 flex-1">
                 <p className={cn("text-[10px] font-semibold mb-0.5 uppercase tracking-wide", isDark ? "text-[#444]" : "text-[#bbb]")}>{label}</p>
                 {editing ? (
-                    textarea
-                        ? <textarea value={value} onChange={e => onChange(e.target.value)} rows={3} placeholder={placeholder}
-                            className={cn("bg-transparent outline-none text-[13px] w-full resize-none", isDark ? "text-white placeholder:text-[#444]" : "text-[#111] placeholder:text-[#ccc]")} />
-                        : <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-                            className={cn("bg-transparent outline-none text-[13px] w-full", isDark ? "text-white placeholder:text-[#444]" : "text-[#111] placeholder:text-[#ccc]")} />
+                    children ? children : (
+                        textarea
+                            ? <textarea value={value} onChange={e => onChange(e.target.value)} rows={3} placeholder={placeholder}
+                                className={cn("bg-transparent outline-none text-[13px] w-full resize-none", isDark ? "text-white placeholder:text-[#444]" : "text-[#111] placeholder:text-[#ccc]")} />
+                            : <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+                                className={cn("bg-transparent outline-none text-[13px] w-full", isDark ? "text-white placeholder:text-[#444]" : "text-[#111] placeholder:text-[#ccc]")} />
+                    )
                 ) : (
                     <p className={cn("text-[13px] break-words", isDark ? "text-[#ccc]" : "text-[#222]")}>{value}</p>
                 )}
@@ -204,9 +207,15 @@ export default function ContactDetailDrawer({ client, onClose }: Props) {
                         <Field label="Email" icon={<Mail size={12} />} value={form.email} editing onChange={u('email')} type="email" placeholder="email@example.com" isDark={isDark} />
                     )}
                     <Field label="Phone" icon={<Phone size={12} />} value={form.phone} editing={editing} onChange={u('phone')} placeholder="+1 234 567 890" isDark={isDark} />
-                    {editing && (
-                        <Field label="Company" icon={<Building2 size={12} />} value={form.company_name} editing onChange={u('company_name')} placeholder="Company name" isDark={isDark} />
-                    )}
+                    <Field label="Company" icon={<Building2 size={12} />} value={form.company_name} editing={editing} onChange={u('company_name')} placeholder="Company name" isDark={isDark}>
+                        <CompanyPicker
+                            minimal
+                            isDark={isDark}
+                            value={form.company_name}
+                            onChange={u('company_name')}
+                            placeholder="Company name"
+                        />
+                    </Field>
                     <Field label="Address" icon={<MapPin size={12} />} value={form.address} editing={editing} onChange={u('address')} placeholder="Street, city" isDark={isDark} />
                     <Field label="Tax / VAT" icon={<Hash size={12} />} value={form.tax_number} editing={editing} onChange={u('tax_number')} placeholder="VAT123" isDark={isDark} />
                     <Field label="Notes" icon={<FileText size={12} />} value={form.notes} editing={editing} onChange={u('notes')} placeholder="Internal notes…" isDark={isDark} textarea />

@@ -22,6 +22,8 @@ import { gooeyToast } from 'goey-toast';
 import { supabase } from '@/lib/supabase';
 import { useFileStore, ItemType, FileItem } from '@/store/useFileStore';
 
+import { Tooltip } from '@/components/ui/Tooltip';
+
 // ─── Shared Components ────────────────────────────────────────────────────────
 
 const ProgressContent = ({ progress, isDark }: { progress: number; isDark: boolean }) => {
@@ -96,7 +98,11 @@ function formatBytes(bytes?: number): string {
 }
 
 function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
 }
 
 function getTypeLabel(type: ItemType): string {
@@ -127,10 +133,22 @@ function getItemIcon(type: ItemType, size = 16, color?: string) {
 
 // ─── Image Thumbnail (handles load errors gracefully) ────────────────────────
 
+const loadedImageThumbs = new Set<string>();
+
 function ImageThumb({ src, alt, isDark, fallback }: {
     src: string; alt: string; isDark: boolean; fallback: React.ReactNode;
 }) {
     const [failed, setFailed] = useState(false);
+    const isAlreadyLoaded = loadedImageThumbs.has(src);
+    const [loading, setLoading] = useState(!isAlreadyLoaded);
+    
+    useEffect(() => {
+        if (loadedImageThumbs.has(src)) {
+            setLoading(false);
+        } else {
+            setLoading(true);
+        }
+    }, [src]);
     
     if (failed) return (
         <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105', isDark ? 'bg-white/[0.03]' : 'bg-[#f5f5f5]')}>
@@ -148,12 +166,30 @@ function ImageThumb({ src, alt, isDark, fallback }: {
                 backgroundSize: '10px 10px'
             }}
         >
+            {/* Blinking skeleton skeleton */}
+            {loading && (
+                <div className={cn(
+                    "absolute inset-0 z-10 animate-pulse",
+                    isDark ? "bg-white/[0.05]" : "bg-black/[0.03]"
+                )} />
+            )}
+            
             <img
                 src={src}
                 alt={alt}
-                className="max-w-full max-h-full object-contain pointer-events-none select-none drop-shadow-sm"
+                className={cn(
+                    "max-w-full max-h-full object-contain pointer-events-none select-none drop-shadow-sm transition-opacity duration-300",
+                    loading ? "opacity-0" : "opacity-100"
+                )}
                 loading="lazy"
-                onError={() => setFailed(true)}
+                onLoad={() => {
+                    loadedImageThumbs.add(src);
+                    setLoading(false);
+                }}
+                onError={() => {
+                    setFailed(true);
+                    setLoading(false);
+                }}
             />
         </div>
     );
@@ -183,6 +219,17 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
     const [imgZoom, setImgZoom] = useState(1);
     const [imgRotate, setImgRotate] = useState(0);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    
+    const isAlreadyLoaded = item.downloadUrl ? loadedImageThumbs.has(item.downloadUrl) : false;
+    const [imgLoading, setImgLoading] = useState(!isAlreadyLoaded);
+
+    useEffect(() => {
+        if (item.downloadUrl && loadedImageThumbs.has(item.downloadUrl)) {
+            setImgLoading(false);
+        } else {
+            setImgLoading(true);
+        }
+    }, [item.downloadUrl]);
     const ext = item.name.split('.').pop()?.toLowerCase() || '';
 
     // Close on Escape
@@ -205,7 +252,27 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                 <div className="flex-1 flex flex-col items-center justify-center overflow-hidden relative">
                     <div className="relative overflow-hidden rounded-xl" style={{ transform: `scale(${imgZoom}) rotate(${imgRotate}deg)`, transition: 'transform 0.3s ease' }}>
                         {realUrl ? (
-                            <img src={realUrl} alt={item.name} className="max-w-full max-h-[55vh] object-contain rounded-xl shadow-2xl" />
+                            <>
+                                {imgLoading && (
+                                    <div className={cn(
+                                        "absolute inset-0 z-10 animate-pulse",
+                                        isDark ? "bg-white/[0.05]" : "bg-black/[0.03]"
+                                    )} />
+                                )}
+                                <img 
+                                    src={realUrl} 
+                                    alt={item.name} 
+                                    className={cn(
+                                        "max-w-full max-h-[55vh] object-contain rounded-xl shadow-2xl transition-opacity duration-300",
+                                        imgLoading ? "opacity-0" : "opacity-100"
+                                    )} 
+                                    onLoad={() => {
+                                        loadedImageThumbs.add(realUrl);
+                                        setImgLoading(false);
+                                    }}
+                                    onError={() => setImgLoading(false)}
+                                />
+                            </>
                         ) : (
                             // Placeholder gradient image for demo
                             <div className={`w-[400px] h-[280px] rounded-2xl flex flex-col items-center justify-center gap-4 ${isDark ? 'bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-[#0f3460]' : 'bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50'}`}>
@@ -1660,15 +1727,15 @@ export default function FilesPage() {
                                     <div key={i} className={cn('h-3 w-3/4 rounded-full', isDark ? 'bg-white/5' : 'bg-black/5')}/>
                                 ))}
                             </div>
-                        ) : items.find(i => i.id === 'root') ? (
+                        ) : (
                             <TreeNode
-                                item={items.find(i => i.id === 'root')!} items={items} depth={0}
+                                item={{ id: 'root', name: 'Home', type: 'folder', parentId: '' } as any} items={items} depth={0}
                                 currentFolderId={currentFolderId} onNavigate={navigate} isDark={isDark}
                                 expandedIds={expandedIds} toggleExpand={toggleExpand} dragOver={dragOver}
                                 onDragOver={setDragOver} onDrop={handleDrop}
                                 onContextMenu={(e, itemId) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, itemId }); }}
                             />
-                        ) : null}
+                        )}
                         {/* Quick Links */}
                         {items.filter(i => i.type === 'link').length > 0 && (
                             <>
@@ -1874,18 +1941,19 @@ export default function FilesPage() {
                                             {/* Star + Lock */}
                                             <div className="absolute top-0 right-0 flex items-start p-1.5 z-10" onClick={e => e.stopPropagation()}>
                                                 {/* Star button */}
-                                                <button
-                                                    onClick={e => { e.stopPropagation(); toggleStar(item.id); }}
-                                                    className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-all',
-                                                        item.starred
-                                                            ? 'opacity-100'
-                                                            : (selectedIds.size > 0 ? 'opacity-0' : 'opacity-0 group-hover:opacity-70 hover:!opacity-100'),
-                                                        item.starred ? 'text-amber-400' : isDark ? 'text-[#555] hover:text-amber-400 hover:bg-white/10' : 'text-[#ccc] hover:text-amber-400 hover:bg-black/5'
-                                                    )}
-                                                    title={item.starred ? 'Remove star' : 'Add star'}
-                                                >
-                                                    <Star size={13} fill={item.starred ? 'currentColor' : 'none'}/>
-                                                </button>
+                                                <Tooltip content={item.starred ? 'Remove star' : 'Add star'}>
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); toggleStar(item.id); }}
+                                                        className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-all',
+                                                            item.starred
+                                                                ? 'opacity-100'
+                                                                : (selectedIds.size > 0 ? 'opacity-0' : 'opacity-0 group-hover:opacity-70 hover:!opacity-100'),
+                                                            item.starred ? 'text-amber-400' : isDark ? 'text-[#555] hover:text-amber-400 hover:bg-white/10' : 'text-[#ccc] hover:text-amber-400 hover:bg-black/5'
+                                                        )}
+                                                    >
+                                                        <Star size={13} fill={item.starred ? 'currentColor' : 'none'}/>
+                                                    </button>
+                                                </Tooltip>
                                                 {item.locked && (
                                                     <div className="w-8 h-8 flex items-center justify-center pointer-events-none">
                                                         <Lock size={10} className={isDark ? 'text-[#555]' : 'text-[#aaa]'}/>
@@ -1952,34 +2020,38 @@ export default function FilesPage() {
                                                                     exit={{ opacity: 0 }}
                                                                     className="flex items-center gap-1.5"
                                                                 >
-                                                                    <button onClick={e => { e.stopPropagation(); setRenamingId(item.id); }}
-                                                                        className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                            isDark ? 'text-[#444] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-black/5')}
-                                                                        title="Rename">
-                                                                        <Pencil size={11} strokeWidth={2}/>
-                                                                    </button>
-                                                                    {item.type !== 'folder' && item.downloadUrl && (
-                                                                        <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
+                                                                    <Tooltip content="Rename">
+                                                                        <button onClick={e => { e.stopPropagation(); setRenamingId(item.id); }}
                                                                             className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                                isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}
-                                                                                title="Download">
-                                                                            <Download size={11} strokeWidth={2}/>
+                                                                                isDark ? 'text-[#444] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-black/5')}>
+                                                                            <Pencil size={11} strokeWidth={2}/>
                                                                         </button>
+                                                                    </Tooltip>
+                                                                    {item.type !== 'folder' && item.downloadUrl && (
+                                                                        <Tooltip content="Download">
+                                                                            <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
+                                                                                className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
+                                                                                    isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}>
+                                                                                <Download size={11} strokeWidth={2}/>
+                                                                            </button>
+                                                                        </Tooltip>
                                                                     )}
                                                                     {(item.downloadUrl || item.url) && (
-                                                                        <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
-                                                                            className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                                isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}
-                                                                                title="Copy link">
-                                                                            <Link size={11} strokeWidth={2}/>
-                                                                        </button>
+                                                                        <Tooltip content="Copy link">
+                                                                            <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
+                                                                                className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
+                                                                                    isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}>
+                                                                                <Link size={11} strokeWidth={2}/>
+                                                                            </button>
+                                                                        </Tooltip>
                                                                     )}
-                                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(item.id); setTimeout(() => setDeletingId(curr => curr === item.id ? null : curr), 3000); }}
-                                                                        className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                            isDark ? 'text-red-500/20 hover:text-red-500 hover:bg-red-500/10' : 'text-red-200 hover:text-red-500 hover:bg-red-50')}
-                                                                        title="Delete">
-                                                                        <Trash2 size={11} strokeWidth={2}/>
-                                                                    </button>
+                                                                    <Tooltip content="Delete">
+                                                                        <button onClick={e => { e.stopPropagation(); setDeletingId(item.id); setTimeout(() => setDeletingId(curr => curr === item.id ? null : curr), 3000); }}
+                                                                            className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
+                                                                                isDark ? 'text-red-500/20 hover:text-red-500 hover:bg-red-500/10' : 'text-red-200 hover:text-red-500 hover:bg-red-50')}>
+                                                                            <Trash2 size={11} strokeWidth={2}/>
+                                                                        </button>
+                                                                    </Tooltip>
                                                                 </motion.div>
                                                             )}
                                                         </AnimatePresence>

@@ -14,6 +14,7 @@ import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useRouter } from 'next/navigation';
 import DatePicker from '@/components/ui/DatePicker';
 import ClientEditor from '@/components/clients/ClientEditor';
+import { CompanyPicker } from '@/components/companies/CompanyPicker';
 
 type EntityType = 'Client' | 'Proposal' | 'Invoice';
 
@@ -397,7 +398,13 @@ export default function CreateEntryModal() {
                                                 <TextInput value={cPhone} onChange={setCPhone} placeholder="+1 234 567 890" isDark={isDark} />
                                             </Field>
                                             <Field label="Company" icon={<Building2 size={11} />} isDark={isDark}>
-                                                <TextInput value={cCompany} onChange={setCCompany} placeholder="Acme Inc." isDark={isDark} />
+                                                <CompanyPicker
+                                                    minimal
+                                                    isDark={isDark}
+                                                    value={cCompany}
+                                                    onChange={setCCompany}
+                                                    placeholder="Search or add company"
+                                                />
                                             </Field>
                                         </div>
                                     </div>

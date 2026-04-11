@@ -219,7 +219,13 @@ export default function TemplatesPage() {
                                         
                                         <div className={cn("text-[11px] mt-2 flex items-center gap-1.5", isDark ? "text-[#555]" : "text-[#aaa]")}>
                                             <Calendar size={11} className="opacity-50" />
-                                            <span>Saved {new Date(template.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                            {(() => {
+                                                const date = new Date(template.created_at);
+                                                const day = String(date.getDate()).padStart(2, '0');
+                                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                                const year = date.getFullYear();
+                                                return <span>Saved {day}/{month}/{year}</span>;
+                                            })()}
                                         </div>
 
                                         <div className="mt-5 flex gap-2">
