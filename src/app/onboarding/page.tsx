@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { cn } from '@/lib/utils';
-import { Loader2, ArrowRight, Building, Sparkles } from 'lucide-react';
+import { Loader2, ArrowRight, Building, Sparkles, AlertCircle } from 'lucide-react';
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -142,6 +142,17 @@ export default function OnboardingPage() {
                                 </>
                             )}
                         </button>
+
+                        {/* Error Message */}
+                        {useWorkspaceStore.getState().error && (
+                            <div className={cn(
+                                "p-4 rounded-xl text-[12px] font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2",
+                                isDark ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-red-50 text-red-600 border border-red-100"
+                            )}>
+                                <AlertCircle size={14} />
+                                <span className="flex-1">{useWorkspaceStore.getState().error}</span>
+                            </div>
+                        )}
                     </form>
 
                     <div className="mt-12 flex flex-col items-center gap-6 opacity-40">

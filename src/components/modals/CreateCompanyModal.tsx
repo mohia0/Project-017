@@ -65,7 +65,7 @@ function FormField({
 export function CreateCompanyModal({ open, onClose, onCreated }: Props) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { addCompany } = useCompanyStore();
+    const { addCompany, error: storeError } = useCompanyStore();
 
     const [name, setName] = useState('');
     const [industry, setIndustry] = useState('');
@@ -184,9 +184,9 @@ export function CreateCompanyModal({ open, onClose, onCreated }: Props) {
                             <Avatar 
                                 src={avatarUrl} 
                                 name={name} 
-                                className="w-10 h-10 rounded-lg border border-black/5" 
+                                className="w-10 h-10 rounded-xl border border-black/5" 
                                 isDark={isDark} 
-                                fallbackClassName="border border-dashed border-[#e0e0e0] dark:border-[#333]"
+                                fallbackClassName="border border-dashed border-black/10 dark:border-white/10 rounded-xl"
                             />
                             <div className="flex flex-col">
                                 <span className={cn("text-[13px] font-medium", isDark ? "text-white/60" : "text-black/60")}>
@@ -301,14 +301,22 @@ export function CreateCompanyModal({ open, onClose, onCreated }: Props) {
                     >
                         Cancel
                     </button>
-                    <button
-                        onClick={handleCreate}
-                        disabled={saving}
-                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-black transition-colors disabled:opacity-60"
-                    >
-                        {saving ? 'Creating...' : 'Create company'}
-                        {!saving && <ChevronRight size={14} />}
-                    </button>
+                    <div className="flex flex-col items-end gap-2">
+                        <button
+                            onClick={handleCreate}
+                            disabled={saving}
+                            className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-black transition-colors disabled:opacity-60"
+                        >
+                            {saving ? 'Creating...' : 'Create company'}
+                            {!saving && <ChevronRight size={14} />}
+                        </button>
+                        
+                        {storeError && (
+                            <div className="text-[10px] text-red-400 font-medium animate-in fade-in slide-in-from-top-1">
+                                {storeError}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

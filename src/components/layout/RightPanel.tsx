@@ -376,30 +376,51 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                 </div>
             </div>
 
-            {/* Tabs */}
+            {/* Tabs Toggle */}
             {!editing && (
-                <div className={cn("flex px-4 pt-1 pb-[1px] gap-6")}>
+                <div className={cn(
+                    "flex mx-4 mt-2 p-1 rounded-xl shrink-0",
+                    isDark ? "bg-white/5" : "bg-[#efeff2]"
+                )}>
                     <button 
                         onClick={() => setActiveTab('details')}
-                        className={cn("text-[10px] font-bold uppercase tracking-[0.1em] pb-2 transition-all relative",
+                        className={cn(
+                            "flex-1 text-[10px] font-bold uppercase tracking-wider py-1.5 rounded-lg transition-all relative",
                             activeTab === 'details' 
-                                ? isDark ? "text-white" : "text-black"
-                                : isDark ? "text-[#333] hover:text-[#444]" : "text-[#ccc] hover:text-[#999]"
+                                ? (isDark ? "text-white" : "text-black")
+                                : (isDark ? "text-[#555] hover:text-[#777]" : "text-[#aaa] hover:text-[#888]")
                         )}
                     >
-                        Details
-                        {activeTab === 'details' && <motion.div layoutId="contact-tab" className="absolute bottom-0 left-0 right-0 h-[1px] bg-primary" />}
+                        <span className="relative z-10">Details</span>
+                        {activeTab === 'details' && (
+                            <motion.div 
+                                layoutId="active-contact-tab" 
+                                className={cn(
+                                    "absolute inset-0 rounded-lg shadow-sm border",
+                                    isDark ? "bg-white/10 border-white/10" : "bg-white border-black/5"
+                                )} 
+                            />
+                        )}
                     </button>
                     <button 
                         onClick={() => setActiveTab('documents')}
-                        className={cn("text-[10px] font-bold uppercase tracking-[0.1em] pb-2 transition-all relative",
+                        className={cn(
+                            "flex-1 text-[10px] font-bold uppercase tracking-wider py-1.5 rounded-lg transition-all relative",
                             activeTab === 'documents' 
-                                ? isDark ? "text-white" : "text-black"
-                                : isDark ? "text-[#333] hover:text-[#444]" : "text-[#ccc] hover:text-[#999]"
+                                ? (isDark ? "text-white" : "text-black")
+                                : (isDark ? "text-[#555] hover:text-[#777]" : "text-[#aaa] hover:text-[#888]")
                         )}
                     >
-                        Documents
-                        {activeTab === 'documents' && <motion.div layoutId="contact-tab" className="absolute bottom-0 left-0 right-0 h-[1px] bg-primary" />}
+                        <span className="relative z-10">Documents</span>
+                        {activeTab === 'documents' && (
+                            <motion.div 
+                                layoutId="active-contact-tab" 
+                                className={cn(
+                                    "absolute inset-0 rounded-lg shadow-sm border",
+                                    isDark ? "bg-white/10 border-white/10" : "bg-white border-black/5"
+                                )} 
+                            />
+                        )}
                     </button>
                 </div>
             )}

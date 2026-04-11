@@ -43,11 +43,11 @@ export function Avatar({ src, name, className, isDark, fallbackClassName, disabl
                 </>
             ) : (
                 <div className={cn(
-                    "w-full h-full flex items-center justify-center text-[10px] font-bold",
+                    "w-full h-full flex items-center justify-center text-[10px] font-bold rounded-inherit",
                     isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]",
                     fallbackClassName
                 )}>
-                    {getInitials(name)}
+                    {getInitials(name ?? null)}
                 </div>
             )}
         </div>

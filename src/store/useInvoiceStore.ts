@@ -6,6 +6,7 @@ export type InvoiceStatus = 'Draft' | 'Pending' | 'Paid' | 'Overdue' | 'Cancelle
 
 export interface Invoice {
     id: string;
+    workspace_id: string;
     client_id?: string | null;
     client_name: string;
     title: string;
@@ -24,7 +25,7 @@ interface InvoiceState {
     isLoading: boolean;
     error: string | null;
     fetchInvoices: () => Promise<void>;
-    addInvoice: (invoice: Omit<Invoice, 'id' | 'created_at'>) => Promise<Invoice | null>;
+    addInvoice: (invoice: Omit<Invoice, 'id' | 'created_at' | 'workspace_id'>) => Promise<Invoice | null>;
     updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<void>;
     deleteInvoice: (id: string) => Promise<void>;
 }

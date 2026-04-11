@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { ProposalDocument } from '@/components/proposals/ProposalEditor';
 import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
@@ -17,29 +17,31 @@ const supabasePublic = createClient(
 
 export default function PreviewClient({ type, data }: { type: 'proposal' | 'invoice', data: any }) {
     const [liveData, setLiveData] = useState(data);
-    const [viewHasBeenTracked, setViewHasBeenTracked] = useState(false);
+    // useRef persists across React Strict Mode double-mounts (unlike useState)
+    const viewHasBeenTracked = useRef(false);
 
     // Modals
     const [isSignModalOpen, setIsSignModalOpen] = useState(false);
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
 
-    // Track view once on mount
+    // Track view ONCE per page load — useRef guard prevents Strict Mode double-fire
     useEffect(() => {
-        if (!viewHasBeenTracked) {
-            fetch('/api/track-view', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type,
-                    id: data.id,
-                    workspace_id: data.workspace_id,
-                    title: data.title || data.meta?.projectName || data.client_name,
-                }),
-            }).catch(console.error);
-            setViewHasBeenTracked(true);
-        }
-    }, [viewHasBeenTracked, type, data]);
+        if (viewHasBeenTracked.current) return;
+        viewHasBeenTracked.current = true;
+
+        fetch('/api/track-view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type,
+                id: data.id,
+                workspace_id: data.workspace_id,
+                title: data.title || data.meta?.projectName || data.client_name,
+            }),
+        }).catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Empty — fires once on mount only, data.id never changes after SSR
 
     // ─────────────────────────────────────────────────────────────────────────
     // Supabase Realtime — subscribe to row-level changes on this document.

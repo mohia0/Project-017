@@ -6,16 +6,17 @@ export type ProposalStatus = 'Draft' | 'Pending' | 'Accepted' | 'Overdue' | 'Dec
 
 export interface Proposal {
     id: string;
+    workspace_id: string;
     client_id?: string | null;
-    client_name: string; // Since we don't have full client DB mapped yet, we use client_name for now
+    client_name: string; 
     title: string;
     status: ProposalStatus;
     amount: number;
     issue_date: string;
     due_date: string;
     notes: string;
-    blocks: any[]; // For Notion-style editor blocks
-    meta?: any; // Contains design, custom fields
+    blocks: any[]; 
+    meta?: any; 
     created_at: string;
 }
 
@@ -24,7 +25,7 @@ interface ProposalState {
     isLoading: boolean;
     error: string | null;
     fetchProposals: () => Promise<void>;
-    addProposal: (proposal: Omit<Proposal, 'id' | 'created_at'>) => Promise<Proposal | null>;
+    addProposal: (proposal: Omit<Proposal, 'id' | 'created_at' | 'workspace_id'>) => Promise<Proposal | null>;
     updateProposal: (id: string, updates: Partial<Proposal>) => Promise<void>;
     deleteProposal: (id: string) => Promise<void>;
 }
@@ -77,9 +78,8 @@ export const useProposalStore = create<ProposalState>((set) => ({
             };
             const { data, error } = await supabase.from('proposals').insert(payload).select().single();
             if (error) {
-                const errStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
-                console.error("Supabase insert error details:", error);
-                set({ error: error.message || errStr });
+                console.error("Supabase insert error details (proposals):", error);
+                set({ error: error.message });
                 return null;
             } else if (data) {
                 set((state) => ({ proposals: [data, ...state.proposals] }));

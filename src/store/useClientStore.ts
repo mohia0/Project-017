@@ -4,6 +4,8 @@ import { useUIStore } from './useUIStore';
 
 export interface Client {
     id: string;
+    workspace_id: string;
+    company_id?: string | null;
     company_name: string;
     contact_person: string;
     email: string;
@@ -20,7 +22,7 @@ interface ClientState {
     isLoading: boolean;
     error: string | null;
     fetchClients: () => Promise<void>;
-    addClient: (client: Omit<Client, 'id' | 'created_at'>) => Promise<Client | null>;
+    addClient: (client: Omit<Client, 'id' | 'created_at' | 'workspace_id'>) => Promise<Client | null>;
     updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
     deleteClient: (id: string) => Promise<void>;
 }

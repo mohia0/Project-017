@@ -6,6 +6,7 @@ export type ItemType = 'folder' | 'file' | 'link' | 'image' | 'video' | 'audio' 
 
 export interface FileItem {
     id: string;
+    workspace_id?: string;
     name: string;
     type: ItemType;
     parentId: string | null;
@@ -61,8 +62,9 @@ export const useFileStore = create<FileState>((set, get) => ({
             set({ error: error.message, isLoading: false });
         } else {
             if (data.length === 0) {
+                const rootId = `root-${workspaceId}`;
                 const rootFolder = {
-                    id: 'root',
+                    id: rootId,
                     name: 'Root',
                     type: 'folder',
                     parent_id: null,
@@ -70,10 +72,11 @@ export const useFileStore = create<FileState>((set, get) => ({
                     created_at: new Date().toISOString(),
                     modified_at: new Date().toISOString()
                 };
-                const { error: insertErr } = await supabase.from('files').insert([rootFolder]);
+                const { error: insertErr } = await supabase.from('files').upsert([rootFolder], { onConflict: 'id', ignoreDuplicates: true });
                 if (!insertErr) {
                     set({ items: [{
                         id: rootFolder.id,
+                        workspace_id: workspaceId,
                         name: rootFolder.name,
                         type: rootFolder.type as ItemType,
                         parentId: rootFolder.parent_id,
@@ -86,6 +89,7 @@ export const useFileStore = create<FileState>((set, get) => ({
             } else {
                 const mappedData: FileItem[] = data.map((i: any) => ({
                     id: i.id,
+                    workspace_id: i.workspace_id,
                     name: i.name,
                     type: i.type,
                     parentId: i.parent_id,

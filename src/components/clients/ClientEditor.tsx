@@ -309,9 +309,9 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
                             <Avatar 
                                 src={form.avatar_url} 
                                 name={form.contact_person || form.company_name} 
-                                className="w-10 h-10 rounded-lg border border-black/5" 
+                                className="w-10 h-10 rounded-xl border border-black/5" 
                                 isDark={isDark} 
-                                fallbackClassName="border border-dashed border-[#e0e0e0] dark:border-[#333]"
+                                fallbackClassName="border border-dashed border-black/10 dark:border-white/10 rounded-xl"
                             />
                             <div className="flex flex-col">
                                 <span className={cn("text-[13px] font-medium", isDark ? "text-white/60" : "text-black/60")}>

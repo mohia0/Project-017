@@ -4,6 +4,7 @@ import { useUIStore } from './useUIStore';
 
 export interface Company {
     id: string;
+    workspace_id: string;
     name: string;
     industry?: string;
     website?: string;
@@ -21,7 +22,7 @@ interface CompanyState {
     isLoading: boolean;
     error: string | null;
     fetchCompanies: () => Promise<void>;
-    addCompany: (company: Omit<Company, 'id' | 'created_at'>) => Promise<Company | null>;
+    addCompany: (company: Omit<Company, 'id' | 'created_at' | 'workspace_id'>) => Promise<Company | null>;
     updateCompany: (id: string, updates: Partial<Company>) => Promise<void>;
     deleteCompany: (id: string) => Promise<void>;
 }
