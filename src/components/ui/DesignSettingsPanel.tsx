@@ -580,6 +580,37 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 {!collapsed['actionbar'] && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                         <MetaField 
+                            label="Theme (Bar & Modal)" 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ actionTheme: DEFAULT_DOCUMENT_DESIGN.actionTheme })}
+                        >
+                            <div className={cn("flex w-full p-0.5 rounded-lg border", isDark ? "bg-[#111] border-[#333]" : "bg-[#f5f5f5] border-[#eaeaea]")}>
+                                <button
+                                    onClick={() => updateDesign({ actionTheme: 'light' })}
+                                    className={cn(
+                                        "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
+                                        (design.actionTheme || 'light') === 'light'
+                                            ? isDark ? "bg-white text-black shadow-sm" : "bg-white text-black shadow-sm"
+                                            : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                    )}
+                                >
+                                    Light
+                                </button>
+                                <button
+                                    onClick={() => updateDesign({ actionTheme: 'dark' })}
+                                    className={cn(
+                                        "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
+                                        design.actionTheme === 'dark'
+                                            ? isDark ? "bg-[#333] text-white shadow-sm" : "bg-[#333] text-white shadow-sm"
+                                            : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                    )}
+                                >
+                                    Dark
+                                </button>
+                            </div>
+                        </MetaField>
+
+                        <MetaField 
                             label="Action Button Color" 
                             isDark={isDark}
                             onReset={() => updateDesign({ actionButtonColor: DEFAULT_DOCUMENT_DESIGN.actionButtonColor })}

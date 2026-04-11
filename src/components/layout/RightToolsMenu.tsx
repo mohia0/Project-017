@@ -33,22 +33,10 @@ export default function RightToolsMenu() {
     return (
         <nav className={cn(
             "h-full w-[44px] flex flex-col items-center shrink-0 transition-colors duration-300 z-10",
-            rightPanel && !isRightPanelCollapsed && (isDark ? "border-l border-[#222]" : "border-l border-[#e4e4e4]")
+            rightPanel && (isDark ? "border-l border-[#222]" : "border-l border-[#e4e4e4]")
         )}>
             {/* Top: Create button or Expand toggle */}
             <div className="flex flex-col items-center pt-1.5 pb-3 w-full px-1 gap-2">
-                {isRightPanelCollapsed && (
-                    <button
-                        onClick={toggleRightPanelCollapse}
-                        className={cn(
-                            "w-9 h-9 rounded-[12px] flex items-center justify-center transition-all group",
-                            isDark ? "bg-white/5 text-white/40 hover:text-white" : "bg-[#f0f0f0] text-[#888] hover:text-[#111]"
-                        )}
-                        title="Expand Panel"
-                    >
-                        <ChevronLeft size={16} strokeWidth={2.5} className="transition-transform duration-300 group-hover:-translate-x-0.5" />
-                    </button>
-                )}
                 <button
                     onClick={() => setCreateModalOpen(true)}
                     className="w-9 h-9 rounded-[12px] flex items-center justify-center transition-all bg-primary hover:bg-primary-hover text-black group"

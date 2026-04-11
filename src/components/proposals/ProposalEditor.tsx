@@ -123,7 +123,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     const { clients, fetchClients } = useClientStore();
-    const { updateProposal, fetchProposals, proposals } = useProposalStore();
+    const { updateProposal, deleteProposal, fetchProposals, proposals } = useProposalStore();
     const { addTemplate } = useTemplateStore();
 
 
@@ -150,7 +150,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [isSignModalOpen, setIsSignModalOpen] = useState(false);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
-    const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
     const statusRef = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
@@ -581,7 +580,16 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     { icon: Link2,          label: 'Copy Link',         action: copyLink },
                                     { icon: Download,       label: 'Download PDF',      action: () => console.log('Download') },
                                     { icon: Copy,           label: 'Duplicate',         action: () => console.log('Duplicate') },
-                                    { icon: Trash2,         label: 'Delete',            action: () => console.log('Delete') },
+                                    { 
+                                        icon: Trash2,         
+                                        label: 'Delete',            
+                                        action: async () => {
+                                            if (id) {
+                                                await deleteProposal(id);
+                                                router.push('/proposals');
+                                            }
+                                        } 
+                                    },
                                 ].map(({ icon: Icon, label, action }) => (
                                     <button
                                         key={label}
@@ -604,26 +612,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
             </div>
 
             <div className="flex-1 flex flex-col overflow-hidden relative">
-                {/* ── ACTION BAR (Above both Canvas and Right Panel) ── */}
-                {!isPreview && (
-                    <div className={cn(
-                        "z-20 border-b flex justify-center",
-                        isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#f0f0f0]"
-                    )}>
-                        <ClientActionBar
-                            type="proposal"
-                            status={meta.status as any}
-                            inline={true}
-                            design={meta.design}
-                            onAccept={() => setIsSignModalOpen(true)}
-                            onDecline={() => updateMeta({ status: 'Declined' as any })}
-                            onDownloadPDF={() => console.log('Download PDF pressed')}
-                            onPrint={() => window.print()}
-                            className="!my-2"
-                        />
-                    </div>
-                )}
-
                 <div className="flex-1 flex overflow-hidden relative">
                     {/* ── LEFT: CANVAS ── */}
                     <div 
@@ -638,23 +626,41 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             backgroundAttachment: 'fixed',
                         }}
                     >
+                            <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                                <div 
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                        backdropFilter: 'blur(12px)',
+                                        WebkitBackdropFilter: 'blur(12px)',
+                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                    }}
+                                >
+                                    <div className={cn(
+                                        "absolute inset-0 pointer-events-none",
+                                        isDark 
+                                            ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
+                                            : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                    )} />
+                                </div>
+                                <div className="relative z-10 w-full pointer-events-auto">
+                                    <ClientActionBar
+                                        type="proposal"
+                                        status={meta.status as any}
+                                        inline={true}
+                                        design={meta.design}
+                                        onAccept={() => setIsSignModalOpen(true)}
+                                        onDecline={() => updateMeta({ status: 'Declined' as any })}
+                                        onDownloadPDF={() => console.log('Download PDF pressed')}
+                                        onPrint={() => window.print()}
+                                        className="!my-0"
+                                    />
+                                </div>
+                            </div>
                         <div className={cn(
                             "flex flex-col items-center min-h-full",
                             isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
                         )}>
-                            {/* In mobile preview, keep it inline. In desktop edit mode, it's now above. */}
-                            {isPreview && !isMobilePreview && (
-                                <ClientActionBar
-                                    type="proposal"
-                                    status={meta.status as any}
-                                    inline={true}
-                                    design={meta.design}
-                                    onAccept={() => setIsSignModalOpen(true)}
-                                    onDecline={() => updateMeta({ status: 'Declined' as any })}
-                                    onDownloadPDF={() => console.log('Download PDF pressed')}
-                                    onPrint={() => window.print()}
-                                />
-                            )}
                         {/* Mobile phone frame wrapper */}
                         {isMobilePreview ? (
                             <div className="flex flex-col items-center">
@@ -686,18 +692,23 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                              backgroundPosition: 'center',
                                          }}
                                     >
-                                        <ClientActionBar
-                                            type="proposal"
-                                            status={meta.status as any}
-                                            isMobile={true}
-                                            inline={true}
-                                            design={meta.design}
-                                            onAccept={() => setIsSignModalOpen(true)}
-                                            onDecline={() => updateMeta({ status: 'Declined' as any })}
-                                            onDownloadPDF={() => console.log('Download PDF pressed')}
-                                            onPrint={() => window.print()}
-                                            className="pt-4"
-                                        />
+                                        <div className={cn(
+                                            "sticky top-0 z-30 backdrop-blur-lg border-b transition-all",
+                                            isDark ? "bg-black/40 border-white/5" : "bg-white/40 border-black/5"
+                                        )}>
+                                            <ClientActionBar
+                                                type="proposal"
+                                                status={meta.status as any}
+                                                isMobile={true}
+                                                inline={true}
+                                                design={meta.design}
+                                                onAccept={() => setIsSignModalOpen(true)}
+                                                onDecline={() => updateMeta({ status: 'Declined' as any })}
+                                                onDownloadPDF={() => console.log('Download PDF pressed')}
+                                                onPrint={() => window.print()}
+                                                className="!py-3"
+                                            />
+                                        </div>
                                         <ProposalDocument
                                             meta={meta}
                                             blocks={blocks}
@@ -771,23 +782,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 {/* ── RIGHT: METADATA PANEL (desktop only) ── */}
                 {!isPreview && (
                     <div className={cn(
-                        "hidden md:flex flex-col overflow-hidden border-l transition-all duration-300 relative",
-                        isRightPanelCollapsed ? "w-0 border-l-0" : "w-[240px]",
+                        "hidden md:flex flex-col overflow-hidden border-l transition-all duration-300 relative w-[240px]",
                         isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                     )}>
-                        {/* Collapse Toggle Button */}
-                        <button
-                            onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
-                            className={cn(
-                                "absolute -left-3 top-1/2 -translate-y-1/2 z-30 w-6 h-6 rounded-full border shadow-md flex items-center justify-center transition-all",
-                                isDark ? "bg-[#1a1a1a] border-[#333] text-white/40 hover:text-white" : "bg-white border-[#e0e0e0] text-[#999] hover:text-[#555]",
-                                isRightPanelCollapsed && "left-auto right-4"
-                            )}
-                        >
-                            {isRightPanelCollapsed ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
-                        </button>
 
-                        <div className={cn("flex items-center shrink-0 p-1.5 gap-1", isRightPanelCollapsed && "opacity-0 invisible")}>
+                        <div className="flex items-center shrink-0 p-1.5 gap-1">
                             {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => (
                                 <button
                                     key={tab}
@@ -1007,6 +1006,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         </div>
                     </div>
                 )}
+            </div>
 
                 {/* ── MOBILE BOTTOM PANEL (mobile only, hidden on md+) ── */}
                 {!isPreview && (
@@ -1878,8 +1878,8 @@ function SignatureBlock({ block, isDark, isPreview, updateBlock }: any) {
                                     />
                                 ) : (
                                     <span 
-                                        className={cn("text-3xl w-full truncate leading-none pb-1", isDark ? "text-white" : "text-black")}
-                                        style={{ fontFamily: '"Brush Script MT", cursive, serif' }}
+                                        className={cn("text-4xl w-full truncate leading-none pb-2", isDark ? "text-white" : "text-black")}
+                                        style={{ fontFamily: 'var(--font-mr-dafoe), cursive' }}
                                     >
                                         {block.signerName || 'Signature'}
                                     </span>

@@ -775,10 +775,7 @@ export default function KanbanBoard({ projectId, isDark, searchQuery, showArchiv
         } else if (type === 'group') {
             if (action === 'rename') setRenamingId(id);
             if (action === 'delete') {
-                const g = groups.find(g => g.id === id);
-                if (window.confirm(`Delete group "${g?.name}" and all its tasks?`)) {
-                    deleteTaskGroup(id, projectId);
-                }
+                deleteTaskGroup(id, projectId);
             }
         }
     };

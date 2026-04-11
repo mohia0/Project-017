@@ -41,7 +41,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     const router = useRouter();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { templates, updateTemplate, fetchTemplates } = useTemplateStore();
+    const { templates, updateTemplate, deleteTemplate, fetchTemplates } = useTemplateStore();
     
     const [template, setTemplate] = useState<Template | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
@@ -53,7 +53,6 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
     const [showActionsMenu, setShowActionsMenu] = useState(false);
-    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     const actionsRef = useRef<HTMLDivElement>(null);
 
@@ -296,9 +295,10 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                 isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]"
                             )}>
                                 <button
-                                    onClick={() => {
-                                        setPendingDeleteId(id);
+                                    onClick={async () => {
                                         setShowActionsMenu(false);
+                                        await deleteTemplate(id);
+                                        router.push('/templates');
                                     }}
                                     className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-red-500 hover:bg-red-50 transition-colors"
                                 >
@@ -324,9 +324,43 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                         backgroundAttachment: 'fixed',
                     }}
                 >
+                    {isPreview && previewMode !== 'mobile' && (
+                            <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                                <div 
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                        backdropFilter: 'blur(12px)',
+                                        WebkitBackdropFilter: 'blur(12px)',
+                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                    }}
+                                >
+                                    <div className={cn(
+                                        "absolute inset-0 pointer-events-none",
+                                        isDark 
+                                            ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
+                                            : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                    )} />
+                                </div>
+                                <div className="relative z-10 w-full pointer-events-auto">
+                                    <ClientActionBar
+                                        type={template.entity_type}
+                                        status="Pending"
+                                        design={template.design}
+                                        inline={true}
+                                        amountDue={fmt(totals.total, (template as any).meta?.currency || 'USD')}
+                                        onDownloadPDF={() => {}}
+                                        onPrint={() => {}}
+                                        onAccept={() => {}}
+                                        onPay={() => {}}
+                                        className="!my-0 w-full max-w-[850px] mx-auto px-6"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     <div className={cn(
                         "flex flex-col items-center min-h-full",
-                        (isPreview && previewMode === 'mobile') ? "py-8 px-4" : "pt-12 pb-20 px-6"
+                        (isPreview && previewMode === 'mobile') ? "py-8 px-4" : "pt-4 pb-20 px-6"
                     )}>
                         {(isPreview && previewMode === 'mobile') ? (
                             <div className="flex flex-col items-center">
@@ -346,18 +380,41 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                              backgroundPosition: 'center',
                                          }}
                                     >
-                                        <ClientActionBar
-                                            type={template.entity_type}
-                                            status="Pending"
-                                            design={template.design}
-                                            inline={true}
-                                            isMobile={true}
-                                            amountDue={fmt(totals.total, (template as any).meta?.currency || 'USD')}
-                                            onDownloadPDF={() => {}}
-                                            onPrint={() => {}}
-                                            onAccept={() => {}}
-                                            onPay={() => {}}
-                                        />
+                                        <div className="w-full">
+                                            <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                                                <div 
+                                                    className="absolute inset-0 pointer-events-none"
+                                                    style={{
+                                                        backdropFilter: 'blur(12px)',
+                                                        WebkitBackdropFilter: 'blur(12px)',
+                                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                                    }}
+                                                >
+                                                    <div className={cn(
+                                                        "absolute inset-0 pointer-events-none",
+                                                        isDark 
+                                                            ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
+                                                            : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                                    )} />
+                                                </div>
+                                                <div className="relative z-10 w-full pointer-events-auto">
+                                                    <ClientActionBar
+                                                        type={template.entity_type}
+                                                        status="Pending"
+                                                        design={template.design}
+                                                        inline={true}
+                                                        isMobile={true}
+                                                        amountDue={fmt(totals.total, (template as any).meta?.currency || 'USD')}
+                                                        onDownloadPDF={() => {}}
+                                                        onPrint={() => {}}
+                                                        onAccept={() => {}}
+                                                        onPay={() => {}}
+                                                        className="!my-0 px-6"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                         {template.entity_type === 'proposal' ? (
                                             <ProposalDocument
                                                 meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
@@ -416,19 +473,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                     boxShadow: template.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                                 }}
                             >
-                                {isPreview && (
-                                    <ClientActionBar
-                                        type={template.entity_type}
-                                        status="Pending"
-                                        design={template.design}
-                                        inline={true}
-                                        amountDue={fmt(totals.total, (template as any).meta?.currency || 'USD')}
-                                        onDownloadPDF={() => {}}
-                                        onPrint={() => {}}
-                                        onAccept={() => {}}
-                                        onPay={() => {}}
-                                    />
-                                )}
+                                {/* ClientActionBar is moved to the sticky header above */}
                                 {template.entity_type === 'proposal' ? (
                                     <ProposalDocument
                                         meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
@@ -603,17 +648,6 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                 title={uploadTarget?.type === 'logo' ? "Upload Logo" : "Upload Image"}
             />
 
-            <DeleteConfirmModal 
-                open={!!pendingDeleteId}
-                onClose={() => setPendingDeleteId(null)}
-                onConfirm={async () => {
-                    setPendingDeleteId(null);
-                    router.push('/templates');
-                }}
-                title="Delete Template"
-                description="Are you sure you want to delete this template? This action cannot be undone."
-                isDark={isDark}
-            />
         </div>
     );
 }

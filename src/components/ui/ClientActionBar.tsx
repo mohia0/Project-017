@@ -57,7 +57,7 @@ export function ClientActionBar({
     design = {}
 }: ClientActionBarProps & { onPay?: () => void }) {
     const { theme } = useUIStore();
-    const isDark = theme === 'dark';
+    const isDark = design.actionTheme ? design.actionTheme === 'dark' : false; // Default to light if not specified, overriding app theme
 
     const isAccepted = status === 'Accepted' || status === 'Paid';
     const isPending = status === 'Pending';

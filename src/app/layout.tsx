@@ -1,9 +1,17 @@
 import type { Metadata, Viewport } from 'next';
+import { Mr_Dafoe } from 'next/font/google';
 import './globals.css';
 import '@mantine/core/styles.css';
 import AppLayout from '@/components/layout/AppLayout';
 import { Providers } from '@/components/layout/Providers';
 import { BrandingProvider } from '@/components/settings/BrandingProvider';
+
+const mrDafoe = Mr_Dafoe({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-mr-dafoe',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'CRM 17',
@@ -31,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={mrDafoe.variable}>
       <body suppressHydrationWarning>
         <Providers>
           <BrandingProvider>

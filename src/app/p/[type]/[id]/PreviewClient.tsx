@@ -7,6 +7,7 @@ import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSelectorModal';
+import { cn } from '@/lib/utils';
 
 // Anon-key client — safe for public preview pages, used only to subscribe
 // to Realtime events. No sensitive data is written through this client.
@@ -151,19 +152,41 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     backgroundAttachment: 'fixed',
                 }}
             >
+                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                    <div 
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                            WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                        }}
+                    >
+                        <div className={cn(
+                            "absolute inset-0 pointer-events-none",
+                            isDark 
+                                ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
+                                : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                        )} />
+                    </div>
+                    <div className="relative z-10 w-full pointer-events-auto">
+                        <ClientActionBar
+                            type="proposal"
+                            status={meta.status as any}
+                            design={meta.design}
+                            signedBy={signedBy}
+                            signedAt={signedAt}
+                            inline={true}
+                            onDownloadPDF={() => window.print()}
+                            onPrint={() => window.print()}
+                            onAccept={() => setIsSignModalOpen(true)}
+                            onDecline={() => handleUpdateStatus('Declined')}
+                            className="!my-0 w-full max-w-[850px] mx-auto px-6"
+                        />
+                    </div>
+                </div>
+
                 <div className="flex flex-col items-center min-h-full pt-4 pb-20 px-6">
-                    <ClientActionBar
-                        type="proposal"
-                        status={meta.status as any}
-                        design={meta.design}
-                        signedBy={signedBy}
-                        signedAt={signedAt}
-                        inline={true}
-                        onDownloadPDF={() => window.print()}
-                        onPrint={() => window.print()}
-                        onAccept={() => setIsSignModalOpen(true)}
-                        onDecline={() => handleUpdateStatus('Declined')}
-                    />
 
                     <div
                         className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
@@ -203,8 +226,9 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 <AcceptSignModal
                     isOpen={isSignModalOpen}
                     onClose={() => setIsSignModalOpen(false)}
+                    documentType={type as any}
                     onAccept={(signatureData) => handleUpdateStatus('Accepted', signatureData)}
-                    documentType="proposal"
+                    design={meta.design}
                 />
             </div>
         );
@@ -238,19 +262,41 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     backgroundAttachment: 'fixed',
                 }}
             >
+                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                    <div 
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                            WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                        }}
+                    >
+                        <div className={cn(
+                            "absolute inset-0 pointer-events-none",
+                            isDark 
+                                ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
+                                : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                        )} />
+                    </div>
+                    <div className="relative z-10 w-full pointer-events-auto">
+                        <ClientActionBar
+                            type="invoice"
+                            status={invoiceMeta.status as any}
+                            amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 2 }).format(totals.total)}
+                            paidAt={paidAt}
+                            paidBy={paidBy}
+                            design={invoiceMeta.design}
+                            inline={true}
+                            onDownloadPDF={() => window.print()}
+                            onPrint={() => window.print()}
+                            onPay={() => setIsBankModalOpen(true)}
+                            className="!my-0 w-full max-w-[850px] mx-auto px-6"
+                        />
+                    </div>
+                </div>
+
                 <div className="flex flex-col items-center min-h-full pt-4 pb-20 px-6">
-                    <ClientActionBar
-                        type="invoice"
-                        status={invoiceMeta.status as any}
-                        amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 2 }).format(totals.total)}
-                        paidAt={paidAt}
-                        paidBy={paidBy}
-                        design={invoiceMeta.design}
-                        inline={true}
-                        onDownloadPDF={() => window.print()}
-                        onPrint={() => window.print()}
-                        onPay={() => setIsBankModalOpen(true)}
-                    />
 
                     <div
                         className="w-full max-w-[850px] overflow-hidden transition-all duration-300"

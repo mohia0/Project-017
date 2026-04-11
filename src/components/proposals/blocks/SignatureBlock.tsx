@@ -67,7 +67,7 @@ export function SignatureBlock({ id, data, updateData, removeBlock, addBlockAfte
                                 <img src={data.signatureImage} className="max-h-full invert-0 grayscale" alt="Signature" />
                             </div>
                         ) : isSigned ? (
-                            <div className="font-['Brush_Script_MT',cursive] text-4xl text-[#111] h-12 flex items-end px-2">
+                            <div className="text-5xl text-[#111] h-12 flex items-end px-2 leading-none" style={{ fontFamily: 'var(--font-mr-dafoe), cursive' }}>
                                 {signedName}
                             </div>
                         ) : (

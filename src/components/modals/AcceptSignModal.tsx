@@ -8,16 +8,18 @@ interface AcceptSignModalProps {
     onClose: () => void;
     onAccept: (signatureData: any) => void;
     documentType?: 'proposal' | 'invoice' | 'document';
+    design?: Partial<DocumentDesign>;
 }
 
 export function AcceptSignModal({ 
     isOpen, 
     onClose, 
     onAccept,
-    documentType = 'proposal'
+    documentType = 'proposal',
+    design = {}
 }: AcceptSignModalProps) {
     const { theme } = useUIStore();
-    const isDark = theme === 'dark';
+    const isDark = design.actionTheme ? design.actionTheme === 'dark' : false; // Use the toggle override
 
     const [activeTab, setActiveTab] = useState<'type' | 'draw' | 'upload'>('type');
     const [fullName, setFullName] = useState('');
@@ -27,6 +29,20 @@ export function AcceptSignModal({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const isDrawing = useRef(false);
     const lastPos = useRef({ x: 0, y: 0 });
+    
+    // Upload ref
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setSignatureImage(event.target?.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     // Handle initial canvas setup and resizing
     useEffect(() => {
@@ -183,7 +199,7 @@ export function AcceptSignModal({
                             {activeTab === 'type' && (
                                 <div className="text-center px-4 w-full">
                                     {fullName ? (
-                                        <div className="text-4xl font-serif opacity-80 text-black" style={{ fontFamily: '"Brush Script MT", cursive, serif' }}>
+                                        <div className="text-5xl opacity-80 text-black leading-tight py-2" style={{ fontFamily: 'var(--font-mr-dafoe), cursive' }}>
                                             {fullName}
                                         </div>
                                     ) : (
@@ -228,9 +244,45 @@ export function AcceptSignModal({
                             )}
 
                             {activeTab === 'upload' && (
-                                <span className={cn("text-[13px] font-medium", isDark ? "text-[#666]" : "text-[#999]")}>
-                                    Drag and drop or browse
-                                </span>
+                                <div className="flex flex-col items-center justify-center w-full h-full relative">
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        ref={fileInputRef} 
+                                        onChange={handleFileUpload} 
+                                        className="hidden" 
+                                    />
+                                    {signatureImage ? (
+                                        <div className="relative w-full h-full flex items-center justify-center group overflow-hidden p-2">
+                                            <img src={signatureImage} className="max-h-full w-auto object-contain z-10" alt="Uploaded signature" />
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setSignatureImage(null); }}
+                                                className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20"
+                                            >
+                                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/20 text-white backdrop-blur-sm">
+                                                    <RotateCcw size={14} />
+                                                    <span className="text-[12px] font-semibold">Change image</span>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className={cn(
+                                                "flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-black/5 transition-colors",
+                                                isDark ? "hover:bg-white/5" : ""
+                                            )}
+                                        >
+                                            <Upload size={18} className={cn("mb-2 opacity-50", isDark ? "text-white" : "text-black")} />
+                                            <span className={cn("text-[13px] font-medium", isDark ? "text-[#ccc]" : "text-[#666]")}>
+                                                Click to browse image
+                                            </span>
+                                            <span className={cn("text-[11px] mt-1 opacity-50", isDark ? "text-white" : "text-black")}>
+                                                JPEG, PNG, SVG
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </div>
@@ -254,6 +306,7 @@ export function AcceptSignModal({
                         onClick={() => {
                             if (activeTab === 'type' && !fullName) return;
                             if (activeTab === 'draw' && !signatureImage) return;
+                            if (activeTab === 'upload' && !signatureImage) return;
                             onAccept({ 
                                 type: activeTab, 
                                 name: fullName, 
@@ -261,10 +314,14 @@ export function AcceptSignModal({
                             });
                             onClose();
                         }}
-                        disabled={(activeTab === 'type' && !fullName) || (activeTab === 'draw' && !signatureImage)}
+                        disabled={
+                            (activeTab === 'type' && !fullName) || 
+                            (activeTab === 'draw' && !signatureImage) ||
+                            (activeTab === 'upload' && !signatureImage)
+                        }
                         className={cn(
                             "px-6 py-2 rounded-[8px] text-[13px] font-semibold transition-all",
-                            ((activeTab === 'type' && !fullName) || (activeTab === 'draw' && !signatureImage))
+                            ((activeTab === 'type' && !fullName) || (activeTab === 'draw' && !signatureImage) || (activeTab === 'upload' && !signatureImage))
                                 ? isDark ? "bg-[#333] text-[#555] cursor-not-allowed" : "bg-[#e5e5e5] text-[#999] cursor-not-allowed"
                                 : isDark ? "bg-white text-black hover:bg-[#ddd]" : "bg-black text-white hover:bg-[#222]"
                         )}

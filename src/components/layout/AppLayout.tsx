@@ -195,9 +195,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className={cn(
                 "flex shrink-0 transition-all duration-300 rounded-2xl overflow-hidden border",
                 isDark ? "bg-[#0d0d0d] border-[#222]" : "bg-[#f5f5f5] border-[#e4e4e4]",
-                (isRightPanelCollapsed || !rightPanel) && "w-auto"
+                !rightPanel && "w-auto"
             )}>
-                {!isRightPanelCollapsed && <RightPanel />}
+                <RightPanel />
                 <RightToolsMenu />
             </div>
 

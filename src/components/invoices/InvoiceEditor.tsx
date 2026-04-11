@@ -113,7 +113,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     const { clients, fetchClients } = useClientStore();
-    const { updateInvoice, fetchInvoices, invoices } = useInvoiceStore();
+    const { updateInvoice, deleteInvoice, fetchInvoices, invoices } = useInvoiceStore();
     const { addTemplate } = useTemplateStore();
     const { payments, fetchPayments } = useSettingsStore();
 
@@ -143,26 +143,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
-    const [pendingStatusChange, setPendingStatusChange] = useState<InvoiceMeta['status'] | null>(null);
-    const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
-
-    const statusRef = useRef<HTMLDivElement>(null);
-    const actionsRef = useRef<HTMLDivElement>(null);
-
-    React.useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (statusRef.current && !statusRef.current.contains(event.target as Node)) {
-                setShowStatusMenu(false);
-            }
-            if (actionsRef.current && !actionsRef.current.contains(event.target as Node)) {
-                setShowActionsMenu(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const isMobilePreview = isPreview && previewMode === 'mobile';
+    const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
 
     const [meta, setMeta] = useState<InvoiceMeta>({
         clientName: '',
@@ -196,6 +177,32 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [isLoaded, setIsLoaded] = useState(false);
     const debouncedMeta = useDebounce(meta, 1000);
     const debouncedBlocks = useDebounce(blocks, 1000);
+
+    const { statuses, fetchStatuses } = useSettingsStore();
+    const customStatuses = React.useMemo(() => statuses.filter(s => s.tool === 'invoices'), [statuses]);
+    const activeStatuses = React.useMemo(() => customStatuses.filter(s => s.is_active || s.name === meta.status).sort((a,b) => a.position - b.position), [customStatuses, meta.status]);
+
+    React.useEffect(() => {
+        if (activeWorkspaceId) fetchStatuses(activeWorkspaceId);
+    }, [activeWorkspaceId, fetchStatuses]);
+
+    const statusRef = useRef<HTMLDivElement>(null);
+    const actionsRef = useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (statusRef.current && !statusRef.current.contains(event.target as Node)) {
+                setShowStatusMenu(false);
+            }
+            if (actionsRef.current && !actionsRef.current.contains(event.target as Node)) {
+                setShowActionsMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const isMobilePreview = isPreview && previewMode === 'mobile';
 
     // Polling effect to keep editor in sync with backend
     React.useEffect(() => {
@@ -306,13 +313,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
     const updateMeta = (patch: Partial<InvoiceMeta>) => setMeta(m => ({ ...m, ...patch }));
 
-    const handleStatusChange = (newStatus: InvoiceMeta['status']) => {
+    const handleStatusChange = (newStatus: string) => {
         // Pattern matched from proposals
         if (meta.status === 'Paid') {
             setPendingStatusChange(newStatus);
             return;
         }
-        updateMeta({ status: newStatus });
+        updateMeta({ status: newStatus as any });
     };
 
     const confirmStatusChange = () => {
@@ -363,7 +370,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
         return { subtotal, discAmt, taxAmt, total: subtotal - discAmt + taxAmt };
     }, [blocks]);
 
-    const sc = getStatusColors(meta.status);
+    const sc = getStatusColors(meta.status, customStatuses);
 
     return (
         <div className={cn(
@@ -414,11 +421,10 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                     <div className="relative flex items-center" ref={statusRef}>
                         <button
                             onClick={() => setShowStatusMenu(s => !s)}
+                            style={sc.dynamic ? { backgroundColor: sc.dynamic.bg, color: sc.dynamic.text, borderColor: sc.dynamic.border } : {}}
                             className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all border",
-                                isDark
-                                    ? "bg-white/[0.06] text-[#aaa] border-white/10"
-                                    : cn(sc.badge, sc.badgeText, sc.badgeBorder)
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-bold transition-all border",
+                                !sc.dynamic ? (isDark ? "bg-white/[0.05] border-white/10 text-white/40" : cn(sc.bg, sc.text, sc.border)) : "hover:brightness-110"
                             )}
                         >
                             <div className={cn("w-1.5 h-1.5 rounded-full bg-current opacity-70")} />
@@ -430,20 +436,31 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 "absolute right-0 top-full mt-1.5 w-40 rounded-[10px] border shadow-xl py-1 z-50",
                                 isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#d2d2eb]"
                             )}>
-                                {Object.keys(STATUS_COLORS).filter(k => k !== 'All' && k !== 'Accepted' && k !== 'Declined').map(s => (
-                                    <button
-                                        key={s}
-                                        onClick={() => { handleStatusChange(s as any); setShowStatusMenu(false); }}
-                                        className={cn(
-                                            "w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
-                                            isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
-                                            meta.status === s ? "font-semibold" : ""
-                                        )}
-                                    >
-                                        {meta.status === s ? <Check size={12} className="text-emerald-500" /> : <div className="w-[12px]" />}
-                                        <span>{s}</span>
-                                    </button>
-                                ))}
+                                {activeStatuses.map(s => {
+                                    const sSc = getStatusColors(s.name, customStatuses);
+                                    const isActive = s.name === meta.status;
+                                    const sDynamic = (sSc as any).dynamic;
+                                    return (
+                                        <button
+                                            key={s.name}
+                                            onClick={() => { handleStatusChange(s.name); setShowStatusMenu(false); }}
+                                            className={cn(
+                                                "w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
+                                                isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
+                                                isActive ? "font-semibold" : ""
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-2 flex-1">
+                                                <div 
+                                                    className="w-1.5 h-1.5 rounded-full shrink-0" 
+                                                    style={{ backgroundColor: isDark ? sSc.bar : (sDynamic ? sDynamic.text : sSc.bar) }} 
+                                                />
+                                                <span>{s.name}</span>
+                                            </div>
+                                            {isActive && <Check size={12} className="text-primary" />}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -546,7 +563,16 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 {[
                                     { icon: LayoutTemplate, label: 'Save as Template', action: () => setIsSaveTemplateModalOpen(true) },
                                     { icon: Download, label: 'Download PDF', action: () => console.log('Download') },
-                                    { icon: Trash2,   label: 'Delete', action: () => console.log('Delete') },
+                                    { 
+                                        icon: Trash2,   
+                                        label: 'Delete', 
+                                        action: async () => {
+                                            if (id) {
+                                                await deleteInvoice(id);
+                                                router.push('/invoices');
+                                            }
+                                        } 
+                                    },
                                 ].map(({ icon: Icon, label, action }) => (
                                     <button
                                         key={label}
@@ -572,27 +598,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             </div>
 
             <div className="flex-1 flex flex-col overflow-hidden relative">
-                {/* ── ACTION BAR (Above both Canvas and Right Panel) ── */}
-                {!isPreview && (
-                    <div className={cn(
-                        "z-20 border-b flex justify-center",
-                        isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#f0f0f0]"
-                    )}>
-                        <ClientActionBar
-                            type="invoice"
-                            status={meta.status as any}
-                            amountDue={fmt(totals.total, meta.currency)}
-                            paidAt="July 4, 2026"
-                            inline={true}
-                            design={meta.design}
-                            onDownloadPDF={() => console.log('Download PDF')}
-                            onPrint={() => window.print()}
-                            onPay={() => setIsPayModalOpen(true)}
-                            className="!my-2"
-                        />
-                    </div>
-                )}
-
                 <div className="flex-1 flex overflow-hidden relative">
                     <div 
                         className="flex-1 overflow-auto relative w-full"
@@ -606,24 +611,44 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             backgroundAttachment: 'fixed',
                         }}
                     >
+                        {!isMobilePreview && (
+                            <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                                <div 
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                        backdropFilter: 'blur(12px)',
+                                        WebkitBackdropFilter: 'blur(12px)',
+                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                    }}
+                                >
+                                    <div className={cn(
+                                        "absolute inset-0 pointer-events-none",
+                                        isDark 
+                                            ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
+                                            : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                    )} />
+                                </div>
+                                <div className="relative z-10 w-full pointer-events-auto">
+                                    <ClientActionBar
+                                        type="invoice"
+                                        status={meta.status as any}
+                                        amountDue={fmt(totals.total, meta.currency)}
+                                        paidAt="July 4, 2026"
+                                        inline={true}
+                                        design={meta.design}
+                                        onDownloadPDF={() => console.log('Download PDF')}
+                                        onPrint={() => window.print()}
+                                        onPay={() => setIsPayModalOpen(true)}
+                                        className="!my-0"
+                                    />
+                                </div>
+                            </div>
+                        )}
                         <div className={cn(
                             "flex flex-col items-center min-h-full",
                             isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
                         )}>
-                             {/* In mobile preview, keep it inline. In desktop edit mode, it's now above. */}
-                             {isPreview && !isMobilePreview && (
-                                <ClientActionBar
-                                    type="invoice"
-                                    status={meta.status as any}
-                                    amountDue={fmt(totals.total, meta.currency)}
-                                    paidAt="July 4, 2026"
-                                    inline={true}
-                                    design={meta.design}
-                                    onDownloadPDF={() => console.log('Download PDF')}
-                                    onPrint={() => window.print()}
-                                    onPay={() => setIsPayModalOpen(true)}
-                                />
-                            )}
                                 {/* Desktop canvas */}
                                 <div 
                                     className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
@@ -652,30 +677,15 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         setBlocks={setBlocks}
                                     />
                                 </div>
-                            </>
-                        )}
-                    </div>
-                </div>
+                            </div>
+                        </div>
 
                 {!isPreview && (
                     <div className={cn(
-                        "hidden md:flex flex-col overflow-hidden border-l transition-all duration-300 relative",
-                        isRightPanelCollapsed ? "w-0 border-l-0" : "w-[240px]",
+                        "hidden md:flex flex-col overflow-hidden border-l transition-all duration-300 relative w-[240px]",
                         isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                     )}>
-                        {/* Collapse Toggle Button */}
-                        <button
-                            onClick={() => setIsRightPanelCollapsed(!isRightPanelCollapsed)}
-                            className={cn(
-                                "absolute -left-3 top-1/2 -translate-y-1/2 z-30 w-6 h-6 rounded-full border shadow-md flex items-center justify-center transition-all",
-                                isDark ? "bg-[#1a1a1a] border-[#333] text-white/40 hover:text-white" : "bg-white border-[#e0e0e0] text-[#999] hover:text-[#555]",
-                                isRightPanelCollapsed && "left-auto right-4"
-                            )}
-                        >
-                            {isRightPanelCollapsed ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
-                        </button>
-
-                        <div className={cn("flex items-center p-1.5 gap-1", isRightPanelCollapsed && "opacity-0 invisible")}>
+                        <div className="flex items-center p-1.5 gap-1">
                             <button 
                                 onClick={() => setRightTab('details')} 
                                 className={cn(
@@ -963,7 +973,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         </div>
                     </div>
                 )}
-            </div>
+
 
 
 
@@ -1030,6 +1040,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 invoice={{ ...meta, amount: totals.total, id: id }}
                 onMarkAsPaid={() => handleStatusChange('Paid')}
             />
+            </div>
+            </div>
         </div>
     );
 }

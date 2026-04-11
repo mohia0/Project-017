@@ -358,7 +358,7 @@ function StatusCell({ status, onStatusChange, isDark, customStatuses = [] }: {
         <div className="relative">
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold border transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-semibold border transition-colors"
                 style={sc.dynamic ? {
                     backgroundColor: sc.dynamic.bg,
                     color: sc.dynamic.text,
@@ -566,7 +566,7 @@ function MobileProposalRow({ p, onOpen, isDark, onStatusChange, onArchive, isArc
                         {p.title || 'New Proposal'}
                     </span>
                     <span className={cn(
-                        "text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 border",
+                        "text-[10px] font-bold px-2 py-0.5 rounded-[6px] shrink-0 border",
                         isDark ? "bg-white/[0.06] text-[#888] border-white/10" : cn(sc.badge, sc.badgeText, sc.badgeBorder)
                     )}>
                         {p.status}

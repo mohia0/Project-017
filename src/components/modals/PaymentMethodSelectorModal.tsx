@@ -6,23 +6,26 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { BankTransferModal } from './BankTransferModal';
+import { DocumentDesign } from '@/types/design';
 
 interface PaymentMethodSelectorModalProps {
     isOpen: boolean;
     onClose: () => void;
     invoice: any;
     onMarkAsPaid: () => void;
+    design?: Partial<DocumentDesign>;
 }
 
 export function PaymentMethodSelectorModal({ 
     isOpen, 
     onClose, 
     invoice,
-    onMarkAsPaid 
+    onMarkAsPaid,
+    design = {}
 }: PaymentMethodSelectorModalProps) {
     const { theme } = useUIStore();
     const { payments, fetchPayments, hasFetched } = useSettingsStore();
-    const isDark = theme === 'dark';
+    const isDark = design.actionTheme ? design.actionTheme === 'dark' : false; // Apply design toggle override
 
     React.useEffect(() => {
         if (isOpen && invoice.workspace_id && !hasFetched.payments) {
@@ -101,6 +104,7 @@ export function PaymentMethodSelectorModal({
                 onMarkAsPaid={onMarkAsPaid}
                 amountDue={invoice.amount}
                 accountId={selectedBankAccountId}
+                design={design}
             />
         );
     }

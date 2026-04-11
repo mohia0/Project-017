@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { Loader2 } from 'lucide-react';
+import { DocumentDesign } from '@/types/design';
 
 interface BankTransferModalProps {
     isOpen: boolean;
@@ -13,6 +14,7 @@ interface BankTransferModalProps {
     onMarkAsPaid: () => void;
     amountDue: string | number;
     accountId?: string | null;
+    design?: Partial<DocumentDesign>;
 }
 
 export function BankTransferModal({ 
@@ -20,11 +22,12 @@ export function BankTransferModal({
     onClose, 
     onMarkAsPaid,
     amountDue,
-    accountId
+    accountId,
+    design = {}
 }: BankTransferModalProps) {
     const { theme, activeWorkspaceId } = useUIStore();
     const { payments, fetchPayments, hasFetched } = useSettingsStore();
-    const isDark = theme === 'dark';
+    const isDark = design.actionTheme ? design.actionTheme === 'dark' : false; // Use theme override
 
     React.useEffect(() => {
         if (isOpen && activeWorkspaceId && !hasFetched.payments) {

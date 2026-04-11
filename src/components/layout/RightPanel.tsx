@@ -37,7 +37,6 @@ function PanelHeader({ title, icon: Icon, isDark, onClose, onAction, actionIcon:
     onAction?: () => void;
     actionIcon?: any;
 }) {
-    const { toggleRightPanelCollapse } = useUIStore();
 
     return (
         <div className={cn(
@@ -67,16 +66,6 @@ function PanelHeader({ title, icon: Icon, isDark, onClose, onAction, actionIcon:
                     </button>
                 )}
                 
-                <button
-                    onClick={toggleRightPanelCollapse}
-                    title="Collapse Panel"
-                    className={cn(
-                        "w-6 h-6 rounded-md flex items-center justify-center transition-colors",
-                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#aaa] hover:text-[#555] hover:bg-[#f0f0f0]"
-                    )}
-                >
-                    <ChevronRight size={13} strokeWidth={2.5} />
-                </button>
 
                 <button
                     onClick={onClose}
