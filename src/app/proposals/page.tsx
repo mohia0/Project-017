@@ -15,6 +15,7 @@ import {
     Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
     FileJson, FileSpreadsheet, Link2
 } from 'lucide-react';
+import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { useRouter } from 'next/navigation';
 import { CreateProposalModal } from '@/components/modals/CreateProposalModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -83,8 +84,10 @@ function SortableHeader({ id, children, onResizeStart, isDark, width }: {
             {onResizeStart && (
                 <div 
                     onMouseDown={onResizeStart} 
-                    className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors z-10" 
-                />
+                    className="absolute -right-3 top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-10 group/resizer transition-colors hover:bg-primary/10"
+                >
+                    <div className="w-[2px] h-[50%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
+                </div>
             )}
         </div>
     );
@@ -267,6 +270,15 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
                     {p.due_date ? <span>{fmtDate(p.due_date)} <span className="opacity-60 font-normal">({timeAgo(p.due_date)})</span></span> : ''}
                 </CardRow>
 
+                {p.accepted_at && (
+                    <CardRow label="Accepted date" isDark={isDark}>
+                        <div className="flex items-center gap-1.5 text-green-500 font-bold">
+                            <CheckCircle size={10} />
+                            <span>{fmtDate(p.accepted_at)}</span>
+                        </div>
+                    </CardRow>
+                )}
+
                 <CardRow label="Issue date" isDark={isDark}>
                     {p.issue_date ? <span>{fmtDate(p.issue_date)} <span className="opacity-60 font-normal">({timeAgo(p.issue_date)})</span></span> : ''}
                 </CardRow>
@@ -275,7 +287,7 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
                     {fmt$(Number(p.amount || 0))}
                 </CardRow>
 
-                <CardRow label="Status" isDark={isDark}>
+                <CardRow label="Status" isDark={isDark} noBorder>
                     <div className="relative flex-1">
                         <button
                             onClick={(e) => { e.stopPropagation(); setStatusOpen(!statusOpen); }}
@@ -316,9 +328,7 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
                     </div>
                 </CardRow>
 
-                <CardRow label="Accepted" isDark={isDark} noBorder>
-                    {p.accepted_at ? <span>{fmtDate(p.accepted_at)} <span className="opacity-60 font-normal">({timeAgo(p.accepted_at)})</span></span> : '—'}
-                </CardRow>
+
             </div>
 
             {/* Archive button */}
@@ -579,7 +589,11 @@ function MobileProposalRow({ p, onOpen, isDark, onStatusChange, onArchive, isArc
                         <span className="truncate max-w-[120px]">{p.client_name || '—'}</span>
                     </div>
                     <span className={cn("text-[11px]", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                        {p.due_date ? fmtDate(p.due_date) : '—'}
+                        {p.status === 'Accepted' && p.accepted_at ? (
+                            <span className="text-green-500 font-bold flex items-center gap-1">
+                                <CheckCircle size={10} /> {fmtDate(p.accepted_at)}
+                            </span>
+                        ) : p.due_date ? fmtDate(p.due_date) : '—'}
                     </span>
                 </div>
             </div>
@@ -647,11 +661,7 @@ export default function ProposalsPage() {
     };
     /* ... existing state ... */
     const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('proposal_col_widths');
-            if (saved) return JSON.parse(saved);
-        }
-        return {
+        const defaults = {
             select: 44,
             name: 240,
             status: 160,
@@ -661,13 +671,30 @@ export default function ProposalsPage() {
             amount: 220,
             accepted: 160
         };
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('proposal_col_widths');
+            if (saved) return { ...defaults, ...JSON.parse(saved) };
+        }
+        return defaults;
     });
     const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+        const defaults = ['name', 'client', 'status', 'issue', 'due', 'accepted'];
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('proposal_col_order');
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved) as string[];
+                if (!parsed.includes('accepted')) {
+                    const dueIdx = parsed.indexOf('due');
+                    if (dueIdx !== -1) {
+                        parsed.splice(dueIdx + 1, 0, 'accepted');
+                    } else {
+                        parsed.push('accepted');
+                    }
+                }
+                return parsed;
+            }
         }
-        return ['name', 'client', 'status', 'issue', 'due', 'accepted'];
+        return defaults;
     });
 
     useEffect(() => {
@@ -1209,7 +1236,7 @@ export default function ProposalsPage() {
                                 })}
                             </SortableContext>
 
-                            <div className={cn("sticky right-0 px-4 py-2 flex items-center justify-end z-40 shadow-[-10px_0_15px_-12px_rgba(0,0,0,0.1)]",
+                            <div className={cn("sticky right-0 px-4 py-2 flex items-center justify-end z-40",
                                 isDark ? "bg-[#1a1a1a]" : "bg-[#f5f5f7]")}>
                                 Total: {fmt$(stats[statusFilter]?.amount ?? 0)}
                             </div>
@@ -1298,7 +1325,7 @@ export default function ProposalsPage() {
                                             return null;
                                         })}
 
-                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors shadow-[-10px_0_15px_-12px_rgba(0,0,0,0.1)]",
+                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors",
                                             isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"),
                                             isDark ? "text-[#ccc]" : "text-[#333]")}>
                                             <span className="transition-transform group-hover:-translate-x-[90px] duration-300">
@@ -1320,11 +1347,13 @@ export default function ProposalsPage() {
                                                         isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
                                                     {archivedIds.has(p.id) ? <ArchiveRestore size={11} /> : <Archive size={11} />}
                                                 </button>
-                                                <button onClick={e => { e.stopPropagation(); setDeletingId(p.id); }} title="Delete"
-                                                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
-                                                        isDark ? "text-[#555] hover:text-red-400 hover:bg-red-500/10" : "text-[#bbb] hover:text-red-500 hover:bg-red-50")}>
-                                                    <Trash2 size={11} />
-                                                </button>
+                                                <InlineDeleteButton 
+                                                    onDelete={async () => {
+                                                        await deleteProposal(p.id);
+                                                        gooeyToast.error('Proposal deleted');
+                                                    }} 
+                                                    isDark={isDark} 
+                                                />
                                             </div>
                                         </div>
                                     </div>

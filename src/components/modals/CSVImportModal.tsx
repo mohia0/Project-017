@@ -15,6 +15,7 @@ import { gooeyToast } from 'goey-toast';
 import Papa from 'papaparse';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { parse, isValid, format } from 'date-fns';
+import { supabase } from '@/lib/supabase';
 
 type Step = 'upload' | 'mapping' | 'preview';
 
@@ -35,10 +36,7 @@ const SYSTEM_FIELDS: { id: string; label: string; icon: React.ReactNode; require
 
 export default function CSVImportModal() {
     const { isImportModalOpen, setImportModalOpen, importType, theme } = useUIStore();
-    const { clients, addClient } = useClientStore();
-    const { addInvoice } = useInvoiceStore();
-    const { addProposal } = useProposalStore();
-    const { companies, addCompany } = useCompanyStore();
+
 
     const [createUnknownAs, setCreateUnknownAs] = useState<'contact' | 'company'>('contact');
 
@@ -236,7 +234,37 @@ export default function CSVImportModal() {
                 
                 // Normalization
                 if (f.id === 'amount') {
-                    val = parseFloat(val.toString().replace(/[^0-9.-]+/g, "")) || 0;
+                    let amountStr = val.toString().trim();
+                    const hasComma = amountStr.includes(',');
+                    const hasDot = amountStr.includes('.');
+
+                    if (hasComma && hasDot) {
+                        const lastComma = amountStr.lastIndexOf(',');
+                        const lastDot = amountStr.lastIndexOf('.');
+                        if (lastComma > lastDot) {
+                            amountStr = amountStr.replace(/\./g, '').replace(/,/g, '.');
+                        } else {
+                            amountStr = amountStr.replace(/,/g, '');
+                        }
+                    } else if (hasComma && !hasDot) {
+                        const match = amountStr.match(/,/g);
+                        if (match && match.length > 1) {
+                            amountStr = amountStr.replace(/,/g, '');
+                        } else {
+                            const parts = amountStr.split(',');
+                            if (parts[1] && parts[1].length === 3) {
+                                amountStr = amountStr.replace(/,/g, '');
+                            } else {
+                                amountStr = amountStr.replace(/,/g, '.');
+                            }
+                        }
+                    } else if (hasDot && !hasComma) {
+                        const match = amountStr.match(/\./g);
+                        if (match && match.length > 1) {
+                            amountStr = amountStr.replace(/\./g, '');
+                        }
+                    }
+                    val = parseFloat(amountStr.replace(/[^0-9.-]+/g, "")) || 0;
                 }
                 
                 if (f.id === 'issue_date' || f.id === 'due_date') {
@@ -298,11 +326,11 @@ export default function CSVImportModal() {
         let successCount = 0;
         let errorCount = 0;
 
-        const CHUNK_SIZE = 50;
-
         try {
+            const workspaceId = useUIStore.getState().activeWorkspaceId;
+            if (!workspaceId) throw new Error('No active workspace');
+
             // 1. If importing Invoices/Proposals, pre-create unknown clients/companies first
-            // This prevents duplicate creation when items are processed in parallel batches
             if (importType === 'Invoice' || importType === 'Proposal') {
                 const uniqueClientNames = Array.from(new Set(
                     previewData
@@ -310,7 +338,6 @@ export default function CSVImportModal() {
                         .filter(Boolean)
                 ));
 
-                // Get fresh state for resolution
                 const currentClients = useClientStore.getState().clients;
                 const currentCompanies = useCompanyStore.getState().companies;
 
@@ -326,113 +353,101 @@ export default function CSVImportModal() {
                 });
 
                 if (clientsToCreate.length > 0) {
-                    for (const name of clientsToCreate) {
+                    const entityPayloads = clientsToCreate.map(name => {
                         if (createUnknownAs === 'company') {
-                            await addCompany({
-                                name,
-                                industry: '',
-                                email: '',
-                                phone: '',
-                                website: '',
-                                address: '',
-                                country: '',
-                                tax_number: '',
-                                notes: 'Automatically created during CSV import'
-                            } as any);
+                            return {
+                                workspace_id: workspaceId,
+                                name, industry: '', email: '', phone: '', website: '', address: '', country: '', tax_number: '', notes: 'Automatically created during CSV import'
+                            };
                         } else {
-                            await addClient({
-                                contact_person: name,
-                                company_name: '',
-                                email: '',
-                                phone: '',
-                                address: '',
-                                country: '',
-                                tax_number: '',
-                                notes: 'Automatically created during CSV import'
-                            } as any);
+                            return {
+                                workspace_id: workspaceId,
+                                contact_person: name, company_name: '', email: '', phone: '', address: '', country: '', tax_number: '', notes: 'Automatically created during CSV import'
+                            };
                         }
+                    });
+
+                    const table = createUnknownAs === 'company' ? 'companies' : 'clients';
+                    const { error } = await supabase.from(table).insert(entityPayloads);
+                    if (error) console.error(`Error auto-creating ${table}:`, error);
+
+                    if (createUnknownAs === 'company') {
+                        await useCompanyStore.getState().fetchCompanies();
+                    } else {
+                        await useClientStore.getState().fetchClients();
                     }
                 }
             }
 
-            // 2. Process all items in batches of 50
-            for (let i = 0; i < previewData.length; i += CHUNK_SIZE) {
-                const chunk = previewData.slice(i, i + CHUNK_SIZE);
-                
-                const results = await Promise.all(chunk.map(async (item) => {
-                    let result = null;
+            // 2. Prepare payload for all items
+            const currentClients = useClientStore.getState().clients;
+            const currentCompanies = useCompanyStore.getState().companies;
 
-                    if (importType === 'Contact') {
-                        const payload = {
-                            contact_person: item.contact_person,
-                            company_name: item.company_name || '',
-                            email: item.email || '',
-                            phone: item.phone || '',
-                            address: item.address || '',
-                            country: item.country || '',
-                            tax_number: item.tax_number || '',
-                            notes: item.notes || ''
-                        };
-                        result = await addClient(payload);
-                    } else if (importType === 'Company') {
-                        const payload = {
-                            name: item.name,
-                            industry: item.industry || '',
-                            email: item.email || '',
-                            phone: item.phone || '',
-                            website: item.website || '',
-                            address: item.address || '',
-                            country: item.country || ''
-                        };
-                        result = await addCompany(payload);
+            let tableName = '';
+            if (importType === 'Contact') tableName = 'clients';
+            else if (importType === 'Company') tableName = 'companies';
+            else if (importType === 'Invoice') tableName = 'invoices';
+            else if (importType === 'Proposal') tableName = 'proposals';
+
+            const payloads = previewData.map(item => {
+                if (importType === 'Contact') {
+                    return {
+                        workspace_id: workspaceId,
+                        contact_person: item.contact_person, company_name: item.company_name || '', email: item.email || '', phone: item.phone || '', address: item.address || '', country: item.country || '', tax_number: item.tax_number || '', notes: item.notes || ''
+                    };
+                } else if (importType === 'Company') {
+                    return {
+                        workspace_id: workspaceId,
+                        name: item.name, industry: item.industry || '', email: item.email || '', phone: item.phone || '', website: item.website || '', address: item.address || '', country: item.country || ''
+                    };
+                } else {
+                    let clientId = null;
+                    const nameLower = item.client_name?.toLowerCase()?.trim();
+                    const existingClient = currentClients.find(c => c.contact_person?.toLowerCase()?.trim() === nameLower || c.company_name?.toLowerCase()?.trim() === nameLower);
+                    const existingCompany = currentCompanies.find(c => c.name?.toLowerCase()?.trim() === nameLower);
+                    clientId = existingClient ? existingClient.id : existingCompany?.id;
+
+                    const base = {
+                        workspace_id: workspaceId,
+                        title: item.title,
+                        client_id: clientId,
+                        client_name: item.client_name,
+                        amount: item.amount || 0,
+                        issue_date: item.issue_date || new Date().toISOString().split('T')[0],
+                        due_date: item.due_date || new Date().toISOString().split('T')[0],
+                        status: item.status || 'Draft',
+                        notes: item.notes || '',
+                        blocks: []
+                    };
+                    if (importType === 'Invoice') {
+                        return { ...base, paid_at: item.paid_at || null };
                     } else {
-                        // Resolve Client using fresh state from store
-                        const currentClients = useClientStore.getState().clients;
-                        const currentCompanies = useCompanyStore.getState().companies;
-                        
-                        let clientId = null;
-                        const nameLower = item.client_name?.toLowerCase()?.trim();
-                        
-                        const existingClient = currentClients.find(c => 
-                            c.contact_person?.toLowerCase()?.trim() === nameLower || 
-                            c.company_name?.toLowerCase()?.trim() === nameLower
-                        );
-                        const existingCompany = currentCompanies.find(c =>
-                            c.name?.toLowerCase()?.trim() === nameLower
-                        );
-
-                        clientId = existingClient ? existingClient.id : existingCompany?.id;
-
-                        const payload: any = {
-                            title: item.title,
-                            client_id: clientId,
-                            client_name: item.client_name,
-                            amount: item.amount || 0,
-                            issue_date: item.issue_date || new Date().toISOString().split('T')[0],
-                            due_date: item.due_date || new Date().toISOString().split('T')[0],
-                            status: item.status || 'Draft',
-                            notes: item.notes || '',
-                            blocks: []
-                        };
-                        
-                        if (importType === 'Invoice') {
-                            payload.paid_at = item.paid_at || null;
-                            result = await addInvoice(payload as any);
-                        } else {
-                            payload.accepted_at = item.accepted_at || null;
-                            result = await addProposal(payload as any);
-                        }
+                        return { ...base, accepted_at: item.accepted_at || null };
                     }
-                    return result;
-                }));
+                }
+            });
 
-                results.forEach(res => {
-                    if (res) successCount++;
-                    else errorCount++;
-                });
+            // 3. Process bulk insert in batches of 500
+            const CHUNK_SIZE = 500;
+            for (let i = 0; i < payloads.length; i += CHUNK_SIZE) {
+                const chunk = payloads.slice(i, i + CHUNK_SIZE);
+                const { error } = await supabase.from(tableName).insert(chunk);
                 
-                setProgress(Math.round((Math.min(i + CHUNK_SIZE, previewData.length) / previewData.length) * 100));
+                if (!error) {
+                    successCount += chunk.length;
+                } else {
+                    errorCount += chunk.length;
+                    console.error('Bulk insert error:', error);
+                }
+                
+                setProgress(Math.round((Math.min(i + CHUNK_SIZE, payloads.length) / payloads.length) * 100));
             }
+
+            // 4. Refresh store
+            if (importType === 'Contact') await useClientStore.getState().fetchClients();
+            else if (importType === 'Company') await useCompanyStore.getState().fetchCompanies();
+            else if (importType === 'Invoice') await useInvoiceStore.getState().fetchInvoices();
+            else if (importType === 'Proposal') await useProposalStore.getState().fetchProposals();
 
             if (successCount > 0) {
                 gooeyToast.success(`Successfully imported ${successCount} ${importType.toLowerCase()}s`);

@@ -9,6 +9,8 @@ import {
     Folder,
     Briefcase,
     Zap,
+    CalendarDays,
+    ClipboardList,
     LucideIcon
 } from 'lucide-react';
 
@@ -17,6 +19,7 @@ export interface NavItem {
     href: string;
     icon: string; // Stored as name
     label: string;
+    isHidden?: boolean;
 }
 
 export const ICON_MAP: Record<string, LucideIcon> = {
@@ -27,6 +30,8 @@ export const ICON_MAP: Record<string, LucideIcon> = {
     Folder,
     Briefcase,
     Zap,
+    CalendarDays,
+    ClipboardList,
 };
 
 interface MenuState {
@@ -37,13 +42,15 @@ interface MenuState {
 }
 
 export const DEFAULT_NAV = [
-    { id: 'dashboard', href: '/dashboard', icon: 'LayoutGrid', label: 'Dashboard' },
-    { id: 'projects',  href: '/projects',  icon: 'Briefcase',   label: 'Projects' },
-    { id: 'clients',   href: '/clients',   icon: 'Users',       label: 'Contacts' },
-    { id: 'proposals', href: '/proposals', icon: 'FileText',    label: 'Proposals' },
-    { id: 'invoices',  href: '/invoices',  icon: 'Receipt',     label: 'Invoices' },
-    { id: 'files',     href: '/files',     icon: 'Folder',      label: 'File Manager' },
-    { id: 'hooks',     href: '/hooks',     icon: 'Zap',         label: 'Hook Generator' },
+    { id: 'dashboard',   href: '/dashboard',   icon: 'LayoutGrid',   label: 'Dashboard' },
+    { id: 'projects',    href: '/projects',    icon: 'Briefcase',    label: 'Projects' },
+    { id: 'clients',     href: '/clients',     icon: 'Users',        label: 'Contacts' },
+    { id: 'proposals',   href: '/proposals',   icon: 'FileText',     label: 'Proposals' },
+    { id: 'invoices',    href: '/invoices',    icon: 'Receipt',      label: 'Invoices' },
+    { id: 'schedulers',  href: '/schedulers',  icon: 'CalendarDays', label: 'Schedulers' },
+    { id: 'forms',       href: '/forms',       icon: 'ClipboardList',label: 'Forms' },
+    { id: 'files',       href: '/files',       icon: 'Folder',       label: 'File Manager' },
+    { id: 'hooks',       href: '/hooks',       icon: 'Zap',          label: 'Hook Generator' },
 ];
 
 export const useMenuStore = create<MenuState>((set) => ({

@@ -15,6 +15,7 @@ import {
     Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
     FileJson, FileSpreadsheet, Link2
 } from 'lucide-react';
+import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { useRouter } from 'next/navigation';
 import { CreateInvoiceModal } from '@/components/modals/CreateInvoiceModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -212,8 +213,10 @@ function SortableHeader({ id, children, onResizeStart, isDark, width }: {
             {onResizeStart && (
                 <div 
                     onMouseDown={onResizeStart} 
-                    className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors z-10" 
-                />
+                    className="absolute -right-3 top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-10 group/resizer transition-colors hover:bg-primary/10"
+                >
+                    <div className="w-[2px] h-[50%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
+                </div>
             )}
         </div>
     );
@@ -1215,7 +1218,7 @@ export default function InvoicesPage() {
                                 })}
                             </SortableContext>
 
-                            <div className={cn("sticky right-0 px-4 py-2 flex items-center justify-end z-40 shadow-[-10px_0_15px_-12px_rgba(0,0,0,0.1)]",
+                            <div className={cn("sticky right-0 px-4 py-2 flex items-center justify-end z-40",
                                 isDark ? "bg-[#1a1a1a]" : "bg-[#f5f5f7]")}>
                                 Total: {fmt$(stats[statusFilter]?.amount ?? 0)}
                             </div>
@@ -1305,7 +1308,7 @@ export default function InvoicesPage() {
                                             return null;
                                         })}
 
-                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors shadow-[-10px_0_15px_-12px_rgba(0,0,0,0.1)]",
+                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors",
                                             isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"),
                                             isDark ? "text-[#ccc]" : "text-[#333]")}>
                                             <span className="transition-transform group-hover:-translate-x-[90px] duration-300">
@@ -1327,11 +1330,13 @@ export default function InvoicesPage() {
                                                         isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
                                                     {archivedIds.has(inv.id) ? <ArchiveRestore size={11} /> : <Archive size={11} />}
                                                 </button>
-                                                <button onClick={e => { e.stopPropagation(); setDeletingId(inv.id); }} title="Delete"
-                                                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
-                                                        isDark ? "text-[#555] hover:text-red-400 hover:bg-red-500/10" : "text-[#bbb] hover:text-red-500 hover:bg-red-50")}>
-                                                    <Trash2 size={11} />
-                                                </button>
+                                                <InlineDeleteButton 
+                                                    onDelete={async () => {
+                                                        await deleteInvoice(inv.id);
+                                                        gooeyToast.error('Invoice deleted');
+                                                    }} 
+                                                    isDark={isDark} 
+                                                />
                                             </div>
                                         </div>
                                     </div>

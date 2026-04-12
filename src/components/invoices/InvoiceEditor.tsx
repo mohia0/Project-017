@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
@@ -602,9 +602,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         className="flex-1 overflow-auto relative w-full"
                         style={{ 
                             backgroundColor: isMobilePreview 
-                                ? (isDark ? '#080808' : '#f7f7f7') 
-                                : (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                            backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                                ? '#f7f7f7' 
+                                : (meta.design?.backgroundColor) || '#f7f7f7',
+                            backgroundImage: getBackgroundImageWithOpacity(meta.design?.backgroundImage, (meta.design?.backgroundColor) || '#f7f7f7', meta.design?.backgroundImageOpacity),
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
                             backgroundAttachment: 'fixed',
@@ -623,7 +623,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 >
                                     <div className={cn(
                                         "absolute inset-0 pointer-events-none",
-                                        isDark 
+                                        meta.design?.topBlurTheme === 'dark'
                                             ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
                                             : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
                                     )} />
@@ -639,7 +639,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         onDownloadPDF={() => console.log('Download PDF')}
                                         onPrint={() => window.print()}
                                         onPay={() => setIsPayModalOpen(true)}
-                                        className="!my-0"
+                                        className=""
                                     />
                                 </div>
                             </div>
@@ -648,15 +648,84 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             "flex flex-col items-center min-h-full",
                             isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
                         )}>
-                                {/* Desktop canvas */}
+                            {/* Mobile phone frame wrapper */}
+                            {isMobilePreview ? (
+                                <div className="flex flex-col items-center">
+                                    {/* Phone shell */}
+                                    <div className={cn(
+                                        "relative rounded-[44px] border-[4px] overflow-hidden shrink-0 transition-all duration-300 bg-[#000]",
+                                        "w-[390px] h-[844px]",
+                                        isDark ? "border-[#1a1a1a] shadow-2xl" : "border-[#000] shadow-2xl"
+                                    )}>
+                                        {/* Minimalist Notch */}
+                                        <div className={cn(
+                                            "absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10 bg-white/[0.05]"
+                                        )} />
+                                        <div className={cn(
+                                            "flex items-center justify-between px-8 pt-4 pb-2 text-[11px] font-medium z-10 relative opacity-40 text-white"
+                                        )}>
+                                            <span>9:41</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-4 h-2.5 rounded-[2px] border border-current opacity-50" />
+                                            </div>
+                                        </div>
+
+                                        {/* Scrollable content */}
+                                        <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0"
+                                             style={{ 
+                                                 backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
+                                                 backgroundImage: getBackgroundImageWithOpacity(meta.design?.backgroundImage, (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'), meta.design?.backgroundImageOpacity),
+                                                 backgroundSize: 'cover',
+                                                 backgroundPosition: 'center',
+                                             }}
+                                        >
+                                            <div className={cn(
+                                                "sticky top-0 z-30 backdrop-blur-lg border-b transition-all",
+                                                meta.design?.topBlurTheme === 'dark' ? "bg-black/40 border-white/5" : "bg-white/40 border-black/5"
+                                            )}>
+                                                <ClientActionBar
+                                                    type="invoice"
+                                                    status={meta.status as any}
+                                                    amountDue={fmt(totals.total, meta.currency)}
+                                                    paidAt="July 4, 2026"
+                                                    isMobile={true}
+                                                    inline={true}
+                                                    design={meta.design}
+                                                    onDownloadPDF={() => console.log('Download PDF')}
+                                                    onPrint={() => window.print()}
+                                                    onPay={() => setIsPayModalOpen(true)}
+                                                    className="!py-3"
+                                                />
+                                            </div>
+                                            <InvoiceDocument
+                                                meta={meta}
+                                                blocks={blocks}
+                                                totals={totals}
+                                                isDark={false}
+                                                isPreview={isPreview}
+                                                isMobile={true}
+                                                updateBlock={updateBlock}
+                                                removeBlock={removeBlock}
+                                                addBlock={addBlock}
+                                                openInsertMenu={openInsertMenu}
+                                                setOpenInsertMenu={setOpenInsertMenu}
+                                                updateMeta={updateMeta}
+                                                setBlocks={setBlocks}
+                                            />
+                                        </div>
+                                        {/* Home bar */}
+                                        <div className={cn(
+                                            "absolute bottom-[8px] left-1/2 -translate-x-1/2 w-[100px] h-[4px] rounded-full z-10",
+                                            isDark ? "bg-white/[0.05]" : "bg-black/[0.05]"
+                                        )} />
+                                    </div>
+                                </div>
+                            ) : (
                                 <div 
                                     className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
                                     style={{ 
                                         borderRadius: `${meta.design?.borderRadius ?? 16}px`,
                                         backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
-                                        backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
-                                        backgroundSize: 'cover',
-                                        backgroundPosition: 'center',
                                         boxShadow: meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                                     }}
                                 >
@@ -676,8 +745,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         setBlocks={setBlocks}
                                     />
                                 </div>
-                            </div>
+                            )}
                         </div>
+                    </div>
 
                 {!isPreview && (
                     <div className={cn(
@@ -1093,7 +1163,7 @@ export function InvoiceDocument({
     const documentStyle = React.useMemo(() => ({
         fontFamily: design.fontFamily || 'Inter',
         color: '#111111',
-        backgroundColor: 'transparent',
+        backgroundColor: 'var(--document-bg)',
         '--document-bg': design.blockBackgroundColor || '#ffffff',
         paddingTop: 'var(--block-margin-top)',
         paddingBottom: 'var(--block-margin-bottom)',
@@ -1114,8 +1184,12 @@ export function InvoiceDocument({
     } as React.CSSProperties), [design]);
 
     return (
-        <div style={{ ...documentStyle, borderRadius: `${design.borderRadius ?? 16}px` }} className={cn(
-            "w-full transition-all duration-300 relative bg-[var(--document-bg)]",
+        <div style={{ 
+            ...documentStyle, 
+            borderRadius: `${design.borderRadius ?? 16}px`,
+            backgroundColor: design.blockBackgroundColor || '#ffffff'
+        }} className={cn(
+            "w-full transition-all duration-300 relative",
             isMobile ? "max-w-full px-6 py-6" : "max-w-[850px]",
             !isMobile && (isPreview ? "min-h-0 px-12" : "min-h-[1100px] px-12")
         )}>
@@ -1619,15 +1693,10 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
         <div 
             className="relative flex items-center group/insert h-6" 
             style={{
-                backgroundColor: 'var(--document-bg, #ffffff)',
                 marginLeft: '-3rem',
                 marginRight: '-3rem',
                 paddingLeft: '3rem',
                 paddingRight: '3rem',
-                borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : undefined,
-                borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : undefined,
-                borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : undefined,
-                borderBottomRightRadius: isLast ? 'var(--block-border-radius)' : undefined,
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => { if (!isOpen) setHovered(false); }}

@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { CreateCompanyModal } from '@/components/modals/CreateCompanyModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { cn } from '@/lib/utils';
 
 import { Avatar } from '@/components/ui/Avatar';
@@ -533,9 +534,14 @@ export default function ClientsPage() {
                                                 {/* Delete Individual (Hover) */}
                                                 {!isSelected && (
                                                     <div className="opacity-0 group-hover:opacity-100 transition-all">
-                                                        <button onClick={e => { e.stopPropagation(); setDeletingId(client.id); }} className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-[#444] hover:text-red-500" : "hover:bg-red-50 text-[#ccc] hover:text-red-500")}>
-                                                            <Trash2 size={12} />
-                                                        </button>
+                                                        <InlineDeleteButton 
+                                                            onDelete={async () => {
+                                                                const { deleteClient } = useClientStore.getState();
+                                                                await deleteClient(client.id);
+                                                                gooeyToast.error('Contact deleted');
+                                                            }} 
+                                                            isDark={isDark} 
+                                                        />
                                                     </div>
                                                 )}
                                             </div>
@@ -618,9 +624,14 @@ export default function ClientsPage() {
                                             <div className={cn("flex items-center truncate relative", muted)}>
                                                 {client.company_name || '—'}
                                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all bg-inherit">
-                                                    <button onClick={e => { e.stopPropagation(); setDeletingId(client.id); }} className="p-1 hover:bg-red-500/10 text-[#bbb] hover:text-red-500 rounded transition-all">
-                                                        <Trash2 size={12} />
-                                                    </button>
+                                                    <InlineDeleteButton 
+                                                        onDelete={async () => {
+                                                            const { deleteClient } = useClientStore.getState();
+                                                            await deleteClient(client.id);
+                                                            gooeyToast.error('Contact deleted');
+                                                        }} 
+                                                        isDark={isDark} 
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
@@ -706,9 +717,14 @@ export default function ClientsPage() {
                                                 {/* Delete Individual (Hover) */}
                                                 {!isSelected && (
                                                     <div className="opacity-0 group-hover:opacity-100 transition-all">
-                                                        <button onClick={e => { e.stopPropagation(); setDeletingId(company.id); }} className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-[#444] hover:text-red-500" : "hover:bg-red-50 text-[#ccc] hover:text-red-500")}>
-                                                            <Trash2 size={12} />
-                                                        </button>
+                                                        <InlineDeleteButton 
+                                                            onDelete={async () => {
+                                                                const { deleteCompany } = useCompanyStore.getState();
+                                                                await deleteCompany(company.id);
+                                                                gooeyToast.error('Company deleted');
+                                                            }} 
+                                                            isDark={isDark} 
+                                                        />
                                                     </div>
                                                 )}
                                             </div>

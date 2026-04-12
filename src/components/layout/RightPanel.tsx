@@ -1009,13 +1009,13 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                         <div 
                             onMouseDown={handleMouseDown}
                             className={cn(
-                                "absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-[100] transition-colors group",
-                                "hover:bg-primary/30 active:bg-primary/50"
+                                "absolute -left-3 top-0 bottom-0 w-[24px] cursor-col-resize z-[100] transition-colors group flex items-center justify-center",
+                                "hover:bg-primary/5 active:bg-primary/10"
                             )}
                         >
                             <div className={cn(
-                                "absolute left-[2px] top-1/2 -translate-y-1/2 w-[1px] h-8 rounded-full transition-colors",
-                                isDark ? "bg-[#333] group-hover:bg-primary" : "bg-[#eee] group-hover:bg-primary"
+                                "w-[2px] h-8 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100",
+                                isDark ? "bg-primary" : "bg-primary"
                             )} />
                         </div>
                     )}

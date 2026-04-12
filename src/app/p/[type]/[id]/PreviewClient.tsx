@@ -7,7 +7,7 @@ import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSelectorModal';
-import { cn } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 
 // Anon-key client — safe for public preview pages, used only to subscribe
 // to Realtime events. No sensitive data is written through this client.
@@ -25,6 +25,14 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     const [isSignModalOpen, setIsSignModalOpen] = useState(false);
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobileViewport(window.innerWidth < 768);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Track view ONCE per page load — useRef guard prevents Strict Mode double-fire
     useEffect(() => {
@@ -146,7 +154,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 className="flex-1 overflow-auto relative w-full h-screen"
                 style={{
                     backgroundColor:   meta.design?.backgroundColor  || (isDark ? '#080808' : '#f7f7f7'),
-                    backgroundImage:   meta.design?.backgroundImage   ? `url(${meta.design.backgroundImage})` : 'none',
+                    backgroundImage:   getBackgroundImageWithOpacity(meta.design?.backgroundImage, meta.design?.backgroundColor || (isDark ? '#080808' : '#f7f7f7'), meta.design?.backgroundImageOpacity),
                     backgroundSize:    'cover',
                     backgroundPosition:'center',
                     backgroundAttachment: 'fixed',
@@ -181,21 +189,18 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             onPrint={() => window.print()}
                             onAccept={() => setIsSignModalOpen(true)}
                             onDecline={() => handleUpdateStatus('Declined')}
-                            className="!my-0 w-full max-w-[850px] mx-auto px-6"
+                            className="w-full max-w-[850px] mx-auto px-6"
                         />
                     </div>
                 </div>
 
-                <div className="flex flex-col items-center min-h-full pt-4 pb-20 px-6">
+                <div className={cn("flex flex-col items-center min-h-full pb-20", isMobileViewport ? "pt-2 px-4" : "pt-4 px-6")}>
 
                     <div
                         className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
                         style={{
                             borderRadius:    `${meta.design?.borderRadius ?? 16}px`,
                             backgroundColor: meta.design?.blockBackgroundColor || '#ffffff',
-                            backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
-                            backgroundSize:  'cover',
-                            backgroundPosition: 'center',
                             boxShadow:       meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                         }}
                     >
@@ -203,9 +208,9 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             meta={meta}
                             blocks={liveData.blocks || []}
                             totals={totals}
-                            isDark={isDark}
+                            isDark={false}
                             isPreview={true}
-                            isMobile={false}
+                            isMobile={isMobileViewport}
                             updateBlock={() => {}}
                             removeBlock={() => {}}
                             addBlock={() => {}}
@@ -256,7 +261,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 className="flex-1 overflow-auto relative w-full h-screen"
                 style={{
                     backgroundColor:   invoiceMeta.design?.backgroundColor  || (isDark ? '#080808' : '#f7f7f7'),
-                    backgroundImage:   invoiceMeta.design?.backgroundImage   ? `url(${invoiceMeta.design.backgroundImage})` : 'none',
+                    backgroundImage:   getBackgroundImageWithOpacity(invoiceMeta.design?.backgroundImage, invoiceMeta.design?.backgroundColor || (isDark ? '#080808' : '#f7f7f7'), invoiceMeta.design?.backgroundImageOpacity),
                     backgroundSize:    'cover',
                     backgroundPosition:'center',
                     backgroundAttachment: 'fixed',
@@ -291,21 +296,18 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             onDownloadPDF={() => window.print()}
                             onPrint={() => window.print()}
                             onPay={() => setIsBankModalOpen(true)}
-                            className="!my-0 w-full max-w-[850px] mx-auto px-6"
+                            className="w-full max-w-[850px] mx-auto px-6"
                         />
                     </div>
                 </div>
 
-                <div className="flex flex-col items-center min-h-full pt-4 pb-20 px-6">
+                <div className={cn("flex flex-col items-center min-h-full pb-20", isMobileViewport ? "pt-2 px-4" : "pt-4 px-6")}>
 
                     <div
                         className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
                         style={{
                             borderRadius:    `${invoiceMeta.design?.borderRadius ?? 16}px`,
                             backgroundColor: invoiceMeta.design?.blockBackgroundColor || '#ffffff',
-                            backgroundImage: invoiceMeta.design?.backgroundImage ? `url(${invoiceMeta.design.backgroundImage})` : 'none',
-                            backgroundSize:  'cover',
-                            backgroundPosition: 'center',
                             boxShadow:       invoiceMeta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                         }}
                     >
@@ -313,9 +315,9 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             meta={invoiceMeta}
                             blocks={liveData.blocks || []}
                             totals={totals}
-                            isDark={isDark}
+                            isDark={false}
                             isPreview={true}
-                            isMobile={false}
+                            isMobile={isMobileViewport}
                             updateBlock={() => {}}
                             removeBlock={() => {}}
                             addBlock={() => {}}

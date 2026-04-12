@@ -6,6 +6,7 @@ export interface DocumentDesign {
     signBarThickness: number;
     backgroundColor: string;
     backgroundImage?: string;
+    backgroundImageOpacity?: number;
     fontFamily: string;
     tableBorderRadius?: number;
     tableHeaderBg?: string;
@@ -21,6 +22,7 @@ export interface DocumentDesign {
     blockBackgroundColor?: string;
     blockShadow?: string;
     actionTheme?: 'light' | 'dark';
+    topBlurTheme?: 'light' | 'dark';
 }
 
 export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
@@ -31,6 +33,7 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     signBarThickness: 1,
     backgroundColor: '#f7f7f7',
     backgroundImage: '',
+    backgroundImageOpacity: 1,
     fontFamily: 'Inter',
     tableBorderRadius: 8,
     tableHeaderBg: '',
@@ -42,8 +45,9 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     primaryColor: '#4dbf39',
     actionButtonColor: '#111111',
     actionButtonMarginTop: 16,
-    actionButtonMarginBottom: 16,
+    actionButtonMarginBottom: 8,
     blockBackgroundColor: '#ffffff',
     blockShadow: '0 4px 20px -4px rgba(0,0,0,0.05)',
     actionTheme: 'light',
+    topBlurTheme: 'light',
 };

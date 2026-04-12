@@ -13,7 +13,7 @@ import {
     AlignLeft
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { cn } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useTemplateStore, Template } from '@/store/useTemplateStore';
 import { ProposalDocument } from '@/components/proposals/ProposalEditor';
@@ -318,7 +318,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                         backgroundColor: (isPreview && previewMode === 'mobile') 
                             ? (isDark ? '#080808' : '#f7f7f7') 
                             : (template.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                        backgroundImage: template.design?.backgroundImage ? `url(${template.design.backgroundImage})` : 'none',
+                        backgroundImage: getBackgroundImageWithOpacity(template.design?.backgroundImage, (template.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'), template.design?.backgroundImageOpacity),
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
                         backgroundAttachment: 'fixed',
@@ -353,7 +353,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                         onPrint={() => {}}
                                         onAccept={() => {}}
                                         onPay={() => {}}
-                                        className="!my-0 w-full max-w-[850px] mx-auto px-6"
+                                        className="w-full max-w-[850px] mx-auto px-6"
                                     />
                                 </div>
                             </div>
@@ -375,7 +375,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                     <div className="absolute inset-x-0 top-[52px] bottom-0 overflow-y-auto scrollbar-none z-0"
                                          style={{ 
                                              backgroundColor: (template.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                                             backgroundImage: template.design?.backgroundImage ? `url(${template.design.backgroundImage})` : 'none',
+                                             backgroundImage: getBackgroundImageWithOpacity(template.design?.backgroundImage, (template.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'), template.design?.backgroundImageOpacity),
                                              backgroundSize: 'cover',
                                              backgroundPosition: 'center',
                                          }}
@@ -410,7 +410,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                                         onPrint={() => {}}
                                                         onAccept={() => {}}
                                                         onPay={() => {}}
-                                                        className="!my-0 px-6"
+                                                        className="px-6"
                                                     />
                                                 </div>
                                             </div>
@@ -467,7 +467,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                 style={{ 
                                     borderRadius: `${template.design?.borderRadius ?? 16}px`,
                                     backgroundColor: (template.design?.blockBackgroundColor) || '#ffffff',
-                                    backgroundImage: template.design?.backgroundImage ? `url(${template.design.backgroundImage})` : 'none',
+                                    backgroundImage: getBackgroundImageWithOpacity(template.design?.backgroundImage, (template.design?.blockBackgroundColor) || '#ffffff', template.design?.backgroundImageOpacity),
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
                                     boxShadow: template.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',

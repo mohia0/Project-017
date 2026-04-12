@@ -32,28 +32,37 @@ interface DesignSettingsPanelProps {
     onUploadLogo: () => void;
     onUploadBackground: () => void;
     hideSignature?: boolean;
+    hideTable?: boolean;
+    hideActionBar?: boolean;
 }
 
-export function MetaField({ label, children, isDark, icon, onReset }: any) {
+export function MetaField({ label, children, isDark, icon, onReset, valueLabel }: any) {
     return (
         <div className={cn("rounded-lg border px-3 py-2.5 shadow-sm group/field", isDark ? "border-[#252525] bg-[#1f1f1f]" : "border-[#ebebeb] bg-white")}>
-            {label && (
+            {(label || valueLabel) && (
                 <div className="flex items-center justify-between mb-1">
                     <div className={cn("flex items-center gap-1.5 text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>
                         {icon}
                         {label}
                     </div>
-                    {onReset && (
-                        <button 
-                            onClick={onReset}
-                            className={cn(
-                                "opacity-0 group-hover/field:opacity-40 hover:!opacity-100 transition-opacity p-0.5 rounded-sm",
-                                isDark ? "hover:bg-white/10 text-white" : "hover:bg-black/5 text-black"
-                            )}
-                        >
-                            <RotateCcw size={10} />
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {valueLabel && (
+                            <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>
+                                {valueLabel}
+                            </span>
+                        )}
+                        {onReset && (
+                            <button 
+                                onClick={onReset}
+                                className={cn(
+                                    "opacity-0 group-hover/field:opacity-40 hover:!opacity-100 transition-opacity p-0.5 rounded-sm",
+                                    isDark ? "hover:bg-white/10 text-white" : "hover:bg-black/5 text-black"
+                                )}
+                            >
+                                <RotateCcw size={10} />
+                            </button>
+                        )}
+                    </div>
                 </div>
             )}
             {children}
@@ -99,7 +108,7 @@ export function ShadowPicker({ value, onChange, isDark }: any) {
 
             {open && (
                 <div className={cn(
-                    "absolute left-[-12px] right-[-12px] top-full mt-2 z-[100] p-1 shadow-2xl rounded-xl border animate-in fade-in zoom-in-95 duration-200",
+                    "absolute left-[-12px] right-[-12px] bottom-full mb-2 z-[100] p-1 shadow-2xl rounded-xl border animate-in fade-in zoom-in-95 duration-200 origin-bottom",
                     isDark ? "bg-[#1a1a1a] border-white/5" : "bg-white border-black/5"
                 )}>
                     {options.map(opt => (
@@ -125,7 +134,7 @@ export function ShadowPicker({ value, onChange, isDark }: any) {
     );
 }
 
-export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadBackground, hideSignature }: DesignSettingsPanelProps) {
+export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadBackground, hideSignature, hideTable, hideActionBar }: DesignSettingsPanelProps) {
     // Always read latest design so we don't get stale closures on rapid changes
     const metaRef = React.useRef(meta);
     React.useEffect(() => { metaRef.current = meta; }, [meta]);
@@ -212,7 +221,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                             type="range" min="20" max="150" step="2" 
                                             value={design.logoSize ?? 48} 
                                             onChange={e => updateDesign({ logoSize: Number(e.target.value) })}
-                                            className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                            className="w-full cursor-pointer" 
                                         />
                                     </div>
                                 )}
@@ -232,20 +241,6 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             </div>
                         </MetaField>
                         
-                        <MetaField 
-                            label="Document Title" 
-                            isDark={isDark}
-                            onReset={() => updateMeta({ documentTitle: '' })}
-                        >
-                            <textarea 
-                                value={meta.documentTitle || ''} 
-                                onChange={e => updateMeta({ documentTitle: e.target.value })} 
-                                placeholder="DOCUMENT TITLE" 
-                                rows={1}
-                                className={cn("w-full text-[12px] bg-transparent outline-none resize-none px-1 overflow-hidden", isDark ? "text-[#ccc]" : "text-[#333]")}
-                                style={{ minHeight: '36px' }}
-                            />
-                        </MetaField>
                     </div>
                 )}
             </div>
@@ -256,48 +251,42 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 {!collapsed['spacing'] && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                         <MetaField 
+                            label="Block Spacing (Top)"
+                            valueLabel={`${design.marginTop ?? 24}px`}
                             isDark={isDark} 
                             onReset={() => updateDesign({ marginTop: DEFAULT_DOCUMENT_DESIGN.marginTop })}
                         >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Block Spacing (Top)</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.marginTop ?? 24}px</span>
-                            </div>
                             <input 
                                 type="range" min="0" max="120" step="4" 
                                 value={design.marginTop ?? 24} 
                                 onChange={e => updateDesign({ marginTop: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                className="w-full cursor-pointer" 
                             />
                         </MetaField>
                         <MetaField 
+                            label="Block Spacing (Bottom)"
+                            valueLabel={`${design.marginBottom ?? 24}px`}
                             isDark={isDark}
                             onReset={() => updateDesign({ marginBottom: DEFAULT_DOCUMENT_DESIGN.marginBottom })}
                         >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Block Spacing (Bottom)</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.marginBottom ?? 24}px</span>
-                            </div>
                             <input 
                                 type="range" min="0" max="120" step="4" 
                                 value={design.marginBottom ?? 24} 
                                 onChange={e => updateDesign({ marginBottom: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                className="w-full cursor-pointer" 
                             />
                         </MetaField>
                         <MetaField 
+                            label="Global Roundness"
+                            valueLabel={`${design.borderRadius ?? 16}px`}
                             isDark={isDark}
                             onReset={() => updateDesign({ borderRadius: DEFAULT_DOCUMENT_DESIGN.borderRadius })}
                         >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Global Roundness</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.borderRadius ?? 16}px</span>
-                            </div>
                             <input 
                                 type="range" min="0" max="40" step="2" 
                                 value={design.borderRadius ?? 16} 
                                 onChange={e => updateDesign({ borderRadius: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                className="w-full cursor-pointer" 
                             />
                         </MetaField>
 
@@ -409,17 +398,31 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                         >
                             <div className="flex flex-col gap-2">
                                 {design.backgroundImage && (
-                                    <div className="relative group/bgimg w-full">
-                                        <div 
-                                            className="h-20 w-full rounded-xl border border-white/10 bg-cover bg-center" 
-                                            style={{ backgroundImage: `url(${design.backgroundImage})` }}
-                                        />
-                                        <button 
-                                            onClick={() => updateDesign({ backgroundImage: '' })}
-                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover/bgimg:opacity-100 transition-opacity"
-                                        >
-                                            <X size={12} />
-                                        </button>
+                                    <div className="flex flex-col gap-3">
+                                        <div className="relative group/bgimg w-full">
+                                            <div 
+                                                className="h-20 w-full rounded-xl border border-white/10 bg-cover bg-center" 
+                                                style={{ backgroundImage: `url(${design.backgroundImage})` }}
+                                            />
+                                            <button 
+                                                onClick={() => updateDesign({ backgroundImage: '' })}
+                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover/bgimg:opacity-100 transition-opacity"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                        <div className="space-y-1.5 px-0.5">
+                                            <div className="flex items-center justify-between mb-1 px-0.5">
+                                                <span className={cn("text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Image Opacity</span>
+                                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{Math.round((design.backgroundImageOpacity ?? 1) * 100)}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" min="0" max="1" step="0.05" 
+                                                value={design.backgroundImageOpacity ?? 1} 
+                                                onChange={e => updateDesign({ backgroundImageOpacity: Number(e.target.value) })}
+                                                className="w-full cursor-pointer" 
+                                            />
+                                        </div>
                                     </div>
                                 )}
                                 <button 
@@ -441,100 +444,94 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
             </div>
 
             {/* ── TABLE STYLING ── */}
-            <div>
-                <SectionHeader id="table" label="Table Styling" />
-                {!collapsed['table'] && (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                        <MetaField 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ tableBorderRadius: DEFAULT_DOCUMENT_DESIGN.tableBorderRadius })}
-                        >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Border Radius</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.tableBorderRadius ?? 8}px</span>
-                            </div>
-                            <input 
-                                type="range" min="0" max="32" 
-                                value={design.tableBorderRadius ?? 8} 
-                                onChange={e => updateDesign({ tableBorderRadius: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
-                            />
-                        </MetaField>
+            {!hideTable && (
+                <div>
+                    <SectionHeader id="table" label="Table Styling" />
+                    {!collapsed['table'] && (
+                        <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <MetaField 
+                                label="Border Radius"
+                                valueLabel={`${design.tableBorderRadius ?? 8}px`}
+                                isDark={isDark}
+                                onReset={() => updateDesign({ tableBorderRadius: DEFAULT_DOCUMENT_DESIGN.tableBorderRadius })}
+                            >
+                                <input 
+                                    type="range" min="0" max="32" 
+                                    value={design.tableBorderRadius ?? 8} 
+                                    onChange={e => updateDesign({ tableBorderRadius: Number(e.target.value) })}
+                                    className="w-full cursor-pointer" 
+                                />
+                            </MetaField>
 
-                        <MetaField 
-                            label="Header Background" 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ tableHeaderBg: DEFAULT_DOCUMENT_DESIGN.tableHeaderBg })}
-                        >
-                            <ColorisInput 
-                                value={design.tableHeaderBg || (isDark ? '#1f1f1f' : '#fafafa')} 
-                                onChange={val => updateDesign({ tableHeaderBg: val })}
-                                className="w-full"
-                            />
-                        </MetaField>
+                            <MetaField 
+                                label="Header Background" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ tableHeaderBg: DEFAULT_DOCUMENT_DESIGN.tableHeaderBg })}
+                            >
+                                <ColorisInput 
+                                    value={design.tableHeaderBg || (isDark ? '#1f1f1f' : '#fafafa')} 
+                                    onChange={val => updateDesign({ tableHeaderBg: val })}
+                                    className="w-full"
+                                />
+                            </MetaField>
 
-                        <MetaField 
-                            label="Border Color" 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ tableBorderColor: DEFAULT_DOCUMENT_DESIGN.tableBorderColor })}
-                        >
-                            <ColorisInput 
-                                value={design.tableBorderColor || (isDark ? '#2a2a2a' : '#ebebeb')} 
-                                onChange={val => updateDesign({ tableBorderColor: val })}
-                                className="w-full"
-                            />
-                        </MetaField>
+                            <MetaField 
+                                label="Border Color" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ tableBorderColor: DEFAULT_DOCUMENT_DESIGN.tableBorderColor })}
+                            >
+                                <ColorisInput 
+                                    value={design.tableBorderColor || (isDark ? '#2a2a2a' : '#ebebeb')} 
+                                    onChange={val => updateDesign({ tableBorderColor: val })}
+                                    className="w-full"
+                                />
+                            </MetaField>
 
-                        <MetaField 
-                            label="Border Thickness" 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ tableStrokeWidth: DEFAULT_DOCUMENT_DESIGN.tableStrokeWidth })}
-                        >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#555]" : "text-[#aaa]")}>{design.tableStrokeWidth ?? 1}px</span>
-                            </div>
-                            <input 
-                                type="range" min="0" max="8" step="1" 
-                                value={design.tableStrokeWidth ?? 1} 
-                                onChange={e => updateDesign({ tableStrokeWidth: Number(e.target.value) })}
-                                className="w-full accent-primary h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
-                            />
-                        </MetaField>
+                            <MetaField 
+                                label="Border Thickness" 
+                                valueLabel={`${design.tableStrokeWidth ?? 1}px`}
+                                isDark={isDark}
+                                onReset={() => updateDesign({ tableStrokeWidth: DEFAULT_DOCUMENT_DESIGN.tableStrokeWidth })}
+                            >
+                                <input 
+                                    type="range" min="0" max="8" step="1" 
+                                    value={design.tableStrokeWidth ?? 1} 
+                                    onChange={e => updateDesign({ tableStrokeWidth: Number(e.target.value) })}
+                                    className="w-full cursor-pointer" 
+                                />
+                            </MetaField>
 
-                        <MetaField 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ tableFontSize: DEFAULT_DOCUMENT_DESIGN.tableFontSize })}
-                        >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Font Size</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.tableFontSize ?? 12}px</span>
-                            </div>
-                            <input 
-                                type="range" min="8" max="20" step="1" 
-                                value={design.tableFontSize ?? 12} 
-                                onChange={e => updateDesign({ tableFontSize: Number(e.target.value) })}
-                                className="w-full accent-primary h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
-                            />
-                        </MetaField>
+                            <MetaField 
+                                label="Font Size"
+                                valueLabel={`${design.tableFontSize ?? 12}px`}
+                                isDark={isDark}
+                                onReset={() => updateDesign({ tableFontSize: DEFAULT_DOCUMENT_DESIGN.tableFontSize })}
+                            >
+                                <input 
+                                    type="range" min="8" max="20" step="1" 
+                                    value={design.tableFontSize ?? 12} 
+                                    onChange={e => updateDesign({ tableFontSize: Number(e.target.value) })}
+                                    className="w-full cursor-pointer" 
+                                />
+                            </MetaField>
 
-                        <MetaField 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ tableCellPadding: DEFAULT_DOCUMENT_DESIGN.tableCellPadding })}
-                        >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Row Spacing</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.tableCellPadding ?? 12}px</span>
-                            </div>
-                            <input 
-                                type="range" min="4" max="32" step="2" 
-                                value={design.tableCellPadding ?? 12} 
-                                onChange={e => updateDesign({ tableCellPadding: Number(e.target.value) })}
-                                className="w-full accent-primary h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
-                            />
-                        </MetaField>
-                    </div>
-                )}
-            </div>
+                            <MetaField 
+                                label="Row Spacing"
+                                valueLabel={`${design.tableCellPadding ?? 12}px`}
+                                isDark={isDark}
+                                onReset={() => updateDesign({ tableCellPadding: DEFAULT_DOCUMENT_DESIGN.tableCellPadding })}
+                            >
+                                <input 
+                                    type="range" min="4" max="32" step="2" 
+                                    value={design.tableCellPadding ?? 12} 
+                                    onChange={e => updateDesign({ tableCellPadding: Number(e.target.value) })}
+                                    className="w-full cursor-pointer" 
+                                />
+                            </MetaField>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── SIGNATURE BLOCK ── */}
             {!hideSignature && (
@@ -555,18 +552,16 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             </MetaField>
 
                             <MetaField 
+                                label="Line Thickness"
+                                valueLabel={`${design.signBarThickness ?? 1}px`}
                                 isDark={isDark}
                                 onReset={() => updateDesign({ signBarThickness: DEFAULT_DOCUMENT_DESIGN.signBarThickness })}
                             >
-                                <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                    <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Line Thickness</span>
-                                    <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.signBarThickness ?? 1}px</span>
-                                </div>
                                 <input 
                                     type="range" min="1" max="6" step="1" 
                                     value={design.signBarThickness ?? 1} 
                                     onChange={e => updateDesign({ signBarThickness: Number(e.target.value) })}
-                                    className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
+                                    className="w-full cursor-pointer" 
                                 />
                             </MetaField>
                         </div>
@@ -575,88 +570,117 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
             )}
 
             {/* ── ACTION BAR ── */}
-            <div>
-                <SectionHeader id="actionbar" label="Action Bar" />
-                {!collapsed['actionbar'] && (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                        <MetaField 
-                            label="Theme (Bar & Modal)" 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ actionTheme: DEFAULT_DOCUMENT_DESIGN.actionTheme })}
-                        >
-                            <div className={cn("flex w-full p-0.5 rounded-lg border", isDark ? "bg-[#111] border-[#333]" : "bg-[#f5f5f5] border-[#eaeaea]")}>
-                                <button
-                                    onClick={() => updateDesign({ actionTheme: 'light' })}
-                                    className={cn(
-                                        "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
-                                        (design.actionTheme || 'light') === 'light'
-                                            ? isDark ? "bg-white text-black shadow-sm" : "bg-white text-black shadow-sm"
-                                            : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
-                                    )}
-                                >
-                                    Light
-                                </button>
-                                <button
-                                    onClick={() => updateDesign({ actionTheme: 'dark' })}
-                                    className={cn(
-                                        "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
-                                        design.actionTheme === 'dark'
-                                            ? isDark ? "bg-[#333] text-white shadow-sm" : "bg-[#333] text-white shadow-sm"
-                                            : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
-                                    )}
-                                >
-                                    Dark
-                                </button>
-                            </div>
-                        </MetaField>
+            {!hideActionBar && (
+                <div>
+                    <SectionHeader id="actionbar" label="Action Bar" />
+                    {!collapsed['actionbar'] && (
+                        <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <MetaField 
+                                label="Theme (Bar & Modal)" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ actionTheme: DEFAULT_DOCUMENT_DESIGN.actionTheme })}
+                            >
+                                <div className={cn("flex w-full p-0.5 rounded-lg border", isDark ? "bg-[#111] border-[#333]" : "bg-[#f5f5f5] border-[#eaeaea]")}>
+                                    <button
+                                        onClick={() => updateDesign({ actionTheme: 'light' })}
+                                        className={cn(
+                                            "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
+                                            (design.actionTheme || 'light') === 'light'
+                                                ? isDark ? "bg-white text-black shadow-sm" : "bg-white text-black shadow-sm"
+                                                : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                        )}
+                                    >
+                                        Light
+                                    </button>
+                                    <button
+                                        onClick={() => updateDesign({ actionTheme: 'dark' })}
+                                        className={cn(
+                                            "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
+                                            design.actionTheme === 'dark'
+                                                ? isDark ? "bg-[#333] text-white shadow-sm" : "bg-[#333] text-white shadow-sm"
+                                                : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                        )}
+                                    >
+                                        Dark
+                                    </button>
+                                </div>
+                            </MetaField>
 
-                        <MetaField 
-                            label="Action Button Color" 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ actionButtonColor: DEFAULT_DOCUMENT_DESIGN.actionButtonColor })}
-                        >
-                            <ColorisInput 
-                                value={design.actionButtonColor || '#111111'} 
-                                onChange={val => updateDesign({ actionButtonColor: val })}
-                                className="w-full"
-                            />
-                        </MetaField>
+                            <MetaField 
+                                label="Top Blur Theme (Base Color)" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ topBlurTheme: DEFAULT_DOCUMENT_DESIGN.topBlurTheme })}
+                            >
+                                <div className={cn("flex w-full p-0.5 rounded-lg border", isDark ? "bg-[#111] border-[#333]" : "bg-[#f5f5f5] border-[#eaeaea]")}>
+                                    <button
+                                        onClick={() => updateDesign({ topBlurTheme: 'light' })}
+                                        className={cn(
+                                            "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
+                                            (design.topBlurTheme || 'light') === 'light'
+                                                ? isDark ? "bg-white text-black shadow-sm" : "bg-white text-black shadow-sm"
+                                                : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                        )}
+                                    >
+                                        White
+                                    </button>
+                                    <button
+                                        onClick={() => updateDesign({ topBlurTheme: 'dark' })}
+                                        className={cn(
+                                            "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
+                                            design.topBlurTheme === 'dark'
+                                                ? isDark ? "bg-[#333] text-white shadow-sm" : "bg-[#333] text-white shadow-sm"
+                                                : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                        )}
+                                    >
+                                        Black
+                                    </button>
+                                </div>
+                            </MetaField>
 
-                        <MetaField 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ actionButtonMarginTop: DEFAULT_DOCUMENT_DESIGN.actionButtonMarginTop })}
-                        >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Action Bar Spacing (Top)</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.actionButtonMarginTop ?? 16}px</span>
-                            </div>
-                            <input 
-                                type="range" min="0" max="64" step="4" 
-                                value={design.actionButtonMarginTop ?? 16} 
-                                onChange={e => updateDesign({ actionButtonMarginTop: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
-                            />
-                        </MetaField>
+                            <MetaField 
+                                label="Action Button Color" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ actionButtonColor: DEFAULT_DOCUMENT_DESIGN.actionButtonColor })}
+                            >
+                                <ColorisInput 
+                                    value={design.actionButtonColor || '#111111'} 
+                                    onChange={val => updateDesign({ actionButtonColor: val })}
+                                    className="w-full"
+                                />
+                            </MetaField>
 
-                        <MetaField 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ actionButtonMarginBottom: DEFAULT_DOCUMENT_DESIGN.actionButtonMarginBottom })}
-                        >
-                            <div className="flex items-center justify-between mb-1.5 px-0.5">
-                                <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Action Bar Spacing (Bottom)</span>
-                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.actionButtonMarginBottom ?? 16}px</span>
-                            </div>
-                            <input 
-                                type="range" min="0" max="64" step="4" 
-                                value={design.actionButtonMarginBottom ?? 16} 
-                                onChange={e => updateDesign({ actionButtonMarginBottom: Number(e.target.value) })}
-                                className="w-full accent-[#4dbf39] h-1 bg-black/10 rounded-lg appearance-none cursor-pointer" 
-                            />
-                        </MetaField>
+                            <MetaField 
+                                label="Action Bar Spacing (Top)"
+                                valueLabel={`${design.actionButtonMarginTop ?? 16}px`}
+                                isDark={isDark}
+                                onReset={() => updateDesign({ actionButtonMarginTop: DEFAULT_DOCUMENT_DESIGN.actionButtonMarginTop })}
+                            >
+                                <input 
+                                    type="range" min="0" max="64" step="4" 
+                                    value={design.actionButtonMarginTop ?? 16} 
+                                    onChange={e => updateDesign({ actionButtonMarginTop: Number(e.target.value) })}
+                                    className="w-full cursor-pointer" 
+                                />
+                            </MetaField>
 
-                    </div>
-                )}
-            </div>
+                            <MetaField 
+                                label="Action Bar Spacing (Bottom)"
+                                valueLabel={`${design.actionButtonMarginBottom ?? 16}px`}
+                                isDark={isDark}
+                                onReset={() => updateDesign({ actionButtonMarginBottom: DEFAULT_DOCUMENT_DESIGN.actionButtonMarginBottom })}
+                            >
+                                <input 
+                                    type="range" min="0" max="64" step="4" 
+                                    value={design.actionButtonMarginBottom ?? 16} 
+                                    onChange={e => updateDesign({ actionButtonMarginBottom: Number(e.target.value) })}
+                                    className="w-full cursor-pointer" 
+                                />
+                            </MetaField>
+
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="h-10" />
         </div>

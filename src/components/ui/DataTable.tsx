@@ -178,13 +178,13 @@ export function DataTable<T>({
                         {idx < columns.length - 1 && (
                             <div
                                 className={cn(
-                                    "absolute -right-1.5 top-0 bottom-0 w-[12px] flex items-center justify-center cursor-col-resize z-40 group/resizer"
+                                    "absolute -right-3 top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-40 group/resizer transition-colors hover:bg-primary/10"
                                 )}
                                 onMouseDown={(e) => handleMouseDown(e, col.id)}
                             >
                                 <div className={cn(
-                                    "w-[2px] h-[40%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity",
-                                    theme === 'dark' ? "bg-white/20" : "bg-black/20"
+                                    "w-[2px] h-[50%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity",
+                                    "bg-primary"
                                 )} />
                             </div>
                         )}

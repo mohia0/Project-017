@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ChevronLeft, ChevronRight, Settings, LayoutGrid, GripVertical, RotateCcw, Check, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, LayoutGrid, GripVertical, RotateCcw, Check, X, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -26,14 +26,17 @@ import {
     useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { motion, AnimatePresence } from 'framer-motion';
 
-function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate }: { 
+function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onToggleVisibility }: { 
     item: NavItem; 
     isExpanded: boolean; 
     isActive: boolean;
     isEditing: boolean;
     onUpdate: (id: string, label: string) => void;
+    onToggleVisibility: (id: string) => void;
 }) {
+    const [isHovered, setIsHovered] = React.useState(false);
     const {
         attributes,
         listeners,
@@ -55,18 +58,44 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate }: {
             <div
                 ref={setNodeRef}
                 style={style}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
                 className={cn(
                     "w-full h-8 flex items-center transition-all relative group",
-                    isDragging ? "bg-white/[0.05] z-50 rounded-lg" : "hover:bg-white/[0.02] rounded-lg",
-                    isExpanded ? "px-1.5" : "justify-center"
+                    isDragging ? "bg-white/[0.05] z-50 rounded-lg" : "rounded-lg",
+                    isExpanded ? "pl-1 pr-1.5" : "justify-center"
                 )}
             >
                 {isExpanded && (
-                    <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-white/20 hover:text-white/60 shrink-0">
-                        <GripVertical size={10} />
+                    <div className="flex items-center gap-1.5 shrink-0 -ml-1.5">
+                        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing w-5 h-5 flex items-center justify-center text-white/20 hover:text-white/60 shrink-0 bg-white/5 rounded-[6px] hover:bg-white/10 transition-colors">
+                            <GripVertical size={10} />
+                        </div>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onToggleVisibility(item.id); }}
+                            className={cn(
+                                "w-5 h-5 flex items-center justify-center transition-colors bg-white/5 rounded-[6px] hover:bg-white/10",
+                                item.isHidden ? "text-orange-400/60" : "text-white/20"
+                            )}
+                            title={item.isHidden ? "Show in Menu" : "Hide in Menu"}
+                        >
+                            {item.isHidden ? <EyeOff size={10} /> : <Eye size={10} />}
+                        </button>
                     </div>
                 )}
-                <Icon size={14} className={cn("shrink-0 opacity-40 group-hover:opacity-100 transition-opacity", isExpanded ? "mr-2.5" : "")} />
+                <div className={cn(isExpanded && "ml-4")}>
+                    <motion.div
+                        animate={isHovered ? { scale: 1.1 } : { scale: 1 }}
+                        transition={{ 
+                            type: "spring", 
+                            stiffness: 400, 
+                            damping: 15,
+                        }}
+                        className={cn(item.isHidden && "opacity-30")}
+                    >
+                        <Icon size={14} className={cn("shrink-0 opacity-40 group-hover:opacity-100 transition-opacity", isExpanded ? "mr-2.5" : "")} />
+                    </motion.div>
+                </div>
                 {isExpanded && (
                     <input 
                         autoFocus
@@ -81,33 +110,75 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate }: {
         );
     }
 
+    const getIconAnimation = () => {
+        return { 
+            scale: isActive ? 1.1 : isHovered ? 1.1 : 1, 
+            opacity: isHovered ? [1, 0.85, 1] : 1 
+        };
+    };
+
     const content = (
         <Link
             ref={setNodeRef}
             style={style}
             href={item.href}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             className={cn(
                 "w-full h-9 rounded-xl flex items-center transition-colors relative",
-                isExpanded ? "justify-start gap-3 px-3" : "justify-center px-1.5",
+                isExpanded ? (isEditing ? "justify-start gap-4 px-4" : "justify-start gap-3 px-3") : "justify-center px-1.5",
                 isActive
                     ? "text-white"
-                    : "text-white/30 hover:text-white hover:bg-white/[0.03]"
+                    : "text-white/30 hover:text-white",
+                item.isHidden && "hidden"
             )}
         >
-            <Icon size={16} strokeWidth={1.75} className={cn("shrink-0 transition-transform", isActive && "scale-110")} />
-            <div className={cn(
-                "transition-all duration-300 overflow-hidden whitespace-nowrap",
-                isExpanded ? "max-w-[120px] opacity-100" : "max-w-0 opacity-0"
-            )}>
+            <motion.div
+                animate={getIconAnimation()}
+                transition={{ 
+                    type: "spring", 
+                    stiffness: 400, 
+                    damping: 15,
+                    // Use keyframes for properties that use array sequences
+                    rotate: { type: "keyframes", duration: 0.3 },
+                    x: { type: "keyframes", duration: 0.3 },
+                    y: { type: "keyframes", duration: 0.3 },
+                    opacity: { type: "keyframes", duration: 0.4 }
+                }}
+                className="shrink-0 flex items-center justify-center"
+            >
+                <Icon size={16} strokeWidth={1.75} className="shrink-0" />
+            </motion.div>
+            <motion.div 
+                animate={isHovered && isExpanded ? { x: 2 } : { x: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className={cn(
+                    "transition-all duration-300 overflow-hidden whitespace-nowrap",
+                    isExpanded ? (isEditing ? "max-w-[150px] opacity-100" : "max-w-[120px] opacity-100") : "max-w-0 opacity-0"
+                )}
+            >
                 <span className="text-[13px] font-medium">
                     {item.label}
                 </span>
-            </div>
+            </motion.div>
         </Link>
     );
 
     return content;
 }
+
+const NavIconButton = ({ children, onClick, title, className }: { children: React.ReactNode, onClick?: () => void, title?: string, className?: string }) => (
+    <button
+        onClick={onClick}
+        title={title}
+        className={cn(
+            "w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-white/30 hover:text-white",
+            className
+        )}
+    >
+        {children}
+    </button>
+);
 
 export default function LeftSystemMenu() {
     const pathname = usePathname();
@@ -146,6 +217,10 @@ export default function LeftSystemMenu() {
     const handleUpdateLabel = (id: string, label: string) => {
         setTempItems(prev => prev.map(i => i.id === id ? { ...i, label } : i));
     };
+    
+    const handleToggleVisibility = (id: string) => {
+        setTempItems(prev => prev.map(i => i.id === id ? { ...i, isHidden: !i.isHidden } : i));
+    };
 
     const handleSave = async () => {
         await updateMenu(tempItems);
@@ -160,7 +235,7 @@ export default function LeftSystemMenu() {
         <nav className={cn(
             "h-full flex flex-col items-center shrink-0 transition-all duration-300 rounded-2xl z-10 overflow-hidden border border-white/5",
             isDark ? "bg-[#141414] text-white" : "bg-[#1c1c1e] text-white",
-            isLeftMenuExpanded ? "w-[160px] px-2 shadow-xl shadow-black/10" : "w-[44px]"
+            isLeftMenuExpanded ? (isEditing ? "w-[200px] shadow-xl shadow-black/10" : "w-[160px] shadow-xl shadow-black/10") : "w-[44px]"
         )}>
 
             {/* Workspace logo & Switcher */}
@@ -169,7 +244,10 @@ export default function LeftSystemMenu() {
             </div>
 
             {/* Nav icons */}
-            <div className="flex flex-col items-center gap-1.5 pt-2 flex-1 w-full overflow-hidden">
+            <div className={cn(
+                "flex flex-col items-center gap-1.5 pt-4 flex-1 w-full overflow-hidden border-t border-white/5",
+                isLeftMenuExpanded ? (isEditing ? "px-3" : "px-2") : ""
+            )}>
                 <DndContext 
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -189,6 +267,7 @@ export default function LeftSystemMenu() {
                                     isActive={isActive}
                                     isEditing={isEditing}
                                     onUpdate={handleUpdateLabel}
+                                    onToggleVisibility={handleToggleVisibility}
                                 />
                             );
                         })}
@@ -197,7 +276,10 @@ export default function LeftSystemMenu() {
             </div>
 
             {/* Bottom Actions */}
-            <div className="flex flex-col items-center pb-2.5 w-full gap-2 mt-auto">
+            <div className={cn(
+                "flex flex-col items-center pb-2.5 pt-4 w-full gap-2 mt-auto border-t border-white/5",
+                isLeftMenuExpanded ? (isEditing ? "px-3" : "px-2") : ""
+            )}>
                 {isEditing ? (
                     <div className={cn("flex flex-col w-full gap-1.5 items-center px-1.5", !isLeftMenuExpanded && "hidden")}>
                         <button 
@@ -225,25 +307,37 @@ export default function LeftSystemMenu() {
                     </div>
                 ) : (
                     <>
-                        <button
+                        <NavIconButton
                             onClick={() => {
                                 setIsEditing(true);
                                 if (!isLeftMenuExpanded) toggleLeftMenu();
                             }}
-                            className="w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-white/30 hover:text-white hover:bg-white/[0.03]"
                             title="Edit Navigation"
                         >
-                            <Settings size={14} strokeWidth={2} />
-                        </button>
+                            <motion.div 
+                                whileHover={{ scale: 1.1, opacity: [1, 0.85, 1] }} 
+                                transition={{ 
+                                    scale: { type: "spring", stiffness: 400, damping: 15 },
+                                    opacity: { type: "keyframes", duration: 0.4 }
+                                }}
+                            >
+                                <Settings size={14} strokeWidth={2} />
+                            </motion.div>
+                        </NavIconButton>
 
-                        <button
-                            onClick={toggleLeftMenu}
-                            className="w-9 h-8 rounded-xl flex items-center justify-center transition-colors text-white/30 hover:text-white hover:bg-white/[0.03]"
-                        >
-                            {isLeftMenuExpanded
-                                ? <ChevronLeft size={14} strokeWidth={2} />
-                                : <ChevronRight size={14} strokeWidth={2} />}
-                        </button>
+                        <NavIconButton onClick={toggleLeftMenu}>
+                            <motion.div 
+                                whileHover={{ scale: 1.1, opacity: [1, 0.85, 1] }}
+                                transition={{ 
+                                    scale: { type: "spring", stiffness: 400, damping: 15 },
+                                    opacity: { type: "keyframes", duration: 0.4 }
+                                }}
+                            >
+                                {isLeftMenuExpanded
+                                    ? <ChevronLeft size={14} strokeWidth={2} />
+                                    : <ChevronRight size={14} strokeWidth={2} />}
+                            </motion.div>
+                        </NavIconButton>
                     </>
                 )}
             </div>

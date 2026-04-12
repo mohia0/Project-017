@@ -80,7 +80,7 @@ export default function WorkspaceSwitcher() {
                 onClick={handleToggle}
                 className={cn(
                     "flex items-center w-full transition-all group hover:bg-white/[0.04]",
-                    isLeftMenuExpanded ? "px-2 py-2 gap-2.5 rounded-xl" : "justify-center py-2 h-12 rounded-xl"
+                    isLeftMenuExpanded ? "px-4 py-3 gap-2.5 rounded-none" : "justify-center py-2 h-14 rounded-none"
                 )}
             >
                 <Avatar 

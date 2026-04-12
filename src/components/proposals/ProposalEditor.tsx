@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore } from '@/store/useProposalStore';
@@ -614,9 +614,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         className="flex-1 overflow-auto relative w-full pb-11 md:pb-0"
                         style={{ 
                             backgroundColor: isMobilePreview 
-                                ? (isDark ? '#080808' : '#f7f7f7') 
-                                : (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                            backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                                ? '#f7f7f7' 
+                                : (meta.design?.backgroundColor) || '#f7f7f7',
+                            backgroundImage: getBackgroundImageWithOpacity(meta.design?.backgroundImage, (meta.design?.backgroundColor) || '#f7f7f7', meta.design?.backgroundImageOpacity),
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
                             backgroundAttachment: 'fixed',
@@ -634,7 +634,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 >
                                     <div className={cn(
                                         "absolute inset-0 pointer-events-none",
-                                        isDark 
+                                        meta.design?.topBlurTheme === 'dark'
                                             ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
                                             : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
                                     )} />
@@ -647,9 +647,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         design={meta.design}
                                         onAccept={() => setIsSignModalOpen(true)}
                                         onDecline={() => updateMeta({ status: 'Declined' as any })}
-                                        onDownloadPDF={() => console.log('Download PDF pressed')}
                                         onPrint={() => window.print()}
-                                        className="!my-0"
                                     />
                                 </div>
                             </div>
@@ -683,14 +681,14 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0"
                                          style={{ 
                                              backgroundColor: (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'),
-                                             backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
+                                             backgroundImage: getBackgroundImageWithOpacity(meta.design?.backgroundImage, (meta.design?.backgroundColor) || (isDark ? '#080808' : '#f7f7f7'), meta.design?.backgroundImageOpacity),
                                              backgroundSize: 'cover',
                                              backgroundPosition: 'center',
                                          }}
                                     >
                                         <div className={cn(
                                             "sticky top-0 z-30 backdrop-blur-lg border-b transition-all",
-                                            isDark ? "bg-black/40 border-white/5" : "bg-white/40 border-black/5"
+                                            meta.design?.topBlurTheme === 'dark' ? "bg-black/40 border-white/5" : "bg-white/40 border-black/5"
                                         )}>
                                             <ClientActionBar
                                                 type="proposal"
@@ -710,13 +708,13 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                             blocks={blocks}
                                             totals={totals}
                                             isDark={isDark}
-                                            isPreview={true}
+                                            isPreview={isPreview}
                                             isMobile={true}
                                             updateBlock={updateBlock}
                                             removeBlock={removeBlock}
                                             addBlock={addBlock}
-                                            openInsertMenu={null}
-                                            setOpenInsertMenu={() => {}}
+                                            openInsertMenu={openInsertMenu}
+                                            setOpenInsertMenu={setOpenInsertMenu}
                                             updateMeta={updateMeta}
                                             setBlocks={setBlocks}
                                             currency={meta.currency}
@@ -743,9 +741,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 style={{ 
                                     borderRadius: `${meta.design?.borderRadius ?? 16}px`,
                                     backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
-                                    backgroundImage: meta.design?.backgroundImage ? `url(${meta.design.backgroundImage})` : 'none',
-                                    backgroundSize: 'cover',
-                                    backgroundPosition: 'center',
                                     boxShadow: meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                                 }}
                             >
@@ -1234,7 +1229,7 @@ export function ProposalDocument({
     const documentStyle = React.useMemo(() => ({
         fontFamily: design.fontFamily || 'Inter',
         color: '#111111',
-        backgroundColor: 'transparent',
+        backgroundColor: 'var(--document-bg)',
         paddingTop: 'var(--block-margin-top)',
         paddingBottom: 'var(--block-margin-bottom)',
         '--document-bg': design.blockBackgroundColor || '#ffffff',
@@ -1256,9 +1251,13 @@ export function ProposalDocument({
 
     return (
         <div 
-            style={{ ...documentStyle, borderRadius: `${design.borderRadius ?? 16}px` }} 
+            style={{ 
+                ...documentStyle, 
+                borderRadius: `${design.borderRadius ?? 16}px`,
+                backgroundColor: design.blockBackgroundColor || '#ffffff'
+            }} 
             className={cn(
-                "w-full transition-all duration-300 relative bg-[var(--document-bg)]",
+                "w-full transition-all duration-300 relative",
                 isMobile ? "max-w-full px-6 py-6" : "max-w-[850px]",
                 !isMobile && "min-h-[1100px] px-12"
             )}
@@ -2050,15 +2049,10 @@ function InsertZone({
         <div
             className="relative flex items-center group/insert h-[24px]"
             style={{
-                backgroundColor: 'var(--document-bg, #ffffff)',
                 marginLeft: '-3rem',
                 marginRight: '-3rem',
                 paddingLeft: '3rem',
                 paddingRight: '3rem',
-                borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : undefined,
-                borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : undefined,
-                borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : undefined,
-                borderBottomRightRadius: isLast ? 'var(--block-border-radius)' : undefined,
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => { if (!isOpen) setHovered(false); }}
