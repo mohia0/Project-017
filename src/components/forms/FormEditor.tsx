@@ -133,15 +133,27 @@ function PanelInput({ value, onChange, placeholder, type = 'text', isDark }: {
     );
 }
 
+/* ── HELPERS ── */
+const isColorDark = (color: string) => {
+    if (!color) return false;
+    if (color.startsWith('#')) {
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        return (r * 0.299 + g * 0.587 + b * 0.114) < 128;
+    }
+    return false;
+};
+
 /* ── Field preview in canvas ── */
-function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryColor }: {
+function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryColor, isPreview, borderRadius }: {
     field: FormField; isDark: boolean; isSelected: boolean; onClick: () => void;
-    onRemove: () => void; primaryColor: string;
+    onRemove: () => void; primaryColor: string; isPreview?: boolean; borderRadius: number;
 }) {
     const {
         attributes, listeners, setNodeRef,
         transform, transition, isDragging
-    } = useSortable({ id: field.id });
+    } = useSortable({ id: field.id, disabled: !!isPreview });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -151,17 +163,24 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
     };
 
     const renderInput = () => {
+        const inputProps = {
+            readOnly: !isPreview,
+            disabled: !isPreview,
+            className: cn("w-full px-3 py-2 text-[13px] border outline-none transition-all",
+                isDark ? "bg-[#181818] border-[#333] text-[#ddd]" : "bg-[#f9f9f9] border-[#e5e5e5] text-[#111]",
+                isPreview ? "focus:border-primary/50" : "pointer-events-none"
+            ),
+            style: { borderRadius: `${Math.max(0, borderRadius - 4)}px` }
+        };
+
         switch (field.type) {
             case 'long_text':
                 return <textarea rows={3} placeholder={field.placeholder || 'Type your answer...'}
-                    readOnly
-                    className={cn("w-full px-3 py-2 text-[13px] rounded-lg border outline-none resize-none",
-                        isDark ? "bg-[#181818] border-[#333] text-[#999]" : "bg-[#f9f9f9] border-[#e5e5e5] text-[#999]")} />;
+                    {...inputProps} className={cn(inputProps.className, "resize-none")} />;
             case 'dropdown':
                 return (
-                    <div className={cn("w-full px-3 py-2 text-[13px] rounded-lg border flex items-center justify-between",
-                        isDark ? "bg-[#181818] border-[#333] text-[#999]" : "bg-[#f9f9f9] border-[#e5e5e5] text-[#999]")}>
-                        <span>{field.placeholder || 'Select an option'}</span>
+                    <div className={cn(inputProps.className, "flex items-center justify-between", isPreview && "cursor-pointer")}>
+                        <span className="opacity-60">{field.placeholder || 'Select an option'}</span>
                         <ChevronDown size={12} className="opacity-40" />
                     </div>
                 );
@@ -169,8 +188,9 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 return (
                     <div className="space-y-2">
                         {(field.options || ['Option 1', 'Option 2', 'Option 3']).slice(0, 3).map((opt, i) => (
-                            <label key={i} className="flex items-center gap-2.5 cursor-pointer">
-                                <div className={cn("w-4 h-4 rounded border", isDark ? "border-[#333]" : "border-[#ddd]")} />
+                            <label key={i} className={cn("flex items-center gap-2.5", isPreview ? "cursor-pointer" : "cursor-default")}>
+                                <div className={cn("w-4 h-4 rounded border flex items-center justify-center transition-all", 
+                                    isDark ? "border-[#333]" : "border-[#ddd]")} />
                                 <span className={cn("text-[13px]", isDark ? "text-[#999]" : "text-[#555]")}>{opt}</span>
                             </label>
                         ))}
@@ -178,7 +198,7 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 );
             case 'countries':
                 return (
-                    <div className="pointer-events-none opacity-80">
+                    <div className={cn(!isPreview && "pointer-events-none opacity-80")}>
                          <CountryPicker value="" onChange={() => {}} isDark={isDark} label={field.label} placeholder={field.placeholder || "Select country"} minimal />
                     </div>
                 );
@@ -186,8 +206,8 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 return (
                     <div className="space-y-1">
                         <input type="range" min={field.min || 0} max={field.max || 100} defaultValue={50}
-                            className="w-full cursor-pointer"
-                            readOnly />
+                            className={cn("w-full", isPreview ? "cursor-pointer" : "pointer-events-none")}
+                            disabled={!isPreview} />
                         <div className={cn("flex justify-between text-[10px]", isDark ? "text-[#555]" : "text-[#ccc]")}>
                             <span>{field.min || 0}</span><span>{field.max || 100}</span>
                         </div>
@@ -195,15 +215,19 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 );
             case 'signature':
                 return (
-                    <div className={cn("w-full h-20 rounded-lg border-2 border-dashed flex items-center justify-center",
-                        isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}>
+                    <div className={cn("w-full h-20 border-2 border-dashed flex items-center justify-center transition-all",
+                        isPreview ? "cursor-crosshair hover:bg-black/5" : "opacity-60",
+                        isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}
+                        style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}>
                         <span className="text-[12px]">Sign here</span>
                     </div>
                 );
             case 'file_upload':
                 return (
-                    <div className={cn("w-full py-6 rounded-lg border-2 border-dashed flex flex-col items-center gap-2",
-                        isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}>
+                    <div className={cn("w-full py-6 border-2 border-dashed flex flex-col items-center gap-2 transition-all",
+                        isPreview ? "cursor-pointer hover:bg-black/5" : "opacity-60",
+                        isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}
+                        style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}>
                         <Upload size={18} />
                         <span className="text-[12px]">Click to upload or drag & drop</span>
                     </div>
@@ -216,14 +240,13 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                         className="!h-[38px]" 
                         isDark={isDark} 
                         placeholder={field.placeholder || 'Select date'} 
-                        disabled 
+                        disabled={!isPreview} 
                     />
                 );
             default:
                 return (
-                    <input type="text" placeholder={field.placeholder || 'Type your answer...'} readOnly
-                        className={cn("w-full px-3 py-2.5 text-[13px] rounded-lg border outline-none",
-                            isDark ? "bg-[#181818] border-[#333] text-[#999]" : "bg-[#f9f9f9] border-[#e5e5e5] text-[#999]")} />
+                    <input type="text" placeholder={field.placeholder || 'Type your answer...'} 
+                        {...inputProps} />
                 );
         }
     };
@@ -231,46 +254,55 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
     return (
         <div
             ref={setNodeRef}
-            style={style}
+            style={{ ...style, borderRadius: `${borderRadius}px` }}
             onClick={onClick}
             className={cn(
-                "group relative rounded-xl p-4 border-2 cursor-pointer transition-all",
+                "group relative p-4 border-2 transition-all bg-white/[0.02] hover:bg-white/[0.04] mb-3",
+                isPreview ? "cursor-default" : "cursor-pointer",
                 isSelected
                     ? "border-primary/50 shadow-[0_0_0_3px_rgba(77,191,57,0.08)]"
                     : (isDark ? "border-transparent hover:border-[#333]" : "border-transparent hover:border-[#ebebeb]"),
                 isDragging && "opacity-50"
             )}>
+            
             {/* Required badge */}
             {field.required && (
                 <span className="absolute top-2 right-12 text-[10px] font-bold text-red-400">Required</span>
             )}
 
             {/* Remove button */}
-            <button
-                onClick={e => { e.stopPropagation(); onRemove(); }}
-                className={cn("absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity",
-                    isDark ? "bg-white/5 text-[#666] hover:text-red-400" : "bg-[#f5f5f5] text-[#bbb] hover:text-red-400")}>
-                <X size={11} />
-            </button>
+            {!isPreview && (
+                <button
+                    onClick={e => { e.stopPropagation(); onRemove(); }}
+                    className={cn("absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity",
+                        isDark ? "bg-white/5 text-[#666] hover:text-red-400" : "bg-[#f5f5f5] text-[#bbb] hover:text-red-400")}>
+                    <X size={11} />
+                </button>
+            )}
 
             {/* Drag handle */}
-            <div 
-                {...attributes}
-                {...listeners}
-                className={cn("absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1",
-                    isDark ? "text-[#666]" : "text-[#ccc]")}>
-                <GripVertical size={12} />
-            </div>
-
-            <div className="pl-4">
-                {/* Label */}
-                <div className={cn("font-semibold text-[13px] mb-1", isDark ? "text-[#e0e0e0]" : "text-[#111]")}>
-                    {field.label}
-                    {field.required && <span className="text-red-400 ml-0.5">*</span>}
+            {!isPreview && (
+                <div 
+                    {...attributes}
+                    {...listeners}
+                    className={cn("absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1",
+                        isDark ? "text-[#666]" : "text-[#ccc]")}>
+                    <GripVertical size={12} />
                 </div>
-                {field.description && (
-                    <div className={cn("text-[11.5px] mb-2", isDark ? "text-[#666]" : "text-[#aaa]")}>{field.description}</div>
-                )}
+            )}
+
+            <div className={cn(isPreview ? "pl-0" : "pl-4")}>
+                <div className="mb-3">
+                    <div className={cn("text-[13px] font-bold mb-0.5", isDark ? "text-[#eee]" : "text-[#111]")}>
+                        {field.label}
+                    </div>
+                    {field.description && (
+                        <div className={cn("text-[11px] opacity-60", isDark ? "text-[#aaa]" : "text-[#555]")}>
+                            {field.description}
+                        </div>
+                    )}
+                </div>
+
                 {renderInput()}
             </div>
         </div>
@@ -278,16 +310,17 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
 }
 
 /* ── Field type pill in picker ── */
-function FieldTypePill({ def, onAdd, isDark }: { def: FieldTypeDef; onAdd: () => void; isDark: boolean }) {
+function FieldTypePill({ def, onAdd, isDark, borderRadius }: { def: FieldTypeDef; onAdd: () => void; isDark: boolean; borderRadius: number }) {
     return (
         <button
             onClick={onAdd}
             className={cn(
-                "flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all group",
+                "flex flex-col items-center gap-1.5 p-3 border transition-all group",
                 isDark
                     ? "border-[#2a2a2a] bg-[#111] text-[#666] hover:border-[#333] hover:text-[#ccc] hover:bg-[#1a1a1a]"
                     : "border-[#ebebeb] bg-white text-[#bbb] hover:border-primary/30 hover:text-[#555] hover:shadow-sm"
-            )}>
+            )}
+            style={{ borderRadius: `${Math.max(0, borderRadius - 2)}px` }}>
             <div className="transition-transform group-hover:scale-110">{def.icon}</div>
             <span className="text-[10px] font-semibold text-center leading-tight">{def.label}</span>
         </button>
@@ -295,9 +328,10 @@ function FieldTypePill({ def, onAdd, isDark }: { def: FieldTypeDef; onAdd: () =>
 }
 
 /* ── Insert Area ── */
-function FieldInsertArea({ index, openIndex, setOpenIndex, onAdd, isDark, primaryColor }: {
+function FieldInsertArea({ index, openIndex, setOpenIndex, onAdd, isDark, primaryColor, borderRadius }: {
     index: number; openIndex: number | null; setOpenIndex: (i: number | null) => void;
     onAdd: (def: FieldTypeDef, idx: number) => void; isDark: boolean; primaryColor: string;
+    borderRadius: number;
 }) {
     const isOpen = openIndex === index;
     const [hovered, setHovered] = useState(false);
@@ -346,9 +380,10 @@ function FieldInsertArea({ index, openIndex, setOpenIndex, onAdd, isDark, primar
             {/* Field type picker popup */}
             {isOpen && (
                 <div className={cn(
-                    "absolute left-1/2 -translate-x-1/2 top-full mt-1 w-[380px] p-4 rounded-2xl border shadow-xl z-50 animate-in zoom-in-95 duration-150", 
-                    isDark ? "bg-[#181818] border-[#333]" : "bg-white border-[#ebebeb]"
+                    "absolute left-1/2 -translate-x-1/2 top-full mt-1 w-[380px] p-4 border shadow-xl z-50 animate-in zoom-in-95 duration-150", 
+                    useUIStore.getState().theme === 'dark' ? "bg-[#181818] border-[#333]" : "bg-white border-[#ebebeb]"
                 )}
+                style={{ borderRadius: `${borderRadius}px` }}
                 onMouseLeave={() => { setHovered(false); setOpenIndex(null); }}
                 >
                     <div className="space-y-4">
@@ -356,13 +391,13 @@ function FieldInsertArea({ index, openIndex, setOpenIndex, onAdd, isDark, primar
                         <div>
                             <div className={cn(
                                 "px-1 pb-2 text-[9px] font-bold uppercase tracking-widest",
-                                isDark ? "text-[#555]" : "text-[#bbb]"
+                                useUIStore.getState().theme === 'dark' ? "text-[#555]" : "text-[#bbb]"
                             )}>
                                 Contact Info
                             </div>
                             <div className="grid grid-cols-4 gap-2">
                                 {FIELD_TYPES.filter(ft => ft.section === 'contact').map(ft => (
-                                    <FieldTypePill key={ft.type} def={ft} onAdd={() => { onAdd(ft, index); setOpenIndex(null); }} isDark={isDark} />
+                                    <FieldTypePill key={ft.type} def={ft} onAdd={() => { onAdd(ft, index); setOpenIndex(null); }} isDark={useUIStore.getState().theme === 'dark'} borderRadius={borderRadius} />
                                 ))}
                             </div>
                         </div>
@@ -371,13 +406,13 @@ function FieldInsertArea({ index, openIndex, setOpenIndex, onAdd, isDark, primar
                         <div>
                             <div className={cn(
                                 "px-1 pb-2 text-[9px] font-bold uppercase tracking-widest",
-                                isDark ? "text-[#555]" : "text-[#bbb]"
+                                useUIStore.getState().theme === 'dark' ? "text-[#555]" : "text-[#bbb]"
                             )}>
                                 Inputs
                             </div>
                             <div className="grid grid-cols-4 gap-2">
                                 {FIELD_TYPES.filter(ft => ft.section === 'input').map(ft => (
-                                    <FieldTypePill key={ft.type} def={ft} onAdd={() => { onAdd(ft, index); setOpenIndex(null); }} isDark={isDark} />
+                                    <FieldTypePill key={ft.type} def={ft} onAdd={() => { onAdd(ft, index); setOpenIndex(null); }} isDark={useUIStore.getState().theme === 'dark'} borderRadius={borderRadius} />
                                 ))}
                             </div>
                         </div>
@@ -532,6 +567,7 @@ export default function FormEditor({ id }: { id?: string }) {
     const selectedField = fields.find(f => f.id === selectedFieldId);
     const design = meta.design || DEFAULT_DOCUMENT_DESIGN;
     const primaryColor = design.primaryColor || '#4dbf39';
+    const isFormDark = isColorDark(design.blockBackgroundColor || '#fff');
 
     const filteredFieldTypes = FIELD_TYPES.filter(ft => {
         if (pickerSearch && !ft.label.toLowerCase().includes(pickerSearch.toLowerCase())) return false;
@@ -764,27 +800,28 @@ export default function FormEditor({ id }: { id?: string }) {
                                                             style={{
                                                                 backgroundColor: design.blockBackgroundColor || '#fff',
                                                                 fontFamily: design.fontFamily || 'Inter',
+                                                                borderRadius: `${design.borderRadius ?? 16}px`,
                                                             }}>
                                                             {canvasStep === 'form' && (
                                                                 <div className="p-6">
                                                                     <div className="mb-6">
                                                                         {meta.logoUrl && <img src={meta.logoUrl} alt="Logo" className="mb-4 object-contain" style={{ height: `${design.logoSize || 40}px` }} />}
-                                                                        <div className="text-[18px] font-bold mb-1" style={{ color: isDark ? '#fff' : '#111' }}>{title}</div>
+                                                                        <div className="text-[18px] font-bold mb-1" style={{ color: isFormDark ? '#fff' : '#111' }}>{title}</div>
                                                                     </div>
                                                                     <div className="space-y-4">
                                                                         {fields.map(f => (
-                                                                            <FieldPreview key={f.id} field={f} isDark={isDark} isSelected={false} onClick={() => {}} onRemove={() => {}} primaryColor={primaryColor} />
+                                                                            <FieldPreview key={f.id} field={f} isDark={isFormDark} isSelected={false} onClick={() => {}} onRemove={() => {}} primaryColor={primaryColor} isPreview={true} borderRadius={design.borderRadius ?? 16} />
                                                                         ))}
                                                                     </div>
-                                                                    {fields.length > 0 && <button className="mt-6 w-full py-3 rounded-xl font-bold text-[14px] text-black transition-all" style={{ background: primaryColor }}>Submit</button>}
+                                                                    {fields.length > 0 && <button className="mt-6 w-full py-3 font-bold text-[14px] text-black transition-all" style={{ background: primaryColor, borderRadius: `${design.borderRadius ?? 16}px` }}>Submit</button>}
                                                                 </div>
                                                             )}
                                                             {canvasStep === 'confirmation' && (
                                                                 <div className="flex flex-col items-center text-center py-12 px-6 gap-4">
                                                                     <div className="w-14 h-14 rounded-full flex items-center justify-center text-black shadow-lg" style={{ background: primaryColor }}><Check size={24} strokeWidth={2.5} /></div>
                                                                     <div>
-                                                                        <div className="font-bold text-[18px] mb-2" style={{ color: isDark ? '#fff' : '#111' }}>Thanks!</div>
-                                                                        <div className="text-[13px] text-center opacity-60" style={{ color: isDark ? '#aaa' : '#555' }}>{meta.confirmationMessage}</div>
+                                                                        <div className="font-bold text-[18px] mb-2" style={{ color: isFormDark ? '#fff' : '#111' }}>Thanks!</div>
+                                                                        <div className="text-[13px] text-center opacity-60" style={{ color: isFormDark ? '#aaa' : '#555' }}>{meta.confirmationMessage}</div>
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -794,11 +831,12 @@ export default function FormEditor({ id }: { id?: string }) {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="w-full max-w-[620px] rounded-2xl overflow-hidden shadow-xl transition-all duration-300 relative"
+                                            <div className="w-full max-w-[620px] overflow-hidden shadow-xl transition-all duration-300 relative"
                                                 style={{
                                                     backgroundColor: design.blockBackgroundColor || '#fff',
                                                     boxShadow: design.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.08)',
                                                     fontFamily: design.fontFamily || 'Inter',
+                                                    borderRadius: `${design.borderRadius ?? 16}px`,
                                                     '--primary-color': primaryColor,
                                                     '--block-button-radius': `${Math.max(0, (design.borderRadius ?? 16) - 4)}px`,
                                                 } as React.CSSProperties}>
@@ -811,7 +849,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                 className="mb-4 object-contain"
                                                                 style={{ height: `${design.logoSize || 40}px` }} />
                                                         )}
-                                                        <div className="text-[20px] font-bold mb-1" style={{ color: isDark ? '#fff' : '#111' }}>
+                                                        <div className="text-[20px] font-bold mb-1" style={{ color: isFormDark ? '#fff' : '#111' }}>
                                                             {title}
                                                         </div>
                                                     </div>
@@ -824,13 +862,14 @@ export default function FormEditor({ id }: { id?: string }) {
                                                     >
                                                         {fields.length === 0 ? (
                                                             <div className="space-y-0">
-                                                                <div className={cn("flex flex-col items-center justify-center py-12 gap-3 rounded-xl border-2 border-dashed relative",
-                                                                    isDark ? "border-[#333] text-[#444]" : "border-[#ebebeb] text-[#ccc]")}>
-                                                                    <div className="p-3 rounded-xl bg-current/5">
+                                                                <div className={cn("flex flex-col items-center justify-center py-12 gap-3 border-2 border-dashed relative",
+                                                                    isFormDark ? "border-[#333] text-[#444]" : "border-[#ebebeb] text-[#ccc]")}
+                                                                    style={{ borderRadius: `${design.borderRadius ?? 16}px` }}>
+                                                                    <div className="p-3 bg-current/5" style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 4)}px` }}>
                                                                         <Plus size={20} className="opacity-40" />
                                                                     </div>
                                                                     <div className="text-center">
-                                                                        <div className={cn("text-[13px] font-semibold", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                                                                        <div className={cn("text-[13px] font-semibold", isFormDark ? "text-[#555]" : "text-[#bbb]")}>
                                                                             No fields yet
                                                                         </div>
                                                                         <div className="text-[11.5px] mt-0.5 opacity-60">
@@ -839,7 +878,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                     </div>
                                                                 </div>
                                                                 {!isPreview && (
-                                                                    <FieldInsertArea index={0} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isDark} primaryColor={primaryColor} />
+                                                                    <FieldInsertArea index={0} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} />
                                                                 )}
                                                             </div>
                                                         ) : (
@@ -851,23 +890,25 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                     {fields.map((f, idx) => (
                                                                         <React.Fragment key={f.id}>
                                                                             {!isPreview && (
-                                                                                <FieldInsertArea index={idx} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isDark} primaryColor={primaryColor} />
+                                                                                <FieldInsertArea index={idx} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} />
                                                                             )}
                                                                             <div className={cn(!isPreview && "px-2")}>
                                                                                 <FieldPreview
                                                                                     field={f}
-                                                                                    isDark={isDark}
+                                                                                    isDark={isFormDark}
                                                                                     isSelected={selectedFieldId === f.id && !isPreview}
                                                                                     onClick={() => { if (!isPreview) setSelectedFieldId(f.id === selectedFieldId ? null : f.id) }}
                                                                                     onRemove={() => removeField(f.id)}
                                                                                     primaryColor={primaryColor}
+                                                                                    isPreview={isPreview}
+                                                                                    borderRadius={design.borderRadius ?? 16}
                                                                                 />
                                                                             </div>
                                                                         </React.Fragment>
                                                                     ))}
                                                                 </SortableContext>
                                                                 {!isPreview && (
-                                                                    <FieldInsertArea index={fields.length} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isDark} primaryColor={primaryColor} />
+                                                                    <FieldInsertArea index={fields.length} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} />
                                                                 )}
                                                             </div>
                                                         )}
@@ -876,8 +917,8 @@ export default function FormEditor({ id }: { id?: string }) {
                                                     {/* Submit button */}
                                                     {fields.length > 0 && (
                                                         <button
-                                                            className="mt-6 w-full py-3 rounded-xl font-bold text-[14px] text-black transition-all"
-                                                            style={{ background: primaryColor }}>
+                                                            className="mt-6 w-full py-3 font-bold text-[14px] text-black transition-all"
+                                                            style={{ background: primaryColor, borderRadius: `${design.borderRadius ?? 16}px` }}>
                                                             Submit
                                                         </button>
                                                     )}
@@ -891,14 +932,14 @@ export default function FormEditor({ id }: { id?: string }) {
                                                         <Check size={28} strokeWidth={2.5} />
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-[20px] mb-2" style={{ color: isDark ? '#fff' : '#111' }}>
+                                                        <div className="font-bold text-[20px] mb-2" style={{ color: isFormDark ? '#fff' : '#111' }}>
                                                             Thanks!
                                                         </div>
                                                         <textarea
                                                             value={meta.confirmationMessage}
                                                             onChange={e => updateMeta({ confirmationMessage: e.target.value })}
                                                             className="text-[13px] text-center bg-transparent outline-none resize-none w-full opacity-60"
-                                                            style={{ color: isDark ? '#aaa' : '#555' }}
+                                                            style={{ color: isFormDark ? '#aaa' : '#555' }}
                                                             rows={3}
                                                         />
                                                     </div>

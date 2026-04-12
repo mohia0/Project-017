@@ -613,8 +613,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                     isDark={isDark}
                                     meta={{ 
                                         design: template.design,
-                                        logoUrl: (template as any).logo_url || '',
-                                        documentTitle: template.name
+                                        logoUrl: (template as any).logo_url || ''
                                     } as any}
                                     updateMeta={updateMeta}
                                     onUploadLogo={() => {

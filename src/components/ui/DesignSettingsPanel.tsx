@@ -25,7 +25,6 @@ interface DesignSettingsPanelProps {
     isDark: boolean;
     meta: {
         logoUrl?: string;
-        documentTitle?: string;
         design?: DocumentDesign;
     };
     updateMeta: (patch: any) => void;
