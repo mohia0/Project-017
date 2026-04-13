@@ -44,7 +44,7 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     logoSize: 48,
     primaryColor: '#4dbf39',
     actionButtonColor: '#111111',
-    actionButtonMarginTop: 16,
+    actionButtonMarginTop: 12,
     actionButtonMarginBottom: 8,
     blockBackgroundColor: '#ffffff',
     blockShadow: '0 4px 20px -4px rgba(0,0,0,0.05)',

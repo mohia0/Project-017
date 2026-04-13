@@ -7,6 +7,7 @@ import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSelectorModal';
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import FieldPreview from '@/components/forms/FieldPreview';
@@ -650,7 +651,8 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                                     key={field.id}
                                                     field={field}
                                                     isDark={isBlockDark}
-                                                    design={design}
+                                                    primaryColor={primaryColor}
+                                                    borderRadius={design.borderRadius ?? 16}
                                                     value={formValues[field.id]}
                                                     onChange={(val) => setFormValues(prev => ({ ...prev, [field.id]: val }))}
                                                 />
@@ -749,6 +751,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     // Modals
     const [isSignModalOpen, setIsSignModalOpen] = useState(false);
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+    const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isMobileViewport, setIsMobileViewport] = useState(false);
 
@@ -926,7 +929,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             onDownloadPDF={() => window.print()}
                             onPrint={() => window.print()}
                             onAccept={() => setIsSignModalOpen(true)}
-                            onDecline={() => handleUpdateStatus('Declined')}
+                            onDecline={() => setIsDeclineModalOpen(true)}
                             className="w-full max-w-[850px] mx-auto px-6"
                         />
                     </div>
@@ -971,6 +974,16 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     documentType={type as any}
                     onAccept={(signatureData) => handleUpdateStatus('Accepted', signatureData)}
                     design={meta.design}
+                />
+
+                <DeleteConfirmModal
+                    open={isDeclineModalOpen}
+                    onClose={() => setIsDeclineModalOpen(false)}
+                    onConfirm={() => handleUpdateStatus('Declined')}
+                    title="Decline Proposal"
+                    description="Are you sure you want to decline this proposal? This action cannot be undone."
+                    actionLabel="Decline Proposal"
+                    isDark={false}
                 />
             </div>
         );
@@ -1098,13 +1111,14 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     <div className="flex items-center gap-3">
                         {(() => {
                             const status = liveData.status || 'Planning';
-                            const cfg = {
+                            const statusConfigs: Record<string, { badge: string; text: string }> = {
                                 Planning:  { badge: 'bg-indigo-50 border-indigo-100', text: 'text-indigo-600' },
                                 Active:    { badge: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-600' },
                                 'On Hold': { badge: 'bg-amber-50 border-amber-100', text: 'text-amber-600' },
                                 Completed: { badge: 'bg-violet-50 border-violet-100', text: 'text-violet-600' },
                                 Cancelled: { badge: 'bg-gray-50 border-gray-100', text: 'text-gray-500' },
-                            }[status] || { badge: 'bg-[#f5f5f5] border-black/[0.03]', text: 'text-[#ccc]' };
+                            };
+                            const cfg = statusConfigs[status] || { badge: 'bg-[#f5f5f5] border-black/[0.03]', text: 'text-[#ccc]' };
 
                             return (
                                 <span className={cn(

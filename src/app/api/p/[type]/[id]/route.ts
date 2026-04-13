@@ -128,6 +128,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
                 if (type === 'proposal' && body.status === 'Accepted') {
                     notifTitle = 'Proposal Signed 🎉';
                     notifMsg = `${doc.client_name || 'A client'} just signed the proposal "${docName}"`;
+                } else if (type === 'proposal' && body.status === 'Declined') {
+                    notifTitle = 'Proposal Declined 😞';
+                    notifMsg = `${doc.client_name || 'A client'} just declined the proposal "${docName}"`;
                 } else if (type === 'invoice' && body.status === 'Paid') {
                     notifTitle = 'Invoice Paid 💸';
                     notifMsg = `${doc.client_name || 'A client'} just marked the invoice "${docName}" as paid`;

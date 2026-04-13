@@ -716,6 +716,8 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                                     design={design} 
                                                                     fields={meta.fields || []} 
                                                                     updateFields={(newFields) => updateMeta({ fields: newFields })} 
+                                                                    selectedFieldId={selectedFieldId}
+                                                                    onSelectField={setSelectedFieldId}
                                                                 />
                                                                 <div className="flex gap-3 pt-2">
                                                                     <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all"
