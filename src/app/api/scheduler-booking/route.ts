@@ -56,8 +56,7 @@ export async function POST(req: Request) {
                         title: 'Booking Limit Reached',
                         message: `A booking attempt for "${scheduler_title || 'Untitled Scheduler'}" was blocked because it has reached its limit of ${submissionLimit} bookings.`,
                         link: `/schedulers/${scheduler_id}?tab=bookings`,
-                        read: false,
-                        type: 'limit_reached'
+                        read: false
                     });
 
                 return NextResponse.json({ error: 'This scheduler has reached its booking limit' }, { status: 403 });
@@ -98,8 +97,7 @@ export async function POST(req: Request) {
                 title: notificationTitle,
                 message: notificationMessage,
                 link: `/schedulers/${scheduler_id}?tab=bookings`,
-                read: false,
-                type: 'booking',
+                read: false
             });
 
         return NextResponse.json({ success: true, data: bookingData });

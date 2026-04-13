@@ -168,7 +168,7 @@ function Chk({ checked, indeterminate, isDark }: { checked: boolean; indetermina
 
 /* ─── Form Card ─────────────────────────────────────────────── */
 function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }: {
-    f: Form; onOpen: () => void; onDelete: () => void; onCopy: () => void; isDark: boolean;
+    f: Form; onOpen: () => void; onDelete: () => void; onCopy: (e: React.MouseEvent) => void; isDark: boolean;
     isSelected: boolean; onToggle: () => void;
 }) {
     const [deleting, setDeleting] = useState(false);

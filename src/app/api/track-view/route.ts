@@ -28,8 +28,7 @@ export async function POST(req: Request) {
                 title: notificationTitle,
                 message: notificationMessage,
                 link: `/${type}s/${id}`,
-                read: false,
-                type: 'view',
+                read: false
             });
 
         if (error) {

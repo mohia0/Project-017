@@ -11,9 +11,10 @@ export interface ContentBlockProps {
     data: any;
     updateData: (id: string, patch: any) => void;
     backgroundColor?: string;
+    readOnly?: boolean;
 }
 
-export function ContentBlock({ id, data, updateData, backgroundColor }: ContentBlockProps) {
+export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }: ContentBlockProps) {
     // Determine if the background is dark to switch editor theme (for readable text)
     const isDarkBg = backgroundColor ? (
         backgroundColor.includes('dark') || 
@@ -55,6 +56,7 @@ export function ContentBlock({ id, data, updateData, backgroundColor }: ContentB
                 editor={editor} 
                 theme={customTheme}
                 onChange={onChange}
+                editable={!readOnly}
                 className="min-h-[50px]"
             />
             <style jsx global>{`

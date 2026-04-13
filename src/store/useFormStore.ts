@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { gooeyToast } from 'goey-toast';
 import { useUIStore } from './useUIStore';
 
 export type FormStatus = 'Draft' | 'Active' | 'Inactive';
@@ -7,7 +8,7 @@ export type FormStatus = 'Draft' | 'Active' | 'Inactive';
 export type FormFieldType =
     | 'short_text' | 'long_text' | 'dropdown' | 'multi_choice' | 'picture_choice'
     | 'file_upload' | 'email' | 'phone' | 'full_name' | 'address' | 'countries'
-    | 'number' | 'slider' | 'date' | 'link' | 'signature';
+    | 'number' | 'slider' | 'date' | 'datepicker' | 'link' | 'signature';
 
 export interface FormField {
     id: string;

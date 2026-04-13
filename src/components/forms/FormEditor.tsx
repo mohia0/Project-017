@@ -83,6 +83,8 @@ interface FormMeta {
     confirmationMessage: string;
     logoUrl: string;
     design: DocumentDesign;
+    confirmationBlocks?: any[];
+    description?: string;
 }
 
 const DEFAULT_META: FormMeta = {
@@ -105,10 +107,10 @@ const STATUS_COLORS: Record<FormStatus, string> = {
 /* ══════════════════════════════════════════════════════════
    HELPERS
 ══════════════════════════════════════════════════════════ */
-function SectionAccordion({ label, icon, isDark, children }: {
-    label: string; icon: React.ReactNode; isDark: boolean; children: React.ReactNode;
+function SectionAccordion({ label, icon, isDark, children, defaultOpen = true }: {
+    label: string; icon: React.ReactNode; isDark: boolean; children: React.ReactNode; defaultOpen?: boolean;
 }) {
-    const [open, setOpen] = useState(true);
+    const [open, setOpen] = useState(defaultOpen);
     return (
         <div className={cn("border-b last:border-b-0", isDark ? "border-[#252525]" : "border-[#f0f0f0]")}>
             <button onClick={() => setOpen(v => !v)}
@@ -1194,7 +1196,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                             if (active.id !== over?.id) {
                                                                 const oldIndex = (meta.confirmationBlocks || []).findIndex((item: any) => item.id === active.id);
                                                                 const newIndex = (meta.confirmationBlocks || []).findIndex((item: any) => item.id === over?.id);
-                                                                const next = arrayMove(meta.confirmationBlocks, oldIndex, newIndex);
+                                                                const next = arrayMove(meta.confirmationBlocks || [], oldIndex, newIndex);
                                                                 updateMeta({ confirmationBlocks: next });
                                                             }
                                                         }}
@@ -1206,7 +1208,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                             <div className="w-full max-w-[500px] flex flex-col gap-0">
                                                                 {(meta.confirmationBlocks || []).map((block: any, idx: number) => (
                                                                     <React.Fragment key={block.id}>
-                                                                        <ConfirmationBlockInsertArea index={idx} onAdd={(type) => addConfirmationBlock(type, idx)} isDark={isFormDark} primaryColor={primaryColor} />
+                                                                        <ConfirmationBlockInsertArea index={idx} onAdd={(type: string) => addConfirmationBlock(type, idx)} isDark={isFormDark} primaryColor={primaryColor} />
                                                                         <ConfirmationBlockItem 
                                                                             block={block} 
                                                                             isDark={isFormDark} 
@@ -1216,7 +1218,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                                 const next = (meta.confirmationBlocks || []).filter((b: any) => b.id !== block.id);
                                                                                 updateMeta({ confirmationBlocks: next });
                                                                             }}
-                                                                            updateBlock={(patch) => {
+                                                                            updateBlock={(patch: any) => {
                                                                                 const next = (meta.confirmationBlocks || []).map((b: any) => b.id === block.id ? { ...b, ...patch } : b);
                                                                                 updateMeta({ confirmationBlocks: next });
                                                                             }}
@@ -1225,7 +1227,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                         />
                                                                     </React.Fragment>
                                                                 ))}
-                                                                <ConfirmationBlockInsertArea index={(meta.confirmationBlocks || []).length} onAdd={(type) => addConfirmationBlock(type, (meta.confirmationBlocks || []).length)} isDark={isFormDark} primaryColor={primaryColor} />
+                                                                <ConfirmationBlockInsertArea index={(meta.confirmationBlocks || []).length} onAdd={(type: string) => addConfirmationBlock(type, (meta.confirmationBlocks || []).length)} isDark={isFormDark} primaryColor={primaryColor} />
                                                             </div>
                                                         </SortableContext>
                                                     </DndContext>

@@ -10,10 +10,13 @@ import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSel
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import FieldPreview from '@/components/forms/FieldPreview';
-import { Check, Clock, Calendar as CalendarIcon, MapPin, ChevronRight } from 'lucide-react';
+import { Check, Clock, Calendar as CalendarIcon, MapPin, ChevronRight, User, Mail, Phone, ExternalLink } from 'lucide-react';
 import { gooeyToast } from 'goey-toast';
+import { CalendarPreview, getAvailableSlots, timeToMinutes } from '@/components/schedulers/CalendarPreview';
+import { AnimatePresence } from 'framer-motion';
 
 const KanbanBoard = dynamic(() => import('@/components/projects/KanbanBoard'), { ssr: false });
+const TaskDetailPanel = dynamic(() => import('@/components/projects/TaskDetailPanel'), { ssr: false });
 
 // Anon-key client — safe for public preview pages, used only to subscribe
 // to Realtime events. No sensitive data is written through this client.
@@ -330,7 +333,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
     const primaryColor = design.primaryColor || '#4dbf39';
 
     const [step, setStep] = useState<'scheduler' | 'form' | 'confirmation'>('scheduler');
-    const [selDate, setSelDate] = useState<Date | null>(null);
+    const [selDate, setSelDate] = useState<number | null>(null);
     const [selTime, setSelTime] = useState<string | null>(null);
     const [duration, setDuration] = useState<number>(Array.isArray(meta.durations) ? meta.durations[0] : 30);
     
@@ -347,63 +350,18 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
     const isNotYetActive = meta.activationDate && new Date(meta.activationDate) > now;
     const isRestricted = liveData.status === 'Draft' || liveData.status === 'Inactive' || hasReachedLimit || isExpired || isNotYetActive;
 
-    const timeToMinutes = (timeStr: string) => {
-        const parts = timeStr.trim().split(/\s+/);
-        if (parts.length < 2) return 0;
-        const [time, period] = parts;
-        let [hStr, mStr] = time.split(':');
-        let h = parseInt(hStr, 10);
-        let m = parseInt(mStr || '0', 10);
-        if (period.toUpperCase() === 'PM' && h !== 12) h += 12;
-        if (period.toUpperCase() === 'AM' && h === 12) h = 0;
-        return h * 60 + m;
-    };
+    const availableSlots = getAvailableSlots(selDate, [duration], meta.availability, data.schedulerBookings || []);
 
-    const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-    let availableSlots: string[] = [];
-
-    if (selDate) {
-        const dayStr = WEEKDAYS[selDate.getDay()];
-        const availConfig = (meta.availability || {
-            Monday: { active: true, start: '9:00 AM', end: '5:00 PM' },
-            Tuesday: { active: true, start: '9:00 AM', end: '5:00 PM' },
-            Wednesday: { active: true, start: '9:00 AM', end: '5:00 PM' },
-            Thursday: { active: true, start: '9:00 AM', end: '5:00 PM' },
-            Friday: { active: true, start: '9:00 AM', end: '5:00 PM' },
-            Saturday: { active: false, start: '9:00 AM', end: '5:00 PM' },
-            Sunday: { active: false, start: '9:00 AM', end: '5:00 PM' }
-        })[dayStr];
-
-        if (availConfig && availConfig.active) {
-            const startMins = timeToMinutes(availConfig.start);
-            const endMins = timeToMinutes(availConfig.end);
-            
-            const allSlots: string[] = [];
-            for (let m = startMins; m + duration <= endMins; m += duration) {
-                const h = Math.floor(m / 60);
-                const mn = m % 60;
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                const h12 = h % 12 === 0 ? 12 : h % 12;
-                allSlots.push(`${h12}:${String(mn).padStart(2, '0')} ${ampm}`);
-            }
-
-            const selectedDateStr = selDate.getFullYear() + '-' + String(selDate.getMonth() + 1).padStart(2, '0') + '-' + String(selDate.getDate()).padStart(2, '0');
-            const dayBookings = (data.schedulerBookings || []).filter((b: any) => b.booked_date === selectedDateStr);
-
-            availableSlots = allSlots.filter(slot => {
-                const slotStart = timeToMinutes(slot);
-                const slotEnd = slotStart + duration;
-                for (const b of dayBookings) {
-                    const bStart = timeToMinutes(b.booked_time);
-                    const bEnd = bStart + (b.duration_minutes || 30);
-                    if (Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd)) {
-                        return false;
-                    }
-                }
-                return true;
-            });
-        }
+    function isColorDark(color: string) {
+        if (!color) return false;
+        let hex = color.replace('#', '');
+        if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        if (hex.length !== 6) return false;
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
     }
 
     if (isRestricted) {
@@ -464,12 +422,14 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
         );
     }
 
+    const [formValues, setFormValues] = useState<Record<string, any>>({});
+
     const handleConfirmBooking = async () => {
         if (!info.name || !info.email || !selDate || !selTime) return;
 
         setIsSubmitting(true);
         try {
-            const localDateStr = selDate.getFullYear() + '-' + String(selDate.getMonth() + 1).padStart(2, '0') + '-' + String(selDate.getDate()).padStart(2, '0');
+            const localDateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(selDate).padStart(2, '0');
             const res = await fetch('/api/scheduler-booking', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -484,6 +444,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                     duration_minutes: duration,
                     scheduler_title: liveData.title,
+                    custom_fields: formValues, // Send custom fields
                 }),
             });
 
@@ -506,6 +467,8 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
         }
     };
 
+    const isBlockDark = isColorDark(design.blockBackgroundColor || '#fff');
+
     return (
         <div
             className="flex-1 overflow-auto relative w-full min-h-screen"
@@ -526,7 +489,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                 (step === 'confirmation') && "justify-center"
             )}>
                 <div
-                    className="w-full max-w-[1400px] overflow-hidden shadow-2xl transition-all duration-300"
+                    className="w-full max-w-[680px] overflow-hidden shadow-2xl transition-all duration-300"
                     style={{
                         backgroundColor: design.blockBackgroundColor || (isDark ? '#111' : '#fff'),
                         boxShadow: design.blockShadow || '0 10px 40px -10px rgba(0,0,0,0.15)',
@@ -534,211 +497,240 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                         borderRadius: `${design.borderRadius ?? 16}px`,
                     }}
                 >
-                    <div className="flex flex-col h-full bg-transparent">
-                        <div className="px-8 pt-8 pb-5 border-b border-black/5 dark:border-white/5">
-                            <div className="flex items-center gap-4 mb-6">
-                    {meta.logoUrl ? (
-                        <img src={meta.logoUrl} alt="Logo" className="h-10 object-contain" />
-                    ) : (
-                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-[20px]"
-                            style={{ background: primaryColor }}>
-                            {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
-                        </div>
-                    )}
-                    <div>
-                        <h1 className="font-bold text-[20px]" style={{ color: isDark ? '#fff' : '#111' }}>
-                            {meta.organizer || liveData.title}
-                        </h1>
-                        <div className="text-[13px] opacity-50" style={{ color: isDark ? '#aaa' : '#777' }}>
-                            {liveData.title}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                    {step === 'scheduler' && (Array.isArray(meta.durations) ? meta.durations : [30]).map((d: number) => (
-                        <button key={d} 
-                            onClick={() => setDuration(d)}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all",
-                                duration === d ? "scale-105" : "opacity-60 grayscale"
-                            )}
-                            style={{ background: primaryColor, color: '#000' }}>
-                            <Clock size={12} />
-                            {d >= 60 ? `${d / 60}hr` : `${d}min`}
-                        </button>
-                    ))}
-                    {meta.location && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium opacity-60 ml-auto"
-                            style={{ color: isDark ? '#ccc' : '#444' }}>
-                            <MapPin size={12} />
-                            {meta.location}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="flex-1 p-8 overflow-y-auto min-h-[520px]">
-                {step === 'scheduler' && (
-                    <div className="grid grid-cols-1 md:grid-cols-[1.8fr_1fr] gap-12 animate-in fade-in duration-300">
-                        <div>
-                            <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-6">
-                                <h3 className="text-[14px] font-bold mb-4" style={{ color: isDark ? '#fff' : '#111' }}>
-                                    {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                                </h3>
-                                <div className="grid grid-cols-7 gap-2">
-                                    {['S','M','T','W','T','F','S'].map((d, i) => (
-                                        <div key={i} className="text-center text-[10px] font-bold opacity-30">{d}</div>
-                                    ))}
-                                    {Array.from({ length: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() }).map((_, i) => {
-                                        const day = i + 1;
-                                        const date = new Date(now.getFullYear(), now.getMonth(), day);
-                                        const isPast = day < now.getDate();
-                                        const isSelected = selDate?.getDate() === day;
-                                        return (
-                                            <button key={i}
-                                                disabled={isPast}
-                                                onClick={() => setSelDate(date)}
-                                                className={cn(
-                                                    "aspect-square rounded-2xl flex items-center justify-center text-[15px] font-bold transition-all",
-                                                    isPast ? "opacity-20 cursor-not-allowed" : "cursor-pointer hover:bg-black/5 dark:hover:bg-white/5",
-                                                    isSelected && "font-black text-black"
-                                                )}
-                                                style={isSelected ? { background: primaryColor } : {}}
-                                            >
-                                                {day}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2.5">
-                            <div className="text-[11px] font-bold uppercase tracking-wider opacity-30 mb-2 px-1">Available times</div>
-                            {!selDate ? (
-                                <div className="text-[12px] opacity-40 italic px-1">Select a date first</div>
-                            ) : availableSlots.length === 0 ? (
-                                <div className="text-[12px] opacity-40 italic px-1">No slots available</div>
+                    {/* Card header */}
+                    <div className="px-5 md:px-8 pt-8 pb-5 border-b"
+                        style={{ borderColor: isBlockDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
+                        <div className="flex items-center gap-3 mb-4">
+                            {meta.logoUrl ? (
+                                <img src={meta.logoUrl} alt="Logo"
+                                    className="object-contain"
+                                    style={{ height: `${design.logoSize || 40}px` }} />
                             ) : (
-                                availableSlots.map(t => (
-                                    <button key={t}
-                                        onClick={() => { setSelTime(t); setStep('form'); }}
-                                        className="w-full py-3 rounded-xl border border-black/5 dark:border-white/5 text-[13px] font-bold transition-all hover:border-transparent hover:text-black"
-                                        style={selTime === t ? { background: primaryColor, color: '#000', borderColor: 'transparent' } : { color: isDark ? '#fff' : '#111' }}
-                                    >
-                                        {t}
-                                    </button>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {step === 'form' && (
-                    <div className="max-w-[400px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                        <div className="text-center space-y-1">
-                            <h3 className="text-[18px] font-bold" style={{ color: isDark ? '#fff' : '#111' }}>Confirm Details</h3>
-                            <p className="text-[13px] opacity-50">
-                                {selDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} at {selTime} ({duration}m)
-                            </p>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-[11px] font-bold uppercase tracking-wider opacity-40">Name</label>
-                                <input 
-                                    type="text" 
-                                    value={info.name}
-                                    onChange={e => setInfo({ ...info, name: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent outline-none focus:border-primary text-[14px]"
-                                    placeholder="Enter your name"
-                                    style={{ color: isDark ? '#fff' : '#111' }}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[11px] font-bold uppercase tracking-wider opacity-40">Email</label>
-                                <input 
-                                    type="email" 
-                                    value={info.email}
-                                    onChange={e => setInfo({ ...info, email: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent outline-none focus:border-primary text-[14px]"
-                                    placeholder="your@email.com"
-                                    style={{ color: isDark ? '#fff' : '#111' }}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[11px] font-bold uppercase tracking-wider opacity-40">Phone (Optional)</label>
-                                <input 
-                                    type="tel" 
-                                    value={info.phone}
-                                    onChange={e => setInfo({ ...info, phone: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent outline-none focus:border-primary text-[14px]"
-                                    placeholder="+1 (555) 000-0000"
-                                    style={{ color: isDark ? '#fff' : '#111' }}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 pt-4">
-                            <button 
-                                onClick={() => setStep('scheduler')}
-                                className="flex-1 py-3.5 rounded-xl font-bold text-[14px] border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-all text-[#111] dark:text-[#eee]"
-                            >
-                                Back
-                            </button>
-                            <button 
-                                onClick={handleConfirmBooking}
-                                disabled={isSubmitting || !info.name || !info.email}
-                                className="flex-[2] py-3.5 rounded-xl font-bold text-[14px] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                                style={{ background: primaryColor, color: '#000' }}
-                            >
-                                {isSubmitting ? 'Booking...' : 'Schedule Meeting'}
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {step === 'confirmation' && (
-                    <div className="flex flex-col items-center justify-center text-center py-12 gap-6 animate-in zoom-in-95 duration-500">
-                        <div className="w-20 h-20 rounded-full flex items-center justify-center shadow-xl animate-in fade-in scale-in duration-700"
-                            style={{ background: primaryColor }}>
-                            <Check size={36} strokeWidth={3} className="text-black" />
-                        </div>
-                        <div className="space-y-2">
-                            <h2 className="text-[28px] font-bold tracking-tight" style={{ color: isDark ? '#fff' : '#111' }}>
-                                Booking Confirmed!
-                            </h2>
-                            <p className="text-[15px] opacity-70 max-w-[400px]" style={{ color: isDark ? '#ccc' : '#444' }}>
-                                {meta.confirmationMessage || "Your booking is confirmed! We'll send a calendar invite shortly."}
-                            </p>
-                        </div>
-                        <div className="mt-4 p-6 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 space-y-3 w-full max-w-[360px]">
-                            <div className="flex items-center gap-3">
-                                <CalendarIcon size={16} className="opacity-50" />
-                                <span className="text-[14px] font-medium">{selDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Clock size={16} className="opacity-50" />
-                                <span className="text-[14px] font-medium">{selTime} ({duration} min)</span>
-                            </div>
-                            {meta.location && (
-                                <div className="flex items-center gap-3">
-                                    <MapPin size={16} className="opacity-50" />
-                                    <span className="text-[14px] font-medium">{meta.location}</span>
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
+                                    style={{ 
+                                        background: design.primaryColor || '#4dbf39',
+                                        color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
+                                    }}>
+                                    {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
                                 </div>
                             )}
+                            <div>
+                                <div className="font-bold text-[15px]" style={{ color: isBlockDark ? '#fff' : '#111' }}>
+                                    {meta.organizer || liveData.title || 'Scheduler Name'}
+                                </div>
+                                <div className="text-[12px] opacity-50" style={{ color: isBlockDark ? '#aaa' : '#777' }}>Book a time</div>
+                            </div>
                         </div>
-                        <button 
-                            onClick={() => window.location.reload()}
-                            className="text-[13px] font-bold opacity-40 hover:opacity-100 transition-opacity mt-4"
-                            style={{ color: isDark ? '#fff' : '#111' }}
-                        >
-                            Book another session
-                        </button>
+
+                        {/* Duration selector — only on scheduler step */}
+                        {step === 'scheduler' && (
+                        <div className="flex flex-wrap gap-2">
+                            {(meta.durations && meta.durations.length > 0 ? meta.durations : [30, 60]).map((d: number) => (
+                                <button key={d}
+                                    onClick={() => setDuration(d)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all",
+                                        duration === d ? "scale-105" : "opacity-60 grayscale"
+                                    )}
+                                    style={{
+                                        background: design.primaryColor || '#4dbf39',
+                                        color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
+                                    }}>
+                                    <Clock size={11} />
+                                    {d >= 60 ? `${d / 60} hr` : `${d} min`}
+                                </button>
+                            ))}
+                        </div>
+                        )}
                     </div>
-                )}
-            </div>
+
+                    {/* Canvas step content */}
+                    <div className="p-5 md:p-8">
+                        {step === 'scheduler' && (
+                            <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-6 animate-in fade-in duration-300">
+                                <CalendarPreview
+                                    isDark={isBlockDark}
+                                    primaryColor={design.primaryColor || '#4dbf39'}
+                                    selDate={selDate}
+                                    meta={meta}
+                                    onDateSelect={(d) => { setSelDate(d); setSelTime(null); }}
+                                />
+                                <div>
+                                    <div className="text-[10.5px] font-bold uppercase tracking-wider mb-3 opacity-40" style={{ color: isBlockDark ? '#fff' : '#000' }}>
+                                        {selDate
+                                            ? new Date(now.getFullYear(), now.getMonth(), selDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                                            : 'Select a date'
+                                        }
+                                    </div>
+                                    {!selDate ? (
+                                        <div className="text-[11px] opacity-40 italic" style={{ color: isBlockDark ? '#aaa' : '#888' }}>Choose a date to see available times</div>
+                                    ) : (
+                                        <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
+                                            {availableSlots.length > 0 ? (
+                                                availableSlots.map(t => (
+                                                    <button key={t}
+                                                        onClick={() => { setSelTime(t); setStep('form'); }}
+                                                        className="w-full py-2 rounded-lg text-[12px] font-semibold border text-center transition-all"
+                                                        style={selTime === t
+                                                            ? { background: design.primaryColor || '#4dbf39', color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000', borderColor: 'transparent', borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 8)}px` }
+                                                            : { borderColor: isBlockDark ? '#333' : '#e5e5e5', color: isBlockDark ? '#aaa' : '#888', borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 8)}px` }
+                                                        }>
+                                                        {t}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="text-[11px] opacity-40 italic text-center py-4" style={{ color: isBlockDark ? '#aaa' : '#888' }}>
+                                                    No slots available for this day
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 'form' && (
+                            <div className="max-w-[460px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                                <div className="text-center space-y-1">
+                                    <h3 className="text-[18px] font-bold" style={{ color: isBlockDark ? '#fff' : '#111' }}>Confirm Details</h3>
+                                    <p className="text-[13px] opacity-50" style={{ color: isBlockDark ? '#ccc' : '#777' }}>
+                                        {selDate && new Date(now.getFullYear(), now.getMonth(), selDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} at {selTime} ({duration}m)
+                                    </p>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-bold uppercase tracking-wider opacity-40" style={{ color: isBlockDark ? '#fff' : '#111' }}>Name</label>
+                                        <input 
+                                            type="text" 
+                                            value={info.name}
+                                            onChange={e => setInfo({ ...info, name: e.target.value })}
+                                            className={cn(
+                                                "w-full px-4 py-3 rounded-xl border outline-none transition-all text-[14px]",
+                                                isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
+                                            )}
+                                            placeholder="Enter your name"
+                                            style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-bold uppercase tracking-wider opacity-40" style={{ color: isBlockDark ? '#fff' : '#111' }}>Email</label>
+                                        <input 
+                                            type="email" 
+                                            value={info.email}
+                                            onChange={e => setInfo({ ...info, email: e.target.value })}
+                                            className={cn(
+                                                "w-full px-4 py-3 rounded-xl border outline-none transition-all text-[14px]",
+                                                isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
+                                            )}
+                                            placeholder="your@email.com"
+                                            style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[11px] font-bold uppercase tracking-wider opacity-40" style={{ color: isBlockDark ? '#fff' : '#111' }}>Phone (Optional)</label>
+                                        <input 
+                                            type="tel" 
+                                            value={info.phone}
+                                            onChange={e => setInfo({ ...info, phone: e.target.value })}
+                                            className={cn(
+                                                "w-full px-4 py-3 rounded-xl border outline-none transition-all text-[14px]",
+                                                isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
+                                            )}
+                                            placeholder="+1 (555) 000-0000"
+                                            style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
+                                        />
+                                    </div>
+
+                                    {/* Render custom fields if any */}
+                                    {meta.fields && meta.fields.length > 0 && (
+                                        <div className="pt-2 space-y-4">
+                                            {meta.fields.map((field: any) => (
+                                                <FieldPreview 
+                                                    key={field.id}
+                                                    field={field}
+                                                    isDark={isBlockDark}
+                                                    design={design}
+                                                    value={formValues[field.id]}
+                                                    onChange={(val) => setFormValues(prev => ({ ...prev, [field.id]: val }))}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <button 
+                                        onClick={() => setStep('scheduler')}
+                                        className={cn(
+                                            "flex-1 py-3.5 rounded-xl font-bold text-[14px] border transition-all",
+                                            isBlockDark ? "border-white/10 text-[#eee] hover:bg-white/5" : "border-black/10 text-[#111] hover:bg-black/5"
+                                        )}
+                                        style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 4)}px` }}
+                                    >
+                                        Back
+                                    </button>
+                                    <button 
+                                        onClick={handleConfirmBooking}
+                                        disabled={isSubmitting || !info.name || !info.email}
+                                        className="flex-[2] py-3.5 rounded-xl font-bold text-[14px] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                                        style={{ background: primaryColor, color: isColorDark(primaryColor) ? '#fff' : '#000', borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 4)}px` }}
+                                    >
+                                        {isSubmitting ? 'Booking...' : 'Schedule Meeting'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {step === 'confirmation' && (
+                            <div className="flex flex-col items-center text-center py-8 gap-6 animate-in zoom-in-95 duration-500">
+                                <div className="w-16 h-16 rounded-full flex items-center justify-center text-white"
+                                    style={{ background: primaryColor }}>
+                                    <Check size={32} strokeWidth={3} style={{ color: isColorDark(primaryColor) ? '#fff' : '#000' }} />
+                                </div>
+                                <div className="space-y-2">
+                                    <h2 className="text-[28px] font-bold tracking-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>
+                                        Booking Confirmed!
+                                    </h2>
+                                    <p className="text-[15px] opacity-70 max-w-[400px]" style={{ color: isBlockDark ? '#ccc' : '#444' }}>
+                                        {meta.confirmationMessage || "Your booking is confirmed! We'll send a calendar invite shortly."}
+                                    </p>
+                                </div>
+                                <div className={cn(
+                                    "mt-4 p-6 rounded-2xl border space-y-3 w-full max-w-[360px]",
+                                    isBlockDark ? "bg-white/5 border-white/5" : "bg-black/5 border-black/5"
+                                )}
+                                    style={{ borderRadius: `${design.borderRadius ?? 16}px` }}>
+                                    <div className="flex items-center gap-3">
+                                        <CalendarIcon size={16} className="opacity-50" />
+                                        <span className="text-[14px] font-medium" style={{ color: isBlockDark ? '#eee' : '#111' }}>
+                                            {selDate && new Date(now.getFullYear(), now.getMonth(), selDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <Clock size={16} className="opacity-50" />
+                                        <span className="text-[14px] font-medium" style={{ color: isBlockDark ? '#eee' : '#111' }}>
+                                            {selTime} ({duration} min)
+                                        </span>
+                                    </div>
+                                    {meta.location && (
+                                        <div className="flex items-center gap-3">
+                                            <MapPin size={16} className="opacity-50" />
+                                            <span className="text-[14px] font-medium" style={{ color: isBlockDark ? '#eee' : '#111' }}>
+                                                {meta.location}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="text-[13px] font-bold opacity-40 hover:opacity-100 transition-opacity mt-4"
+                                    style={{ color: isBlockDark ? '#fff' : '#111' }}
+                                >
+                                    Book another session
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -749,7 +741,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main PreviewClient
 // ─────────────────────────────────────────────────────────────────────────────
-export default function PreviewClient({ type, data }: { type: 'proposal' | 'invoice' | 'project' | 'form' | 'scheduler', data: any }) {
+export default function PreviewClient({ type, data }: { type: 'proposal' | 'invoice' | 'project' | 'form' | 'scheduler' | 'forms' | 'schedulers', data: any }) {
     const [liveData, setLiveData] = useState(data);
     // useRef persists across React Strict Mode double-mounts (unlike useState)
     const viewHasBeenTracked = useRef(false);
@@ -771,6 +763,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     const [projectTasks, setProjectTasks] = useState<any[]>(data.projectTasks || []);
     const [projectGroups, setProjectGroups] = useState<any[]>(data.projectGroups || []);
     const [isProjectLoading, setIsProjectLoading] = useState(false);
+    const [selectedTask, setSelectedTask] = useState<any | null>(null);
 
     // Track view ONCE per page load
     useEffect(() => {
@@ -824,7 +817,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     if (payload.eventType === 'INSERT') {
                         setProjectTasks(prev => [...prev.filter(t => t.id !== (payload.new as any).id), payload.new]);
                     } else if (payload.eventType === 'UPDATE') {
-                        setProjectTasks(prev => prev.map(t => t.id === (payload.new as any).id ? payload.new : t));
+                        setProjectTasks(prev => prev.map(t => t.id === (payload.new as any).id ? { ...t, ...(payload.new as any) } : t));
                     } else if (payload.eventType === 'DELETE') {
                         setProjectTasks(prev => prev.filter(t => t.id !== (payload.old as any).id));
                     }
@@ -833,7 +826,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     if (payload.eventType === 'INSERT') {
                         setProjectGroups(prev => [...prev.filter(g => g.id !== (payload.new as any).id), payload.new]);
                     } else if (payload.eventType === 'UPDATE') {
-                        setProjectGroups(prev => prev.map(g => g.id === (payload.new as any).id ? payload.new : g));
+                        setProjectGroups(prev => prev.map(g => g.id === (payload.new as any).id ? { ...g, ...(payload.new as any) } : g));
                     } else if (payload.eventType === 'DELETE') {
                         setProjectGroups(prev => prev.filter(g => g.id !== (payload.old as any).id));
                     }
@@ -1103,9 +1096,26 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         )}
                     </div>
                     <div className="flex items-center gap-3">
-                        <span className="text-[12px] text-[#ccc] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#f5f5f5] rounded-lg border border-black/[0.03]">
-                            {liveData.status}
-                        </span>
+                        {(() => {
+                            const status = liveData.status || 'Planning';
+                            const cfg = {
+                                Planning:  { badge: 'bg-indigo-50 border-indigo-100', text: 'text-indigo-600' },
+                                Active:    { badge: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-600' },
+                                'On Hold': { badge: 'bg-amber-50 border-amber-100', text: 'text-amber-600' },
+                                Completed: { badge: 'bg-violet-50 border-violet-100', text: 'text-violet-600' },
+                                Cancelled: { badge: 'bg-gray-50 border-gray-100', text: 'text-gray-500' },
+                            }[status] || { badge: 'bg-[#f5f5f5] border-black/[0.03]', text: 'text-[#ccc]' };
+
+                            return (
+                                <span className={cn(
+                                    "text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border transition-colors",
+                                    cfg.badge,
+                                    cfg.text
+                                )}>
+                                    {status}
+                                </span>
+                            );
+                        })()}
                     </div>
                 </div>
 
@@ -1122,13 +1132,26 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             isDark={false}
                             searchQuery=""
                             showArchived={false}
-                            onTaskClick={() => {}}
+                            onTaskClick={(task) => setSelectedTask(task)}
                             isPreview={true}
                             externalTasks={projectTasks}
                             externalGroups={projectGroups}
                         />
                     )}
                 </div>
+
+                <AnimatePresence>
+                    {selectedTask && (
+                        <TaskDetailPanel
+                            task={selectedTask as any}
+                            projectId={data.id}
+                            projectName={liveData.name || liveData.title}
+                            isDark={false}
+                            readOnly={true}
+                            onClose={() => setSelectedTask(null)}
+                        />
+                    )}
+                </AnimatePresence>
             </div>
         );
     }

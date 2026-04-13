@@ -1271,7 +1271,7 @@ export function ProposalDocument({
             className={cn(
                 "w-full transition-all duration-300 relative",
                 isMobile ? "max-w-full px-6 py-6" : "max-w-[850px]",
-                !isMobile && "min-h-[1100px] px-12"
+                !isMobile && "min-h-0 px-12"
             )}
         >
             {/* Blocks */}
@@ -2058,24 +2058,25 @@ function InsertZone({
     const visible = hovered || isOpen;
 
     return (
-        <div
-            className="relative flex items-center group/insert h-[24px]"
-            style={{
-                marginLeft: '-3rem',
-                marginRight: '-3rem',
-                paddingLeft: '3rem',
-                paddingRight: '3rem',
-            }}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => { if (!isOpen) setHovered(false); }}
-        >
-            {/* Dashed line */}
-            <div className={cn(
-                "absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-150",
-                visible ? "opacity-100 translate-y-[-50%]" : "opacity-0 translate-y-[20%] pointer-events-none"
-            )}>
+        <div className="relative h-0 z-20 w-full">
+            <div 
+                className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center group/insert h-8" 
+                style={{
+                    marginLeft: '-3rem',
+                    marginRight: '-3rem',
+                    paddingLeft: '3rem',
+                    paddingRight: '3rem',
+                }}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => { if (!isOpen) setHovered(false); }}
+            >
+                {/* Dashed line */}
                 <div className={cn(
-                    "flex-1 border-t border-dashed",
+                    "absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-150",
+                    visible ? "opacity-100 translate-y-[-50%]" : "opacity-0 translate-y-[20%] pointer-events-none"
+                )}>
+                    <div className={cn(
+                        "flex-1 border-t border-dashed",
                     isDark ? "border-[#363636]" : "border-[#d8d8d8]"
                 )} />
                 <button
@@ -2101,7 +2102,8 @@ function InsertZone({
             {isOpen && (
                 <div
                     className={cn(
-                        "absolute left-1/2 -translate-x-1/2 top-full mt-1 w-56 rounded-xl border shadow-xl py-1.5 z-50",
+                        "absolute left-1/2 -translate-x-1/2 w-56 rounded-xl border shadow-xl py-1.5 z-50",
+                        isLast ? "bottom-full mb-1" : "top-full mt-1",
                         isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#e5e5e5]"
                     )}
                     onMouseLeave={() => { setHovered(false); onClose(); }}
@@ -2136,5 +2138,6 @@ function InsertZone({
                 </div>
             )}
         </div>
-    );
+    </div>
+);
 }

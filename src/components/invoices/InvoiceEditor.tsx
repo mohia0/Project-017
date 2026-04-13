@@ -1203,7 +1203,7 @@ export function InvoiceDocument({
         }} className={cn(
             "w-full transition-all duration-300 relative",
             isMobile ? "max-w-full px-6 py-6" : "max-w-[850px]",
-            !isMobile && (isPreview ? "min-h-0 px-12" : "min-h-[1100px] px-12")
+            !isMobile && "min-h-0 px-12"
         )}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blocks.map((b: any) => b.id)} strategy={verticalListSortingStrategy}>
@@ -1702,42 +1702,44 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
     const visible = hovered || isOpen;
 
     return (
-        <div 
-            className="relative flex items-center group/insert h-6" 
-            style={{
-                marginLeft: '-3rem',
-                marginRight: '-3rem',
-                paddingLeft: '3rem',
-                paddingRight: '3rem',
-            }}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => { if (!isOpen) setHovered(false); }}
-        >
-            <div className={cn(
-                "absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-150",
-                visible ? "opacity-100" : "opacity-0 pointer-events-none"
-            )}>
-                <div className={cn("flex-1 border-t border-dashed", isDark ? "border-[#363636]" : "border-[#d8d8d8]")} />
-                <button
-                    onClick={(e) => { e.stopPropagation(); onOpen(); }}
-                    className={cn(
-                        "mx-2 w-5 h-5 flex items-center justify-center border transition-all shrink-0 shadow-sm",
-                        isOpen
-                            ? isDark ? "bg-[var(--primary-color)] border-[var(--primary-color)] text-white" : "bg-[var(--primary-color)] border-[var(--primary-color)] text-white"
-                            : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
-                                     : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
-                    )}
-                    style={{ borderRadius: 'var(--block-button-radius)' }}
-                >
-                    <Plus size={12} strokeWidth={2.5} />
-                </button>
-                <div className={cn("flex-1 border-t border-dashed", isDark ? "border-[#363636]" : "border-[#d8d8d8]")} />
-            </div>
+        <div className="relative h-0 z-20 w-full">
+            <div 
+                className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center group/insert h-8" 
+                style={{
+                    marginLeft: '-3rem',
+                    marginRight: '-3rem',
+                    paddingLeft: '3rem',
+                    paddingRight: '3rem',
+                }}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => { if (!isOpen) setHovered(false); }}
+            >
+                <div className={cn(
+                    "absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-150",
+                    visible ? "opacity-100" : "opacity-0 pointer-events-none"
+                )}>
+                    <div className={cn("flex-1 border-t border-dashed", isDark ? "border-[#363636]" : "border-[#d8d8d8]")} />
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onOpen(); }}
+                        className={cn(
+                            "mx-2 w-5 h-5 flex items-center justify-center border transition-all shrink-0 shadow-sm",
+                            isOpen
+                                ? isDark ? "bg-[var(--primary-color)] border-[var(--primary-color)] text-white" : "bg-[var(--primary-color)] border-[var(--primary-color)] text-white"
+                                : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
+                                         : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
+                        )}
+                        style={{ borderRadius: 'var(--block-button-radius)' }}
+                    >
+                        <Plus size={12} strokeWidth={2.5} />
+                    </button>
+                    <div className={cn("flex-1 border-t border-dashed", isDark ? "border-[#363636]" : "border-[#d8d8d8]")} />
+                </div>
 
             {isOpen && (
                 <div 
                     className={cn(
-                        "absolute left-1/2 -translate-x-1/2 top-full mt-1 w-56 rounded-xl border shadow-xl py-1.5 z-50",
+                        "absolute left-1/2 -translate-x-1/2 w-56 rounded-xl border shadow-xl py-1.5 z-50",
+                        isLast ? "bottom-full mb-1" : "top-full mt-1",
                         isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#e5e5e5]"
                     )}
                     onMouseLeave={() => { setHovered(false); onClose(); }}
@@ -1771,6 +1773,7 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
                     ))}
                 </div>
             )}
+            </div>
         </div>
     );
 }

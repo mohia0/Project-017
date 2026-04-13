@@ -223,11 +223,11 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
     );
 }
 
-export function SchedulerFormBuilder({ isDark, design, fields, updateFields }: {
+export function SchedulerFormBuilder({ isDark, design, fields, updateFields, selectedFieldId, onSelectField }: {
     isDark: boolean; design: any; fields: FormField[]; updateFields: (fields: FormField[]) => void;
+    selectedFieldId: string | null; onSelectField: (id: string | null) => void;
 }) {
     const [openFieldIndex, setOpenFieldIndex] = useState<number | null>(null);
-    const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -255,7 +255,7 @@ export function SchedulerFormBuilder({ isDark, design, fields, updateFields }: {
         const copy = [...fields];
         copy.splice(index, 0, newField);
         updateFields(copy);
-        setSelectedFieldId(newField.id);
+        onSelectField(newField.id);
     };
 
     return (
@@ -280,10 +280,10 @@ export function SchedulerFormBuilder({ isDark, design, fields, updateFields }: {
                             <FieldPreview
                                 field={f} isDark={isDark}
                                 isSelected={selectedFieldId === f.id}
-                                onClick={() => setSelectedFieldId(f.id)}
+                                onClick={() => onSelectField(f.id)}
                                 onRemove={() => {
                                     updateFields(fields.filter(x => x.id !== f.id));
-                                    if (selectedFieldId === f.id) setSelectedFieldId(null);
+                                    if (selectedFieldId === f.id) onSelectField(null);
                                 }}
                                 primaryColor={design.primaryColor || '#4dbf39'}
                                 borderRadius={design.borderRadius || 16}

@@ -142,9 +142,10 @@ interface Props {
     projectName: string;
     isDark: boolean;
     onClose: () => void;
+    readOnly?: boolean;
 }
 
-export default function TaskDetailPanel({ task, projectId, projectName, isDark, onClose }: Props) {
+export default function TaskDetailPanel({ task, projectId, projectName, isDark, onClose, readOnly }: Props) {
     const { updateTask, deleteTask, groupsByProject } = useProjectStore();
     const groups = groupsByProject[projectId] || [];
     const group  = groups.find(g => g.id === task.task_group_id);
@@ -277,12 +278,14 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                     {/* Status toggle checkbox */}
                     <button
                         onClick={() => {
+                            if (readOnly) return;
                             const newStatus = status === 'done' ? 'todo' : 'done';
                             setStatus(newStatus);
                             save({ status: newStatus });
                         }}
                         className={cn(
                             "w-[22px] h-[22px] rounded-[6px] border-2 flex items-center justify-center shrink-0 transition-all duration-200",
+                            readOnly && "cursor-default opacity-80",
                             status === 'done'
                                 ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/20"
                                 : isDark ? "border-white/10 hover:border-white/30" : "border-black/10 hover:border-black/20"
@@ -305,10 +308,12 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                     {/* Title */}
                     <input
                         value={title}
-                        onChange={e => setTitle(e.target.value)}
+                        readOnly={readOnly}
+                        onChange={e => !readOnly && setTitle(e.target.value)}
                         onBlur={handleTitleBlur}
                         className={cn(
                             "flex-1 text-[15px] font-bold bg-transparent outline-none truncate",
+                            readOnly && "cursor-default",
                             isDark ? "text-white placeholder:text-[#333]" : "text-[#111] placeholder:text-[#ccc]",
                             status === 'done' && (isDark ? "line-through text-[#555]" : "line-through text-[#aaa]")
                         )}
@@ -335,45 +340,49 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                         <div className={cn("w-px h-4 mx-1", isDark ? "bg-[#2a2a2a]" : "bg-[#e8e8e8]")} />
 
-                        <button onClick={toggleViewMode} title={viewMode === 'center' ? 'Dock right' : 'Center focus'}
-                            className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
-                                isDark ? "text-[#666] hover:text-white hover:bg-white/8" : "text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]")}>
-                            {viewMode === 'center' ? <PanelRight size={14} /> : <Maximize size={14} />}
-                        </button>
+                        {!readOnly && (
+                            <>
+                                <button onClick={toggleViewMode} title={viewMode === 'center' ? 'Dock right' : 'Center focus'}
+                                    className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
+                                        isDark ? "text-[#666] hover:text-white hover:bg-white/8" : "text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]")}>
+                                    {viewMode === 'center' ? <PanelRight size={14} /> : <Maximize size={14} />}
+                                </button>
 
-                        {/* Delete with confirm */}
-                        <div className="relative flex items-center justify-center">
-                            <AnimatePresence initial={false}>
-                                {showDeleteConfirm ? (
-                                    <motion.button
-                                        key="confirm"
-                                        initial={{ opacity: 0, scale: 0.8, x: 10 }}
-                                        animate={{ opacity: 1, scale: 1, x: 0 }}
-                                        exit={{ opacity: 0, scale: 0.8, x: 10 }}
-                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                        onClick={handleDelete}
-                                        disabled={deleting}
-                                        className="px-3 h-8 flex items-center gap-1.5 rounded-lg bg-red-500 text-white text-[11px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all whitespace-nowrap"
-                                    >
-                                        {deleting ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={12} />}
-                                        {deleting ? 'Deleting…' : 'Confirm delete'}
-                                    </motion.button>
-                                ) : (
-                                    <motion.button
-                                        key="delete"
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                        onClick={() => setShowDeleteConfirm(true)}
-                                        className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
-                                            isDark ? "text-red-400/40 hover:text-red-400 hover:bg-red-500/10" : "text-red-300 hover:text-red-500 hover:bg-red-50")}
-                                    >
-                                        <Trash2 size={13} />
-                                    </motion.button>
-                                )}
-                            </AnimatePresence>
-                        </div>
+                                {/* Delete with confirm */}
+                                <div className="relative flex items-center justify-center">
+                                    <AnimatePresence initial={false}>
+                                        {showDeleteConfirm ? (
+                                            <motion.button
+                                                key="confirm"
+                                                initial={{ opacity: 0, scale: 0.8, x: 10 }}
+                                                animate={{ opacity: 1, scale: 1, x: 0 }}
+                                                exit={{ opacity: 0, scale: 0.8, x: 10 }}
+                                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                onClick={handleDelete}
+                                                disabled={deleting}
+                                                className="px-3 h-8 flex items-center gap-1.5 rounded-lg bg-red-500 text-white text-[11px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all whitespace-nowrap"
+                                            >
+                                                {deleting ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={12} />}
+                                                {deleting ? 'Deleting…' : 'Confirm delete'}
+                                            </motion.button>
+                                        ) : (
+                                            <motion.button
+                                                key="delete"
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.8 }}
+                                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                                onClick={() => setShowDeleteConfirm(true)}
+                                                className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
+                                                    isDark ? "text-red-400/40 hover:text-red-400 hover:bg-red-500/10" : "text-red-300 hover:text-red-500 hover:bg-red-50")}
+                                            >
+                                                <Trash2 size={13} />
+                                            </motion.button>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </>
+                        )}
 
                         <button onClick={onClose}
                             className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
@@ -402,7 +411,9 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                     <ContentBlock 
                                         id={task.id} 
                                         data={blockData} 
+                                        readOnly={readOnly}
                                         updateData={(__: string, patch: any) => {
+                                            if (readOnly) return;
                                             setBlockData(patch);
                                             save({ description: JSON.stringify(patch.blocks) });
                                         }} 
@@ -423,73 +434,104 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                                     {/* Status */}
                                     <FieldRow label="Status" icon={<Zap size={13} />} isDark={isDark}>
-                                        <InlineSelect
-                                            value={status}
-                                            options={Object.entries(STATUS_META).map(([v, m]) => ({ value: v as TaskStatus, label: m.label, color: m.color, bg: m.bg }))}
-                                            onChange={v => { setStatus(v); save({ status: v }); }}
-                                            isDark={isDark}
-                                            renderLabel={opt => (
-                                                <div className="flex items-center gap-1.5">
-                                                    <span style={opt?.color ? { color: opt.color } : {}} className="font-semibold text-[11.5px]">{opt?.label}</span>
-                                                </div>
-                                            )}
-                                        />
+                                        {readOnly ? (
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 text-[12px] font-semibold" style={{ color: statMeta.color }}>
+                                                {statMeta.icon}
+                                                {statMeta.label}
+                                            </div>
+                                        ) : (
+                                            <InlineSelect
+                                                value={status}
+                                                options={Object.entries(STATUS_META).map(([v, m]) => ({ value: v as TaskStatus, label: m.label, color: m.color, bg: m.bg }))}
+                                                onChange={v => { setStatus(v); save({ status: v }); }}
+                                                isDark={isDark}
+                                                renderLabel={opt => (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span style={opt?.color ? { color: opt.color } : {}} className="font-semibold text-[11.5px]">{opt?.label}</span>
+                                                    </div>
+                                                )}
+                                            />
+                                        )}
                                     </FieldRow>
 
                                     {/* Priority */}
                                     <FieldRow label="Priority" icon={<Flag size={13} />} isDark={isDark}>
-                                        <InlineSelect
-                                            value={priority}
-                                            options={PRIORITY_OPTIONS}
-                                            onChange={v => { setPriority(v); save({ priority: v }); }}
-                                            isDark={isDark}
-                                            renderLabel={opt => (
-                                                <div className="flex items-center gap-1.5">
-                                                    <span style={opt?.color ? { color: opt.color } : {}} className="font-semibold text-[11.5px]">{opt?.label}</span>
-                                                </div>
-                                            )}
-                                        />
+                                        {readOnly ? (
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 text-[12px] font-semibold" style={{ color: priMeta.color }}>
+                                                {priMeta.label}
+                                            </div>
+                                        ) : (
+                                            <InlineSelect
+                                                value={priority}
+                                                options={PRIORITY_OPTIONS}
+                                                onChange={v => { setPriority(v); save({ priority: v }); }}
+                                                isDark={isDark}
+                                                renderLabel={opt => (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span style={opt?.color ? { color: opt.color } : {}} className="font-semibold text-[11.5px]">{opt?.label}</span>
+                                                    </div>
+                                                )}
+                                            />
+                                        )}
                                     </FieldRow>
 
                                     {/* Group */}
                                     <FieldRow label="Group" icon={<AlignLeft size={13} />} isDark={isDark}>
-                                        <InlineSelect
-                                            value={groupId || 'ungrouped'}
-                                            options={groupOptions}
-                                            onChange={v => {
-                                                const newGroup = v === 'ungrouped' ? null : v;
-                                                setGroupId(newGroup);
-                                                save({ task_group_id: newGroup });
-                                            }}
-                                            isDark={isDark}
-                                            renderLabel={opt => (
-                                                <div className="flex items-center gap-1.5 text-[11.5px]">
-                                                    <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#333]")}>{opt?.label}</span>
-                                                </div>
-                                            )}
-                                        />
+                                        {readOnly ? (
+                                            <div className={cn("px-2 py-0.5 text-[12px] font-medium", isDark ? "text-[#ddd]" : "text-[#333]")}>
+                                                {group ? group.name : 'Ungrouped'}
+                                            </div>
+                                        ) : (
+                                            <InlineSelect
+                                                value={groupId || 'ungrouped'}
+                                                options={groupOptions}
+                                                onChange={v => {
+                                                    const newGroup = v === 'ungrouped' ? null : v;
+                                                    setGroupId(newGroup);
+                                                    save({ task_group_id: newGroup });
+                                                }}
+                                                isDark={isDark}
+                                                renderLabel={opt => (
+                                                    <div className="flex items-center gap-1.5 text-[11.5px]">
+                                                        <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#333]")}>{opt?.label}</span>
+                                                    </div>
+                                                )}
+                                            />
+                                        )}
                                     </FieldRow>
 
                                     {/* Start date */}
                                     <FieldRow label="Start date" icon={<Calendar size={13} />} isDark={isDark}>
-                                        <DatePicker
-                                            value={startDate}
-                                            onChange={val => { setStartDate(val); save({ start_date: val || null }); }}
-                                            isDark={isDark}
-                                            placeholder="Select start date"
-                                            className="px-0.5"
-                                        />
+                                        {readOnly ? (
+                                            <div className={cn("px-2 py-0.5 text-[12px] font-medium", isDark ? "text-[#ddd]" : "text-[#333]")}>
+                                                {startDate || 'None'}
+                                            </div>
+                                        ) : (
+                                            <DatePicker
+                                                value={startDate}
+                                                onChange={val => { setStartDate(val); save({ start_date: val || null }); }}
+                                                isDark={isDark}
+                                                placeholder="Select start date"
+                                                className="px-0.5"
+                                            />
+                                        )}
                                     </FieldRow>
 
                                     {/* Due date */}
                                     <FieldRow label="Due date" icon={<Calendar size={13} />} isDark={isDark}>
-                                        <DatePicker
-                                            value={dueDate}
-                                            onChange={val => { setDueDate(val); save({ due_date: val || null }); }}
-                                            isDark={isDark}
-                                            placeholder="Select due date"
-                                            className="px-0.5"
-                                        />
+                                        {readOnly ? (
+                                            <div className={cn("px-2 py-0.5 text-[12px] font-medium", isDark ? "text-[#ddd]" : "text-[#333]")}>
+                                                {dueDate || 'None'}
+                                            </div>
+                                        ) : (
+                                            <DatePicker
+                                                value={dueDate}
+                                                onChange={val => { setDueDate(val); save({ due_date: val || null }); }}
+                                                isDark={isDark}
+                                                placeholder="Select due date"
+                                                className="px-0.5"
+                                            />
+                                        )}
                                     </FieldRow>
 
                                     {/* Assignee */}
@@ -576,40 +618,42 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                             {activeTab === 'comments' && (
                                 <>
                                     {/* Comment input */}
-                                    <div className={cn(
-                                        "rounded-xl border overflow-hidden transition-all",
-                                        isDark ? "bg-[#161616] border-[#252525]" : "bg-white border-[#e8e8e8] shadow-sm"
-                                    )}>
-                                        <textarea
-                                            value={comment}
-                                            onChange={e => setComment(e.target.value)}
-                                            placeholder="Write a comment… (Shift+Enter for new line)"
-                                            rows={comment.trim() ? 3 : 2}
-                                            className={cn(
-                                                "w-full px-4 py-3 text-[12.5px] bg-transparent outline-none resize-none",
-                                                isDark ? "text-white placeholder:text-[#3a3a3a]" : "text-[#333] placeholder:text-[#bbb]"
-                                            )}
-                                        />
-                                        {comment.trim() && (
-                                            <div className={cn("flex items-center justify-between px-3 py-2 border-t", isDark ? "border-[#222]" : "border-[#f0f0f0]")}>
-                                                <div className="flex items-center gap-1">
-                                                    <button className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-colors", isDark ? "text-[#555] hover:bg-white/8" : "text-[#aaa] hover:bg-[#f0f0f0]")}>
-                                                        <Paperclip size={13} />
-                                                    </button>
-                                                    <button className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-colors", isDark ? "text-[#555] hover:bg-white/8" : "text-[#aaa] hover:bg-[#f0f0f0]")}>
-                                                        <AlignLeft size={13} />
+                                    {!readOnly && (
+                                        <div className={cn(
+                                            "rounded-xl border overflow-hidden transition-all",
+                                            isDark ? "bg-[#161616] border-[#252525]" : "bg-white border-[#e8e8e8] shadow-sm"
+                                        )}>
+                                            <textarea
+                                                value={comment}
+                                                onChange={e => setComment(e.target.value)}
+                                                placeholder="Write a comment… (Shift+Enter for new line)"
+                                                rows={comment.trim() ? 3 : 2}
+                                                className={cn(
+                                                    "w-full px-4 py-3 text-[12.5px] bg-transparent outline-none resize-none",
+                                                    isDark ? "text-white placeholder:text-[#3a3a3a]" : "text-[#333] placeholder:text-[#bbb]"
+                                                )}
+                                            />
+                                            {comment.trim() && (
+                                                <div className={cn("flex items-center justify-between px-3 py-2 border-t", isDark ? "border-[#222]" : "border-[#f0f0f0]")}>
+                                                    <div className="flex items-center gap-1">
+                                                        <button className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-colors", isDark ? "text-[#555] hover:bg-white/8" : "text-[#aaa] hover:bg-[#f0f0f0]")}>
+                                                            <Paperclip size={13} />
+                                                        </button>
+                                                        <button className={cn("w-7 h-7 flex items-center justify-center rounded-lg transition-colors", isDark ? "text-[#555] hover:bg-white/8" : "text-[#aaa] hover:bg-[#f0f0f0]")}>
+                                                            <AlignLeft size={13} />
+                                                        </button>
+                                                    </div>
+                                                    <button
+                                                        disabled={!comment.trim()}
+                                                        onClick={() => { gooeyToast('Comments coming soon'); setComment(''); }}
+                                                        className="px-3 py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold disabled:opacity-40 transition-all hover:bg-primary/90 active:scale-95"
+                                                    >
+                                                        Post
                                                     </button>
                                                 </div>
-                                                <button
-                                                    disabled={!comment.trim()}
-                                                    onClick={() => { gooeyToast('Comments coming soon'); setComment(''); }}
-                                                    className="px-3 py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold disabled:opacity-40 transition-all hover:bg-primary/90 active:scale-95"
-                                                >
-                                                    Post
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Empty state */}
                                     <div className="flex-1 flex flex-col items-center justify-center py-10 gap-3">
@@ -624,12 +668,14 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                             {activeTab === 'checklists' && (
                                 <div className="flex flex-col gap-3">
-                                    <button className={cn(
-                                        "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[12px] font-semibold transition-all",
-                                        isDark ? "border-[#252525] text-[#555] hover:text-white hover:bg-white/5" : "border-[#e5e5e5] text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]"
-                                    )}>
-                                        <Plus size={13} /> Add checklist
-                                    </button>
+                                    {!readOnly && (
+                                        <button className={cn(
+                                            "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[12px] font-semibold transition-all",
+                                            isDark ? "border-[#252525] text-[#555] hover:text-white hover:bg-white/5" : "border-[#e5e5e5] text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]"
+                                        )}>
+                                            <Plus size={13} /> Add checklist
+                                        </button>
+                                    )}
                                     <div className="flex flex-col items-center justify-center py-10 gap-3">
                                         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
                                             <Check size={18} className={isDark ? "text-[#333]" : "text-[#ccc]"} />
@@ -642,13 +688,15 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                             {activeTab === 'attachments' && (
                                 <div className="flex flex-col gap-3">
-                                    <button className={cn(
-                                        "flex items-center justify-center gap-2 px-4 py-8 rounded-xl border-2 border-dashed text-[12px] font-semibold transition-all",
-                                        isDark ? "border-[#252525] text-[#444] hover:text-white hover:border-[#383838] hover:bg-white/[0.03]" : "border-[#e5e5e5] text-[#bbb] hover:text-[#333] hover:border-[#bbb]"
-                                    )}>
-                                        <Paperclip size={16} />
-                                        <span>Drop files here or click to upload</span>
-                                    </button>
+                                    {!readOnly && (
+                                        <button className={cn(
+                                            "flex items-center justify-center gap-2 px-4 py-8 rounded-xl border-2 border-dashed text-[12px] font-semibold transition-all",
+                                            isDark ? "border-[#252525] text-[#444] hover:text-white hover:border-[#383838] hover:bg-white/[0.03]" : "border-[#e5e5e5] text-[#bbb] hover:text-[#333] hover:border-[#bbb]"
+                                        )}>
+                                            <Paperclip size={16} />
+                                            <span>Drop files here or click to upload</span>
+                                        </button>
+                                    )}
                                 </div>
                             )}
 
@@ -675,12 +723,14 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                             {activeTab === 'links' && (
                                 <div className="flex flex-col gap-3">
-                                    <button className={cn(
-                                        "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[12px] font-semibold transition-all",
-                                        isDark ? "border-[#252525] text-[#555] hover:text-white hover:bg-white/5" : "border-[#e5e5e5] text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]"
-                                    )}>
-                                        <Link2 size={13} /> Add link
-                                    </button>
+                                    {!readOnly && (
+                                        <button className={cn(
+                                            "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[12px] font-semibold transition-all",
+                                            isDark ? "border-[#252525] text-[#555] hover:text-white hover:bg-white/5" : "border-[#e5e5e5] text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]"
+                                        )}>
+                                            <Link2 size={13} /> Add link
+                                        </button>
+                                    )}
                                     <div className="flex flex-col items-center justify-center py-10 gap-3">
                                         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
                                             <Link2 size={18} className={isDark ? "text-[#333]" : "text-[#ccc]"} />

@@ -131,16 +131,20 @@ export function SettingsSelect({
     onChange, 
     options, 
     className,
-    isDark 
+    isDark,
+    allowCustom = false
 }: { 
     value: string; 
     onChange: (val: string) => void; 
     options: { label: string; value: string }[];
     className?: string;
     isDark?: boolean;
+    allowCustom?: boolean;
 }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState('');
     const containerRef = React.useRef<HTMLDivElement>(null);
+    const inputRef = React.useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -152,51 +156,106 @@ export function SettingsSelect({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const selectedOption = options.find(o => o.value === value) || options[0];
+    // Keep search in sync with value when closed
+    useEffect(() => {
+        if (!isOpen) {
+            const selected = options.find(o => o.value === value);
+            setSearch(selected ? selected.label : value);
+        }
+    }, [isOpen, value, options]);
+
+    useEffect(() => {
+        if (isOpen && inputRef.current) {
+            inputRef.current.focus();
+        }
+    }, [isOpen]);
+
+    const filteredOptions = options.filter(o => 
+        o.label.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const handleSelect = (val: string) => {
+        onChange(val);
+        setIsOpen(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && isOpen) {
+            if (filteredOptions.length > 0) {
+                handleSelect(filteredOptions[0].value);
+            } else if (allowCustom && search) {
+                handleSelect(search);
+            }
+        }
+    };
 
     return (
         <div 
             className={cn("relative w-full", isOpen && "z-[110]")} 
             ref={containerRef}
         >
-            <button
-                type="button"
-                onClick={() => setIsOpen(!isOpen)}
+            <div
                 className={cn(
-                    "w-full h-10 px-3 flex items-center justify-between rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-offset-2",
+                    "flex items-center justify-between rounded-xl border transition-all h-10 px-3",
                     isDark 
-                        ? "bg-[#141414] border-[#252525] text-white focus:ring-black ring-offset-black" 
-                        : "bg-[#fafafa] border-[#ebebeb] text-black focus:ring-white ring-offset-white",
+                        ? "bg-[#141414] border-[#252525] focus-within:border-white/20" 
+                        : "bg-[#fafafa] border-[#ebebeb] focus-within:border-black/20",
                     className
                 )}
+                onClick={() => setIsOpen(true)}
             >
-                <span className="truncate">{selectedOption?.label}</span>
-                <ChevronDown className={cn("ml-2 opacity-50 shrink-0 transition-transform", isOpen && "rotate-180")} size={14} />
-            </button>
+                <input
+                    ref={inputRef}
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onFocus={() => setIsOpen(true)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Select..."
+                    className={cn(
+                        "w-full bg-transparent border-none outline-none text-sm p-0 placeholder:text-black/30 dark:placeholder:text-white/20",
+                        isDark ? "text-white" : "text-black"
+                    )}
+                />
+                <ChevronDown 
+                    className={cn(
+                        "ml-2 opacity-50 shrink-0 transition-transform cursor-pointer", 
+                        isOpen && "rotate-180"
+                    )} 
+                    size={14} 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(!isOpen);
+                    }}
+                />
+            </div>
 
             {isOpen && (
                 <div className={cn(
-                    "absolute left-0 right-0 top-full mt-1.5 z-[100] p-1.5 rounded-xl border shadow-xl animate-in zoom-in-95 fade-in duration-200",
+                    "absolute left-0 right-0 top-full mt-1.5 z-[100] p-1.5 rounded-xl border shadow-xl animate-in zoom-in-95 fade-in duration-200 max-h-[300px] overflow-y-auto custom-scrollbar",
                     isDark ? "bg-[#1c1c1c] border-[#2e2e2e] shadow-black/50" : "bg-white border-[#ebebeb] shadow-black/5"
                 )}>
-                    {options.map((option) => (
-                        <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => {
-                                onChange(option.value);
-                                setIsOpen(false);
-                            }}
-                            className={cn(
-                                "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-0.5 last:mb-0",
-                                value === option.value
-                                    ? isDark ? "bg-white/10 text-white" : "bg-black/5 text-[#111]"
-                                    : isDark ? "text-white/60 hover:bg-white/5 hover:text-white" : "text-black/60 hover:bg-black/[0.03] hover:text-black"
-                            )}
-                        >
-                            {option.label}
-                        </button>
-                    ))}
+                    {filteredOptions.length > 0 ? (
+                        filteredOptions.map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => handleSelect(option.value)}
+                                className={cn(
+                                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-0.5 last:mb-0",
+                                    value === option.value
+                                        ? isDark ? "bg-white/10 text-white" : "bg-black/5 text-[#111]"
+                                        : isDark ? "text-white/60 hover:bg-white/5 hover:text-white" : "text-black/60 hover:bg-black/[0.03] hover:text-black"
+                                )}
+                            >
+                                {option.label}
+                            </button>
+                        ))
+                    ) : (
+                        <div className={cn("px-3 py-2 text-sm italic opacity-50", isDark ? "text-white" : "text-black")}>
+                            {allowCustom ? `Press Enter to use "${search}"` : "No results found"}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

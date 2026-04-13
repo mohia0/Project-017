@@ -18,6 +18,8 @@ import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
 import { gooeyToast } from 'goey-toast';
 import DatePicker from '@/components/ui/DatePicker';
+import { SchedulerFormBuilder } from './SchedulerFormBuilder';
+import { SettingsSelect, SettingsToggle } from '@/components/settings/SettingsField';
 
 /* ══════════════════════════════════════════════════════════
    TYPES
@@ -41,6 +43,8 @@ interface SchedulerMeta {
     submissionLimit: number | null;
     logoUrl: string;
     design: DocumentDesign;
+    fields?: any[];
+    availability?: Record<string, { active: boolean; start: string; end: string }>;
 }
 
 const DEFAULT_META: SchedulerMeta = {
@@ -58,6 +62,15 @@ const DEFAULT_META: SchedulerMeta = {
     submissionLimit: null,
     logoUrl: '',
     design: DEFAULT_DOCUMENT_DESIGN,
+    availability: {
+        Monday:    { active: true,  start: '9:00 AM', end: '5:00 PM' },
+        Tuesday:   { active: true,  start: '9:00 AM', end: '5:00 PM' },
+        Wednesday: { active: true,  start: '9:00 AM', end: '5:00 PM' },
+        Thursday:  { active: true,  start: '9:00 AM', end: '5:00 PM' },
+        Friday:    { active: true,  start: '9:00 AM', end: '5:00 PM' },
+        Saturday:  { active: false, start: '9:00 AM', end: '5:00 PM' },
+        Sunday:    { active: false, start: '9:00 AM', end: '5:00 PM' },
+    }
 };
 
 const STATUS_OPTS: SchedulerStatus[] = ['Active', 'Draft', 'Inactive'];
@@ -83,10 +96,12 @@ function isColorDark(color: string) {
 /* ══════════════════════════════════════════════════════════
    HELPERS
 ══════════════════════════════════════════════════════════ */
-function SectionAccordion({ label, icon, isDark, children }: {
-    label: string; icon: React.ReactNode; isDark: boolean; children: React.ReactNode;
+import { CalendarPreview, getAvailableSlots, timeToMinutes } from './CalendarPreview';
+
+function SectionAccordion({ label, icon, isDark, children, defaultOpen = true }: {
+    label: string; icon: React.ReactNode; isDark: boolean; children: React.ReactNode; defaultOpen?: boolean;
 }) {
-    const [open, setOpen] = useState(true);
+    const [open, setOpen] = useState(defaultOpen);
     return (
         <div className={cn("border-b last:border-b-0", isDark ? "border-[#252525]" : "border-[#f0f0f0]")}>
             <button
@@ -120,11 +135,11 @@ function Field({ label, isDark, children }: { label: string; isDark: boolean; ch
         </div>
     );
 }
-function PanelInput({ value, onChange, placeholder, type = 'text', isDark }: {
-    value: string | number; onChange: (v: string) => void; placeholder?: string; type?: string; isDark: boolean;
+function PanelInput({ value, onChange, placeholder, type = 'text', isDark, min, max }: {
+    value: string | number; onChange: (v: string) => void; placeholder?: string; type?: string; isDark: boolean; min?: number; max?: number;
 }) {
     return (
-        <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} min={min} max={max}
             className={cn("w-full text-[12px] bg-transparent outline-none transition-all font-medium",
                 isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#111] placeholder:text-[#ccc]"
             )} />
@@ -134,104 +149,117 @@ function PanelInput({ value, onChange, placeholder, type = 'text', isDark }: {
 /* ══════════════════════════════════════════════════════════
    CALENDAR PREVIEW
 ══════════════════════════════════════════════════════════ */
-function CalendarPreview({ isDark, primaryColor }: { isDark: boolean; primaryColor: string }) {
-    const today = new Date();
-    const [selDate, setSelDate] = useState<number | null>(null);
-    const [month] = useState(today.getMonth());
-    const [year] = useState(today.getFullYear());
+// CalendarPreview removed (using shared component)
 
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-    const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const TIME_SLOTS_PREVIEW = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '2:00 PM', '2:30 PM', '3:00 PM'];
 
-    const TIME_SLOTS = ['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '2:00 PM', '2:30 PM', '3:00 PM'];
-    const [selTime, setSelTime] = useState<string | null>(null);
+/* ══════════════════════════════════════════════════════════
+   AVAILABILITY TAB
+══════════════════════════════════════════════════════════ */
+const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-    // Fill to 6 rows
-    while (cells.length % 7 !== 0) cells.push(null);
+const START_TIMES = [
+    '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM',
+    '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+    '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM',
+    '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM',
+];
+
+const END_TIMES = [
+    '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM',
+    '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
+    '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM',
+    '5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '9:00 PM',
+];
+
+type DayAvailability = { active: boolean; start: string; end: string };
+type AvailabilityMap = Record<string, DayAvailability>;
+
+const DEFAULT_AVAILABILITY: AvailabilityMap = DEFAULT_META.availability!;
+
+function AvailabilityTab({ isDark, meta, updateMeta, primaryColor }: {
+    isDark: boolean;
+    meta: SchedulerMeta;
+    updateMeta: (patch: Partial<SchedulerMeta>) => void;
+    primaryColor: string;
+}) {
+    const availability: AvailabilityMap = (meta as any).availability || DEFAULT_AVAILABILITY;
+
+    const updateDay = (day: string, patch: Partial<DayAvailability>) => {
+        updateMeta({
+            availability: {
+                ...availability,
+                [day]: { ...availability[day], ...patch },
+            },
+        } as any);
+    };
 
     return (
-        <div className={cn("rounded-xl overflow-hidden", isDark ? "bg-[#111]" : "bg-white")}>
-            {/* Month header */}
-            <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                <span className={cn("font-bold text-[14px]", isDark ? "text-white" : "text-[#111]")}>
-                    {MONTHS[month]} {year}
-                </span>
-                <div className="flex gap-1">
-                    {['←', '→'].map(a => (
-                        <button key={a} className={cn(
-                            "w-7 h-7 rounded-lg flex items-center justify-center text-[14px] transition-colors",
-                            isDark ? "text-[#555] hover:text-white hover:bg-white/5" : "text-[#bbb] hover:text-[#111] hover:bg-[#f5f5f5]"
-                        )}>{a}</button>
-                    ))}
-                </div>
+        <div className="flex-1 overflow-auto p-6">
+            <div className={cn("font-semibold text-[13px] mb-1", isDark ? "text-[#aaa]" : "text-[#555]")}>
+                Weekly Availability
             </div>
-            {/* Week headers */}
-            <div className="grid grid-cols-7 px-4">
-                {DAYS.map((d, i) => (
-                    <div key={i} className={cn("text-center text-[10px] font-bold py-1.5",
-                        isDark ? "text-[#444]" : "text-[#ccc]")}>{d}</div>
-                ))}
+            <div className={cn("text-[11.5px] mb-5", isDark ? "text-[#444]" : "text-[#bbb]")}>
+                Set the days and hours you are available for bookings.
             </div>
-            {/* Day grid */}
-            <div className="grid grid-cols-7 gap-0.5 px-4 pb-3">
-                {cells.map((d, i) => {
-                    if (!d) return <div key={i} />;
-                    const isPast = d < today.getDate() && month === today.getMonth() && year === today.getFullYear();
-                    const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-                    const isSel = d === selDate;
+            <div className="space-y-2 max-w-[640px]">
+                {DAYS_OF_WEEK.map((day) => {
+                    const cfg = availability[day] || DEFAULT_AVAILABILITY[day];
                     return (
-                        <button
-                            key={i}
-                            onClick={() => !isPast && setSelDate(d)}
-                            disabled={isPast}
+                        <div key={day}
                             className={cn(
-                                "aspect-square flex items-center justify-center text-[11.5px] font-medium rounded-lg transition-all",
-                                isPast ? "opacity-20 cursor-not-allowed" : "cursor-pointer",
-                                isSel
-                                    ? "text-black font-bold"
-                                    : isToday
-                                        ? (isDark ? "text-white bg-white/10" : "text-[#111] bg-[#f0f0f0]")
-                                        : (isDark ? "text-[#aaa] hover:bg-white/8 hover:text-white" : "text-[#333] hover:bg-[#f5f5f5]")
+                                "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all",
+                                isDark ? "bg-[#111] border-[#252525]" : "bg-white border-[#ebebeb]",
+                                !cfg.active && "opacity-60"
+                            )}>
+                            {/* Toggle */}
+                            <SettingsToggle
+                                checked={cfg.active}
+                                onChange={checked => updateDay(day, { active: checked })}
+                            />
+
+                            {/* Day name */}
+                            <div className={cn(
+                                "w-[80px] text-[12px] font-semibold shrink-0",
+                                cfg.active
+                                    ? (isDark ? "text-[#ccc]" : "text-[#333]")
+                                    : (isDark ? "text-[#444]" : "text-[#bbb]")
+                            )}>
+                                {day}
+                            </div>
+
+                            {/* Time pickers */}
+                            {cfg.active ? (
+                                <div className="flex items-center gap-2 flex-1">
+                                    <div className="flex-1">
+                                        <SettingsSelect
+                                            isDark={isDark}
+                                            value={cfg.start}
+                                            onChange={val => updateDay(day, { start: val })}
+                                            options={START_TIMES.map(t => ({ label: t, value: t }))}
+                                            className="!h-8 !text-[11px] !rounded-lg"
+                                            allowCustom={true}
+                                        />
+                                    </div>
+                                    <span className={cn("text-[11px] shrink-0", isDark ? "text-[#444]" : "text-[#ccc]")}>–</span>
+                                    <div className="flex-1">
+                                        <SettingsSelect
+                                            isDark={isDark}
+                                            value={cfg.end}
+                                            onChange={val => updateDay(day, { end: val })}
+                                            options={END_TIMES.map(t => ({ label: t, value: t }))}
+                                            className="!h-8 !text-[11px] !rounded-lg"
+                                            allowCustom={true}
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className={cn("text-[11.5px] italic", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>Unavailable</div>
                             )}
-                            style={isSel ? { background: primaryColor } : undefined}
-                        >
-                            {d}
-                        </button>
+                        </div>
                     );
                 })}
             </div>
-
-            {/* Time slots */}
-            {selDate && (
-                <div className={cn("border-t px-4 py-3", isDark ? "border-[#222]" : "border-[#f0f0f0]")}>
-                    <div className={cn("text-[10.5px] font-bold uppercase tracking-wider mb-2",
-                        isDark ? "text-[#555]" : "text-[#bbb]")}>
-                        Available times
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                        {TIME_SLOTS.map(t => (
-                            <button
-                                key={t}
-                                onClick={() => setSelTime(t)}
-                                className={cn(
-                                    "px-2 py-1.5 rounded-lg text-[11.5px] font-medium border transition-all text-center",
-                                    selTime === t
-                                        ? "text-black border-transparent font-bold"
-                                        : (isDark
-                                            ? "border-[#252525] text-[#aaa] hover:border-[#333] hover:text-white"
-                                            : "border-[#ebebeb] text-[#555] hover:border-[#ccc]")
-                                )}
-                                style={selTime === t ? { background: primaryColor } : undefined}
-                            >
-                                {t}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
@@ -261,12 +289,20 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+    // Preview calendar state (editor preview only)
+    const [previewSelDate, setPreviewSelDate] = useState<number | null>(null);
+    const [previewSelTime, setPreviewSelTime] = useState<string | null>(null);
+    const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
 
     const statusRef = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
 
     const metaRef = useRef(meta);
     useEffect(() => { metaRef.current = meta; }, [meta]);
+
+    useEffect(() => {
+        if (selectedFieldId) setRightTab('details');
+    }, [selectedFieldId]);
 
     useEffect(() => {
         const h = (e: MouseEvent) => {
@@ -277,7 +313,6 @@ export default function SchedulerEditor({ id }: { id?: string }) {
         return () => document.removeEventListener('mousedown', h);
     }, []);
 
-    // Load from store
     useEffect(() => {
         if (!id || isLoaded || schedulers.length === 0) return;
         const s = schedulers.find(s => s.id === id);
@@ -285,7 +320,17 @@ export default function SchedulerEditor({ id }: { id?: string }) {
         setTitle(s.title);
         setStatus(s.status);
         if (s.meta && typeof s.meta === 'object') {
-            setMeta(prev => ({ ...prev, ...(s.meta as any) }));
+            const m = { ...DEFAULT_META, ...(s.meta as any) };
+            
+            // Add default fields if empty
+            if (!m.fields || m.fields.length === 0) {
+                m.fields = [
+                    { id: 'f_name', type: 'full_name', label: 'Full name', required: true, placeholder: 'Enter your name' },
+                    { id: 'f_email', type: 'email', label: 'Email address', required: true, placeholder: 'Enter your email' },
+                    { id: 'f_notes', type: 'long_text', label: 'Additional notes', required: false, placeholder: 'Any details you want to share...' }
+                ];
+            }
+            setMeta(m);
         }
         setIsLoaded(true);
     }, [id, schedulers, isLoaded]);
@@ -314,6 +359,13 @@ export default function SchedulerEditor({ id }: { id?: string }) {
 
     const updateDesign = useCallback((patch: Partial<DocumentDesign>) => {
         setMeta(prev => ({ ...prev, design: { ...prev.design, ...patch } }));
+    }, []);
+
+    const updateField = useCallback((fieldId: string, patch: any) => {
+        setMeta(prev => ({
+            ...prev,
+            fields: (prev.fields || []).map(f => f.id === fieldId ? { ...f, ...patch } : f)
+        }));
     }, []);
 
     const copyLink = () => {
@@ -514,6 +566,9 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                         {/* ── CANVAS ── */}
                         <div
                             className="flex-1 overflow-auto relative"
+                            onClick={(e) => {
+                                if (e.target === e.currentTarget) setSelectedFieldId(null);
+                            }}
                             style={{
                                 backgroundColor: design.backgroundColor || '#f7f7f7',
                                 backgroundImage: getBackgroundImageWithOpacity(design.backgroundImage, design.backgroundColor || '#f7f7f7', design.backgroundImageOpacity),
@@ -602,7 +657,8 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                             </div>
                                                         </div>
 
-                                                        {/* Duration selector */}
+                                                        {/* Duration selector — only on scheduler step */}
+                                                        {canvasStep === 'scheduler' && (
                                                         <div className="flex flex-wrap gap-2">
                                                             {(meta.durations && meta.durations.length > 0 ? meta.durations : [30, 60]).map((d: number) => (
                                                                 <button key={d}
@@ -616,31 +672,40 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                                 </button>
                                                             ))}
                                                         </div>
+                                                        )}
                                                     </div>
 
                                                     {/* Canvas step content */}
                                                     <div className="p-5">
                                                         {canvasStep === 'scheduler' && (
-                                                            <div className="flex flex-col gap-6">
-                                                                <div className="w-full">
-                                                                    <CalendarPreview isDark={isColorDark(design.blockBackgroundColor || '#fff')} primaryColor={design.primaryColor || '#4dbf39'} />
-                                                                </div>
-                                                                <div className="space-y-2">
-                                                                    <div className="text-[10.5px] font-bold uppercase tracking-wider mb-3 opacity-40" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#000' }}>
-                                                                        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                                            <div className="flex flex-col gap-4">
+                                                                <CalendarPreview
+                                                                    isDark={isColorDark(design.blockBackgroundColor || '#fff')}
+                                                                    primaryColor={design.primaryColor || '#4dbf39'}
+                                                                    selDate={previewSelDate}
+                                                                    meta={meta}
+                                                                    onDateSelect={(d) => { setPreviewSelDate(d); setPreviewSelTime(null); }}
+                                                                />
+                                                                {previewSelDate && (
+                                                                    <div>
+                                                                        <div className="text-[10.5px] font-bold uppercase tracking-wider mb-2 opacity-40" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#000' }}>
+                                                                            Available times
+                                                                        </div>
+                                                                        <div className="grid grid-cols-2 gap-1.5">
+                                                                            {TIME_SLOTS_PREVIEW.map(t => (
+                                                                                <button key={t}
+                                                                                    onClick={() => setPreviewSelTime(t)}
+                                                                                    className="px-2 py-1.5 rounded-lg text-[11.5px] font-medium border transition-all text-center"
+                                                                                    style={previewSelTime === t
+                                                                                        ? { background: design.primaryColor || '#4dbf39', color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000', borderColor: 'transparent' }
+                                                                                        : { borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? '#333' : '#e5e5e5', color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#555' }
+                                                                                    }>
+                                                                                    {t}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
                                                                     </div>
-                                                                    {['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '2:00 PM', '2:30 PM'].map(t => (
-                                                                        <button key={t}
-                                                                            className="w-full py-2.5 rounded-lg text-[12px] font-semibold border text-center transition-all hover:opacity-80"
-                                                                            style={{
-                                                                                borderColor: design.primaryColor || '#4dbf39',
-                                                                                color: design.primaryColor || '#4dbf39',
-                                                                                borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 8)}px`,
-                                                                            }}>
-                                                                            {t}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
+                                                                )}
                                                             </div>
                                                         )}
 
@@ -732,7 +797,8 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                 </div>
                                             </div>
 
-                                            {/* Duration selector */}
+                                            {/* Duration selector — only on scheduler step */}
+                                            {canvasStep === 'scheduler' && (
                                             <div className="flex flex-wrap gap-2">
                                                 {(meta.durations && meta.durations.length > 0 ? meta.durations : [30, 60]).map((d: number) => (
                                                     <button key={d}
@@ -746,28 +812,50 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                     </button>
                                                 ))}
                                             </div>
+                                            )}
                                         </div>
 
                                         {/* Canvas step content */}
                                         <div className="p-5 md:p-8">
                                             {canvasStep === 'scheduler' && (
-                                                <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-6">
-                                                    <CalendarPreview isDark={isColorDark(design.blockBackgroundColor || '#fff')} primaryColor={design.primaryColor || '#4dbf39'} />
-                                                    <div className="space-y-2">
+                                                <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-6">
+                                                    <CalendarPreview
+                                                        isDark={isColorDark(design.blockBackgroundColor || '#fff')}
+                                                        primaryColor={design.primaryColor || '#4dbf39'}
+                                                        selDate={previewSelDate}
+                                                        meta={meta}
+                                                        onDateSelect={(d) => { setPreviewSelDate(d); setPreviewSelTime(null); }}
+                                                    />
+                                                    <div>
                                                         <div className="text-[10.5px] font-bold uppercase tracking-wider mb-3 opacity-40" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#000' }}>
-                                                            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                                            {previewSelDate
+                                                                ? new Date(new Date().getFullYear(), new Date().getMonth(), previewSelDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                                                                : 'Select a date'
+                                                            }
                                                         </div>
-                                                        {['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '2:00 PM', '2:30 PM'].map(t => (
-                                                            <button key={t}
-                                                                className="w-full py-2 rounded-lg text-[12px] font-semibold border text-center transition-all hover:opacity-80"
-                                                                style={{
-                                                                    borderColor: design.primaryColor || '#4dbf39',
-                                                                    color: design.primaryColor || '#4dbf39',
-                                                                    borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 8)}px`,
-                                                                }}>
-                                                                {t}
-                                                            </button>
-                                                        ))}
+                                                        {!previewSelDate ? (
+                                                            <div className="text-[11px] opacity-40 italic" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#888' }}>Choose a date to see available times</div>
+                                                        ) : (
+                                                            <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
+                                                                {getAvailableSlots(previewSelDate, meta.durations, meta.availability).length > 0 ? (
+                                                                    getAvailableSlots(previewSelDate, meta.durations, meta.availability).map(t => (
+                                                                        <button key={t}
+                                                                            onClick={() => setPreviewSelTime(t)}
+                                                                            className="w-full py-2 rounded-lg text-[12px] font-semibold border text-center transition-all"
+                                                                            style={previewSelTime === t
+                                                                                ? { background: design.primaryColor || '#4dbf39', color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000', borderColor: 'transparent', borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 8)}px` }
+                                                                                : { borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? '#333' : '#e5e5e5', color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#888', borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 8)}px` }
+                                                                            }>
+                                                                            {t}
+                                                                        </button>
+                                                                    ))
+                                                                ) : (
+                                                                    <div className="text-[11px] opacity-40 italic text-center py-4" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#888' }}>
+                                                                        No slots available for this day
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
@@ -779,6 +867,8 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                         design={design} 
                                                         fields={meta.fields || []} 
                                                         updateFields={(newFields) => updateMeta({ fields: newFields })} 
+                                                        selectedFieldId={selectedFieldId}
+                                                        onSelectField={setSelectedFieldId}
                                                     />
                                                     <div className="flex gap-3 pt-2">
                                                         <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all"
@@ -892,16 +982,17 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                         <SectionAccordion label="Buffers" icon={<Sliders size={11} />} isDark={isDark}>
                                             <div className="space-y-2">
                                                 {[['Before', 'bufferBefore'], ['After', 'bufferAfter']].map(([label, key]) => (
-                                                    <MetaField key={key} label={label} isDark={isDark}>
-                                                        <select
-                                                            value={(meta as any)[key]}
-                                                            onChange={e => updateMeta({ [key]: Number(e.target.value) } as any)}
-                                                            className={cn("w-full py-1 text-[12px] bg-transparent outline-none font-medium",
-                                                                isDark ? "text-[#ccc]" : "text-[#333]")}>
-                                                            {[0, 5, 10, 15, 30, 60].map(v => (
-                                                                <option key={v} value={v}>{v === 0 ? 'None' : `${v} min`}</option>
-                                                            ))}
-                                                        </select>
+                                                    <MetaField key={key} label={label as string} isDark={isDark}>
+                                                        <SettingsSelect
+                                                            isDark={isDark}
+                                                            value={String((meta as any)[key])}
+                                                            onChange={val => updateMeta({ [key]: Number(val) } as any)}
+                                                            options={[0, 5, 10, 15, 30, 60].map(v => ({ 
+                                                                label: v === 0 ? 'None' : `${v} min`, 
+                                                                value: String(v) 
+                                                            }))}
+                                                            className="!h-7 !text-[11px] !border-none !bg-transparent !px-0"
+                                                        />
                                                     </MetaField>
                                                 ))}
                                             </div>
@@ -911,17 +1002,17 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                             <div className="space-y-2">
                                                 <MetaField label="Max per day" isDark={isDark}>
                                                     <PanelInput type="number" min={1} max={50} value={meta.maxPerDay}
-                                                            onChange={e => updateMeta({ maxPerDay: Number(e.target.value) })}
+                                                            onChange={v => updateMeta({ maxPerDay: Number(v) })}
                                                             isDark={isDark} />
                                                 </MetaField>
                                                 <MetaField label="Advance notice (hrs)" isDark={isDark}>
                                                     <PanelInput type="number" min={0} value={meta.advanceNotice}
-                                                            onChange={e => updateMeta({ advanceNotice: Number(e.target.value) })}
+                                                            onChange={v => updateMeta({ advanceNotice: Number(v) })}
                                                             isDark={isDark} />
                                                 </MetaField>
                                                 <MetaField label="Future limit (days)" isDark={isDark}>
                                                     <PanelInput type="number" min={1} value={meta.futureLimit}
-                                                            onChange={e => updateMeta({ futureLimit: Number(e.target.value) })}
+                                                            onChange={v => updateMeta({ futureLimit: Number(v) })}
                                                             isDark={isDark} />
                                                 </MetaField>
                                                 <MetaField label="Submission limit" isDark={isDark}>
@@ -972,16 +1063,71 @@ export default function SchedulerEditor({ id }: { id?: string }) {
 
                                         <SectionAccordion label="Localisation" icon={<Globe size={11} />} isDark={isDark}>
                                             <MetaField label="Timezone" isDark={isDark}>
-                                                <select className={cn("w-full py-1 text-[12px] bg-transparent outline-none font-medium",
-                                                    isDark ? "text-[#ccc]" : "text-[#333]")}>
-                                                    <option>UTC</option>
-                                                    <option>Europe/London</option>
-                                                    <option>America/New_York</option>
-                                                    <option>America/Los_Angeles</option>
-                                                    <option>Asia/Tokyo</option>
-                                                </select>
+                                                <SettingsSelect
+                                                    isDark={isDark}
+                                                    value="UTC" // Static for now as meta doesn't have it
+                                                    onChange={() => {}}
+                                                    options={['UTC', 'Europe/London', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo'].map(t => ({ 
+                                                        label: t, 
+                                                        value: t 
+                                                    }))}
+                                                    className="!h-7 !text-[11px] !border-none !bg-transparent !px-0"
+                                                />
                                             </MetaField>
                                         </SectionAccordion>
+
+                                        {canvasStep === 'form' && selectedFieldId && (() => {
+                                            const field = (meta.fields || []).find(f => f.id === selectedFieldId);
+                                            if (!field) return null;
+                                            return (
+                                                <div className="border-t mt-4 pt-4 px-4 space-y-4">
+                                                    <div className={cn("text-[10px] font-bold uppercase tracking-wider mb-2", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                                                        Field Settings
+                                                    </div>
+                                                    <div className="space-y-3 pb-6">
+                                                        <div>
+                                                            <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Label</label>
+                                                            <PanelInput value={field.label} onChange={v => updateField(field.id, { label: v })} isDark={isDark} />
+                                                        </div>
+                                                        <div>
+                                                            <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Placeholder</label>
+                                                            <PanelInput value={field.placeholder || ''} onChange={v => updateField(field.id, { placeholder: v })} isDark={isDark} />
+                                                        </div>
+                                                        <label className="flex items-center gap-2.5 cursor-pointer"
+                                                            onClick={() => updateField(field.id, { required: !field.required })}>
+                                                            <div className={cn("w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
+                                                                field.required ? "border-primary bg-primary" : (isDark ? "border-[#333] bg-[#151515]" : "border-[#ddd] bg-white"))}>
+                                                                {field.required && <Check size={9} className="text-black" />}
+                                                            </div>
+                                                            <span className={cn("text-[11.5px]", isDark ? "text-[#666]" : "text-[#888]")}>Required field</span>
+                                                        </label>
+
+                                                        {(field.type === 'dropdown' || field.type === 'multi_choice') && (
+                                                            <div>
+                                                                <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Options (one per line)</label>
+                                                                <textarea
+                                                                    rows={4}
+                                                                    value={(field.options || []).join('\n')}
+                                                                    onChange={e => updateField(field.id, { options: e.target.value.split('\n').filter(Boolean) })}
+                                                                    className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none resize-none",
+                                                                        isDark ? "bg-[#151515] border-[#2a2a2a] text-[#ddd]" : "bg-white border-[#e5e5e5] text-[#111]")}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                        
+                                                        <button 
+                                                            onClick={() => {
+                                                                updateMeta({ fields: (meta.fields || []).filter(f => f.id !== field.id) });
+                                                                setSelectedFieldId(null);
+                                                            }}
+                                                            className="w-full py-2.5 flex items-center justify-center gap-2 text-[11px] font-bold text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-xl transition-all"
+                                                        >
+                                                            <Trash2 size={13} /> Delete Field
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 )}
 
@@ -1022,52 +1168,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                 )}
 
                 {editorTab === 'availability' && (
-                    <div className="flex-1 overflow-auto p-6">
-                        <div className={cn("font-semibold text-[13px] mb-4", isDark ? "text-[#aaa]" : "text-[#555]")}>
-                            Weekly Availability
-                        </div>
-                        <div className="space-y-2 max-w-[600px]">
-                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day, i) => {
-                                const isWeekend = i >= 5;
-                                return (
-                                    <div key={day}
-                                        className={cn("flex items-center gap-3 px-4 py-3 rounded-xl border",
-                                            isDark ? "bg-[#111] border-[#252525]" : "bg-white border-[#ebebeb]")}>
-                                        <div className={cn("w-[70px] text-[12px] font-semibold",
-                                            isWeekend
-                                                ? (isDark ? "text-[#444]" : "text-[#ccc]")
-                                                : (isDark ? "text-[#aaa]" : "text-[#555]"))}>
-                                            {day.slice(0, 3)}
-                                        </div>
-                                        <div className="flex items-center gap-2 flex-1">
-                                            <div className={cn(
-                                                "w-8 h-4 rounded-full relative transition-all cursor-pointer",
-                                                !isWeekend ? "bg-primary" : (isDark ? "bg-[#222]" : "bg-[#e5e5e5]")
-                                            )}>
-                                                <div className={cn(
-                                                    "absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-all",
-                                                    !isWeekend ? "left-[18px]" : "left-0.5"
-                                                )} />
-                                            </div>
-                                            {!isWeekend && (
-                                                <div className="flex items-center gap-2">
-                                                    <select className={cn("px-2 py-1 text-[11.5px] rounded-lg border outline-none",
-                                                        isDark ? "bg-[#151515] border-[#2a2a2a] text-[#ddd]" : "bg-[#f5f5f5] border-transparent text-[#555]")}>
-                                                        {['9:00 AM', '10:00 AM', '11:00 AM'].map(t => <option key={t}>{t}</option>)}
-                                                    </select>
-                                                    <span className={cn("text-[11px]", isDark ? "text-[#444]" : "text-[#ccc]")}>to</span>
-                                                    <select className={cn("px-2 py-1 text-[11.5px] rounded-lg border outline-none",
-                                                        isDark ? "bg-[#151515] border-[#2a2a2a] text-[#ddd]" : "bg-[#f5f5f5] border-transparent text-[#555]")}>
-                                                        {['5:00 PM', '6:00 PM', '7:00 PM'].map(t => <option key={t}>{t}</option>)}
-                                                    </select>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+                    <AvailabilityTab isDark={isDark} meta={meta} updateMeta={updateMeta} primaryColor={design.primaryColor || '#4dbf39'} />
                 )}
             </div>
 

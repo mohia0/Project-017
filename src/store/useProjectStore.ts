@@ -270,41 +270,58 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     },
 
     reorderTask: async (id, projectId, destGroupId, newPosition) => {
+        let finalUpdates: any[] = [];
         set((s) => {
             const projectTasks = [...(s.tasksByProject[projectId] || [])];
             const taskIndex = projectTasks.findIndex((t) => t.id === id);
             if (taskIndex === -1) return s;
 
-            const task = projectTasks[taskIndex];
-            task.task_group_id = destGroupId;
+            // 1. Create a clone of the dragged task with updated group
+            const clonedTask = { ...projectTasks[taskIndex], task_group_id: destGroupId };
 
-            const colTasks = projectTasks
+            // 2. Extract out other tasks in the destination group
+            let colTasks = projectTasks
                 .filter((t) => t.task_group_id === destGroupId && t.id !== id)
                 .sort((a, b) => a.position - b.position);
 
-            colTasks.splice(newPosition, 0, task);
-            colTasks.forEach((t, i) => { t.position = i; });
+            // 3. Insert the cloned task at the new position
+            colTasks.splice(newPosition, 0, clonedTask);
+
+            // 4. Map them to strictly new objects with updated positions
+            colTasks = colTasks.map((t, i) => ({ ...t, position: i }));
+
+            // Save updates payload for Supabase
+            finalUpdates = colTasks.map((t) => ({
+                id: t.id,
+                position: t.position,
+                task_group_id: t.task_group_id,
+            }));
+
+            // 5. Build the fully updated project tasks array
+            const nextProjectTasks = projectTasks.map((t) => {
+                if (t.id === id) return clonedTask;
+                const updatedChild = colTasks.find(ct => ct.id === t.id);
+                if (updatedChild) return updatedChild;
+                return t;
+            });
 
             return {
                 tasksByProject: {
                     ...s.tasksByProject,
-                    [projectId]: projectTasks,
+                    [projectId]: nextProjectTasks,
                 },
             };
         });
 
-        // Supabase sync
-        const s = get();
-        const projectTasks = s.tasksByProject[projectId] || [];
-        const colTasks = projectTasks.filter((t) => t.task_group_id === destGroupId);
-
-        const updates = colTasks.map((t) => ({
-            id: t.id,
-            position: t.position,
-            task_group_id: t.task_group_id,
-        }));
-
-        await supabase.from('project_tasks').upsert(updates);
+        // Supabase sync using single UPDATE queries to avoid upsert null constraint errors
+        if (finalUpdates.length > 0) {
+            await Promise.all(finalUpdates.map((t) => 
+                supabase.from('project_tasks').update({
+                    position: t.position,
+                    task_group_id: t.task_group_id,
+                }).eq('id', t.id)
+            ));
+        }
     },
 
     // ── Task Groups ───────────────────────────────────────────────────────────
@@ -369,33 +386,49 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     },
 
     reorderTaskGroup: async (id, projectId, newPosition) => {
+        let finalUpdates: any[] = [];
         set((s) => {
             const projectGroups = [...(s.groupsByProject[projectId] || [])].sort((a, b) => a.position - b.position);
             const groupIndex = projectGroups.findIndex((g) => g.id === id);
             if (groupIndex === -1) return s;
 
+            // 1. Remove the group to be moved
             const [group] = projectGroups.splice(groupIndex, 1);
-            projectGroups.splice(newPosition, 0, group);
+            
+            // 2. Clone the group to maintain immutability
+            const clonedGroup = { ...group };
 
-            projectGroups.forEach((g, i) => { g.position = i; });
+            // 3. Insert into the new position
+            projectGroups.splice(newPosition, 0, clonedGroup);
+
+            // 4. Map the entire array to new objects with updated positions
+            const nextProjectGroups = projectGroups.map((g, i) => ({
+                ...g,
+                position: i
+            }));
+
+            // Save updates payload for Supabase
+            finalUpdates = nextProjectGroups.map((g) => ({
+                id: g.id,
+                position: g.position,
+            }));
 
             return {
                 groupsByProject: {
                     ...s.groupsByProject,
-                    [projectId]: projectGroups,
+                    [projectId]: nextProjectGroups,
                 },
             };
         });
 
-        // Supabase sync
-        const s = get();
-        const groups = s.groupsByProject[projectId] || [];
-        const updates = groups.map((g) => ({
-            id: g.id,
-            position: g.position,
-        }));
-
-        await supabase.from('project_task_groups').upsert(updates);
+        // Supabase sync using single UPDATE queries
+        if (finalUpdates.length > 0) {
+            await Promise.all(finalUpdates.map((g) => 
+                supabase.from('project_task_groups').update({
+                    position: g.position,
+                }).eq('id', g.id)
+            ));
+        }
     },
 
     // ── Linked Items ──────────────────────────────────────────────────────────

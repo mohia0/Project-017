@@ -15,9 +15,10 @@ interface DatePickerProps {
     className?: string;
     disabled?: boolean;
     align?: 'left' | 'right' | 'center';
+    style?: React.CSSProperties;
 }
 
-export default function DatePicker({ value, onChange, isDark: forcedIsDark, placeholder = "Select date", className, disabled, align = "left" }: DatePickerProps) {
+export default function DatePicker({ value, onChange, isDark: forcedIsDark, placeholder = "Select date", className, disabled, align = "left", style }: DatePickerProps) {
     const { theme } = useUIStore();
     const isDark = forcedIsDark !== undefined ? forcedIsDark : theme === 'dark';
     
@@ -165,7 +166,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
     }
 
     return (
-        <div className={cn("relative w-full", className)} ref={containerRef}>
+        <div className={cn("relative w-full", className)} ref={containerRef} style={style}>
             {/* Input Trigger */}
             <button
                 type="button"

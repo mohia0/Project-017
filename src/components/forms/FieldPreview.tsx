@@ -6,6 +6,7 @@ import { ChevronDown, Image } from 'lucide-react';
 import { CountryPicker } from '@/components/ui/CountryPicker';
 import DatePicker from '@/components/ui/DatePicker';
 import { FormField } from '@/store/useFormStore';
+import { gooeyToast } from 'goey-toast';
 
 interface FieldPreviewProps {
     field: FormField;
@@ -16,6 +17,7 @@ interface FieldPreviewProps {
     marginBottom?: number;
     value?: string;
     onChange?: (val: string) => void;
+    isPreview?: boolean;
 }
 
 export default function FieldPreview({
@@ -26,7 +28,8 @@ export default function FieldPreview({
     marginTop = 0,
     marginBottom = 0,
     value,
-    onChange
+    onChange,
+    isPreview
 }: FieldPreviewProps) {
     const [localValue, setLocalValue] = useState("");
     

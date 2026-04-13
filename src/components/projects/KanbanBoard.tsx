@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, X, MoreHorizontal, CheckSquare, Square, Check,
     Flag, Calendar, Trash2, Edit3, CheckCircle2,
-    PlayCircle, Eye, Inbox, RotateCcw, Circle
+    PlayCircle, Eye, Inbox, RotateCcw, Circle, AlignLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore, ProjectTask, ProjectTaskGroup, TaskStatus, TaskPriority } from '@/store/useProjectStore';
@@ -41,7 +41,7 @@ export const STATUS_ICON_MAP: Record<TaskStatus, React.ReactNode> = {
     todo:   <Circle      size={9}  className="text-[#888]"        strokeWidth={2.5} />,
     doing:  <PlayCircle  size={9}  className="text-blue-400"      />,
     review: <Eye         size={9}  className="text-orange-400"    />,
-    done:   <CheckCircle2 size={9} className="text-emerald-400"   />,
+    done:   <Circle      size={9}  className="text-emerald-400"   strokeWidth={2.5} />,
 };
 
 const GROUP_COLORS = [
@@ -224,8 +224,21 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
 
             <div className="flex items-center gap-2.5 pl-4 pr-3 py-[14px] flex-1">
 
-                {/* Checkbox toggle - Hidden or disabled in preview */}
-                {!isPreview && (
+                {/* Checkbox toggle - Read-only in preview */}
+                {isPreview ? (
+                    <div
+                        className={cn(
+                            'shrink-0 w-[16px] h-[16px] rounded-[5px] border flex items-center justify-center transition-all duration-200',
+                            isDone
+                                ? 'bg-emerald-500 border-emerald-500 text-white'
+                                : isDark
+                                    ? 'border-white/10'
+                                    : 'border-black/10'
+                        )}
+                    >
+                        {isDone && <Check size={10} strokeWidth={3.5} />}
+                    </div>
+                ) : (
                     <button
                         onClick={e => {
                             e.stopPropagation();

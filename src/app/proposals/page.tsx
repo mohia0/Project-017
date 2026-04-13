@@ -173,7 +173,14 @@ function Chk({ checked, indeterminate, isDark }: { checked: boolean; indetermina
 }
 
 /* ─── Dropdown ──────────────────────────────────────────────────── */
-function Dropdown({ open, onClose, isDark, children }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode }) {
+function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth = '180px' }: { 
+    open: boolean; 
+    onClose: () => void; 
+    isDark: boolean; 
+    children: React.ReactNode; 
+    align?: 'left' | 'right' | 'center';
+    minWidth?: string;
+}) {
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (!open) return;
@@ -183,8 +190,15 @@ function Dropdown({ open, onClose, isDark, children }: { open: boolean; onClose:
     }, [open, onClose]);
     if (!open) return null;
     return (
-        <div ref={ref} className={cn("absolute top-full right-0 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
-            isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+        <div 
+            ref={ref} 
+            style={{ minWidth }}
+            className={cn("absolute top-full mt-1 z-50 rounded-xl border shadow-xl overflow-hidden",
+                align === 'right' && "right-0",
+                align === 'left' && "left-0",
+                align === 'center' && "left-1/2 -translate-x-1/2",
+                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}
+        >
             {children}
         </div>
     );
@@ -482,7 +496,13 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
             >
                 {display}
             </button>
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
+            <Dropdown 
+                open={open} 
+                onClose={() => setOpen(false)} 
+                isDark={isDark} 
+                align="center"
+                minWidth="280px"
+            >
                 <div className={cn("p-2 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
                     <div className="relative">
                         <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 opacity-30" />
