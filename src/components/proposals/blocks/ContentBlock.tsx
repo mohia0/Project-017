@@ -44,7 +44,7 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
             ...baseTheme.colors,
             editor: {
                 ...baseTheme.colors.editor,
-                text: isDarkBg ? "#ffffff" : "#111111",
+                text: isDarkBg ? "#ffffff" : "#555555",
                 background: "transparent",
             },
         },

@@ -1174,7 +1174,7 @@ export function InvoiceDocument({
     // Documents are always rendered in light mode regardless of app theme
     const documentStyle = React.useMemo(() => ({
         fontFamily: design.fontFamily || 'Inter',
-        color: '#111111',
+        color: '#555555',
         backgroundColor: 'var(--document-bg)',
         '--document-bg': design.blockBackgroundColor || '#ffffff',
         paddingTop: 'var(--block-margin-top)',

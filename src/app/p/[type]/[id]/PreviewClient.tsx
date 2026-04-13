@@ -901,7 +901,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     backgroundAttachment: 'fixed',
                 }}
             >
-                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none">
                     <div 
                         className="absolute inset-0 pointer-events-none"
                         style={{
@@ -1017,7 +1017,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     backgroundAttachment: 'fixed',
                 }}
             >
-                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none">
                     <div 
                         className="absolute inset-0 pointer-events-none"
                         style={{
