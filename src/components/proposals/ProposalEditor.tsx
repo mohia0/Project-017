@@ -18,7 +18,7 @@ import {
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image as ImageIcon, SeparatorHorizontal,
     Settings, ChevronRight, ChevronLeft, RotateCcw, Monitor, Smartphone, PanelTop,
-    X, Upload, LayoutTemplate
+    X, Upload, LayoutTemplate, ExternalLink
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
@@ -542,6 +542,17 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         </div>
                     )}
 
+                    {/* Open link */}
+                    <button
+                        onClick={() => window.open(window.location.origin + '/p/proposal/' + id, '_blank')}
+                        className={cn(
+                            "hidden md:flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                        )}
+                    >
+                        <ExternalLink size={14} />
+                    </button>
+
                     {/* Copy link — hidden on mobile */}
                     <button
                         onClick={copyLink}
@@ -578,6 +589,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             )}>
                                 {[
                                     { icon: LayoutTemplate, label: 'Save as Template', action: () => setIsSaveTemplateModalOpen(true) },
+                                    { icon: ExternalLink,  label: 'Open Link',         action: () => window.open(window.location.origin + '/p/proposal/' + id, '_blank') },
                                     { icon: Link2,          label: 'Copy Link',         action: copyLink },
                                     { icon: Download,       label: 'Download PDF',      action: () => console.log('Download') },
                                     { icon: Copy,           label: 'Duplicate',         action: () => console.log('Duplicate') },

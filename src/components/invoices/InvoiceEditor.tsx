@@ -18,7 +18,7 @@ import {
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image, SeparatorHorizontal,
     Settings, ChevronRight, ChevronLeft, RotateCcw, Monitor, Smartphone, PanelTop,
-    Printer, LayoutTemplate, CreditCard
+    Printer, LayoutTemplate, CreditCard, ExternalLink
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
@@ -518,6 +518,16 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                     )}
 
                     <button
+                        onClick={() => window.open(window.location.origin + '/p/invoice/' + id, '_blank')}
+                        className={cn(
+                            "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                        )}
+                    >
+                        <ExternalLink size={14} />
+                    </button>
+
+                    <button
                         onClick={copyLink}
                         className={cn(
                             "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
@@ -563,6 +573,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             )}>
                                 {[
                                     { icon: LayoutTemplate, label: 'Save as Template', action: () => setIsSaveTemplateModalOpen(true) },
+                                    { icon: ExternalLink,  label: 'Open Link',         action: () => window.open(window.location.origin + '/p/invoice/' + id, '_blank') },
+                                    { icon: Link2,          label: 'Copy Link',         action: copyLink },
                                     { icon: Download, label: 'Download PDF', action: () => console.log('Download') },
                                     { 
                                         icon: Trash2,   

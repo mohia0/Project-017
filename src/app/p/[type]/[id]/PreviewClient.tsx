@@ -11,6 +11,7 @@ import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import FieldPreview from '@/components/forms/FieldPreview';
 import { Check, Clock, Calendar as CalendarIcon, MapPin, ChevronRight } from 'lucide-react';
+import { gooeyToast } from 'goey-toast';
 
 const KanbanBoard = dynamic(() => import('@/components/projects/KanbanBoard'), { ssr: false });
 
@@ -43,6 +44,7 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
     const [errors, setErrors] = useState<Record<string, boolean>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const setValue = (id: string, val: string) => {
         setValues(prev => ({ ...prev, [id]: val }));
@@ -65,6 +67,7 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
         }
 
         setIsSubmitting(true);
+        setSubmitError(null);
         try {
             const res = await fetch('/api/form-response', {
                 method: 'POST',
@@ -79,20 +82,37 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
 
             if (!res.ok) {
                 const err = await res.json();
-                throw new Error(err.error || 'Failed to submit');
+                const msg = err.error || 'Failed to submit';
+                setSubmitError(msg);
+                gooeyToast.error(msg);
+                return;
+            }
+            
+            const result = await res.json();
+            if (!result.success) {
+                const msg = result.error || 'Failed to submit';
+                setSubmitError(msg);
+                gooeyToast.error(msg);
+                return;
             }
 
             setIsSubmitted(true);
-        } catch (err) {
-            console.error('Form submission error:', err);
+        } catch (err: any) {
+            // Only log as error if it wasn't a handled 4xx
+            if (!submitError) console.error('Form submission unexpected error:', err);
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const submissionLimit = meta.submissionLimit ? parseInt(meta.submissionLimit) : null;
+    const limitVal = meta.submissionLimit ?? meta.submissionsLimit;
+    const submissionLimit = (limitVal !== undefined && limitVal !== null && limitVal !== '') ? parseInt(String(limitVal)) : null;
     const hasReachedLimit = submissionLimit !== null && (data.submissionCount || 0) >= submissionLimit;
-    const isRestricted = liveData.status === 'Draft' || liveData.status === 'Inactive' || hasReachedLimit;
+
+    const now = new Date();
+    const isExpired = meta.expirationDate && new Date(meta.expirationDate) < now;
+    const isNotYetActive = meta.activationDate && new Date(meta.activationDate) > now;
+    const isRestricted = liveData.status === 'Draft' || liveData.status === 'Inactive' || hasReachedLimit || isExpired || isNotYetActive;
 
     return (
         <div
@@ -124,74 +144,45 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                 >
                     {isSubmitted ? (
                         // ── SUCCESS SCREEN ──────────────────────────────────
-                        <div className="space-y-0 pb-12">
-                            {(meta.confirmationBlocks || [
-                                { id: 'default-s', type: 'success' },
-                                { id: 'default-h', type: 'heading', level: 1, content: 'Thanks!' },
-                                { id: 'default-t', type: 'text', content: "<p style='text-align: center'>Thank you for your submission! We'll be in touch soon.</p>" }
-                            ]).map((b: any) => (
-                                <div key={b.id}>
-                                    {b.type === 'success' && (
-                                        <div className="flex flex-col items-center text-center py-16 px-8 gap-6">
-                                            <div
-                                                className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in-75 duration-300"
-                                                style={{ background: primaryColor }}
-                                            >
-                                                <Check size={28} strokeWidth={2.5} className="text-black" />
-                                            </div>
-                                        </div>
-                                    )}
-                                    {b.type === 'heading' && (
-                                        <div className="px-12 py-4 text-center">
-                                            <div 
-                                                className={cn("font-bold tracking-tight", 
-                                                    b.level === 1 ? "text-[32px]" : b.level === 3 ? "text-[18px]" : "text-[24px]")}
-                                                style={{ color: isFormDark ? '#fff' : '#111' }}
-                                            >
-                                                {b.content}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {b.type === 'text' && (
-                                        <div className="px-12 py-2">
-                                            <div 
-                                                className="text-[15px] leading-relaxed opacity-70"
-                                                style={{ color: isFormDark ? '#ccc' : '#444' }}
-                                                dangerouslySetInnerHTML={{ __html: b.content }} 
-                                            />
-                                        </div>
-                                    )}
-                                    {b.type === 'divider' && (
-                                        <div className="px-12 py-6">
-                                            <div className={cn("w-full h-px", isFormDark ? "bg-white/10" : "bg-black/5")} />
-                                        </div>
-                                    )}
-                                    {b.type === 'image' && b.url && (
-                                        <div className="px-12 py-6">
-                                            <img src={b.url} alt="" className="w-full h-auto rounded-2xl shadow-sm" />
-                                        </div>
-                                    )}
-                                </div>
-                            )).filter(Boolean)}
-                        </div>
-                    ) : (liveData.status === 'Draft' || liveData.status === 'Inactive') ? (
-                        // ── DRAFT / INACTIVE MESSAGE ─────────────────────────
-                        <div className="flex flex-col items-center justify-center text-center py-20 px-8 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className={cn(
-                                "w-16 h-16 rounded-full flex items-center justify-center",
-                                hasReachedLimit ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
-                            )}>
-                                {hasReachedLimit ? <Clock size={28} strokeWidth={2.5} /> : <Clock size={28} strokeWidth={2.5} />}
+                        <div className="flex flex-col items-center justify-center text-center py-20 px-8 gap-6 animate-in zoom-in-95 duration-500">
+                            <div
+                                className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg animate-in fade-in scale-in duration-700"
+                                style={{ background: primaryColor }}
+                            >
+                                <Check size={28} strokeWidth={2.5} className="text-black" />
                             </div>
                             <div className="space-y-2">
                                 <h2 className="text-[24px] font-bold tracking-tight" style={{ color: isFormDark ? '#fff' : '#111' }}>
-                                    {hasReachedLimit ? 'Form Limit Reached' : 'Form Not Available'}
+                                    Thanks!
                                 </h2>
-                                <p className="text-[15px] opacity-70 leading-relaxed max-w-[340px] mx-auto" style={{ color: isFormDark ? '#ccc' : '#444' }}>
-                                    {hasReachedLimit 
-                                        ? "This form has reached its maximum number of submissions and is no longer accepting new entries."
-                                        : <>This form is currently in <b>{(liveData.status || 'Draft').toLowerCase()}</b> mode and is not accepting submissions yet.</>
-                                    }
+                                <p className="text-[15px] opacity-70 leading-relaxed max-w-[400px] mx-auto" style={{ color: isFormDark ? '#ccc' : '#444' }}>
+                                    {meta.confirmationMessage || "Thank you for your submission! We'll be in touch soon."}
+                                </p>
+                            </div>
+                        </div>
+                    ) : isRestricted ? (
+                        // ── RESTRICTED MESSAGE ──────────────────────────────
+                        <div className="flex flex-col items-center justify-center text-center py-20 px-8 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className={cn(
+                                "w-16 h-16 rounded-full flex items-center justify-center",
+                                (hasReachedLimit || isExpired) ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
+                            )}>
+                                {isNotYetActive ? <CalendarIcon size={28} /> : <Clock size={28} strokeWidth={2.5} />}
+                            </div>
+                            <div className="space-y-2">
+                                <h2 className="text-[24px] font-bold tracking-tight" style={{ color: isFormDark ? '#fff' : '#111' }}>
+                                    {hasReachedLimit ? 'Form Limit Reached' : isExpired ? 'Form Expired' : isNotYetActive ? 'Coming Soon' : 'Form Not Available'}
+                                </h2>
+                                <p className="text-[15px] opacity-70 leading-relaxed max-w-[400px] mx-auto" style={{ color: isFormDark ? '#ccc' : '#444' }}>
+                                    {hasReachedLimit ? (
+                                        "This form has reached its maximum number of submissions and is no longer accepting new responses."
+                                    ) : isExpired ? (
+                                        <>This form <b>expired</b> on {new Date(meta.expirationDate).toLocaleDateString()} and is no longer available.</>
+                                    ) : isNotYetActive ? (
+                                        <>This form is <b>scheduled</b> to become active on {new Date(meta.activationDate).toLocaleDateString()}.</>
+                                    ) : (
+                                        <>This form is currently in <b>{(liveData.status || 'Draft').toLowerCase()}</b> mode and is not accepting responses yet.</>
+                                    )}
                                 </p>
                             </div>
                         </div>
@@ -199,17 +190,17 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                         // ── FORM ────────────────────────────────────────────
                         <div className="p-8 md:p-12">
                             {/* Header */}
-                            <div className="mb-10">
+                            <div className="mb-8">
                                 {meta.logoUrl && (
                                     <img
                                         src={meta.logoUrl}
                                         alt="Logo"
-                                        className="mb-6 object-contain"
+                                        className="mb-4 object-contain"
                                         style={{ height: `${design.logoSize || 40}px` }}
                                     />
                                 )}
                                 <h1
-                                    className="text-[32px] md:text-[42px] font-bold leading-tight tracking-tight mb-2"
+                                    className="text-[28px] font-bold leading-tight tracking-tight mb-2"
                                     style={{ color: isFormDark ? '#fff' : '#111' }}
                                 >
                                     {liveData.title}
@@ -256,23 +247,30 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
 
                             {/* Submit */}
                             {fields.length > 0 && (
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={isSubmitting}
-                                    className="mt-10 w-full py-4 font-bold text-[15px] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                    style={{
-                                        background: primaryColor,
-                                        borderRadius: `${design.borderRadius ?? 16}px`,
-                                        color: '#000',
-                                    }}
-                                >
-                                    {isSubmitting ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                            Submitting…
-                                        </>
-                                    ) : 'Submit'}
-                                </button>
+                                <div className="space-y-4">
+                                    <button
+                                        onClick={handleSubmit}
+                                        disabled={isSubmitting}
+                                        className="mt-10 w-full py-4 font-bold text-[15px] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                        style={{
+                                            background: primaryColor,
+                                            borderRadius: `${design.borderRadius ?? 16}px`,
+                                            color: '#000',
+                                        }}
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                                                Submitting…
+                                            </>
+                                        ) : 'Submit'}
+                                    </button>
+                                    {submitError && (
+                                        <p className="text-center text-[12px] font-medium text-red-500 animate-in fade-in slide-in-from-top-1">
+                                            {submitError}
+                                        </p>
+                                    )}
+                                </div>
                             )}
                         </div>
                     )}
@@ -291,119 +289,327 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
     const isDark = design.theme === 'dark';
     const primaryColor = design.primaryColor || '#4dbf39';
 
-    const durations: number[] = Array.isArray(meta.durations) ? meta.durations : [30, 60];
+    const [step, setStep] = useState<'scheduler' | 'form' | 'confirmation'>('scheduler');
+    const [selDate, setSelDate] = useState<Date | null>(null);
+    const [selTime, setSelTime] = useState<string | null>(null);
+    const [duration, setDuration] = useState<number>(Array.isArray(meta.durations) ? meta.durations[0] : 30);
+    
+    // Booker info
+    const [info, setInfo] = useState({ name: '', email: '', phone: '' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const submissionLimit = meta.submissionLimit ? parseInt(meta.submissionLimit) : null;
+    const limitVal = meta.submissionLimit ?? meta.submissionsLimit;
+    const submissionLimit = (limitVal !== undefined && limitVal !== null && limitVal !== '') ? parseInt(String(limitVal)) : null;
     const hasReachedLimit = submissionLimit !== null && (data.submissionCount || 0) >= submissionLimit;
-    const isRestricted = liveData.status === 'Draft' || liveData.status === 'Inactive' || hasReachedLimit;
 
-    return (
-        <div
-            className="flex-1 overflow-auto relative w-full min-h-screen"
-            style={{
-                backgroundColor: design.backgroundColor || (isDark ? '#080808' : '#f7f7f7'),
-                backgroundImage: getBackgroundImageWithOpacity(
-                    design.backgroundImage,
-                    design.backgroundColor || (isDark ? '#080808' : '#f7f7f7'),
-                    design.backgroundImageOpacity
-                ),
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundAttachment: 'fixed',
-            }}
-        >
-            <div className={cn(
-                "flex flex-col items-center min-h-screen py-12 px-6",
-                isRestricted && "justify-center"
-            )}>
-                <div
-                    className="w-full max-w-[680px] overflow-hidden shadow-2xl transition-all duration-300"
-                    style={{
-                        backgroundColor: design.blockBackgroundColor || (isDark ? '#111' : '#fff'),
-                        boxShadow: design.blockShadow || '0 10px 40px -10px rgba(0,0,0,0.15)',
-                        fontFamily: design.fontFamily || 'Inter',
-                        borderRadius: `${design.borderRadius ?? 16}px`,
-                    }}
-                >
-                    {isRestricted ? (
-                        // ── DRAFT / INACTIVE MESSAGE ─────────────────────────
+    const now = new Date();
+    const isExpired = meta.expirationDate && new Date(meta.expirationDate) < now;
+    const isNotYetActive = meta.activationDate && new Date(meta.activationDate) > now;
+    const isRestricted = liveData.status === 'Draft' || liveData.status === 'Inactive' || hasReachedLimit || isExpired || isNotYetActive;
+
+    if (isRestricted) {
+        return (
+            <div
+                className="flex-1 overflow-auto relative w-full min-h-screen"
+                style={{
+                    backgroundColor: design.backgroundColor || (isDark ? '#080808' : '#f7f7f7'),
+                    backgroundImage: getBackgroundImageWithOpacity(
+                        design.backgroundImage,
+                        design.backgroundColor || (isDark ? '#080808' : '#f7f7f7'),
+                        design.backgroundImageOpacity
+                    ),
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundAttachment: 'fixed',
+                }}
+            >
+                <div className={cn(
+                    "flex flex-col items-center justify-center min-h-screen py-12 px-6"
+                )}>
+                    <div
+                        className="w-full max-w-[620px] overflow-hidden shadow-2xl transition-all duration-300"
+                        style={{
+                            backgroundColor: design.blockBackgroundColor || (isDark ? '#111' : '#fff'),
+                            boxShadow: design.blockShadow || '0 10px 40px -10px rgba(0,0,0,0.15)',
+                            fontFamily: design.fontFamily || 'Inter',
+                            borderRadius: `${design.borderRadius ?? 16}px`,
+                        }}
+                    >
                         <div className="flex flex-col items-center justify-center text-center py-20 px-8 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div className={cn(
                                 "w-16 h-16 rounded-full flex items-center justify-center",
-                                hasReachedLimit ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
+                                (hasReachedLimit || isExpired) ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
                             )}>
-                                <Clock size={28} strokeWidth={2.5} />
+                                {isNotYetActive ? <CalendarIcon size={28} /> : <Clock size={28} strokeWidth={2.5} />}
                             </div>
                             <div className="space-y-2">
                                 <h2 className="text-[24px] font-bold tracking-tight" style={{ color: isDark ? '#fff' : '#111' }}>
-                                    {hasReachedLimit ? 'Booking Limit Reached' : 'Scheduler Not Available'}
+                                    {hasReachedLimit ? 'Booking Limit Reached' : isExpired ? 'Booking Expired' : isNotYetActive ? 'Coming Soon' : 'Scheduler Not Available'}
                                 </h2>
-                                <p className="text-[15px] opacity-70 leading-relaxed max-w-[340px] mx-auto" style={{ color: isDark ? '#ccc' : '#444' }}>
-                                    {hasReachedLimit
-                                        ? "This scheduler has reached its maximum number of bookings and is no longer accepting new appointments."
-                                        : <>This scheduler is currently in <b>{(liveData.status || 'Draft').toLowerCase()}</b> mode and is not accepting bookings yet.</>
-                                    }
+                                <p className="text-[15px] opacity-70 leading-relaxed max-w-[400px] mx-auto" style={{ color: isDark ? '#ccc' : '#444' }}>
+                                    {hasReachedLimit ? (
+                                        "This scheduler has reached its maximum number of bookings and is no longer accepting new appointments."
+                                    ) : isExpired ? (
+                                        <>This scheduler <b>expired</b> on {new Date(meta.expirationDate).toLocaleDateString()} and is no longer accepting bookings.</>
+                                    ) : isNotYetActive ? (
+                                        <>This scheduler is <b>scheduled</b> to go live on {new Date(meta.activationDate).toLocaleDateString()}.</>
+                                    ) : (
+                                        <>This scheduler is currently in <b>{(liveData.status || 'Draft').toLowerCase()}</b> mode and is not accepting bookings yet.</>
+                                    )}
                                 </p>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const handleConfirmBooking = async () => {
+        if (!info.name || !info.email || !selDate || !selTime) return;
+
+        setIsSubmitting(true);
+        try {
+            const res = await fetch('/api/scheduler-booking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    scheduler_id: data.id,
+                    workspace_id: data.workspace_id,
+                    booker_name: info.name,
+                    booker_email: info.email,
+                    booker_phone: info.phone,
+                    booked_date: selDate.toISOString().split('T')[0],
+                    booked_time: selTime,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    duration_minutes: duration,
+                    scheduler_title: liveData.title,
+                }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                const msg = err.error || 'Failed to book';
+                gooeyToast.error(msg);
+                if (res.status >= 400 && res.status < 500) {
+                    console.warn('Booking prevented:', msg);
+                    return;
+                }
+                throw new Error(msg);
+            }
+
+            setStep('confirmation');
+        } catch (err: any) {
+            console.error('Booking unexpected error:', err);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-white dark:bg-[#111]">
+            <div className="px-8 pt-8 pb-5 border-b border-black/5 dark:border-white/5">
+                <div className="flex items-center gap-4 mb-6">
+                    {meta.logoUrl ? (
+                        <img src={meta.logoUrl} alt="Logo" className="h-10 object-contain" />
                     ) : (
-                        <>
-                            {/* Header */}
-                            <div className="px-8 pt-8 pb-5 border-b border-black/5 dark:border-white/5">
-                                <div className="flex items-center gap-4 mb-6">
-                                    {meta.logoUrl ? (
-                                        <img src={meta.logoUrl} alt="Logo" className="h-10 object-contain" />
-                                    ) : (
-                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-[20px]"
-                                            style={{ background: primaryColor }}>
-                                            {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
-                                        </div>
-                                    )}
-                                    <div>
-                                        <h1 className="font-bold text-[20px]" style={{ color: isDark ? '#fff' : '#111' }}>
-                                            {meta.organizer || liveData.title}
-                                        </h1>
-                                        <div className="text-[13px] opacity-50" style={{ color: isDark ? '#aaa' : '#777' }}>
-                                            {liveData.title}
-                                        </div>
-                                    </div>
-                                </div>
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-[20px]"
+                            style={{ background: primaryColor }}>
+                            {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
+                        </div>
+                    )}
+                    <div>
+                        <h1 className="font-bold text-[20px]" style={{ color: isDark ? '#fff' : '#111' }}>
+                            {meta.organizer || liveData.title}
+                        </h1>
+                        <div className="text-[13px] opacity-50" style={{ color: isDark ? '#aaa' : '#777' }}>
+                            {liveData.title}
+                        </div>
+                    </div>
+                </div>
 
-                                <div className="flex flex-wrap gap-2">
-                                    {durations.map(d => (
-                                        <div key={d} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold"
-                                            style={{ background: primaryColor, color: '#000' }}>
-                                            <Clock size={12} />
-                                            {d >= 60 ? `${d / 60}hr` : `${d}min`}
-                                        </div>
-                                    ))}
-                                    {meta.location && (
-                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium opacity-60"
-                                            style={{ color: isDark ? '#ccc' : '#444' }}>
-                                            <MapPin size={12} />
-                                            {meta.location}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Placeholder Content */}
-                            <div className="p-12 text-center space-y-4">
-                                <div className="w-16 h-16 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center mx-auto">
-                                    <CalendarIcon size={24} className="opacity-30" />
-                                </div>
-                                <div>
-                                    <div className="font-bold text-[18px]" style={{ color: isDark ? '#fff' : '#111' }}>
-                                        Public Booking Page
-                                    </div>
-                                    <p className="text-[14px] opacity-50 max-w-[300px] mx-auto" style={{ color: isDark ? '#aaa' : '#777' }}>
-                                        Full booking functionality will be available once this scheduler is activated.
-                                    </p>
-                                </div>
-                            </div>
-                        </>
+                <div className="flex flex-wrap gap-2">
+                    {(Array.isArray(meta.durations) ? meta.durations : [30]).map((d: number) => (
+                        <button key={d} 
+                            onClick={() => setDuration(d)}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold transition-all",
+                                duration === d ? "scale-105" : "opacity-60 grayscale"
+                            )}
+                            style={{ background: primaryColor, color: '#000' }}>
+                            <Clock size={12} />
+                            {d >= 60 ? `${d / 60}hr` : `${d}min`}
+                        </button>
+                    ))}
+                    {meta.location && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium opacity-60 ml-auto"
+                            style={{ color: isDark ? '#ccc' : '#444' }}>
+                            <MapPin size={12} />
+                            {meta.location}
+                        </div>
                     )}
                 </div>
+            </div>
+
+            <div className="flex-1 p-8 overflow-y-auto min-h-[500px]">
+                {step === 'scheduler' && (
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-8 animate-in fade-in duration-300">
+                        <div>
+                            <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-6">
+                                <h3 className="text-[14px] font-bold mb-4" style={{ color: isDark ? '#fff' : '#111' }}>
+                                    {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                </h3>
+                                <div className="grid grid-cols-7 gap-2">
+                                    {['S','M','T','W','T','F','S'].map(d => (
+                                        <div key={d} className="text-center text-[10px] font-bold opacity-30">{d}</div>
+                                    ))}
+                                    {Array.from({ length: 31 }).map((_, i) => {
+                                        const day = i + 1;
+                                        const date = new Date();
+                                        date.setDate(day);
+                                        const isPast = day < new Date().getDate();
+                                        const isSelected = selDate?.getDate() === day;
+                                        return (
+                                            <button key={i}
+                                                disabled={isPast}
+                                                onClick={() => setSelDate(date)}
+                                                className={cn(
+                                                    "aspect-square rounded-xl flex items-center justify-center text-[13px] font-medium transition-all",
+                                                    isPast ? "opacity-20 cursor-not-allowed" : "cursor-pointer hover:bg-black/5 dark:hover:bg-white/5",
+                                                    isSelected && "font-bold text-black"
+                                                )}
+                                                style={isSelected ? { background: primaryColor } : {}}
+                                            >
+                                                {day}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2.5">
+                            <div className="text-[11px] font-bold uppercase tracking-wider opacity-30 mb-2 px-1">Available times</div>
+                            {!selDate ? (
+                                <div className="text-[12px] opacity-40 italic px-1">Select a date first</div>
+                            ) : (
+                                ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM'].map(t => (
+                                    <button key={t}
+                                        onClick={() => { setSelTime(t); setStep('form'); }}
+                                        className="w-full py-3 rounded-xl border border-black/5 dark:border-white/5 text-[13px] font-bold transition-all hover:border-transparent hover:text-black"
+                                        style={selTime === t ? { background: primaryColor, color: '#000', borderColor: 'transparent' } : { color: isDark ? '#fff' : '#111' }}
+                                    >
+                                        {t}
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {step === 'form' && (
+                    <div className="max-w-[400px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                        <div className="text-center space-y-1">
+                            <h3 className="text-[18px] font-bold" style={{ color: isDark ? '#fff' : '#111' }}>Confirm Details</h3>
+                            <p className="text-[13px] opacity-50">
+                                {selDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} at {selTime} ({duration}m)
+                            </p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold uppercase tracking-wider opacity-40">Name</label>
+                                <input 
+                                    type="text" 
+                                    value={info.name}
+                                    onChange={e => setInfo({ ...info, name: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent outline-none focus:border-primary text-[14px]"
+                                    placeholder="Enter your name"
+                                    style={{ color: isDark ? '#fff' : '#111' }}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold uppercase tracking-wider opacity-40">Email</label>
+                                <input 
+                                    type="email" 
+                                    value={info.email}
+                                    onChange={e => setInfo({ ...info, email: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent outline-none focus:border-primary text-[14px]"
+                                    placeholder="your@email.com"
+                                    style={{ color: isDark ? '#fff' : '#111' }}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold uppercase tracking-wider opacity-40">Phone (Optional)</label>
+                                <input 
+                                    type="tel" 
+                                    value={info.phone}
+                                    onChange={e => setInfo({ ...info, phone: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-transparent outline-none focus:border-primary text-[14px]"
+                                    placeholder="+1 (555) 000-0000"
+                                    style={{ color: isDark ? '#fff' : '#111' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-4">
+                            <button 
+                                onClick={() => setStep('scheduler')}
+                                className="flex-1 py-3.5 rounded-xl font-bold text-[14px] border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-all text-[#111] dark:text-[#eee]"
+                            >
+                                Back
+                            </button>
+                            <button 
+                                onClick={handleConfirmBooking}
+                                disabled={isSubmitting || !info.name || !info.email}
+                                className="flex-[2] py-3.5 rounded-xl font-bold text-[14px] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                                style={{ background: primaryColor, color: '#000' }}
+                            >
+                                {isSubmitting ? 'Booking...' : 'Schedule Meeting'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 'confirmation' && (
+                    <div className="flex flex-col items-center justify-center text-center py-12 gap-6 animate-in zoom-in-95 duration-500">
+                        <div className="w-20 h-20 rounded-full flex items-center justify-center shadow-xl animate-in fade-in scale-in duration-700"
+                            style={{ background: primaryColor }}>
+                            <Check size={36} strokeWidth={3} className="text-black" />
+                        </div>
+                        <div className="space-y-2">
+                            <h2 className="text-[28px] font-bold tracking-tight" style={{ color: isDark ? '#fff' : '#111' }}>
+                                Booking Confirmed!
+                            </h2>
+                            <p className="text-[15px] opacity-70 max-w-[400px]" style={{ color: isDark ? '#ccc' : '#444' }}>
+                                {meta.confirmationMessage || "Your booking is confirmed! We'll send a calendar invite shortly."}
+                            </p>
+                        </div>
+                        <div className="mt-4 p-6 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 space-y-3 w-full max-w-[360px]">
+                            <div className="flex items-center gap-3">
+                                <CalendarIcon size={16} className="opacity-50" />
+                                <span className="text-[14px] font-medium">{selDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Clock size={16} className="opacity-50" />
+                                <span className="text-[14px] font-medium">{selTime} ({duration} min)</span>
+                            </div>
+                            {meta.location && (
+                                <div className="flex items-center gap-3">
+                                    <MapPin size={16} className="opacity-50" />
+                                    <span className="text-[14px] font-medium">{meta.location}</span>
+                                </div>
+                            )}
+                        </div>
+                        <button 
+                            onClick={() => window.location.reload()}
+                            className="text-[13px] font-bold opacity-40 hover:opacity-100 transition-opacity mt-4"
+                            style={{ color: isDark ? '#fff' : '#111' }}
+                        >
+                            Book another session
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -456,7 +662,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     // Supabase Realtime — live updates for proposals/invoices/forms
     useEffect(() => {
         if (type === 'project') return;
-        const tableName = type === 'form' ? 'forms' : type === 'scheduler' ? 'schedulers' : type === 'proposal' ? 'proposals' : 'invoices';
+        const tableName = (type === 'form' || type === 'forms') ? 'forms' : (type === 'scheduler' || type === 'schedulers') ? 'schedulers' : type === 'proposal' ? 'proposals' : 'invoices';
         const channelName = `preview:${tableName}:${data.id}`;
 
         const channel = supabasePublic
@@ -782,12 +988,12 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     }
 
     // ── FORM ─────────────────────────────────────────────────────────────────
-    if (type === 'form') {
+    if (type === 'form' || type === 'forms') {
         return <FormPreview liveData={liveData} data={data} />;
     }
 
     // ── SCHEDULER ────────────────────────────────────────────────────────────
-    if (type === 'scheduler') {
+    if (type === 'scheduler' || type === 'schedulers') {
         return <SchedulerPreview liveData={liveData} data={data} />;
     }
 

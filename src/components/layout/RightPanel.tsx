@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList
+    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Calendar as CalendarIcon
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
@@ -166,20 +166,26 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                     isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
                                 )}>
                                     {(() => {
-                                        const isView = notif.title?.toLowerCase().includes('opened') || 
-                                                     notif.message?.toLowerCase().includes('opened');
+                                        const isLimitReached = notif.type === 'limit_reached' || notif.title?.toLowerCase().includes('limit');
+                                        const isView = notif.type === 'view' || notif.title?.toLowerCase().includes('opened');
                                         
-                                        const isFormResponse = !isView && (
+                                        const isFormResponse = !isView && !isLimitReached && (
                                             notif.link?.includes('/forms') || 
                                             notif.title?.toLowerCase().includes('form') || 
                                             notif.message?.toLowerCase().includes('form')
                                         );
-                                        const isProposal = !isView && !isFormResponse && (
+                                        const isScheduler = !isView && !isLimitReached && !isFormResponse && (
+                                            notif.link?.includes('/schedulers') || 
+                                            notif.title?.toLowerCase().includes('scheduler') || 
+                                            notif.message?.toLowerCase().includes('booking') ||
+                                            notif.message?.toLowerCase().includes('meeting')
+                                        );
+                                        const isProposal = !isView && !isLimitReached && !isFormResponse && !isScheduler && (
                                             notif.link?.includes('proposal') || 
                                             notif.title?.toLowerCase().includes('proposal') || 
                                             notif.message?.toLowerCase().includes('proposal')
                                         );
-                                        const isInvoice = !isView && !isFormResponse && (
+                                        const isInvoice = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isProposal && (
                                             notif.link?.includes('invoice') || 
                                             notif.title?.toLowerCase().includes('invoice') || 
                                             notif.message?.toLowerCase().includes('invoice')
@@ -187,7 +193,9 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
 
                                         const iconClass = isDark ? "text-[#888]" : "text-[#999]";
 
+                                        if (isLimitReached) return <AlertCircle size={12} className="text-amber-500" />;
                                         if (isFormResponse) return <ClipboardList size={12} className={iconClass} />;
+                                        if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
                                         if (isProposal) return <FileText size={12} className={iconClass} />;
                                         if (isInvoice) return <Receipt size={12} className={iconClass} />;
                                         return <Eye size={12} className={iconClass} />;

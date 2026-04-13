@@ -139,7 +139,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
                         title: notifTitle,
                         message: notifMsg,
                         link: `/${type}s/${id}`,
-                        read: false
+                        read: false,
+                        type: type
                     });
                 }
             }

@@ -9,6 +9,60 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
+        // 0. Fetch form validation data
+        const { data: form, error: formError } = await supabaseService
+            .from('forms')
+            .select('meta, status, title, workspace_id')
+            .eq('id', form_id)
+            .single();
+
+        if (formError || !form) {
+            console.error('Form not found for submission:', formError);
+            return NextResponse.json({ error: 'Form not found' }, { status: 404 });
+        }
+
+        // Status check
+        if (form.status === 'Inactive' || form.status === 'Draft') {
+            return NextResponse.json({ error: 'Form is currently not accepting submissions' }, { status: 403 });
+        }
+
+        // Timing check
+        const meta = (form.meta || {}) as any;
+        const now = new Date();
+        if (meta.expirationDate && new Date(meta.expirationDate) < now) {
+            return NextResponse.json({ error: 'This form has expired' }, { status: 403 });
+        }
+        if (meta.activationDate && new Date(meta.activationDate) > now) {
+            return NextResponse.json({ error: 'This form is not yet active' }, { status: 403 });
+        }
+
+        // Submission limit check
+        const limitVal = meta.submissionLimit ?? meta.submissionsLimit;
+        const submissionLimit = (limitVal !== undefined && limitVal !== null && limitVal !== '') ? parseInt(String(limitVal)) : null;
+        
+        if (submissionLimit !== null) {
+            const { count } = await supabaseService
+                .from('form_responses')
+                .select('*', { count: 'exact', head: true })
+                .eq('form_id', form_id);
+            
+            if (count !== null && count >= submissionLimit) {
+                // Create notification for blocked attempt
+                await supabaseService
+                    .from('notifications')
+                    .insert({
+                        workspace_id: form.workspace_id,
+                        title: 'Submission Limit Reached',
+                        message: `A submission for "${form.title}" was blocked because it has reached its limit of ${submissionLimit} responses.`,
+                        link: `/forms/${form_id}?tab=responses`,
+                        read: false,
+                        type: 'limit_reached' // Custom type for distinct icon if needed later
+                    });
+
+                return NextResponse.json({ error: 'This form has reached its submission limit' }, { status: 403 });
+            }
+        }
+
         // 1. Insert the response
         const { data: responseData, error: responseError } = await supabaseService
             .from('form_responses')
@@ -22,7 +76,7 @@ export async function POST(req: Request) {
 
         if (responseError) {
             console.error('Error recording form response:', responseError);
-            return NextResponse.json({ success: false, error: responseError.message });
+            return NextResponse.json({ success: false, error: responseError.message }, { status: 500 });
         }
 
         // 2. Determine a name for the notification if possible
@@ -55,6 +109,7 @@ export async function POST(req: Request) {
                 message: notificationMessage,
                 link: `/forms/${form_id}?tab=responses`,
                 read: false,
+                type: 'submission',
             });
 
         return NextResponse.json({ success: true, data: responseData });

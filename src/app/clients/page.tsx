@@ -430,10 +430,10 @@ export default function ClientsPage() {
                         <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} active={importExportOpen} />
                         <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
                             <div className="py-1">
-                                <DItem label="Import CSV" icon={<FileSpreadsheet size={12} />} onClick={() => { setImportModalOpen(true, tab === 'people' ? 'Contact' : 'Company'); setImportExportOpen(false); }} isDark={isDark} />
-                                <DItem label="Export CSV" icon={<Download size={12} />} onClick={handleExportCSV} isDark={isDark} />
-                                <DItem label="Import JSON" icon={<Upload size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
-                                <DItem label="Export JSON" icon={<Download size={12} />} onClick={handleExportJSON} isDark={isDark} />
+                                <DItem label="Import CSV" icon={<Download size={12} />} onClick={() => { setImportModalOpen(true, tab === 'people' ? 'Contact' : 'Company'); setImportExportOpen(false); }} isDark={isDark} />
+                                <DItem label="Export CSV" icon={<Upload size={12} />} onClick={handleExportCSV} isDark={isDark} />
+                                <DItem label="Import JSON" icon={<Download size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
+                                <DItem label="Export JSON" icon={<Upload size={12} />} onClick={handleExportJSON} isDark={isDark} />
                             </div>
                         </Dropdown>
                         <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />

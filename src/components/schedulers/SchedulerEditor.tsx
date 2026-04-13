@@ -6,7 +6,7 @@ import {
     ArrowLeft, ChevronDown, Link2, MoreHorizontal, Trash2, Copy,
     Check, Settings, Palette, ChevronRight, Clock, Calendar,
     MapPin, User, Mail, Phone, Globe, Bell, Tag, Sliders,
-    Monitor, Smartphone, PenLine, Eye
+    Monitor, Smartphone, PenLine, Eye, ExternalLink
 } from 'lucide-react';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -38,6 +38,7 @@ interface SchedulerMeta {
     confirmationMessage: string;
     activationDate: string;
     expirationDate: string;
+    submissionLimit: number | null;
     logoUrl: string;
     design: DocumentDesign;
 }
@@ -54,6 +55,7 @@ const DEFAULT_META: SchedulerMeta = {
     confirmationMessage: "Your booking is confirmed! We'll send a calendar invite shortly.",
     activationDate: '',
     expirationDate: '',
+    submissionLimit: null,
     logoUrl: '',
     design: DEFAULT_DOCUMENT_DESIGN,
 };
@@ -315,7 +317,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     }, []);
 
     const copyLink = () => {
-        navigator.clipboard.writeText(window.location.origin + '/schedule/' + id);
+        navigator.clipboard.writeText(window.location.origin + '/p/scheduler/' + id);
         setCopied(true);
         setTimeout(() => setCopied(false), 1800);
     };
@@ -441,6 +443,12 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                     )}
 
                     {/* Copy link */}
+                    <button onClick={() => window.open(window.location.origin + '/p/scheduler/' + id, '_blank')}
+                        className={cn("hidden md:flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]")}>
+                        <ExternalLink size={14} />
+                    </button>
+
                     <button onClick={copyLink}
                         className={cn("hidden md:flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
                             isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]")}>
@@ -458,6 +466,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                             <div className={cn("absolute right-0 top-full mt-1.5 w-44 rounded-[10px] shadow-xl py-1 z-50 border",
                                 isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#d2d2eb]")}>
                                 {[
+                                    { icon: ExternalLink, label: 'Open Link', action: () => window.open(window.location.origin + '/p/scheduler/' + id, '_blank') },
                                     { icon: Link2, label: 'Copy Link', action: copyLink },
                                     { icon: Copy, label: 'Duplicate', action: () => gooeyToast('Coming soon') },
                                     { icon: Trash2, label: 'Delete', action: () => setIsDeleteOpen(true) },
@@ -948,6 +957,11 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                     <PanelInput type="number" min={1} value={meta.futureLimit}
                                                             onChange={e => updateMeta({ futureLimit: Number(e.target.value) })}
                                                             isDark={isDark} />
+                                                </MetaField>
+                                                <MetaField label="Submission limit" isDark={isDark}>
+                                                    <PanelInput type="number" value={meta.submissionLimit ?? ''}
+                                                            onChange={v => updateMeta({ submissionLimit: v ? Number(v) : null })}
+                                                            placeholder="Unlimited" isDark={isDark} />
                                                 </MetaField>
                                             </div>
                                         </SectionAccordion>

@@ -9,9 +9,10 @@ import {
     Image, Upload, Mail, Phone, User, MapPin, Globe, Hash,
     Sliders as SlidersIcon, Calendar, LinkIcon, PenLine, Filter,
     GripVertical, X, Download, Eye, Monitor, Smartphone, LayoutTemplate,
-    LayoutGrid, List, ArrowUpDown,
+    LayoutGrid, List, ArrowUpDown, ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, DragEndEvent
@@ -76,7 +77,7 @@ type RightTab   = 'details' | 'design';
 interface FormMeta {
     activationDate: string;
     expirationDate: string;
-    submissionsLimit: number | null;
+    submissionLimit: number | null;
     project: string;
     confirmationMessage: string;
     logoUrl: string;
@@ -86,7 +87,7 @@ interface FormMeta {
 const DEFAULT_META: FormMeta = {
     activationDate: '',
     expirationDate: '',
-    submissionsLimit: null,
+    submissionLimit: null,
     project: '',
     confirmationMessage: "Thank you for your submission! We'll be in touch soon.",
     logoUrl: '',
@@ -149,7 +150,7 @@ const isColorDark = (color: string) => {
 
 /* ── Field preview in canvas ── */
 function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryColor, isPreview, borderRadius, marginTop, marginBottom, blockBackgroundColor }: {
-    field: FormField; isDark: boolean; isSelected: boolean; onClick: () => void;
+    field: FormField; isDark: boolean; isSelected: boolean; onClick: (e: React.MouseEvent) => void;
     onRemove: () => void; primaryColor: string; isPreview?: boolean; borderRadius: number;
     marginTop?: number; marginBottom?: number; blockBackgroundColor?: string;
 }) {
@@ -339,7 +340,6 @@ function FieldTypePill({ def, onAdd, isDark, borderRadius }: { def: FieldTypeDef
         </button>
     );
 }
-
 /* ── Insert Area ── */
 function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, isDark, primaryColor, borderRadius, hideLine, centered }: {
     index: number; totalFields: number; openIndex: number | null; setOpenIndex: (i: number | null) => void;
@@ -422,7 +422,7 @@ function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, i
                         {/* Contacts Section */}
                         <div>
                             <div className={cn(
-                                "px-1 pb-2 text-[9px] font-bold uppercase tracking-widest sticky top-0 z-10 py-1",
+                                "px-2 pb-2 text-[9px] font-bold uppercase tracking-widest sticky top-0 z-10 py-1 text-left",
                                 isDark ? "bg-[#181818] text-[#555]" : "bg-white text-[#bbb]"
                             )}>
                                 Contact Info
@@ -437,7 +437,7 @@ function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, i
                         {/* Inputs Section */}
                         <div>
                             <div className={cn(
-                                "px-1 pb-2 text-[9px] font-bold uppercase tracking-widest sticky top-0 z-10 py-1",
+                                "px-2 pb-2 text-[9px] font-bold uppercase tracking-widest sticky top-0 z-10 py-1 text-left",
                                 isDark ? "bg-[#181818] text-[#555]" : "bg-white text-[#bbb]"
                             )}>
                                 Inputs
@@ -462,7 +462,10 @@ export default function FormEditor({ id }: { id?: string }) {
     const router = useRouter();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { forms, updateForm, deleteForm, fetchForms } = useFormStore();
+    const { 
+        forms, updateForm, deleteForm, fetchForms, 
+        responses, fetchResponses, bulkDeleteResponses 
+    } = useFormStore();
 
     const [title, setTitle] = useState('New Form');
     const [status, setStatus] = useState<FormStatus>('Draft');
@@ -489,6 +492,7 @@ export default function FormEditor({ id }: { id?: string }) {
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<'logo' | 'background'>('logo');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [isResponsesDeleteOpen, setIsResponsesDeleteOpen] = useState(false);
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [responsesView, setResponsesView] = useState<'cards' | 'table'>('cards');
@@ -496,7 +500,7 @@ export default function FormEditor({ id }: { id?: string }) {
     const [responsesSearch, setResponsesSearch] = useState('');
     const [responsesOrderBy, setResponsesOrderBy] = useState<'recent' | 'oldest' | 'name'>('recent');
     const [orderOpen, setOrderOpen] = useState(false);
-    const { responses, fetchResponses, bulkDeleteResponses } = useFormStore();
+
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -536,6 +540,9 @@ export default function FormEditor({ id }: { id?: string }) {
         if (!id || isLoaded || forms.length === 0) return;
         const f = forms.find(f => f.id === id);
         if (!f) return;
+        
+        console.log(`[FormEditor] Loading form "${f.title}" (${id}) with ${f.fields?.length || 0} fields`);
+        
         setTitle(f.title);
         setStatus(f.status);
         if (Array.isArray(f.fields)) setFields(f.fields);
@@ -556,6 +563,11 @@ export default function FormEditor({ id }: { id?: string }) {
             if (isLoaded) isFirst.current = false;
             return;
         }
+        // Safety: Don't save if we are in an inconsistent state
+        if (!id || !isLoaded) return;
+
+        console.log(`[FormEditor] Auto-saving form "${debouncedTitle}" with ${debouncedFields.length} fields`);
+
         gooeyToast.promise(
             updateForm(id, { title: debouncedTitle, status: debouncedStatus, fields: debouncedFields, meta: debouncedMeta as any }),
             { loading: 'Saving...', success: 'Saved', error: 'Failed to save' }
@@ -722,7 +734,8 @@ export default function FormEditor({ id }: { id?: string }) {
     const handleCopyAll = (data: Record<string, any>) => {
         const text = Object.entries(data).map(([qid, val]) => {
             const f = fields.find(field => field.id === qid);
-            return `${f?.label || qid}: ${val}`;
+            const str = Array.isArray(val) ? val.join(', ') : (typeof val === 'object' ? JSON.stringify(val) : String(val || ''));
+            return `${f?.label || qid}: ${str}`;
         }).join('\n');
         navigator.clipboard.writeText(text);
         gooeyToast.success("All response data copied");
@@ -735,11 +748,40 @@ export default function FormEditor({ id }: { id?: string }) {
         setSelectedResponseIds(next);
     };
 
-    const handleBulkDeleteResponses = async () => {
+    const handleBulkDeleteResponses = () => {
         if (!selectedResponseIds.size) return;
-        await bulkDeleteResponses(Array.from(selectedResponseIds));
+        setIsResponsesDeleteOpen(true);
+    };
+
+    const confirmBulkDeleteResponses = async () => {
+        const ids = Array.from(selectedResponseIds);
+        await bulkDeleteResponses(ids);
         setSelectedResponseIds(new Set());
-        gooeyToast.success("Deleted selected responses");
+        setIsResponsesDeleteOpen(false);
+        gooeyToast.success(`Deleted ${ids.length} selected responses`);
+    };
+
+    const handleBulkExportResponses = () => {
+        if (selectedResponseIds.size === 0) return;
+        const selected = responses.filter(r => selectedResponseIds.has(r.id));
+        const header = ["Date", ...fields.map(f => `"${f.label.replace(/"/g, '""')}"`)].join(",");
+        const rows = selected.map(r => {
+            const date = `"${new Date(r.created_at).toLocaleString()}"`;
+            const cols = fields.map(f => {
+                const val = r.data?.[f.id];
+                const str = Array.isArray(val) ? val.join(', ') : (typeof val === 'object' ? JSON.stringify(val) : String(val || ''));
+                return `"${str.replace(/"/g, '""')}"`;
+            });
+            return [date, ...cols].join(",");
+        });
+        const csv = [header, ...rows].join("\n");
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `responses-selected-${id}.csv`;
+        a.click();
+        gooeyToast.success(`Exported ${selected.length} response${selected.length !== 1 ? 's' : ''}`);
     };
 
     const STEPS: { id: CanvasStep; label: string; disabled?: boolean }[] = [
@@ -841,6 +883,12 @@ export default function FormEditor({ id }: { id?: string }) {
                         </div>
                     )}
 
+                    <button onClick={() => window.open(window.location.origin + '/p/form/' + id, '_blank')}
+                        className={cn("hidden md:flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]")}>
+                        <ExternalLink size={14} />
+                    </button>
+
                     <button onClick={copyLink}
                         className={cn("hidden md:flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
                             isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]")}>
@@ -857,6 +905,7 @@ export default function FormEditor({ id }: { id?: string }) {
                             <div className={cn("absolute right-0 top-full mt-1.5 w-44 rounded-[10px] shadow-xl py-1 z-50 border",
                                 isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#d2d2eb]")}>
                                 {[
+                                    { icon: ExternalLink, label: 'Open Link', action: () => window.open(window.location.origin + '/p/form/' + id, '_blank') },
                                     { icon: Link2, label: 'Copy Link', action: copyLink },
                                     { icon: Download, label: 'Export CSV', action: () => gooeyToast('No responses yet') },
                                     { icon: Copy, label: 'Duplicate', action: () => gooeyToast('Coming soon') },
@@ -903,7 +952,7 @@ export default function FormEditor({ id }: { id?: string }) {
                             <div className="flex-1 flex flex-col overflow-hidden">
                                 <div
                                     className="flex-1 overflow-auto relative"
-                                    onClick={() => setSelectedId(null)}
+                                    onClick={() => setSelectedFieldId(null)}
                                     style={{
                                         backgroundColor: design.backgroundColor || '#f7f7f7',
                                         backgroundImage: getBackgroundImageWithOpacity(design.backgroundImage, design.backgroundColor || '#f7f7f7', design.backgroundImageOpacity),
@@ -948,7 +997,10 @@ export default function FormEditor({ id }: { id?: string }) {
                                         </div>
                                     </div>
 
-                                    <div className={cn("flex flex-col items-center min-h-full", isPreview && previewMode === 'mobile' ? "py-8 px-4" : "pb-4 px-4 pt-2")}>
+                                    <div 
+                                        className={cn("flex flex-col items-center min-h-full", isPreview && previewMode === 'mobile' ? "py-8 px-4" : "pb-4 px-4 pt-2")}
+                                        onClick={() => setSelectedFieldId(null)}
+                                    >
                                         {isPreview && previewMode === 'mobile' ? (
                                             <div className="flex flex-col items-center">
                                                 <div className={cn("relative rounded-[44px] border-[4px] overflow-hidden shrink-0 transition-all duration-300 bg-[#000] w-[390px] h-[844px]", isDark ? "border-[#1a1a1a] shadow-2xl" : "border-[#000] shadow-2xl")}>
@@ -971,16 +1023,20 @@ export default function FormEditor({ id }: { id?: string }) {
                                                             }}>
                                                             {canvasStep === 'form' && (
                                                                 <div className="p-6">
-                                                                    <div className="mb-6">
-                                                                        {meta.logoUrl && <img src={meta.logoUrl} alt="Logo" className="mb-4 object-contain" style={{ height: `${design.logoSize || 40}px` }} />}
-                                                                        <div className="text-[18px] font-bold mb-1" style={{ color: isFormDark ? '#fff' : '#111' }}>{title}</div>
+                                                                    <div className="mb-10">
+                                                                        {meta.logoUrl && <img src={meta.logoUrl} alt="Logo" className="mb-6 object-contain" style={{ height: `${design.logoSize || 40}px` }} />}
+                                                                        <div className="text-[32px] font-bold leading-tight tracking-tight mb-2" style={{ color: isFormDark ? '#fff' : '#111' }}>{title}</div>
+                                                                        {meta.description && <div className="text-[13.5px] opacity-60 max-w-[90%]" style={{ color: isFormDark ? '#aaa' : '#555' }}>{meta.description}</div>}
                                                                     </div>
                                                                     <div className="space-y-4">
                                                                         {fields.map(f => (
                                                                             <FieldPreview key={f.id} field={f} isDark={isFormDark} isSelected={false} onClick={() => {}} onRemove={() => {}} primaryColor={primaryColor} isPreview={true} borderRadius={design.borderRadius ?? 16} marginTop={design.marginTop} marginBottom={design.marginBottom} blockBackgroundColor={design.blockBackgroundColor} />
                                                                         ))}
                                                                     </div>
-                                                                    {fields.length > 0 && <button className="mt-6 w-full py-3 font-bold text-[14px] text-black transition-all" style={{ background: primaryColor, borderRadius: `${design.borderRadius ?? 16}px` }}>Submit</button>}
+                                                                    {fields.length > 0 && <button 
+                                                                        onClick={() => gooeyToast.info("Please use the public link to test submissions")}
+                                                                        className="mt-6 w-full py-3 font-bold text-[14px] text-black transition-all" 
+                                                                        style={{ background: primaryColor, borderRadius: `${design.borderRadius ?? 16}px` }}>Submit</button>}
                                                                 </div>
                                                             )}
                                                             {canvasStep === 'confirmation' && (
@@ -1010,15 +1066,16 @@ export default function FormEditor({ id }: { id?: string }) {
                                             {canvasStep === 'form' && (
                                                 <div className="p-8">
                                                     {/* Form header */}
-                                                    <div className="mb-6">
+                                                    <div className="mb-8">
                                                         {meta.logoUrl && (
                                                             <img src={meta.logoUrl} alt="Logo"
                                                                 className="mb-4 object-contain"
                                                                 style={{ height: `${design.logoSize || 40}px` }} />
                                                         )}
-                                                        <div className="text-[20px] font-bold mb-1" style={{ color: isFormDark ? '#fff' : '#111' }}>
+                                                        <div className="text-[28px] font-bold leading-tight tracking-tight mb-2" style={{ color: isFormDark ? '#fff' : '#111' }}>
                                                             {title}
                                                         </div>
+                                                        {meta.description && <div className="text-[14px] opacity-60" style={{ color: isFormDark ? '#aaa' : '#555' }}>{meta.description}</div>}
                                                     </div>
 
                                                     {/* Fields */}
@@ -1045,7 +1102,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                         {!isPreview && (
                                                                             <div className="relative mt-4">
                                                                                 <button 
-                                                                                    onClick={() => setOpenInsertMenu(0)}
+                                                                                    onClick={(e) => { e.stopPropagation(); setOpenInsertMenu(0); }}
                                                                                     className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary-hover text-black transition-all shadow-sm"
                                                                                 >
                                                                                     <Plus size={14} strokeWidth={2.5} />
@@ -1076,7 +1133,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                                 field={f}
                                                                                 isDark={isFormDark}
                                                                                 isSelected={selectedFieldId === f.id && !isPreview}
-                                                                                onClick={() => { if (!isPreview) setSelectedFieldId(f.id === selectedFieldId ? null : f.id) }}
+                                                                                onClick={(e) => { e.stopPropagation(); if (!isPreview) setSelectedFieldId(f.id === selectedFieldId ? null : f.id) }}
                                                                                 onRemove={() => removeField(f.id)}
                                                                                 primaryColor={primaryColor}
                                                                                 isPreview={isPreview}
@@ -1098,6 +1155,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                     {/* Submit button */}
                                                     {fields.length > 0 && (
                                                         <button
+                                                            onClick={() => gooeyToast.info("Please use the public link to test submissions")}
                                                             className="mt-6 w-full py-3 font-bold text-[14px] text-black transition-all"
                                                             style={{ background: primaryColor, borderRadius: `${design.borderRadius ?? 16}px` }}>
                                                             Submit
@@ -1249,9 +1307,9 @@ export default function FormEditor({ id }: { id?: string }) {
                                                             />
                                                         </div>
                                                     </SectionAccordion>
-                                                    <SectionAccordion label="Submissions limit" icon={<Hash size={11} />} isDark={isDark}>
-                                                        <PanelInput type="number" value={meta.submissionsLimit ?? ''}
-                                                            onChange={v => updateMeta({ submissionsLimit: v ? Number(v) : null })}
+                                                    <SectionAccordion label="Submission limit" icon={<Hash size={11} />} isDark={isDark}>
+                                                        <PanelInput type="number" value={meta.submissionLimit ?? ''}
+                                                            onChange={v => updateMeta({ submissionLimit: v ? Number(v) : null })}
                                                             placeholder="Unlimited" isDark={isDark} />
                                                     </SectionAccordion>
                                                     <SectionAccordion label="Project" icon={<SlidersIcon size={11} />} isDark={isDark}>
@@ -1336,17 +1394,22 @@ export default function FormEditor({ id }: { id?: string }) {
                                                 initial={{ opacity: 0, x: 10 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 exit={{ opacity: 0, x: 10 }}
-                                                className={cn("flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-sm",
-                                                    isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}
+                                                className={cn("flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border ml-2",
+                                                    isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-white border-[#e8e8e8] text-[#666]")}
                                             >
-                                                <span className="text-[11px] font-bold text-primary">{selectedResponseIds.size} selected</span>
-                                                <div className={cn("w-px h-3", isDark ? "bg-white/10" : "bg-black/10")} />
-                                                <button onClick={handleBulkDeleteResponses} className="p-1 text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Delete">
-                                                    <Trash2 size={13} />
-                                                </button>
-                                                <button onClick={() => setSelectedResponseIds(new Set())} className={cn("p-1 rounded-md transition-colors", isDark ? "text-white/40 hover:text-white" : "text-black/40 hover:text-black")}>
-                                                    <X size={13} />
-                                                </button>
+                                                <span className="opacity-50">{selectedResponseIds.size} selected</span>
+                                                <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
+                                                <div className="flex items-center gap-3">
+                                                    <button onClick={handleBulkExportResponses} className="hover:text-primary flex items-center gap-1.5 transition-colors">
+                                                        <Upload size={11} className="opacity-70" />Export
+                                                    </button>
+                                                    <button onClick={handleBulkDeleteResponses} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
+                                                        <Trash2 size={11} className="opacity-70" />Delete
+                                                    </button>
+                                                    <button onClick={() => setSelectedResponseIds(new Set())} className={cn("border-l pl-2 transition-colors", isDark ? "text-white/40 hover:text-white" : "text-black/40 hover:text-black")}>
+                                                        <X size={11} />
+                                                    </button>
+                                                </div>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -1398,7 +1461,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                         className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[11px] font-bold transition-all",
                                             isDark ? "bg-white/5 hover:bg-white/10 text-white border border-white/5" : "bg-white border hover:bg-black/[0.02] text-black shadow-sm")}
                                     >
-                                        <Download size={12} /> Export
+                                        <Upload size={12} /> Export
                                     </button>
                                 </div>
                             </div>
@@ -1455,9 +1518,25 @@ export default function FormEditor({ id }: { id?: string }) {
                                                             </span>
                                                         </div>
 
-                                                        {/* Checkbox Overlay */}
-                                                        <div className={cn("absolute top-3.5 right-4 z-10 transition-opacity", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
-                                                            <div className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all",
+                                                        {/* Action Buttons (Top Right Overlay) */}
+                                                        <div className={cn("absolute top-3.5 right-4 z-10 flex items-center gap-1.5 transition-opacity", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleCopyAll(r.data); }}
+                                                                className={cn("p-1 rounded-lg transition-colors shrink-0", isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black")}
+                                                                title="Copy all responses"
+                                                            >
+                                                                <Copy size={11} />
+                                                            </button>
+                                                            
+                                                            <InlineDeleteButton 
+                                                                onDelete={async () => {
+                                                                    await bulkDeleteResponses([r.id]);
+                                                                    gooeyToast.error("Response deleted");
+                                                                }}
+                                                                isDark={isDark}
+                                                            />
+
+                                                            <div className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all shrink-0",
                                                                 isSelected ? "bg-primary border-primary" : isDark ? "border-white/20" : "border-[#ccc]")}>
                                                                 {isSelected && <Check size={10} strokeWidth={4} className="text-black" />}
                                                             </div>
@@ -1482,17 +1561,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                             </div>
                                                         )}
                                                     </div>
-
-                                                    {/* Card Actions (Hover) */}
-                                                    <div className="absolute bottom-2.5 right-3 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1.5">
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); handleCopyAll(r.data); }}
-                                                            className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-white/10 text-white/50" : "hover:bg-black/5 text-black/50")}
-                                                            title="Copy all"
-                                                        >
-                                                            <Copy size={11} />
-                                                        </button>
-                                                    </div>
+                                                    {/* Card Actions Removed - Moved to Header */}
                                                 </div>
                                             );
                                         })}
@@ -1601,6 +1670,17 @@ export default function FormEditor({ id }: { id?: string }) {
                     description="This will permanently delete this form and all its responses."
                     onConfirm={handleDelete}
                     onClose={() => setIsDeleteOpen(false)}
+                    isDark={isDark}
+                />
+            )}
+            {isResponsesDeleteOpen && (
+                <DeleteConfirmModal
+                    open={isResponsesDeleteOpen}
+                    title="Delete Responses"
+                    description={`Are you sure you want to permanently delete ${selectedResponseIds.size} selected response(s)? This action cannot be undone.`}
+                    onConfirm={confirmBulkDeleteResponses}
+                    onClose={() => setIsResponsesDeleteOpen(false)}
+                    isDark={isDark}
                 />
             )}
         </div>

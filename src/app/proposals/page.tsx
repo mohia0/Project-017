@@ -13,7 +13,7 @@ import {
     ArrowUpDown, Archive, Upload, Download, Plus, User, Filter,
     Calendar, Check, X, ArchiveRestore, ChevronsUpDown,
     Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
-    FileJson, FileSpreadsheet, Link2
+    FileJson, FileSpreadsheet, Link2, ExternalLink
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { useRouter } from 'next/navigation';
@@ -181,7 +181,7 @@ function Dropdown({ open, onClose, isDark, children }: { open: boolean; onClose:
     }, [open, onClose]);
     if (!open) return null;
     return (
-        <div ref={ref} className={cn("absolute top-full left-1/2 -translate-x-1/2 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
+        <div ref={ref} className={cn("absolute top-full right-0 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
             isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
             {children}
         </div>
@@ -331,17 +331,32 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
 
             </div>
 
-            {/* Archive button */}
-            <button
-                onClick={e => { e.stopPropagation(); onArchive(); }}
-                title="Archive"
-                className={cn(
-                    "absolute top-2.5 right-10 w-6 h-6 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all",
-                    isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]"
-                )}
-            >
-                <Archive size={11} />
-            </button>
+            {/* Quick actions */}
+            <div className="absolute top-2.5 right-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <button
+                    onClick={e => { 
+                        e.stopPropagation(); 
+                        window.open(window.location.origin + '/p/proposal/' + p.id, '_blank');
+                    }}
+                    title="Open Link"
+                    className={cn(
+                        "w-6 h-6 rounded flex items-center justify-center transition-all",
+                        isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]"
+                    )}
+                >
+                    <ExternalLink size={11} />
+                </button>
+                <button
+                    onClick={e => { e.stopPropagation(); onArchive(); }}
+                    title="Archive"
+                    className={cn(
+                        "w-6 h-6 rounded flex items-center justify-center transition-all",
+                        isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]"
+                    )}
+                >
+                    <Archive size={11} />
+                </button>
+            </div>
         </div>
     );
 }
@@ -1047,9 +1062,9 @@ export default function ProposalsPage() {
                         <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} />
                         <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
                             <div className="py-1">
-                                <DItem label="Import CSV" icon={<FileSpreadsheet size={12} />} onClick={() => { setImportModalOpen(true, 'Proposal'); setImportExportOpen(false); }} isDark={isDark} />
-                                <DItem label="Import JSON" icon={<Upload size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
-                                <DItem label="Export JSON" icon={<Download size={12} />} onClick={handleExportJSON} isDark={isDark} />
+                                <DItem label="Import CSV" icon={<Download size={12} />} onClick={() => { setImportModalOpen(true, 'Proposal'); setImportExportOpen(false); }} isDark={isDark} />
+                                <DItem label="Import JSON" icon={<Download size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
+                                <DItem label="Export JSON" icon={<Upload size={12} />} onClick={handleExportJSON} isDark={isDark} />
                             </div>
                         </Dropdown>
                         <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
@@ -1332,6 +1347,14 @@ export default function ProposalsPage() {
                                                 {fmt$(Number(p.amount || 0))}
                                             </span>
                                             <div className="absolute right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
+                                                <button onClick={e => { 
+                                                        e.stopPropagation(); 
+                                                        window.open(window.location.origin + '/p/proposal/' + p.id, '_blank');
+                                                    }} title="Open Link"
+                                                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
+                                                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
+                                                    <ExternalLink size={11} />
+                                                </button>
                                                 <button onClick={e => { 
                                                         e.stopPropagation(); 
                                                         const url = window.location.origin + '/p/proposal/' + p.id;

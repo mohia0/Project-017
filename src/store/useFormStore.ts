@@ -72,8 +72,17 @@ export const useFormStore = create<FormState>((set) => ({
             .eq('workspace_id', workspaceId)
             .order('created_at', { ascending: false });
 
-        if (error) set({ error: error.message, isLoading: false });
-        else set({ forms: data || [], isLoading: false });
+        if (error) {
+            console.error('[useFormStore] Error fetching forms:', error.message);
+            set({ error: error.message, isLoading: false });
+        } else {
+            // Ensure fields is always an array to prevent "0 fields" loading issues
+            const formsWithFields = (data || []).map(f => ({
+                ...f,
+                fields: Array.isArray(f.fields) ? f.fields : []
+            }));
+            set({ forms: formsWithFields, isLoading: false });
+        }
     },
 
     addForm: async (form) => {
@@ -117,7 +126,12 @@ export const useFormStore = create<FormState>((set) => ({
             .eq('form_id', formId)
             .order('created_at', { ascending: false });
 
-        if (!error && data) set({ responses: data });
+        if (error) {
+            console.error('Error fetching responses:', error);
+            gooeyToast.error('Failed to load responses');
+            return;
+        }
+        if (data) set({ responses: data });
     },
 
     bulkDeleteResponses: async (ids) => {

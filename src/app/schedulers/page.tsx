@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
     Search, Table2, LayoutGrid, Plus, ChevronDown,
     Calendar, Clock, MapPin, Users, Check,
-    MoreHorizontal, Trash2, Copy, Edit3, Link,
+    MoreHorizontal, Trash2, Copy, Edit3, Link, ExternalLink,
     SlidersHorizontal, ArrowUpDown,
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
@@ -213,8 +213,14 @@ function SchedulerCard({ s, onOpen, onDelete, onCopy, isDark, isSelected, onTogg
                             <div className={cn("font-bold text-[14px] truncate leading-tight", isDark ? "text-white" : "text-[#111]")}>
                                 {s.title}
                             </div>
-                            <div className={cn("text-[11px] mt-0.5", isDark ? "text-[#555]" : "text-[#aaa]")}>
-                                Created {fmtDate(s.created_at)}
+                            <div className={cn("text-[11px] mt-0.5 flex items-center gap-1.5", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                                <span>Created {fmtDate(s.created_at)}</span>
+                                {meta.expirationDate && (
+                                    <>
+                                        <span>•</span>
+                                        <span>Expires {fmtDate(meta.expirationDate)}</span>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -260,6 +266,11 @@ function SchedulerCard({ s, onOpen, onDelete, onCopy, isDark, isSelected, onTogg
                     0 bookings
                 </div>
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => window.open(window.location.origin + '/p/scheduler/' + s.id, '_blank')}
+                        className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
+                            isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                        <ExternalLink size={12} />
+                    </button>
                     <button onClick={onCopy}
                         className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
                             isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
@@ -571,7 +582,8 @@ export default function SchedulersPage() {
                                     <th className="text-left font-semibold px-4 py-2.5 w-[180px]">Durations</th>
                                     <th className="text-left font-semibold px-4 py-2.5 w-[120px]">Bookings</th>
                                     <th className="text-left font-semibold px-4 py-2.5 w-[160px]">Location</th>
-                                    <th className="text-left font-semibold px-4 py-2.5">Created</th>
+                                    <th className="text-left font-semibold px-4 py-2.5 w-[160px]">Created</th>
+                                    <th className="text-left font-semibold px-4 py-2.5">Expires</th>
                                     <th className="w-[80px]" />
                                 </tr>
                             </thead>
@@ -648,8 +660,24 @@ export default function SchedulersPage() {
                                                     {fmtDate(s.created_at)}
                                                 </span>
                                             </td>
+                                            <td className="px-4 py-3">
+                                                {meta.expirationDate ? (
+                                                    <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>
+                                                        {fmtDate(meta.expirationDate)}
+                                                    </span>
+                                                ) : (
+                                                    <span className={cn("opacity-20", isDark ? "text-white" : "text-black")}>—</span>
+                                                )}
+                                            </td>
                                             <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                                                    <Tooltip content="Open Link" side="top">
+                                                        <button onClick={(e) => { e.stopPropagation(); window.open(window.location.origin + '/p/scheduler/' + s.id, '_blank'); }}
+                                                            className={cn("p-1.5 rounded-lg transition-colors",
+                                                                isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                                                            <ExternalLink size={12} />
+                                                        </button>
+                                                    </Tooltip>
                                                     <Tooltip content="Copy preview link" side="top">
                                                         <button onClick={(e) => copyLink(s.id, e)}
                                                             className={cn("p-1.5 rounded-lg transition-colors",

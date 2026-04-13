@@ -10,6 +10,7 @@ export interface AppNotification {
     message: string;
     link?: string;
     read: boolean;
+    type?: string;
     created_at: string;
 }
 
