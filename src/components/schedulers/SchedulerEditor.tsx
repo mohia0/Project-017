@@ -645,40 +645,23 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                         )}
 
                                                         {canvasStep === 'form' && (
-                                                            <div className="max-w-[460px] mx-auto space-y-5">
-                                                                <div>
-                                                                    <div className="text-[13px] font-bold mb-3" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
-                                                                        Your details
-                                                                    </div>
-                                                                    <div className="grid grid-cols-2 gap-3 mb-3">
-                                                                        {['First name', 'Last name'].map(p => (
-                                                                            <input key={p} placeholder={p}
-                                                                                className="w-full px-3 py-2.5 rounded-lg border text-[13px] outline-none"
-                                                                                style={{ 
-                                                                                    borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? '#333' : '#e5e5e5', 
-                                                                                    color: '#111',
-                                                                                    background: '#fff'
-                                                                                }} readOnly />
-                                                                        ))}
-                                                                    </div>
-                                                                    {['Email address', 'Phone number'].map(p => (
-                                                                        <input key={p} placeholder={p}
-                                                                            className="w-full px-3 py-2.5 rounded-lg border text-[13px] outline-none mb-3"
-                                                                            style={{ 
-                                                                                borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? '#333' : '#e5e5e5', 
-                                                                                color: '#111',
-                                                                                background: '#fff'
-                                                                            }} readOnly />
-                                                                    ))}
-                                                                </div>
+                                                            <div className="max-w-[460px] mx-auto space-y-5 animate-in fade-in slide-in-from-bottom-4">
+                                                                <SchedulerFormBuilder 
+                                                                    isDark={isColorDark(design.blockBackgroundColor || '#fff')} 
+                                                                    design={design} 
+                                                                    fields={meta.fields || []} 
+                                                                    updateFields={(newFields) => updateMeta({ fields: newFields })} 
+                                                                />
                                                                 <div className="flex gap-3 pt-2">
                                                                     <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all"
+                                                                        onClick={() => setCanvasStep('scheduler')}
                                                                         style={{ 
                                                                             borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? '#333' : '#e5e5e5', 
                                                                             color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#555',
                                                                             borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 4)}px`,
                                                                         }}>← Back</button>
-                                                                    <button className="flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all"
+                                                                    <button className="flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all text-white"
+                                                                        onClick={() => setCanvasStep('confirmation')}
                                                                         style={{ 
                                                                             background: design.primaryColor || '#4dbf39',
                                                                             color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000',
@@ -790,40 +773,23 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                             )}
 
                                             {canvasStep === 'form' && (
-                                                <div className="max-w-[460px] mx-auto space-y-5">
-                                                    <div>
-                                                        <div className="text-[13px] font-bold mb-3" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
-                                                            Your details
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-3 mb-3">
-                                                            {['First name', 'Last name'].map(p => (
-                                                                <input key={p} placeholder={p}
-                                                                    className="w-full px-3 py-2.5 rounded-lg border text-[13px] outline-none"
-                                                                    style={{ 
-                                                                        borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? '#333' : '#e5e5e5', 
-                                                                        color: '#111',
-                                                                        background: '#fff' 
-                                                                    }} readOnly />
-                                                            ))}
-                                                        </div>
-                                                        {['Email address', 'Phone number'].map(p => (
-                                                            <input key={p} placeholder={p}
-                                                                className="w-full px-3 py-2.5 rounded-lg border text-[13px] outline-none mb-3"
-                                                                style={{ 
-                                                                    borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? '#333' : '#e5e5e5', 
-                                                                    color: '#111',
-                                                                    background: '#fff'
-                                                                }} readOnly />
-                                                        ))}
-                                                    </div>
+                                                <div className="max-w-[460px] mx-auto space-y-5 animate-in fade-in slide-in-from-bottom-4">
+                                                    <SchedulerFormBuilder 
+                                                        isDark={isColorDark(design.blockBackgroundColor || '#fff')} 
+                                                        design={design} 
+                                                        fields={meta.fields || []} 
+                                                        updateFields={(newFields) => updateMeta({ fields: newFields })} 
+                                                    />
                                                     <div className="flex gap-3 pt-2">
                                                         <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all"
+                                                            onClick={() => setCanvasStep('scheduler')}
                                                             style={{ 
                                                                 borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? '#333' : '#e5e5e5', 
                                                                 color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#555',
                                                                 borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 4)}px`,
                                                             }}>← Back</button>
                                                         <button className="flex-1 py-2.5 rounded-xl text-[13px] font-bold transition-all text-white"
+                                                            onClick={() => setCanvasStep('confirmation')}
                                                             style={{ 
                                                                 background: design.primaryColor || '#4dbf39',
                                                                 color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000',

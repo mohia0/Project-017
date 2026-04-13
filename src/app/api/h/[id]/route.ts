@@ -14,11 +14,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         // Fetch hook details — needed for notification title/link
         const { data: hook, error: hookError } = await supabaseService
             .from('hooks')
-            .select('id, workspace_id, name, title, link')
+            .select('id, workspace_id, name, title, link, status')
             .eq('id', id)
             .single();
 
-        if (!hookError && hook) {
+        if (!hookError && hook && hook.status === 'Active') {
             const ip =
                 req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
                 req.headers.get('x-real-ip') ||

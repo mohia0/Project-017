@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils';
 
 import { Avatar } from '@/components/ui/Avatar';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { ViewToggle } from '@/components/ui/ViewToggle';
 
 type Tab = 'people' | 'companies';
 type ViewMode = 'grid' | 'list';
@@ -326,46 +328,47 @@ export default function ClientsPage() {
                         {t === 'people' ? 'People' : 'Companies'}
                     </button>
                 ))}
-
-                <div className={cn("w-[1px] h-4 mx-2", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
-
-                <div className="relative mr-1">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" size={11} />
-                    <input
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search"
-                        className={cn(
-                            "pl-6 pr-3 py-1 text-[11px] rounded border focus:outline-none w-28 transition-all focus:w-44",
-                            isDark
-                                ? "bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-white/20"
-                                : "bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]"
-                        )}
-                    />
-                </div>
-
-                <div className="relative">
-                    <button 
-                        onClick={() => setOrderOpen(!orderOpen)}
-                        className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded transition-colors shrink-0",
-                        orderOpen ? (isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#111]") : (isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]")
-                    )}>
-                        <ArrowUpDown size={11} /> Order by
-                    </button>
-                    <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
-                        <div className="py-1">
-                            <DItem label="Alphabetical (A-Z)" active={orderBy === 'name'} onClick={() => { setOrderBy('name'); setOrderOpen(false); }} isDark={isDark} />
-                            <DItem label="Alphabetical (Z-A)" active={orderBy === 'name-desc'} onClick={() => { setOrderBy('name-desc'); setOrderOpen(false); }} isDark={isDark} />
-                            <DItem label="Recently Added" active={orderBy === 'recent'} onClick={() => { setOrderBy('recent'); setOrderOpen(false); }} isDark={isDark} />
-                            <DItem label="Oldest Added" active={orderBy === 'oldest'} onClick={() => { setOrderBy('oldest'); setOrderOpen(false); }} isDark={isDark} />
-                        </div>
-                    </Dropdown>
-                </div>
-
                 <div className="flex-1" />
 
+                <SearchInput 
+                    value={search} 
+                    onChange={setSearch} 
+                    isDark={isDark} 
+                />
+                
+                {tab === 'people' && (
+                    <>
+                        <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+                        <ViewToggle 
+                            view={view} 
+                            onViewChange={(v) => { setView(v); setSelectedIds(new Set()); }} 
+                            isDark={isDark} 
+                        />
+                    </>
+                )}
+
+                <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+
                 <div className="flex items-center gap-1">
+                    <div className="relative">
+                    <TbBtn 
+                        label="Order by"
+                        icon={<ArrowUpDown size={11}/>}
+                        active={orderOpen}
+                        onClick={() => setOrderOpen(!orderOpen)}
+                        isDark={isDark}
+                        hasArrow
+                    />
+                        <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
+                            <div className="py-1">
+                                <DItem label="Alphabetical (A-Z)" active={orderBy === 'name'} onClick={() => { setOrderBy('name'); setOrderOpen(false); }} isDark={isDark} />
+                                <DItem label="Alphabetical (Z-A)" active={orderBy === 'name-desc'} onClick={() => { setOrderBy('name-desc'); setOrderOpen(false); }} isDark={isDark} />
+                                <DItem label="Recently Added" active={orderBy === 'recent'} onClick={() => { setOrderBy('recent'); setOrderOpen(false); }} isDark={isDark} />
+                                <DItem label="Oldest Added" active={orderBy === 'oldest'} onClick={() => { setOrderBy('oldest'); setOrderOpen(false); }} isDark={isDark} />
+                            </div>
+                        </Dropdown>
+                    </div>
+
                     {/* Bulk actions */}
                     {selectedIds.size > 0 && (
                         <div className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border mr-2', isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}>
@@ -412,20 +415,6 @@ export default function ClientsPage() {
                         </div>
                     )}
 
-                    {tab === 'people' && (['grid', 'list'] as ViewMode[]).map(v => (
-                        <button key={v} onClick={() => { setView(v); setSelectedIds(new Set()); }}
-                            className={cn(
-                                "flex items-center gap-1 px-2 py-1 text-[11px] rounded transition-colors",
-                                view === v
-                                    ? (isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-[#111]")
-                                    : (isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]")
-                            )}>
-                            {v === 'grid' ? <LayoutGrid size={11} /> : <List size={11} />}
-                        </button>
-                    ))}
-
-                    <div className={cn("w-[1px] h-4 mx-2 hidden md:block", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
-                    
                     <div className="relative">
                         <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} active={importExportOpen} />
                         <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>

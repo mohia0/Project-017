@@ -23,6 +23,8 @@ import ClientEditor from '@/components/clients/ClientEditor';
 import { gooeyToast } from 'goey-toast';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { ViewToggle } from '@/components/ui/ViewToggle';
 import {
     DndContext,
     closestCenter,
@@ -986,26 +988,25 @@ export default function ProposalsPage() {
             ) : (
                 /* ── Desktop toolbar ── */
                 <div className={cn("flex items-center gap-0 px-4 py-1.5 shrink-0", isDark ? "border-b border-[#252525]" : "")}>
-                    {/* Search */}
-                    <div className="relative mr-2">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 opacity-40" size={11} />
-                        <input type="text" placeholder="Search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                            className={cn("pl-6 pr-3 py-1 text-[11px] rounded border focus:outline-none w-28 transition-all focus:w-44",
-                                isDark ? "bg-white/5 border-white/10 text-white placeholder:text-white/25 focus:border-white/20"
-                                    : "bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]")} />
-                    </div>
+                    <div className="flex-1" />
 
-                    {/* View switcher */}
-                    <div className="relative mr-1">
-                        <TbBtn label={view === 'table' ? 'Table' : 'Grid'} icon={view === 'table' ? <Table2 size={11} /> : <LayoutGrid size={11} />}
-                            hasArrow onClick={() => setViewOpen(v => !v)} isDark={isDark} active={viewOpen} />
-                        <Dropdown open={viewOpen} onClose={() => setViewOpen(false)} isDark={isDark}>
-                            <div className="py-1">
-                                <DItem label="Table" icon={<Table2 size={12} />} active={view === 'table'} onClick={() => { setView('table'); setViewOpen(false); }} isDark={isDark} />
-                                <DItem label="Grid" icon={<LayoutGrid size={12} />} active={view === 'cards'} onClick={() => { setView('cards'); setViewOpen(false); }} isDark={isDark} />
-                            </div>
-                        </Dropdown>
-                    </div>
+                    <SearchInput 
+                        value={searchQuery} 
+                        onChange={setSearchQuery} 
+                        isDark={isDark} 
+                    />
+                    <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+
+                    <ViewToggle 
+                        view={view} 
+                        onViewChange={setView} 
+                        isDark={isDark} 
+                        options={[
+                            { id: 'table', icon: <Table2 size={12}/> },
+                            { id: 'cards', icon: <LayoutGrid size={12}/> }
+                        ]}
+                    />
+                    <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
                     {/* Filter / date */}
                     <div className="relative mx-1">
@@ -1056,7 +1057,6 @@ export default function ProposalsPage() {
                     <TbBtn label="Archived" icon={showArchived ? <ArchiveRestore size={11} /> : <Archive size={11} />}
                         active={showArchived} onClick={() => { setShowArchived(v => !v); setSelectedIds(new Set()); }} isDark={isDark} />
 
-                    <div className="flex-1" />
 
                     <div className="relative">
                         <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} />

@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from './useUIStore';
 
+export type HookStatus = 'Active' | 'Inactive';
+
 export interface Hook {
     id: string;
     workspace_id: string;
@@ -9,6 +11,7 @@ export interface Hook {
     title: string;
     link: string | null;
     color: string;
+    status: HookStatus;
     created_at: string;
     // Client-side enrichment: total trigger count
     event_count?: number;
@@ -19,8 +22,8 @@ interface HookState {
     isLoading: boolean;
     error: string | null;
     fetchHooks: () => Promise<void>;
-    addHook: (hook: Omit<Hook, 'id' | 'created_at' | 'workspace_id' | 'event_count'>) => Promise<Hook | null>;
-    updateHook: (id: string, updates: Partial<Pick<Hook, 'name' | 'title' | 'link' | 'color'>>) => Promise<void>;
+    addHook: (hook: Omit<Hook, 'id' | 'created_at' | 'workspace_id' | 'event_count' | 'status'>) => Promise<Hook | null>;
+    updateHook: (id: string, updates: Partial<Pick<Hook, 'name' | 'title' | 'link' | 'color' | 'status'>>) => Promise<void>;
     deleteHook: (id: string) => Promise<void>;
     bulkDeleteHooks: (ids: string[]) => Promise<void>;
 }
@@ -63,7 +66,7 @@ export const useHookStore = create<HookState>((set) => ({
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) return null;
 
-        const payload = { ...hook, workspace_id: workspaceId };
+        const payload = { ...hook, workspace_id: workspaceId, status: 'Active' };
         const { data, error } = await supabase.from('hooks').insert(payload).select().single();
         if (error) {
             set({ error: error.message });
@@ -82,13 +85,16 @@ export const useHookStore = create<HookState>((set) => ({
             .select()
             .single();
         if (error) {
+            console.error('updateHook error:', error);
             set({ error: error.message });
+            import('goey-toast').then(m => m.gooeyToast.error(`Update failed: ${error.message}`));
         } else if (data) {
             set((state) => ({
                 hooks: state.hooks.map((h) =>
                     h.id === id ? { ...h, ...(data as Hook) } : h
                 ),
             }));
+            import('goey-toast').then(m => m.gooeyToast.success('Hook updated'));
         }
     },
 

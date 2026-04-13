@@ -23,6 +23,8 @@ import { gooeyToast } from 'goey-toast';
 import { supabase } from '@/lib/supabase';
 import { useFileStore, ItemType, FileItem } from '@/store/useFileStore';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { ViewToggle } from '@/components/ui/ViewToggle';
 
 // ─── Shared Components ────────────────────────────────────────────────────────
 
@@ -1690,26 +1692,19 @@ export default function FilesPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-35" size={11}/>
-                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search files…"
-                            className={cn('pl-7 pr-3 py-1.5 text-[11px] rounded-lg border focus:outline-none transition-all w-36 focus:w-52',
-                                isDark ? 'bg-white/5 border-white/8 text-white placeholder:text-white/25 focus:border-white/15'
-                                       : 'bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]')}/>
-                        {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80 transition-opacity"><X size={10}/></button>}
-                    </div>
+                    <SearchInput 
+                        value={search} 
+                        onChange={setSearch} 
+                        placeholder="Search files…" 
+                        isDark={isDark} 
+                    />
                     <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
-                    {/* View toggle */}
-                    <div className={cn('flex items-center rounded-lg p-0.5 gap-0.5', isDark ? 'bg-white/5' : 'bg-[#f0f0f0]')}>
-                        {(['grid', 'list'] as ViewMode[]).map(v => (
-                            <button key={v} onClick={() => setView(v)} className={cn('w-7 h-6 flex items-center justify-center rounded-md transition-all',
-                                view === v ? isDark ? 'bg-white/10 text-white shadow-sm' : 'bg-white text-[#111] shadow-sm' : isDark ? 'text-[#666] hover:text-[#aaa]' : 'text-[#aaa] hover:text-[#555]')}>
-                                {v === 'grid' ? <LayoutGrid size={12}/> : <List size={12}/>}
-                            </button>
-                        ))}
-                    </div>
+                    <ViewToggle 
+                        view={view} 
+                        onViewChange={(v) => setView(v)} 
+                        isDark={isDark} 
+                    />
                     <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
                     {/* Upload */}

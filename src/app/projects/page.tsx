@@ -15,6 +15,8 @@ import { gooeyToast } from 'goey-toast';
 import CreateProjectModal from '@/components/projects/CreateProjectModal';
 import { Avatar } from '@/components/ui/Avatar';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { ViewToggle } from '@/components/ui/ViewToggle';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -540,36 +542,24 @@ export default function ProjectsPage() {
 
             {/* ── Toolbar ── */}
             <div className={cn("flex items-center gap-1.5 px-4 py-2 border-b shrink-0 flex-wrap", isDark ? "border-[#252525]" : "border-[#ebebeb]")}>
-                {/* Search */}
-                <div className={cn("relative flex items-center rounded-[8px] border h-7 px-2 gap-1.5 mr-1", isDark ? "bg-white/[0.03] border-[#2a2a2a]" : "bg-[#f8f8f8] border-[#ebebeb]")}>
-                    <Search size={11} className={isDark ? "text-[#444]" : "text-[#bbb]"} />
-                    <input
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        placeholder="Search projects…"
-                        className={cn("bg-transparent text-[11px] outline-none w-32", isDark ? "text-[#ccc] placeholder:text-[#333]" : "text-[#333] placeholder:text-[#bbb]")}
-                    />
-                    {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className={cn("transition-colors", isDark ? "text-[#555] hover:text-[#aaa]" : "text-[#ccc] hover:text-[#888]")}>
-                            <X size={10} />
-                        </button>
-                    )}
-                </div>
+                <SearchInput 
+                    value={searchQuery} 
+                    onChange={setSearchQuery} 
+                    placeholder="Search projects…" 
+                    isDark={isDark} 
+                />
+                <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
-                {/* View */}
-                <div className="relative">
-                    <TbBtn
-                        label={view === 'cards' ? 'Cards' : 'Table'}
-                        icon={view === 'cards' ? <LayoutGrid size={12} /> : <List size={12} />}
-                        hasArrow isDark={isDark} onClick={() => setViewOpen(v => !v)}
-                    />
-                    <Dropdown open={viewOpen} onClose={() => setViewOpen(false)} isDark={isDark}>
-                        <div className="py-1">
-                            <DItem label="Cards" active={view === 'cards'} onClick={() => { setView('cards'); setViewOpen(false); }} isDark={isDark} />
-                            <DItem label="Table" active={view === 'table'} onClick={() => { setView('table'); setViewOpen(false); }} isDark={isDark} />
-                        </div>
-                    </Dropdown>
-                </div>
+                <ViewToggle 
+                    view={view} 
+                    onViewChange={setView} 
+                    isDark={isDark} 
+                    options={[
+                        { id: 'cards', icon: <LayoutGrid size={12}/> },
+                        { id: 'table', icon: <List size={12}/> }
+                    ]}
+                />
+                <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
                 <TbBtn label="Edit view" icon={<Edit3 size={11} />} isDark={isDark} />
 

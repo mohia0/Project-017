@@ -144,20 +144,60 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                 >
                     {isSubmitted ? (
                         // ── SUCCESS SCREEN ──────────────────────────────────
-                        <div className="flex flex-col items-center justify-center text-center py-20 px-8 gap-6 animate-in zoom-in-95 duration-500">
-                            <div
-                                className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg animate-in fade-in scale-in duration-700"
-                                style={{ background: primaryColor }}
-                            >
-                                <Check size={28} strokeWidth={2.5} className="text-black" />
-                            </div>
-                            <div className="space-y-2">
-                                <h2 className="text-[24px] font-bold tracking-tight" style={{ color: isFormDark ? '#fff' : '#111' }}>
-                                    Thanks!
-                                </h2>
-                                <p className="text-[15px] opacity-70 leading-relaxed max-w-[400px] mx-auto" style={{ color: isFormDark ? '#ccc' : '#444' }}>
-                                    {meta.confirmationMessage || "Thank you for your submission! We'll be in touch soon."}
-                                </p>
+                        <div className="flex flex-col items-center justify-center text-center py-20 px-4 md:px-8">
+                            <div className="w-full max-w-[500px] flex flex-col items-center">
+                                {(meta.confirmationBlocks || [
+                                    { id: 'default-s', type: 'success' },
+                                    { id: 'default-h', type: 'heading', level: 2, content: 'Thanks!' },
+                                    { id: 'default-t', type: 'text', content: meta.confirmationMessage || "Thank you for your submission! We'll be in touch soon." }
+                                ]).map((block: any) => (
+                                    <div key={block.id} className="w-full">
+                                        {block.type === 'success' && (
+                                            <div className="flex flex-col items-center text-center py-6 gap-4">
+                                                <div className="w-16 h-16 rounded-full flex items-center justify-center text-black shadow-lg shadow-black/5 animate-in zoom-in-50 duration-500"
+                                                    style={{ background: primaryColor }}>
+                                                    <Check size={28} strokeWidth={2.5} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {block.type === 'heading' && (
+                                            <div className="px-4 py-2 text-center">
+                                                <h2 
+                                                    className={cn(
+                                                        "font-bold tracking-tight animate-in fade-in slide-in-from-bottom-2 duration-500",
+                                                        block.level === 1 ? "text-[32px]" : block.level === 3 ? "text-[18px]" : "text-[24px]"
+                                                    )}
+                                                    style={{ color: isFormDark ? '#fff' : '#111' }}
+                                                >
+                                                    {block.content}
+                                                </h2>
+                                            </div>
+                                        )}
+
+                                        {block.type === 'text' && (
+                                            <div className="px-4 py-1 text-center font-normal">
+                                                <div 
+                                                    className="text-[15px] leading-relaxed opacity-70 animate-in fade-in slide-in-from-bottom-2 duration-700"
+                                                    style={{ color: isFormDark ? '#ccc' : '#444' }}
+                                                    dangerouslySetInnerHTML={{ __html: block.content }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {block.type === 'divider' && (
+                                            <div className="px-4 py-6">
+                                                <div className={cn("w-full h-px", isFormDark ? "bg-white/10" : "bg-black/10")} />
+                                            </div>
+                                        )}
+
+                                        {block.type === 'image' && block.url && (
+                                            <div className="px-4 py-4 flex justify-center">
+                                                <img src={block.url} alt="" className="max-w-full h-auto rounded-xl shadow-lg animate-in zoom-in-95 duration-700" />
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     ) : isRestricted ? (
@@ -307,6 +347,65 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
     const isNotYetActive = meta.activationDate && new Date(meta.activationDate) > now;
     const isRestricted = liveData.status === 'Draft' || liveData.status === 'Inactive' || hasReachedLimit || isExpired || isNotYetActive;
 
+    const timeToMinutes = (timeStr: string) => {
+        const parts = timeStr.trim().split(/\s+/);
+        if (parts.length < 2) return 0;
+        const [time, period] = parts;
+        let [hStr, mStr] = time.split(':');
+        let h = parseInt(hStr, 10);
+        let m = parseInt(mStr || '0', 10);
+        if (period.toUpperCase() === 'PM' && h !== 12) h += 12;
+        if (period.toUpperCase() === 'AM' && h === 12) h = 0;
+        return h * 60 + m;
+    };
+
+    const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    let availableSlots: string[] = [];
+
+    if (selDate) {
+        const dayStr = WEEKDAYS[selDate.getDay()];
+        const availConfig = (meta.availability || {
+            Monday: { active: true, start: '9:00 AM', end: '5:00 PM' },
+            Tuesday: { active: true, start: '9:00 AM', end: '5:00 PM' },
+            Wednesday: { active: true, start: '9:00 AM', end: '5:00 PM' },
+            Thursday: { active: true, start: '9:00 AM', end: '5:00 PM' },
+            Friday: { active: true, start: '9:00 AM', end: '5:00 PM' },
+            Saturday: { active: false, start: '9:00 AM', end: '5:00 PM' },
+            Sunday: { active: false, start: '9:00 AM', end: '5:00 PM' }
+        })[dayStr];
+
+        if (availConfig && availConfig.active) {
+            const startMins = timeToMinutes(availConfig.start);
+            const endMins = timeToMinutes(availConfig.end);
+            
+            const allSlots: string[] = [];
+            for (let m = startMins; m + duration <= endMins; m += duration) {
+                const h = Math.floor(m / 60);
+                const mn = m % 60;
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                const h12 = h % 12 === 0 ? 12 : h % 12;
+                allSlots.push(`${h12}:${String(mn).padStart(2, '0')} ${ampm}`);
+            }
+
+            const selectedDateStr = selDate.getFullYear() + '-' + String(selDate.getMonth() + 1).padStart(2, '0') + '-' + String(selDate.getDate()).padStart(2, '0');
+            const dayBookings = (data.schedulerBookings || []).filter((b: any) => b.booked_date === selectedDateStr);
+
+            availableSlots = allSlots.filter(slot => {
+                const slotStart = timeToMinutes(slot);
+                const slotEnd = slotStart + duration;
+                for (const b of dayBookings) {
+                    const bStart = timeToMinutes(b.booked_time);
+                    const bEnd = bStart + (b.duration_minutes || 30);
+                    if (Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+    }
+
     if (isRestricted) {
         return (
             <div
@@ -370,6 +469,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
 
         setIsSubmitting(true);
         try {
+            const localDateStr = selDate.getFullYear() + '-' + String(selDate.getMonth() + 1).padStart(2, '0') + '-' + String(selDate.getDate()).padStart(2, '0');
             const res = await fetch('/api/scheduler-booking', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -379,7 +479,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                     booker_name: info.name,
                     booker_email: info.email,
                     booker_phone: info.phone,
-                    booked_date: selDate.toISOString().split('T')[0],
+                    booked_date: localDateStr,
                     booked_time: selTime,
                     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                     duration_minutes: duration,
@@ -407,9 +507,36 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
     };
 
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-[#111]">
-            <div className="px-8 pt-8 pb-5 border-b border-black/5 dark:border-white/5">
-                <div className="flex items-center gap-4 mb-6">
+        <div
+            className="flex-1 overflow-auto relative w-full min-h-screen"
+            style={{
+                backgroundColor: design.backgroundColor || (isDark ? '#080808' : '#f7f7f7'),
+                backgroundImage: getBackgroundImageWithOpacity(
+                    design.backgroundImage,
+                    design.backgroundColor || (isDark ? '#080808' : '#f7f7f7'),
+                    design.backgroundImageOpacity
+                ),
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundAttachment: 'fixed',
+            }}
+        >
+            <div className={cn(
+                "flex flex-col items-center min-h-screen py-12 px-4",
+                (step === 'confirmation') && "justify-center"
+            )}>
+                <div
+                    className="w-full max-w-[1400px] overflow-hidden shadow-2xl transition-all duration-300"
+                    style={{
+                        backgroundColor: design.blockBackgroundColor || (isDark ? '#111' : '#fff'),
+                        boxShadow: design.blockShadow || '0 10px 40px -10px rgba(0,0,0,0.15)',
+                        fontFamily: design.fontFamily || 'Inter',
+                        borderRadius: `${design.borderRadius ?? 16}px`,
+                    }}
+                >
+                    <div className="flex flex-col h-full bg-transparent">
+                        <div className="px-8 pt-8 pb-5 border-b border-black/5 dark:border-white/5">
+                            <div className="flex items-center gap-4 mb-6">
                     {meta.logoUrl ? (
                         <img src={meta.logoUrl} alt="Logo" className="h-10 object-contain" />
                     ) : (
@@ -429,7 +556,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                    {(Array.isArray(meta.durations) ? meta.durations : [30]).map((d: number) => (
+                    {step === 'scheduler' && (Array.isArray(meta.durations) ? meta.durations : [30]).map((d: number) => (
                         <button key={d} 
                             onClick={() => setDuration(d)}
                             className={cn(
@@ -451,32 +578,31 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                 </div>
             </div>
 
-            <div className="flex-1 p-8 overflow-y-auto min-h-[500px]">
+            <div className="flex-1 p-8 overflow-y-auto min-h-[520px]">
                 {step === 'scheduler' && (
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-8 animate-in fade-in duration-300">
+                    <div className="grid grid-cols-1 md:grid-cols-[1.8fr_1fr] gap-12 animate-in fade-in duration-300">
                         <div>
                             <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-6">
                                 <h3 className="text-[14px] font-bold mb-4" style={{ color: isDark ? '#fff' : '#111' }}>
                                     {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                                 </h3>
                                 <div className="grid grid-cols-7 gap-2">
-                                    {['S','M','T','W','T','F','S'].map(d => (
-                                        <div key={d} className="text-center text-[10px] font-bold opacity-30">{d}</div>
+                                    {['S','M','T','W','T','F','S'].map((d, i) => (
+                                        <div key={i} className="text-center text-[10px] font-bold opacity-30">{d}</div>
                                     ))}
-                                    {Array.from({ length: 31 }).map((_, i) => {
+                                    {Array.from({ length: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() }).map((_, i) => {
                                         const day = i + 1;
-                                        const date = new Date();
-                                        date.setDate(day);
-                                        const isPast = day < new Date().getDate();
+                                        const date = new Date(now.getFullYear(), now.getMonth(), day);
+                                        const isPast = day < now.getDate();
                                         const isSelected = selDate?.getDate() === day;
                                         return (
                                             <button key={i}
                                                 disabled={isPast}
                                                 onClick={() => setSelDate(date)}
                                                 className={cn(
-                                                    "aspect-square rounded-xl flex items-center justify-center text-[13px] font-medium transition-all",
+                                                    "aspect-square rounded-2xl flex items-center justify-center text-[15px] font-bold transition-all",
                                                     isPast ? "opacity-20 cursor-not-allowed" : "cursor-pointer hover:bg-black/5 dark:hover:bg-white/5",
-                                                    isSelected && "font-bold text-black"
+                                                    isSelected && "font-black text-black"
                                                 )}
                                                 style={isSelected ? { background: primaryColor } : {}}
                                             >
@@ -492,8 +618,10 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                             <div className="text-[11px] font-bold uppercase tracking-wider opacity-30 mb-2 px-1">Available times</div>
                             {!selDate ? (
                                 <div className="text-[12px] opacity-40 italic px-1">Select a date first</div>
+                            ) : availableSlots.length === 0 ? (
+                                <div className="text-[12px] opacity-40 italic px-1">No slots available</div>
                             ) : (
-                                ['9:00 AM', '10:00 AM', '11:00 AM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM'].map(t => (
+                                availableSlots.map(t => (
                                     <button key={t}
                                         onClick={() => { setSelTime(t); setStep('form'); }}
                                         className="w-full py-3 rounded-xl border border-black/5 dark:border-white/5 text-[13px] font-bold transition-all hover:border-transparent hover:text-black"
@@ -611,6 +739,9 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                     </div>
                 )}
             </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
@@ -659,10 +790,13 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Supabase Realtime — live updates for proposals/invoices/forms
+    // Supabase Realtime — live updates for all document types
     useEffect(() => {
-        if (type === 'project') return;
-        const tableName = (type === 'form' || type === 'forms') ? 'forms' : (type === 'scheduler' || type === 'schedulers') ? 'schedulers' : type === 'proposal' ? 'proposals' : 'invoices';
+        const tableName = (type === 'form' || type === 'forms') ? 'forms' : 
+                          (type === 'scheduler' || type === 'schedulers') ? 'schedulers' : 
+                          type === 'project' ? 'projects' :
+                          type === 'proposal' ? 'proposals' : 'invoices';
+        
         const channelName = `preview:${tableName}:${data.id}`;
 
         const channel = supabasePublic
@@ -678,23 +812,35 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 (payload) => {
                     if (!payload.new) return;
                     const raw = payload.new as any;
-                    setLiveData({
-                        id: raw.id,
-                        title: raw.title,
-                        status: raw.status,
-                        amount: raw.amount,
-                        issue_date: raw.issue_date,
-                        due_date: raw.due_date,
-                        blocks: raw.blocks || [],
-                        fields: raw.fields || [],
-                        meta: raw.meta || {},
-                        client_name: raw.client_name,
-                        workspace_id: raw.workspace_id,
-                        updated_at: raw.updated_at,
-                    });
+                    // For projects, we want to keep the name/status/color updated
+                    setLiveData((prev: any) => ({ ...prev, ...raw }));
                 }
-            )
-            .subscribe();
+            );
+
+        // Extra listeners for project tasks and groups
+        if (type === 'project') {
+            channel
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_tasks', filter: `project_id=eq.${data.id}` }, (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        setProjectTasks(prev => [...prev.filter(t => t.id !== (payload.new as any).id), payload.new]);
+                    } else if (payload.eventType === 'UPDATE') {
+                        setProjectTasks(prev => prev.map(t => t.id === (payload.new as any).id ? payload.new : t));
+                    } else if (payload.eventType === 'DELETE') {
+                        setProjectTasks(prev => prev.filter(t => t.id !== (payload.old as any).id));
+                    }
+                })
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'project_task_groups', filter: `project_id=eq.${data.id}` }, (payload) => {
+                    if (payload.eventType === 'INSERT') {
+                        setProjectGroups(prev => [...prev.filter(g => g.id !== (payload.new as any).id), payload.new]);
+                    } else if (payload.eventType === 'UPDATE') {
+                        setProjectGroups(prev => prev.map(g => g.id === (payload.new as any).id ? payload.new : g));
+                    } else if (payload.eventType === 'DELETE') {
+                        setProjectGroups(prev => prev.filter(g => g.id !== (payload.old as any).id));
+                    }
+                });
+        }
+
+        channel.subscribe();
 
         return () => {
             supabasePublic.removeChannel(channel);
@@ -938,7 +1084,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
 
     // ── PROJECT ──────────────────────────────────────────────────────────────
     if (type === 'project') {
-        const projectColor = data.color || '#6366f1';
+        const projectColor = liveData.color || '#6366f1';
 
         return (
             <div className="flex-1 flex flex-col w-full h-screen overflow-hidden bg-[#f7f7f7]">
@@ -947,18 +1093,18 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-3">
                             <div className="w-3 h-3 rounded-full" style={{ background: projectColor }} />
-                            <h1 className="text-[16px] font-bold text-[#111]">{data.name}</h1>
+                            <h1 className="text-[16px] font-bold text-[#111]">{liveData.name || liveData.title}</h1>
                         </div>
-                        {data.client_name && (
+                        {liveData.client_name && (
                             <>
                                 <div className="w-px h-4 bg-black/10" />
-                                <span className="text-[12px] text-[#888] font-medium">For: {data.client_name}</span>
+                                <span className="text-[12px] text-[#888] font-medium">For: {liveData.client_name}</span>
                             </>
                         )}
                     </div>
                     <div className="flex items-center gap-3">
                         <span className="text-[12px] text-[#ccc] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#f5f5f5] rounded-lg border border-black/[0.03]">
-                            {data.status}
+                            {liveData.status}
                         </span>
                     </div>
                 </div>
