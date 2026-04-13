@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, ChevronRight, ClipboardList, Tag } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useFormStore } from '@/store/useFormStore';
@@ -37,7 +38,7 @@ export function CreateFormModal({ open, onClose }: Props) {
         try {
             const tpl = STARTER_TEMPLATES.find(t => t.id === template);
             const fields = (tpl?.fields || []).map((type, i) => ({
-                id: `${type}-${i}`,
+                id: uuidv4(),
                 type,
                 label: type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
                 required: false,

@@ -12,7 +12,7 @@ import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useSchedulerStore, SchedulerStatus } from '@/store/useSchedulerStore';
 import { useDebounce } from '@/hooks/useDebounce';
-import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
+import { DesignSettingsPanel, MetaField } from '@/components/ui/DesignSettingsPanel';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
@@ -118,21 +118,14 @@ function Field({ label, isDark, children }: { label: string; isDark: boolean; ch
         </div>
     );
 }
-
-function PanelInput({ value, onChange, placeholder, isDark }: {
-    value: string; onChange: (v: string) => void; placeholder?: string; isDark: boolean;
+function PanelInput({ value, onChange, placeholder, type = 'text', isDark }: {
+    value: string | number; onChange: (v: string) => void; placeholder?: string; type?: string; isDark: boolean;
 }) {
     return (
-        <input
-            type="text"
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            placeholder={placeholder}
-            className={cn(
-                "w-full px-3 py-2 text-[12px] rounded-lg border outline-none transition-all bg-white text-[#111] placeholder:text-[#ccc] focus:border-primary/40",
-                isDark ? "border-[#2a2a2a]" : "border-[#e5e5e5]"
-            )}
-        />
+        <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+            className={cn("w-full text-[12px] bg-transparent outline-none transition-all font-medium",
+                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#111] placeholder:text-[#ccc]"
+            )} />
     );
 }
 
@@ -883,13 +876,17 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                 {rightTab === 'details' && (
                                     <div className={cn("divide-y", isDark ? "divide-[#252525]" : "divide-[#f0f0f0]")}>
                                         <SectionAccordion label="Organizer" icon={<User size={11} />} isDark={isDark}>
-                                            <PanelInput value={meta.organizer} onChange={v => updateMeta({ organizer: v })}
-                                                placeholder="Your name or team" isDark={isDark} />
+                                            <MetaField isDark={isDark}>
+                                                <PanelInput value={meta.organizer} onChange={v => updateMeta({ organizer: v })}
+                                                    placeholder="Your name or team" isDark={isDark} />
+                                            </MetaField>
                                         </SectionAccordion>
 
                                         <SectionAccordion label="Location" icon={<MapPin size={11} />} isDark={isDark}>
-                                            <PanelInput value={meta.location} onChange={v => updateMeta({ location: v })}
-                                                placeholder="Google Meet / Zoom / address" isDark={isDark} />
+                                            <MetaField isDark={isDark}>
+                                                <PanelInput value={meta.location} onChange={v => updateMeta({ location: v })}
+                                                    placeholder="Google Meet / Zoom / address" isDark={isDark} />
+                                            </MetaField>
                                         </SectionAccordion>
 
                                         <SectionAccordion label="Durations" icon={<Clock size={11} />} isDark={isDark}>
@@ -918,100 +915,92 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                         </SectionAccordion>
 
                                         <SectionAccordion label="Buffers" icon={<Sliders size={11} />} isDark={isDark}>
-                                            {[['Before', 'bufferBefore'], ['After', 'bufferAfter']].map(([label, key]) => (
-                                                <Field key={key} label={label} isDark={isDark}>
-                                                    <select
-                                                        value={(meta as any)[key]}
-                                                        onChange={e => updateMeta({ [key]: Number(e.target.value) } as any)}
-                                                        className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none bg-white text-[#111]",
-                                                            isDark ? "border-[#2a2a2a]" : "border-[#e5e5e5]")}>
-                                                        {[0, 5, 10, 15, 30, 60].map(v => (
-                                                            <option key={v} value={v}>{v === 0 ? 'None' : `${v} min`}</option>
-                                                        ))}
-                                                    </select>
-                                                </Field>
-                                            ))}
+                                            <div className="space-y-2">
+                                                {[['Before', 'bufferBefore'], ['After', 'bufferAfter']].map(([label, key]) => (
+                                                    <MetaField key={key} label={label} isDark={isDark}>
+                                                        <select
+                                                            value={(meta as any)[key]}
+                                                            onChange={e => updateMeta({ [key]: Number(e.target.value) } as any)}
+                                                            className={cn("w-full py-1 text-[12px] bg-transparent outline-none font-medium",
+                                                                isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                                            {[0, 5, 10, 15, 30, 60].map(v => (
+                                                                <option key={v} value={v}>{v === 0 ? 'None' : `${v} min`}</option>
+                                                            ))}
+                                                        </select>
+                                                    </MetaField>
+                                                ))}
+                                            </div>
                                         </SectionAccordion>
 
                                         <SectionAccordion label="Limits" icon={<Tag size={11} />} isDark={isDark}>
-                                            <Field label="Max per day" isDark={isDark}>
-                                                <input type="number" min={1} max={50} value={meta.maxPerDay}
-                                                    onChange={e => updateMeta({ maxPerDay: Number(e.target.value) })}
-                                                    className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none bg-white text-[#111]",
-                                                        isDark ? "border-[#2a2a2a]" : "border-[#e5e5e5]")} />
-                                            </Field>
-                                            <Field label="Advance notice (hrs)" isDark={isDark}>
-                                                <input type="number" min={0} value={meta.advanceNotice}
-                                                    onChange={e => updateMeta({ advanceNotice: Number(e.target.value) })}
-                                                    className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none bg-white text-[#111]",
-                                                        isDark ? "border-[#2a2a2a]" : "border-[#e5e5e5]")} />
-                                            </Field>
-                                            <Field label="Future limit (days)" isDark={isDark}>
-                                                <input type="number" min={1} value={meta.futureLimit}
-                                                    onChange={e => updateMeta({ futureLimit: Number(e.target.value) })}
-                                                    className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none bg-white text-[#111]",
-                                                        isDark ? "border-[#2a2a2a]" : "border-[#e5e5e5]")} />
-                                            </Field>
+                                            <div className="space-y-2">
+                                                <MetaField label="Max per day" isDark={isDark}>
+                                                    <PanelInput type="number" min={1} max={50} value={meta.maxPerDay}
+                                                            onChange={e => updateMeta({ maxPerDay: Number(e.target.value) })}
+                                                            isDark={isDark} />
+                                                </MetaField>
+                                                <MetaField label="Advance notice (hrs)" isDark={isDark}>
+                                                    <PanelInput type="number" min={0} value={meta.advanceNotice}
+                                                            onChange={e => updateMeta({ advanceNotice: Number(e.target.value) })}
+                                                            isDark={isDark} />
+                                                </MetaField>
+                                                <MetaField label="Future limit (days)" isDark={isDark}>
+                                                    <PanelInput type="number" min={1} value={meta.futureLimit}
+                                                            onChange={e => updateMeta({ futureLimit: Number(e.target.value) })}
+                                                            isDark={isDark} />
+                                                </MetaField>
+                                            </div>
                                         </SectionAccordion>
 
                                         <SectionAccordion label="Automation" icon={<Bell size={11} />} isDark={isDark}>
-                                            {['Email confirmation to booker', 'Email notification to organizer'].map(label => (
-                                                <label key={label} className="flex items-center gap-2.5 cursor-pointer">
-                                                    <div className={cn("w-3.5 h-3.5 rounded border flex items-center justify-center",
-                                                        isDark ? "border-[#333] bg-[#151515]" : "border-[#ddd] bg-white")}>
-                                                        <Check size={9} className="text-primary opacity-80" />
-                                                    </div>
-                                                    <span className={cn("text-[11.5px]", isDark ? "text-[#666]" : "text-[#888]")}>{label}</span>
-                                                </label>
-                                            ))}
+                                            <div className="space-y-2.5 pt-1">
+                                                {['Email confirmation to booker', 'Email notification to organizer'].map(label => (
+                                                    <label key={label} className="flex items-center gap-2.5 cursor-pointer group">
+                                                        <div className={cn("w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
+                                                            isDark ? "border-[#333] bg-[#151515]" : "border-[#ddd] bg-white")}>
+                                                            <Check size={9} className="text-primary opacity-80" />
+                                                        </div>
+                                                        <span className={cn("text-[11.5px] font-medium transition-colors", 
+                                                            isDark ? "text-[#555] group-hover:text-[#888]" : "text-[#aaa] group-hover:text-[#555]")}>{label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
                                         </SectionAccordion>
 
-
-
                                         <SectionAccordion label="Dates" icon={<Calendar size={11} />} isDark={isDark}>
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide",
-                                                        isDark ? "text-[#555]" : "text-[#bbb]")}>Activation date</label>
-                                                    <div className={cn("px-3 py-1.5 rounded-lg border transition-all bg-white",
-                                                        isDark ? "border-[#2a2a2a]" : "border-[#e5e5e5]"
-                                                    )}>
-                                                        <DatePicker 
-                                                            value={meta.activationDate} 
-                                                            onChange={v => updateMeta({ activationDate: v })} 
-                                                            isDark={isDark} 
-                                                            placeholder="No activation date"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide",
-                                                        isDark ? "text-[#555]" : "text-[#bbb]")}>Expiration date</label>
-                                                    <div className={cn("px-3 py-1.5 rounded-lg border transition-all bg-white",
-                                                        isDark ? "border-[#2a2a2a]" : "border-[#e5e5e5]"
-                                                    )}>
-                                                        <DatePicker 
-                                                            value={meta.expirationDate} 
-                                                            onChange={v => updateMeta({ expirationDate: v })} 
-                                                            isDark={isDark} 
-                                                            placeholder="No expiration date"
-                                                        />
-                                                    </div>
-                                                </div>
+                                            <div className="space-y-2">
+                                                <MetaField label="Activation date" isDark={isDark}>
+                                                    <DatePicker 
+                                                        value={meta.activationDate} 
+                                                        onChange={v => updateMeta({ activationDate: v })} 
+                                                        isDark={isDark} 
+                                                        placeholder="No activation date"
+                                                        className="!h-auto !p-0 !bg-transparent !border-none"
+                                                    />
+                                                </MetaField>
+                                                <MetaField label="Expiration date" isDark={isDark}>
+                                                    <DatePicker 
+                                                        value={meta.expirationDate} 
+                                                        onChange={v => updateMeta({ expirationDate: v })} 
+                                                        isDark={isDark} 
+                                                        placeholder="No expiration date"
+                                                        className="!h-auto !p-0 !bg-transparent !border-none"
+                                                    />
+                                                </MetaField>
                                             </div>
                                         </SectionAccordion>
 
                                         <SectionAccordion label="Localisation" icon={<Globe size={11} />} isDark={isDark}>
-                                            <Field label="Timezone" isDark={isDark}>
-                                                <select className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none bg-white text-[#111]",
-                                                    isDark ? "border-[#2a2a2a]" : "border-[#e5e5e5]")}>
+                                            <MetaField label="Timezone" isDark={isDark}>
+                                                <select className={cn("w-full py-1 text-[12px] bg-transparent outline-none font-medium",
+                                                    isDark ? "text-[#ccc]" : "text-[#333]")}>
                                                     <option>UTC</option>
                                                     <option>Europe/London</option>
                                                     <option>America/New_York</option>
                                                     <option>America/Los_Angeles</option>
                                                     <option>Asia/Tokyo</option>
                                                 </select>
-                                            </Field>
+                                            </MetaField>
                                         </SectionAccordion>
                                     </div>
                                 )}

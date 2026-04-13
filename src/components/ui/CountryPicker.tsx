@@ -39,6 +39,8 @@ interface CountryPickerProps {
     label?: string;
     placeholder?: string;
     minimal?: boolean;
+    className?: string;
+    style?: React.CSSProperties;
 }
 
 export function CountryPicker({
@@ -47,7 +49,9 @@ export function CountryPicker({
     isDark,
     label = "Country",
     placeholder = "Select country",
-    minimal = false
+    minimal = false,
+    className,
+    style
 }: CountryPickerProps) {
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState(false);
@@ -72,11 +76,12 @@ export function CountryPicker({
     };
 
     const field = cn(
-        "w-full rounded-xl border px-4 py-3 text-[13px] transition-all cursor-pointer",
+        "w-full border px-4 py-3 text-[13px] transition-all cursor-pointer",
         isDark
             ? "bg-[#1c1c1c] border-[#2e2e2e] hover:border-[#444]"
             : "bg-white border-[#e0e0e0] hover:border-[#ccc]",
-        open && (isDark ? "ring-2 ring-[#333] border-[#444]" : "ring-2 ring-[#e8e8e8] border-[#ccc]")
+        open && (isDark ? "ring-2 ring-[#333] border-[#444]" : "ring-2 ring-[#e8e8e8] border-[#ccc]"),
+        className
     );
 
     return (
@@ -93,7 +98,7 @@ export function CountryPicker({
                     <ChevronDown size={12} className="opacity-30" />
                 </div>
             ) : (
-                <div className={field} onClick={() => setOpen(!open)}>
+                <div className={field} style={style} onClick={() => setOpen(!open)}>
                     <div className="flex items-center gap-1.5 mb-0.5">
                         <Globe size={11} className={cn("opacity-40", isDark ? "text-white" : "text-[#333]")} />
                         <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>{label}</span>

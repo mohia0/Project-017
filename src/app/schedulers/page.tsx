@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
     Search, Table2, LayoutGrid, Plus, ChevronDown,
     Calendar, Clock, MapPin, Users, Check,
-    MoreHorizontal, Trash2, Copy, Edit3,
+    MoreHorizontal, Trash2, Copy, Edit3, Link,
     SlidersHorizontal, ArrowUpDown,
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
@@ -107,8 +107,8 @@ function Chk({ checked, indeterminate, isDark }: { checked: boolean; indetermina
 }
 
 /* ─── Card view ─────────────────────────────────────────────── */
-function SchedulerCard({ s, onOpen, onDelete, isDark, isSelected, onToggle }: {
-    s: Scheduler; onOpen: () => void; onDelete: () => void; isDark: boolean;
+function SchedulerCard({ s, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }: {
+    s: Scheduler; onOpen: () => void; onDelete: () => void; onCopy: () => void; isDark: boolean;
     isSelected: boolean; onToggle: () => void;
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -194,12 +194,17 @@ function SchedulerCard({ s, onOpen, onDelete, isDark, isSelected, onToggle }: {
                     0 bookings
                 </div>
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                    <button onClick={onCopy}
+                        className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
+                            isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                        <Link size={12} />
+                    </button>
                     {deleting ? (
                         <InlineDeleteButton onDelete={onDelete} isDark={isDark} />
                     ) : (
                         <button onClick={() => setDeleting(true)}
-                            className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
-                                isDark ? "hover:bg-white/5 text-red-400" : "hover:bg-red-50 text-red-400")}>
+                            className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all text-red-400",
+                                isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
                             <Trash2 size={12} />
                         </button>
                     )}
@@ -248,6 +253,13 @@ export default function SchedulersPage() {
     const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(s => s.id)));
     const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
     const isAllSelected = filtered.length > 0 && selectedIds.size === filtered.length;
+
+    const copyLink = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const url = `${window.location.origin}/p/scheduler/${id}`;
+        navigator.clipboard.writeText(url);
+        gooeyToast.success('Link copied to clipboard');
+    };
 
     const handleDelete = async (id: string) => {
         setDeletingId(id);
@@ -468,6 +480,11 @@ export default function SchedulersPage() {
                                     n.has(s.id) ? n.delete(s.id) : n.add(s.id);
                                     setSelectedIds(n);
                                 }}
+                                onCopy={() => {
+                                    const url = `${window.location.origin}/p/scheduler/${s.id}`;
+                                    navigator.clipboard.writeText(url);
+                                    gooeyToast.success('Link copied to clipboard');
+                                }}
                             />
                         ))}
                     </div>
@@ -563,12 +580,19 @@ export default function SchedulersPage() {
                                             </td>
                                             <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                                                    <Tooltip content="Copy preview link" side="top">
+                                                        <button onClick={(e) => copyLink(s.id, e)}
+                                                            className={cn("p-1.5 rounded-lg transition-colors",
+                                                                isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                                                            <Link size={12} />
+                                                        </button>
+                                                    </Tooltip>
                                                     {deletingId === s.id ? (
                                                         <InlineDeleteButton onDelete={() => handleDelete(s.id)} isDark={isDark} />
                                                     ) : (
                                                         <button onClick={() => setDeletingId(s.id)}
-                                                            className={cn("p-1.5 rounded-lg transition-colors",
-                                                                isDark ? "hover:bg-white/5 text-red-400" : "hover:bg-red-50 text-red-400")}>
+                                                            className={cn("p-1.5 rounded-lg transition-colors text-red-400",
+                                                                isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
                                                             <Trash2 size={12} />
                                                         </button>
                                                     )}

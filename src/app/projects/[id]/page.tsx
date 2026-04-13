@@ -9,6 +9,7 @@ import {
     MoreHorizontal, RefreshCw, Edit3, Link2, FileText, Receipt,
     ArchiveRestore, Upload, Download, Copy, Zap,
     Target, TrendingUp, Clock, CheckCircle2, AlertCircle, Layers,
+    ArrowLeft, Eye, PenLine,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -73,20 +74,22 @@ function deadlineMeta(d: string | null | undefined) {
 
 // ─── Shared toolbar button ─────────────────────────────────────────────────────
 
-function TbBtn({ label, icon, active, hasArrow, onClick, isDark, danger }: {
+function TbBtn({ label, icon, active, hasArrow, onClick, isDark, danger, className }: {
     label?: string; icon?: React.ReactNode; active?: boolean;
     hasArrow?: boolean; onClick?: () => void; isDark: boolean; danger?: boolean;
+    className?: string;
 }) {
     return (
         <button onClick={onClick} className={cn(
-            "flex items-center gap-1.5 px-1.5 py-0 text-[9px] font-medium rounded-md transition-all shrink-0",
+            "flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg transition-all shrink-0",
             danger
                 ? "text-red-400 hover:bg-red-500/10"
                 : active
-                    ? isDark ? "bg-white/10 text-white border border-white/10" : "bg-[#ebebf5] text-[#111] border border-[#d5d5ee]"
-                    : isDark ? "text-[#666] hover:text-[#ccc] hover:bg-white/5" : "text-[#888] hover:text-[#333] hover:bg-[#f0f0f0]"
+                    ? isDark ? "bg-white/10 text-white border border-white/10" : "bg-[#f0f0f5] text-[#111] border border-[#e5e5f0]"
+                    : isDark ? "text-[#666] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]",
+            className
         )}>
-            {icon}{label}{hasArrow && <ChevronDown size={9} className="opacity-40" />}
+            {icon}{label}{hasArrow && <ChevronDown size={11} className="opacity-40" />}
         </button>
     );
 }
@@ -395,22 +398,32 @@ export default function ProjectDetailPage() {
     const isDark = theme === 'dark';
     const { projects, updateProject, fetchProjects, tasksByProject } = useProjectStore();
 
-    const [activeTab, setActiveTab]       = useState<Tab>('tasks');
-    const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
-    const [statusOpen, setStatusOpen]     = useState(false);
-    const [actionsOpen, setActionsOpen]   = useState(false);
-    const [searchQuery, setSearchQuery]   = useState('');
-    const [showArchived, setShowArchived] = useState(false);
-    const [showEdit, setShowEdit]         = useState(false);
+    const [activeTab, setActiveTab]           = useState<Tab>('tasks');
+    const [selectedTask, setSelectedTask]     = useState<ProjectTask | null>(null);
+    const [statusOpen, setStatusOpen]         = useState(false);
+    const [actionsOpen, setActionsOpen]       = useState(false);
+    const [searchQuery, setSearchQuery]       = useState('');
+    const [showArchived, setShowArchived]     = useState(false);
+    const [showEdit, setShowEdit]             = useState(false);
+    // ── Toolbar filter / order state ──────────────────────────────────────────
+    const [filterPriority, setFilterPriority] = useState<string>('all');
+    const [filterStatus,   setFilterStatus]   = useState<string>('all');
+    const [orderBy,        setOrderBy]         = useState<'position' | 'priority' | 'due_date' | 'title'>('position');
+    const [filterOpen,   setFilterOpen]       = useState(false);
+    const [orderOpen,    setOrderOpen]        = useState(false);
     const statusRef  = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
+    const filterRef  = useRef<HTMLDivElement>(null);
+    const orderRef   = useRef<HTMLDivElement>(null);
 
     useEffect(() => { if (!projects.length) fetchProjects(); }, [fetchProjects, projects.length]);
 
     useEffect(() => {
         const h = (e: MouseEvent) => {
-            if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false);
+            if (statusRef.current  && !statusRef.current.contains(e.target as Node))  setStatusOpen(false);
             if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsOpen(false);
+            if (filterRef.current  && !filterRef.current.contains(e.target as Node))  setFilterOpen(false);
+            if (orderRef.current   && !orderRef.current.contains(e.target as Node))   setOrderOpen(false);
         };
         document.addEventListener('mousedown', h);
         return () => document.removeEventListener('mousedown', h);
@@ -448,141 +461,172 @@ export default function ProjectDetailPage() {
 
             {/* ── HEADER ── */}
             <div className={cn(
-                "flex items-center gap-2 px-5 border-b shrink-0 h-[44px]",
-                isDark ? "bg-[#141414] border-[#1e1e1e]" : "bg-white border-[#eaeaea]"
+                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0",
+                isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
-                {/* Project identity */}
-                <div className="flex items-center gap-2 min-w-0 flex-1 group/name">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: project.color }} />
-                    <span
-                        contentEditable
-                        suppressContentEditableWarning
-                        spellCheck={false}
-                        onBlur={(e) => {
-                            const newName = e.currentTarget.textContent?.trim();
-                            if (newName && newName !== project.name) {
-                                updateProject(project.id, { name: newName });
-                                gooeyToast.success('Project renamed');
-                            } else {
-                                e.currentTarget.textContent = project.name;
-                            }
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
-                            if (e.key === 'Escape') { e.currentTarget.textContent = project.name; e.currentTarget.blur(); }
-                        }}
+                {/* Left: back button + breadcrumb + title */}
+                <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+                    <button
+                        onClick={() => router.push('/projects')}
                         className={cn(
-                            "text-[12.5px] font-semibold tracking-tight truncate outline-none cursor-text",
-                            isDark ? "text-[#e0e0e0]" : "text-[#111]"
+                            "flex items-center justify-center w-8 h-8 shrink-0 rounded-[8px] transition-all",
+                            isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]"
                         )}
-                        title="Click to rename"
                     >
-                        {project.name}
-                    </span>
-                    {project.client_name && (
-                        <span className={cn("text-[11px] hidden lg:block shrink-0 truncate max-w-[160px]", isDark ? "text-[#333]" : "text-[#ccc]")}>
-                            · {project.client_name}
-                        </span>
-                    )}
-                </div>
-
-                {/* Right controls */}
-                <div className="flex items-center gap-1 shrink-0">
-
-                    {/* Deadline chip */}
-                    {project.deadline && (
+                        <ArrowLeft size={16} />
+                    </button>
+                    <div className="flex items-center gap-1.5 min-w-0">
                         <div className={cn(
-                            "hidden md:flex items-center gap-1 px-2 py-1 rounded-md border text-[10.5px] font-medium",
-                            dl.urgent
-                                ? "border-red-500/20 bg-red-500/8 text-red-400"
-                                : isDark ? "border-[#1e1e1e] bg-[#181818] text-[#3a3a3a]" : "border-[#ebebeb] bg-[#fafafa] text-[#bbb] shadow-sm"
+                            "hidden md:flex items-center gap-2 text-[13px] font-medium shrink-0",
+                            isDark ? "text-white/40" : "text-gray-400"
                         )}>
-                            <Calendar size={9} />
-                            {dl.text}
+                            <span>Projects</span>
+                            <span className="opacity-30">/</span>
                         </div>
-                    )}
-
-                    {/* Separator */}
-                    <div className={cn("w-px h-4 mx-0.5", isDark ? "bg-[#222]" : "bg-[#eaeaea]")} />
-
-                    {/* Member avatars */}
-                    {project.members.length > 0 && (
-                        <div className="hidden md:flex -space-x-1.5">
-                            {project.members.slice(0, 3).map((m, i) => (
-                                <Avatar key={i} name={m.name} src={m.avatar_url} className={cn("w-5 h-5 rounded-full ring-[1.5px]", isDark ? "ring-[#141414]" : "ring-white")} isDark={isDark} />
-                            ))}
-                            {project.members.length > 3 && (
-                                <div className={cn("w-5 h-5 rounded-full ring-[1.5px] flex items-center justify-center text-[7px] font-bold", isDark ? "bg-[#222] text-[#666] ring-[#141414]" : "bg-[#eee] text-[#aaa] ring-white")}>
-                                    +{project.members.length - 3}
-                                </div>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: project.color }} />
+                            <span
+                                contentEditable
+                                suppressContentEditableWarning
+                                spellCheck={false}
+                                onBlur={(e) => {
+                                    const newName = e.currentTarget.textContent?.trim();
+                                    if (newName && newName !== project.name) {
+                                        updateProject(project.id, { name: newName });
+                                        gooeyToast.success('Project renamed');
+                                    } else {
+                                        e.currentTarget.textContent = project.name;
+                                    }
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+                                    if (e.key === 'Escape') { e.currentTarget.textContent = project.name; e.currentTarget.blur(); }
+                                }}
+                                className={cn(
+                                    "text-[13px] font-semibold bg-transparent outline-none min-w-0 truncate cursor-text",
+                                    isDark ? "text-white/90" : "text-gray-900"
+                                )}
+                                title="Click to rename"
+                            >
+                                {project.name}
+                            </span>
+                            {project.client_name && (
+                                <span className={cn("text-[13px] font-medium hidden lg:block shrink-0 truncate max-w-[160px]", isDark ? "text-white/30" : "text-gray-400")}>
+                                    · {project.client_name}
+                                </span>
                             )}
                         </div>
-                    )}
+                    </div>
+                </div>
 
-                    {/* Status badge / dropdown */}
-                    <div className="relative" ref={statusRef}>
+                {/* Right: status, preview, link, actions */}
+                <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+
+                    {/* Status dropdown */}
+                    <div className="relative hidden md:flex" ref={statusRef}>
                         <button
                             onClick={() => setStatusOpen(v => !v)}
                             className={cn(
-                                "flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] text-[10px] font-semibold border transition-all",
-                                isDark ? "bg-white/[0.04] border-white/5 hover:bg-white/[0.08]" : cn(STATUS_CFG[project.status]?.badge, STATUS_CFG[project.status]?.badgeBorder, STATUS_CFG[project.status]?.badgeText, "hover:brightness-95")
+                                "flex items-center gap-1.5 px-2.5 py-1 rounded-[7px] text-[11px] font-semibold border transition-all",
+                                isDark ? "bg-white/[0.05] text-[#999] border-white/[0.07]" : "bg-[#f5f5f5] text-[#666] border-[#e8e8e8] hover:bg-[#eee]"
                             )}
-                            style={isDark ? { color: statusColor } : {}}
                         >
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusColor }} />
                             {project.status}
-                            <ChevronDown size={10} className="opacity-50" />
+                            <ChevronDown size={11} className="opacity-40" />
                         </button>
 
-                        <AnimatePresence>
-                            {statusOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -4, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                                    transition={{ duration: 0.12 }}
-                                    className={cn(
-                                        "absolute right-0 top-full mt-1.5 z-50 rounded-xl border shadow-2xl overflow-hidden min-w-[148px]",
-                                        isDark ? "bg-[#1c1c1c] border-[#2a2a2a]" : "bg-white border-[#e0e0e0]"
-                                    )}
-                                >
-                                    <div className="py-1">
-                                        {STATUS_ORDER.map(s => (
-                                            <button key={s} onClick={() => { updateProject(project.id, { status: s }); setStatusOpen(false); }}
-                                                className={cn(
-                                                    "w-full flex items-center gap-2.5 px-3 py-1.5 text-[11.5px] transition-colors",
-                                                    s === project.status
-                                                        ? isDark ? "bg-white/5 font-semibold" : "bg-[#f5f5f5] font-semibold"
-                                                        : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#fafafa]"
-                                                )}
-                                                style={{ color: STATUS_COLORS[s] }}
-                                            >
-                                                {s}
-                                                {s === project.status && <Check size={10} className="ml-auto opacity-40" />}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        {statusOpen && (
+                            <div className={cn(
+                                "absolute right-0 top-full mt-1.5 w-44 rounded-[10px] shadow-xl py-1 z-50 border",
+                                isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]"
+                            )}>
+                                {STATUS_ORDER.map(s => (
+                                    <button
+                                        key={s}
+                                        onClick={() => { updateProject(project.id, { status: s }); setStatusOpen(false); }}
+                                        className={cn(
+                                            "w-full flex items-center gap-2 px-3 py-2 text-[11px] transition-colors",
+                                            isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
+                                            s === project.status ? "font-semibold" : ""
+                                        )}
+                                    >
+                                        {s === project.status
+                                            ? <Check size={11} className="text-emerald-500" />
+                                            : <div className="w-3" />
+                                        }
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
+
+                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />
+
+                    {/* Preview button */}
+                    <button
+                        onClick={() => window.open(`/p/project/${project.id}`, '_blank')}
+                        className={cn(
+                            "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
+                            isDark
+                                ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]"
+                                : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                        )}
+                    >
+                        <Eye size={14} />
+                        Preview
+                    </button>
+
+                    {/* Link to Linked Items tab */}
+                    <button
+                        onClick={() => setActiveTab('linked')}
+                        title="Linked items"
+                        className={cn(
+                            "hidden md:flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                        )}
+                    >
+                        <Link2 size={14} />
+                    </button>
 
                     {/* Actions menu */}
                     <div className="relative" ref={actionsRef}>
                         <button
                             onClick={() => setActionsOpen(v => !v)}
                             className={cn(
-                                "w-6 h-6 flex items-center justify-center rounded-md transition-colors",
-                                isDark ? "text-[#3a3a3a] hover:text-[#aaa] hover:bg-white/5" : "text-[#bbb] hover:text-[#444] hover:bg-[#f0f0f0]"
+                                "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
                             )}
                         >
-                            <MoreHorizontal size={13} />
+                            <MoreHorizontal size={14} />
                         </button>
-                        <Dropdown open={actionsOpen} onClose={() => setActionsOpen(false)} isDark={isDark} right>
-                            <div className="py-1">
-                                <DItem label="Edit project" icon={<Edit3 size={12} />} onClick={() => { setShowEdit(true); setActionsOpen(false); }} isDark={isDark} />
-                                <DItem label="Archive project" icon={<Archive size={12} />} onClick={() => { updateProject(project.id, { is_archived: true }); router.push('/projects'); }} isDark={isDark} />
-                                <div className={cn("h-px mx-2 my-1", isDark ? "bg-[#252525]" : "bg-[#f0f0f0]")} />
-                                <DItem label="Delete project" icon={<Trash2 size={12} />} onClick={() => setActionsOpen(false)} isDark={isDark} danger />
+                        {actionsOpen && (
+                            <div className={cn(
+                                "absolute right-0 top-full mt-1.5 w-44 rounded-[10px] shadow-xl py-1 z-50 border",
+                                isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#d2d2eb]"
+                            )}>
+                                {[
+                                    { icon: Edit3, label: 'Edit project', action: () => { setShowEdit(true); setActionsOpen(false); } },
+                                    { icon: Archive, label: 'Archive project', action: () => { updateProject(project.id, { is_archived: true }); router.push('/projects'); } },
+                                    { icon: Trash2, label: 'Delete project', action: () => setActionsOpen(false), danger: true },
+                                ].map(({ icon: Icon, label, action, danger }) => (
+                                    <button
+                                        key={label}
+                                        onClick={() => { action(); setActionsOpen(false); }}
+                                        className={cn(
+                                            "w-full flex items-center gap-2.5 px-4 py-2 text-[12px] transition-colors",
+                                            danger
+                                                ? "text-red-500 hover:bg-red-50"
+                                                : isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]"
+                                        )}
+                                    >
+                                        <Icon size={13} className={danger ? "text-red-500" : "opacity-60"} />
+                                        {label}
+                                    </button>
+                                ))}
                             </div>
-                        </Dropdown>
+                        )}
                     </div>
                 </div>
             </div>
@@ -622,35 +666,190 @@ export default function ProjectDetailPage() {
             {/* ── TASKS TOOLBAR ── */}
             {activeTab === 'tasks' && (
                 <div className={cn(
-                    "flex items-center gap-1 px-4 py-1 border-b shrink-0",
+                    "flex items-center gap-0.5 px-3 py-1.5 border-b shrink-0",
                     isDark ? "bg-[#141414] border-[#1e1e1e]" : "bg-white border-[#eaeaea]"
                 )}>
-                    <TbBtn label="Filter"   icon={<Filter size={9} />}     isDark={isDark} onClick={() => gooeyToast('Filter settings coming soon')} />
-                    <TbBtn label="Group"    icon={<Layers size={9} />}     isDark={isDark} onClick={() => gooeyToast('Group settings coming soon')} />
-                    <TbBtn label="Order"    icon={<ArrowUpDown size={9} />} hasArrow isDark={isDark} onClick={() => gooeyToast('Sorting options coming soon')} />
-                    <TbBtn label="Archived" active={showArchived} icon={showArchived ? <ArchiveRestore size={9} /> : <Archive size={9} />} isDark={isDark} onClick={() => setShowArchived(v => !v)} />
 
-                    <div className={cn("h-3 w-px mx-1", isDark ? "bg-[#252525]" : "bg-[#e5e5e5]")} />
-                    <TbBtn label="Import / Export" icon={<Upload size={9} />} isDark={isDark} onClick={() => gooeyToast('Import / Export coming soon')} />
+                    {/* Filter by Priority dropdown */}
+                    <div className="relative" ref={filterRef}>
+                        <TbBtn
+                            label="Filter"
+                            icon={<Filter size={10} />}
+                            hasArrow
+                            active={filterPriority !== 'all' || filterStatus !== 'all'}
+                            isDark={isDark}
+                            onClick={() => { setFilterOpen(v => !v); setOrderOpen(false); }}
+                        />
+                        {filterOpen && (
+                            <div className={cn(
+                                "absolute left-0 top-full mt-1.5 z-50 rounded-xl border shadow-2xl overflow-hidden min-w-[200px]",
+                                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                            )}>
+                                {/* Priority filter */}
+                                <div className={cn("px-3 pt-3 pb-1.5", isDark ? "" : "")}>
+                                    <p className={cn("text-[9.5px] font-bold uppercase tracking-widest mb-2", isDark ? "text-[#444]" : "text-[#bbb]")}>Priority</p>
+                                    <div className="flex flex-wrap gap-1 mb-1">
+                                        {(['all', 'none', 'low', 'medium', 'high', 'urgent'] as const).map(p => (
+                                            <button
+                                                key={p}
+                                                onClick={() => setFilterPriority(p)}
+                                                className={cn(
+                                                    "px-2 py-0.5 rounded-md text-[10.5px] font-semibold border transition-all",
+                                                    filterPriority === p
+                                                        ? isDark ? "bg-primary/20 border-primary/40 text-primary" : "bg-primary/10 border-primary/30 text-primary"
+                                                        : isDark ? "border-[#2a2a2a] text-[#555] hover:text-[#aaa] hover:border-[#3a3a3a]" : "border-[#ebebeb] text-[#aaa] hover:text-[#555] hover:border-[#ccc]"
+                                                )}
+                                            >{p === 'all' ? 'Any' : p.charAt(0).toUpperCase() + p.slice(1)}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className={cn("h-px mx-3", isDark ? "bg-[#252525]" : "bg-[#f0f0f0]")} />
+                                {/* Status filter */}
+                                <div className={cn("px-3 pt-2 pb-3")}>
+                                    <p className={cn("text-[9.5px] font-bold uppercase tracking-widest mb-2", isDark ? "text-[#444]" : "text-[#bbb]")}>Status</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {(['all', 'todo', 'doing', 'review', 'done'] as const).map(s => (
+                                            <button
+                                                key={s}
+                                                onClick={() => setFilterStatus(s)}
+                                                className={cn(
+                                                    "px-2 py-0.5 rounded-md text-[10.5px] font-semibold border transition-all",
+                                                    filterStatus === s
+                                                        ? isDark ? "bg-primary/20 border-primary/40 text-primary" : "bg-primary/10 border-primary/30 text-primary"
+                                                        : isDark ? "border-[#2a2a2a] text-[#555] hover:text-[#aaa] hover:border-[#3a3a3a]" : "border-[#ebebeb] text-[#aaa] hover:text-[#555] hover:border-[#ccc]"
+                                                )}
+                                            >{s === 'all' ? 'Any' : s.charAt(0).toUpperCase() + s.slice(1)}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                {/* Clear button */}
+                                {(filterPriority !== 'all' || filterStatus !== 'all') && (
+                                    <>
+                                        <div className={cn("h-px mx-3", isDark ? "bg-[#252525]" : "bg-[#f0f0f0]")} />
+                                        <div className="px-3 py-2">
+                                            <button
+                                                onClick={() => { setFilterPriority('all'); setFilterStatus('all'); }}
+                                                className={cn("w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10.5px] font-semibold transition-colors",
+                                                    isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#aaa] hover:text-[#555] hover:bg-[#f5f5f5]")}
+                                            >
+                                                <X size={10} /> Clear filters
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Order dropdown */}
+                    <div className="relative" ref={orderRef}>
+                        <TbBtn
+                            label="Order"
+                            icon={<ArrowUpDown size={10} />}
+                            hasArrow
+                            active={orderBy !== 'position'}
+                            isDark={isDark}
+                            onClick={() => { setOrderOpen(v => !v); setFilterOpen(false); }}
+                        />
+                        {orderOpen && (
+                            <div className={cn(
+                                "absolute left-0 top-full mt-1.5 z-50 rounded-xl border shadow-2xl overflow-hidden min-w-[170px] py-1",
+                                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                            )}>
+                                {([
+                                    { id: 'position',  label: 'Default order' },
+                                    { id: 'priority',  label: 'Priority' },
+                                    { id: 'due_date',  label: 'Due date' },
+                                    { id: 'title',     label: 'Title (A–Z)' },
+                                ] as const).map(o => (
+                                    <button
+                                        key={o.id}
+                                        onClick={() => { setOrderBy(o.id); setOrderOpen(false); }}
+                                        className={cn(
+                                            "w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] transition-colors text-left",
+                                            orderBy === o.id
+                                                ? isDark ? "bg-white/8 text-white font-medium" : "bg-[#f0f0f0] text-[#111] font-medium"
+                                                : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                        )}
+                                    >
+                                        <span className="flex-1">{o.label}</span>
+                                        {orderBy === o.id && <Check size={11} className="text-primary" />}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Archived toggle */}
+                    <TbBtn
+                        label={showArchived ? 'Active' : 'Archived'}
+                        active={showArchived}
+                        icon={showArchived ? <ArchiveRestore size={10} /> : <Archive size={10} />}
+                        isDark={isDark}
+                        onClick={() => { setShowArchived(v => !v); setFilterOpen(false); setOrderOpen(false); }}
+                    />
+
+                    <div className={cn("h-3.5 w-px mx-1", isDark ? "bg-[#252525]" : "bg-[#e5e5e5]")} />
+
+                    <TbBtn
+                        label="Import / Export"
+                        icon={<Upload size={10} />}
+                        isDark={isDark}
+                        onClick={() => gooeyToast('Import / Export coming soon')}
+                    />
 
                     <div className="flex-1" />
 
-                    <div className="flex items-center gap-2">
-                        <div className="relative">
-                            <Search className={cn("absolute left-2.5 top-1/2 -translate-y-1/2", isDark ? "opacity-30" : "opacity-35")} size={11}/>
-                            <input 
-                                value={searchQuery} 
-                                onChange={e => setSearchQuery(e.target.value)} 
-                                placeholder="Search tasks…"
-                                className={cn('pl-7 pr-3 py-1.5 text-[11px] rounded-lg border focus:outline-none transition-all w-36 focus:w-52',
-                                    isDark ? 'bg-white/5 border-white/8 text-white placeholder:text-white/25 focus:border-white/15'
-                                           : 'bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]')}/>
-                            {searchQuery && (
-                                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80 transition-opacity">
-                                    <X size={10}/>
-                                </button>
+                    {/* Active filter badges */}
+                    <AnimatePresence>
+                        {(filterPriority !== 'all' || filterStatus !== 'all') && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                className="flex items-center gap-1 mr-2"
+                            >
+                                {filterPriority !== 'all' && (
+                                    <span className={cn(
+                                        "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
+                                        isDark ? "bg-primary/10 border-primary/20 text-primary/80" : "bg-primary/8 border-primary/20 text-primary"
+                                    )}>
+                                        Priority: {filterPriority}
+                                        <button onClick={() => setFilterPriority('all')} className="hover:opacity-70"><X size={8} /></button>
+                                    </span>
+                                )}
+                                {filterStatus !== 'all' && (
+                                    <span className={cn(
+                                        "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
+                                        isDark ? "bg-primary/10 border-primary/20 text-primary/80" : "bg-primary/8 border-primary/20 text-primary"
+                                    )}>
+                                        Status: {filterStatus}
+                                        <button onClick={() => setFilterStatus('all')} className="hover:opacity-70"><X size={8} /></button>
+                                    </span>
+                                )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className={cn("absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none", isDark ? "opacity-25" : "opacity-30")} size={11} />
+                        <input
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Search tasks…"
+                            className={cn(
+                                'pl-7 pr-3 py-1.5 text-[11px] rounded-lg border focus:outline-none transition-all w-36 focus:w-48',
+                                isDark
+                                    ? 'bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/20 focus:border-white/15'
+                                    : 'bg-[#f6f6f6] border-[#e5e5e5] text-[#111] placeholder:text-[#bbb] focus:border-[#ccc] focus:bg-white'
                             )}
-                        </div>
+                        />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80 transition-opacity">
+                                <X size={9} />
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
@@ -664,6 +863,9 @@ export default function ProjectDetailPage() {
                         isDark={isDark}
                         searchQuery={searchQuery}
                         showArchived={showArchived}
+                        filterPriority={filterPriority}
+                        filterStatus={filterStatus}
+                        orderBy={orderBy}
                         onTaskClick={setSelectedTask}
                     />
                 )}

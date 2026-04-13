@@ -50,6 +50,7 @@ interface FormState {
     deleteForm: (id: string) => Promise<void>;
     bulkDeleteForms: (ids: string[]) => Promise<void>;
     fetchResponses: (formId: string) => Promise<void>;
+    bulkDeleteResponses: (ids: string[]) => Promise<void>;
 }
 
 export const useFormStore = create<FormState>((set) => ({
@@ -117,5 +118,12 @@ export const useFormStore = create<FormState>((set) => ({
             .order('created_at', { ascending: false });
 
         if (!error && data) set({ responses: data });
+    },
+
+    bulkDeleteResponses: async (ids) => {
+        if (!ids.length) return;
+        const { error } = await supabase.from('form_responses').delete().in('id', ids);
+        if (error) set({ error: error.message });
+        else set((state) => ({ responses: state.responses.filter((r) => !ids.includes(r.id)) }));
     },
 }));

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
     Search, Table2, LayoutGrid, Plus, ChevronDown,
     ClipboardList, Check, Trash2,
-    ArrowUpDown, MessageSquare, Copy
+    ArrowUpDown, MessageSquare, Copy, Link
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { CreateFormModal } from '@/components/modals/CreateFormModal';
@@ -103,8 +103,8 @@ function Chk({ checked, indeterminate, isDark }: { checked: boolean; indetermina
 }
 
 /* ─── Form Card ─────────────────────────────────────────────── */
-function FormCard({ f, onOpen, onDelete, isDark, isSelected, onToggle }: {
-    f: Form; onOpen: () => void; onDelete: () => void; isDark: boolean;
+function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }: {
+    f: Form; onOpen: () => void; onDelete: () => void; onCopy: () => void; isDark: boolean;
     isSelected: boolean; onToggle: () => void;
 }) {
     const [deleting, setDeleting] = useState(false);
@@ -157,14 +157,19 @@ function FormCard({ f, onOpen, onDelete, isDark, isSelected, onToggle }: {
             </div>
 
             {/* Footer */}
-            <div className={cn("flex items-center justify-end px-4 py-2.5 border-t",
+            <div className={cn("flex items-center justify-end px-4 py-2.5 border-t gap-1",
                 isDark ? "border-[#252525]" : "border-[#f5f5f5]")} onClick={e => e.stopPropagation()}>
+                <button onClick={onCopy}
+                    className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
+                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                    <Link size={12} />
+                </button>
                 {deleting ? (
                     <InlineDeleteButton onDelete={onDelete} isDark={isDark} />
                 ) : (
                     <button onClick={() => setDeleting(true)}
-                        className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
-                            isDark ? "hover:bg-white/5 text-red-400" : "hover:bg-red-50 text-red-400")}>
+                        className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all text-red-400",
+                            isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
                         <Trash2 size={12} />
                     </button>
                 )}
@@ -208,6 +213,13 @@ export default function FormsPage() {
     const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(f => f.id)));
     const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
     const isAllSelected = filtered.length > 0 && selectedIds.size === filtered.length;
+
+    const copyLink = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const url = `${window.location.origin}/p/form/${id}`;
+        navigator.clipboard.writeText(url);
+        gooeyToast.success('Link copied to clipboard');
+    };
 
     const handleDelete = async (id: string) => {
         setDeletingId(id);
@@ -415,6 +427,7 @@ export default function FormsPage() {
                                     n.has(f.id) ? n.delete(f.id) : n.add(f.id);
                                     setSelectedIds(n);
                                 }}
+                                onCopy={(e: any) => copyLink(f.id, e)}
                             />
                         ))}
                     </div>
@@ -477,12 +490,19 @@ export default function FormsPage() {
                                             </td>
                                             <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                                                    <Tooltip content="Copy preview link" side="top">
+                                                        <button onClick={(e) => copyLink(f.id, e)}
+                                                            className={cn("p-1.5 rounded-lg transition-colors",
+                                                                isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                                                            <Link size={12} />
+                                                        </button>
+                                                    </Tooltip>
                                                     {deletingId === f.id ? (
                                                         <InlineDeleteButton onDelete={() => handleDelete(f.id)} isDark={isDark} />
                                                     ) : (
                                                         <button onClick={() => setDeletingId(f.id)}
-                                                            className={cn("p-1.5 rounded-lg transition-colors",
-                                                                isDark ? "hover:bg-white/5 text-red-400" : "hover:bg-red-50 text-red-400")}>
+                                                            className={cn("p-1.5 rounded-lg transition-colors text-red-400",
+                                                                isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
                                                             <Trash2 size={12} />
                                                         </button>
                                                     )}

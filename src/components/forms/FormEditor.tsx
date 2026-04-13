@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     ArrowLeft, ChevronDown, Link2, MoreHorizontal, Trash2, Copy,
@@ -9,7 +9,9 @@ import {
     Image, Upload, Mail, Phone, User, MapPin, Globe, Hash,
     Sliders as SlidersIcon, Calendar, LinkIcon, PenLine, Filter,
     GripVertical, X, Download, Eye, Monitor, Smartphone, LayoutTemplate,
+    LayoutGrid, List, ArrowUpDown,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, DragEndEvent
@@ -328,14 +330,17 @@ function FieldTypePill({ def, onAdd, isDark, borderRadius }: { def: FieldTypeDef
 }
 
 /* ── Insert Area ── */
-function FieldInsertArea({ index, openIndex, setOpenIndex, onAdd, isDark, primaryColor, borderRadius }: {
-    index: number; openIndex: number | null; setOpenIndex: (i: number | null) => void;
+function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, isDark, primaryColor, borderRadius, hideLine }: {
+    index: number; totalFields: number; openIndex: number | null; setOpenIndex: (i: number | null) => void;
     onAdd: (def: FieldTypeDef, idx: number) => void; isDark: boolean; primaryColor: string;
-    borderRadius: number;
+    borderRadius: number; hideLine?: boolean;
 }) {
     const isOpen = openIndex === index;
     const [hovered, setHovered] = useState(false);
     const visible = hovered || isOpen;
+
+    // Open upwards if we are at the bottom or if the form is empty
+    const openUp = index === totalFields;
 
     return (
         <div 
@@ -350,37 +355,40 @@ function FieldInsertArea({ index, openIndex, setOpenIndex, onAdd, isDark, primar
             onMouseLeave={() => { if (!isOpen) setHovered(false); }}
         >
             {/* Dashed line */}
-            <div className={cn(
-                "absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-150",
-                visible ? "opacity-100 translate-y-[-50%]" : "opacity-0 translate-y-[20%] pointer-events-none"
-            )}>
+            {!hideLine && (
                 <div className={cn(
-                    "flex-1 border-t border-dashed",
-                    isDark ? "border-[#363636]" : "border-[#d8d8d8]"
-                )} />
-                <button
-                    onClick={(e) => { e.stopPropagation(); setOpenIndex(isOpen ? null : index); }}
-                    className={cn(
-                        "mx-2 w-5 h-5 flex items-center justify-center border transition-all shrink-0 shadow-sm",
-                        isOpen
-                            ? "bg-[var(--primary-color)] border-[var(--primary-color)] text-white"
-                            : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
-                                     : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
-                    )}
-                    style={{ borderRadius: 'var(--block-button-radius)' }}
-                >
-                    <Plus size={12} strokeWidth={2.5} />
-                </button>
-                <div className={cn(
-                    "flex-1 border-t border-dashed",
-                    isDark ? "border-[#363636]" : "border-[#d8d8d8]"
-                )} />
-            </div>
+                    "absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center transition-all duration-150",
+                    visible ? "opacity-100 translate-y-[-50%]" : "opacity-0 translate-y-[20%] pointer-events-none"
+                )}>
+                    <div className={cn(
+                        "flex-1 border-t border-dashed",
+                        isDark ? "border-[#363636]" : "border-[#d8d8d8]"
+                    )} />
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setOpenIndex(isOpen ? null : index); }}
+                        className={cn(
+                            "mx-2 w-5 h-5 flex items-center justify-center border transition-all shrink-0 shadow-sm",
+                            isOpen
+                                ? "bg-[var(--primary-color)] border-[var(--primary-color)] text-white"
+                                : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
+                                         : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
+                        )}
+                        style={{ borderRadius: 'var(--block-button-radius)' }}
+                    >
+                        <Plus size={12} strokeWidth={2.5} />
+                    </button>
+                    <div className={cn(
+                        "flex-1 border-t border-dashed",
+                        isDark ? "border-[#363636]" : "border-[#d8d8d8]"
+                    )} />
+                </div>
+            )}
 
             {/* Field type picker popup */}
             {isOpen && (
                 <div className={cn(
-                    "absolute left-1/2 -translate-x-1/2 top-full mt-1 w-[380px] p-4 border shadow-xl z-50 animate-in zoom-in-95 duration-150", 
+                    "absolute left-1/2 -translate-x-1/2 w-[380px] p-4 border shadow-2xl z-[100] animate-in zoom-in-95 duration-150", 
+                    openUp ? "bottom-full mb-2" : "top-full mt-2",
                     useUIStore.getState().theme === 'dark' ? "bg-[#181818] border-[#333]" : "bg-white border-[#ebebeb]"
                 )}
                 style={{ borderRadius: `${borderRadius}px` }}
@@ -437,11 +445,18 @@ export default function FormEditor({ id }: { id?: string }) {
     const [fields, setFields] = useState<FormField[]>([]);
     const [meta, setMeta] = useState<FormMeta>(DEFAULT_META);
     const [isLoaded, setIsLoaded] = useState(false);
+    const isFirst = useRef(true);
+
+    useEffect(() => {
+        setIsLoaded(false);
+        isFirst.current = true;
+    }, [id]);
 
     const [editorTab, setEditorTab] = useState<EditorTab>('editor');
     const [canvasStep, setCanvasStep] = useState<CanvasStep>('form');
     const [rightTab, setRightTab] = useState<RightTab>('details');
     const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+    const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
     const [pickerTab, setPickerTab] = useState<'input' | 'contact'>('input');
     const [pickerSearch, setPickerSearch] = useState('');
     const [showStatus, setShowStatus] = useState(false);
@@ -452,7 +467,12 @@ export default function FormEditor({ id }: { id?: string }) {
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
-    const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
+    const [responsesView, setResponsesView] = useState<'cards' | 'table'>('cards');
+    const [selectedResponseIds, setSelectedResponseIds] = useState<Set<string>>(new Set());
+    const [responsesSearch, setResponsesSearch] = useState('');
+    const [responsesOrderBy, setResponsesOrderBy] = useState<'recent' | 'oldest' | 'name'>('recent');
+    const [orderOpen, setOrderOpen] = useState(false);
+    const { responses, fetchResponses, bulkDeleteResponses } = useFormStore();
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -499,13 +519,13 @@ export default function FormEditor({ id }: { id?: string }) {
             setMeta(prev => ({ ...prev, ...(f.meta as any) }));
         }
         setIsLoaded(true);
-    }, [id, forms, isLoaded]);
+        if (id) fetchResponses(id);
+    }, [id, forms, isLoaded, fetchResponses]);
 
     const debouncedTitle   = useDebounce(title, 1000);
     const debouncedStatus  = useDebounce(status, 500);
     const debouncedFields  = useDebounce(fields, 1000);
     const debouncedMeta    = useDebounce(meta, 1000);
-    const isFirst = useRef(true);
 
     useEffect(() => {
         if (isFirst.current || !isLoaded || !id) {
@@ -552,7 +572,7 @@ export default function FormEditor({ id }: { id?: string }) {
     };
 
     const copyLink = () => {
-        navigator.clipboard.writeText(window.location.origin + '/form/' + id);
+        navigator.clipboard.writeText(window.location.origin + '/p/form/' + id);
         setCopied(true);
         setTimeout(() => setCopied(false), 1800);
     };
@@ -575,8 +595,130 @@ export default function FormEditor({ id }: { id?: string }) {
         return true;
     });
 
+    // --- Shared UI Helpers for Responses Tab ---
+    function ResponseCardRow({ label, value, isDark }: { label: string; value?: string | null; isDark: boolean }) {
+        if (!value) return null;
+        return (
+            <div className={cn(
+                "flex items-center gap-0 border-t py-1.5 px-4",
+                isDark ? "border-white/[0.03]" : "border-dashed border-[#e8e8e8]"
+            )}>
+                <span className={cn("text-[10px] uppercase font-bold tracking-wider shrink-0 w-[80px]", isDark ? "text-[#555]" : "text-[#aaa]")}>{label}</span>
+                <span className={cn("text-[11px] truncate font-medium flex-1", isDark ? "text-[#bbb]" : "text-[#333]")}>{value}</span>
+                <button 
+                    onClick={(e) => { e.stopPropagation(); handleCopyValue(value); }}
+                    className={cn("opacity-0 group-hover/row:opacity-100 transition-all p-1 ml-1", isDark ? "text-white/40" : "text-black/40")}
+                >
+                    <Copy size={9} />
+                </button>
+            </div>
+        );
+    }
+
+    function ResponseTbBtn({ label, icon, active, onClick, isDark, hasArrow }: { label: string; icon?: React.ReactNode; active?: boolean; onClick?: () => void; isDark: boolean; hasArrow?: boolean; }) {
+        return (
+            <button onClick={onClick} className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded transition-all",
+                active
+                    ? (isDark ? "bg-white/10 text-white shadow-sm" : "bg-black/5 text-black shadow-sm")
+                    : (isDark ? "text-[#666] hover:text-[#aaa] hover:bg-white/5" : "text-[#777] hover:text-black hover:bg-black/5")
+            )}>
+                {icon}
+                <span>{label}</span>
+                {hasArrow && <ChevronDown size={11} className={cn("opacity-40 transition-transform", active ? "rotate-180" : "rotate-0")} />}
+            </button>
+        );
+    }
+
+    function ResponseDropdown({ open, onClose, isDark, children }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode }) {
+        const ref = React.useRef<HTMLDivElement>(null);
+        React.useEffect(() => {
+            if (!open) return;
+            const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+            document.addEventListener('mousedown', h);
+            return () => document.removeEventListener('mousedown', h);
+        }, [open, onClose]);
+        if (!open) return null;
+        return (
+            <div ref={ref} className={cn("absolute top-full left-0 mt-1 z-50 min-w-[160px] rounded-xl border shadow-xl overflow-hidden",
+                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                {children}
+            </div>
+        );
+    }
+
+    function ResponseDItem({ label, active, onClick, isDark }: { label: string; active?: boolean; onClick: () => void; isDark: boolean }) {
+        return (
+            <button onClick={onClick} className={cn("w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] transition-colors text-left",
+                active
+                    ? isDark ? "bg-white/8 text-white font-medium" : "bg-black/5 text-[#111] font-medium"
+                    : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-black/[0.02]")}>
+                <span className="flex-1">{label}</span>
+                {active && <Check size={11} className="text-primary" />}
+            </button>
+        );
+    }
+
+    const filteredResponses = useMemo(() => {
+        let items = [...responses];
+
+        // Search
+        if (responsesSearch) {
+            const s = responsesSearch.toLowerCase();
+            items = items.filter(r => 
+                Object.values(r.data).some(v => String(v).toLowerCase().includes(s))
+            );
+        }
+
+        // Sort
+        items.sort((a, b) => {
+            if (responsesOrderBy === 'name') {
+                const getIdentity = (r: any) => {
+                    const found = Object.entries(r.data).find(([qid]) => {
+                        const f = fields.find(field => field.id === qid);
+                        return f?.type === 'full_name' || f?.label?.toLowerCase().includes('name');
+                    });
+                    return String(found?.[1] || '').toLowerCase();
+                };
+                return getIdentity(a).localeCompare(getIdentity(b));
+            }
+            const timeA = new Date(a.created_at).getTime();
+            const timeB = new Date(b.created_at).getTime();
+            return responsesOrderBy === 'recent' ? timeB - timeA : timeA - timeB;
+        });
+
+        return items;
+    }, [responses, responsesSearch, responsesOrderBy, fields]);
+
+    const handleCopyValue = (val: string) => {
+        navigator.clipboard.writeText(val);
+        gooeyToast.success("Copied to clipboard");
+    };
+
+    const handleCopyAll = (data: Record<string, any>) => {
+        const text = Object.entries(data).map(([qid, val]) => {
+            const f = fields.find(field => field.id === qid);
+            return `${f?.label || qid}: ${val}`;
+        }).join('\n');
+        navigator.clipboard.writeText(text);
+        gooeyToast.success("All response data copied");
+    };
+
+    const toggleResponseSelection = (rid: string) => {
+        const next = new Set(selectedResponseIds);
+        if (next.has(rid)) next.delete(rid);
+        else next.add(rid);
+        setSelectedResponseIds(next);
+    };
+
+    const handleBulkDeleteResponses = async () => {
+        if (!selectedResponseIds.size) return;
+        await bulkDeleteResponses(Array.from(selectedResponseIds));
+        setSelectedResponseIds(new Set());
+        gooeyToast.success("Deleted selected responses");
+    };
+
     const STEPS: { id: CanvasStep; label: string; disabled?: boolean }[] = [
-        { id: 'intro', label: 'Intro', disabled: true },
         { id: 'form', label: 'Form' },
         { id: 'confirmation', label: 'Confirmation' },
     ];
@@ -831,7 +973,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="w-full max-w-[620px] overflow-hidden shadow-xl transition-all duration-300 relative"
+                                            <div className="w-full max-w-[620px] shadow-xl transition-all duration-300 relative"
                                                 style={{
                                                     backgroundColor: design.blockBackgroundColor || '#fff',
                                                     boxShadow: design.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.08)',
@@ -868,17 +1010,28 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                     <div className="p-3 bg-current/5" style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 4)}px` }}>
                                                                         <Plus size={20} className="opacity-40" />
                                                                     </div>
-                                                                    <div className="text-center">
+                                                                     <div className="text-center">
                                                                         <div className={cn("text-[13px] font-semibold", isFormDark ? "text-[#555]" : "text-[#bbb]")}>
                                                                             No fields yet
                                                                         </div>
                                                                         <div className="text-[11.5px] mt-0.5 opacity-60">
-                                                                            Hover below to insert your first field
+                                                                            Add a field to get started
                                                                         </div>
+                                                                        {!isPreview && (
+                                                                            <button 
+                                                                                onClick={() => setOpenInsertMenu(0)}
+                                                                                className="mt-4 flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary-hover text-black transition-all shadow-sm"
+                                                                            >
+                                                                                <Plus size={14} strokeWidth={2.5} />
+                                                                                Add first field
+                                                                            </button>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                                 {!isPreview && (
-                                                                    <FieldInsertArea index={0} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} />
+                                                                    <div className={cn("transition-opacity duration-300", openInsertMenu === 0 ? "opacity-100" : "opacity-0")}>
+                                                                        <FieldInsertArea index={0} totalFields={0} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} hideLine />
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         ) : (
@@ -890,7 +1043,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                     {fields.map((f, idx) => (
                                                                         <React.Fragment key={f.id}>
                                                                             {!isPreview && (
-                                                                                <FieldInsertArea index={idx} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} />
+                                                                                <FieldInsertArea index={idx} totalFields={fields.length} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} />
                                                                             )}
                                                                             <div className={cn(!isPreview && "px-2")}>
                                                                                 <FieldPreview
@@ -908,7 +1061,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                     ))}
                                                                 </SortableContext>
                                                                 {!isPreview && (
-                                                                    <FieldInsertArea index={fields.length} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} />
+                                                                    <FieldInsertArea index={fields.length} totalFields={fields.length} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} />
                                                                 )}
                                                             </div>
                                                         )}
@@ -1108,21 +1261,295 @@ export default function FormEditor({ id }: { id?: string }) {
                 )}
 
                 {editorTab === 'responses' && (
-                    <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
-                            isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
-                            <MessageSquareIcon size={24} className={isDark ? "text-[#444]" : "text-[#ccc]"} />
-                        </div>
-                        <div className="text-center">
-                            <div className={cn("font-semibold text-[14px] mb-1", isDark ? "text-[#444]" : "text-[#bbb]")}>No responses yet</div>
-                            <div className={cn("text-[12px]", isDark ? "text-[#333]" : "text-[#ccc]")}>
-                                Share your form to start collecting responses
+                    <div className="flex-1 flex flex-col min-h-0 relative">
+                        {/* Response Content */}
+                        <div className={cn("flex-1 overflow-auto relative flex flex-col", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
+                            {/* Toolbar (Inner) - Styled like Clients/Projects */}
+                            <div className={cn("flex items-center gap-0 px-4 py-2 border-b shrink-0", isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#ebebeb]")}>
+                                <div className="relative mr-3">
+                                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-30" size={12} />
+                                    <input
+                                        value={responsesSearch}
+                                        onChange={e => setResponsesSearch(e.target.value)}
+                                        placeholder="Search responses"
+                                        className={cn(
+                                            "pl-8 pr-3 py-1.5 text-[11px] rounded-lg border focus:outline-none w-44 transition-all focus:w-64",
+                                            isDark
+                                                ? "bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-white/20"
+                                                : "bg-[#f5f5f5] border-[#e0e0e0] text-[#111] placeholder:text-[#aaa] focus:border-[#ccc]"
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="relative">
+                                    <ResponseTbBtn 
+                                        label="Order by" 
+                                        icon={<ArrowUpDown size={11} />} 
+                                        active={orderOpen} 
+                                        hasArrow 
+                                        onClick={() => setOrderOpen(!orderOpen)} 
+                                        isDark={isDark} 
+                                    />
+                                    <ResponseDropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
+                                        <div className="py-1">
+                                            <ResponseDItem label="Recent Submissions" active={responsesOrderBy === 'recent'} onClick={() => { setResponsesOrderBy('recent'); setOrderOpen(false); }} isDark={isDark} />
+                                            <ResponseDItem label="Oldest Submissions" active={responsesOrderBy === 'oldest'} onClick={() => { setResponsesOrderBy('oldest'); setOrderOpen(false); }} isDark={isDark} />
+                                            <ResponseDItem label="Alphabetical (Name)" active={responsesOrderBy === 'name'} onClick={() => { setResponsesOrderBy('name'); setOrderOpen(false); }} isDark={isDark} />
+                                        </div>
+                                    </ResponseDropdown>
+                                </div>
+
+                                <div className="flex-1" />
+
+                                <div className="flex items-center gap-1.5">
+                                    <AnimatePresence>
+                                        {selectedResponseIds.size > 0 && (
+                                            <motion.div
+                                                initial={{ opacity: 0, x: 10 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: 10 }}
+                                                className={cn("flex items-center gap-2 px-3 py-1.5 rounded-xl border shadow-sm",
+                                                    isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}
+                                            >
+                                                <span className="text-[11px] font-bold text-primary">{selectedResponseIds.size} selected</span>
+                                                <div className={cn("w-px h-3", isDark ? "bg-white/10" : "bg-black/10")} />
+                                                <button onClick={handleBulkDeleteResponses} className="p-1 text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Delete">
+                                                    <Trash2 size={13} />
+                                                </button>
+                                                <button onClick={() => setSelectedResponseIds(new Set())} className={cn("p-1 rounded-md transition-colors", isDark ? "text-white/40 hover:text-white" : "text-black/40 hover:text-black")}>
+                                                    <X size={13} />
+                                                </button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    <div className={cn("w-px h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#eee]")} />
+
+                                    <div className="flex items-center gap-1">
+                                        <button 
+                                            onClick={() => setResponsesView('cards')}
+                                            className={cn("p-1.5 rounded-lg transition-colors", 
+                                                responsesView === 'cards' 
+                                                    ? isDark ? "bg-white/10 text-white" : "bg-black/5 text-[#111] shadow-sm font-bold"
+                                                    : "text-[#888] hover:text-primary")}
+                                        >
+                                            <LayoutGrid size={14} />
+                                        </button>
+                                        <button 
+                                            onClick={() => setResponsesView('table')}
+                                            className={cn("p-1.5 rounded-lg transition-colors", 
+                                                responsesView === 'table' 
+                                                    ? isDark ? "bg-white/10 text-white" : "bg-black/5 text-[#111] shadow-sm font-bold"
+                                                    : "text-[#888] hover:text-primary")}
+                                        >
+                                            <List size={14} />
+                                        </button>
+                                    </div>
+
+                                    <button 
+                                        onClick={() => {
+                                            if (!responses?.length) return;
+                                            const header = ["Date", ...fields.map(f => `"${f.label.replace(/"/g, '""')}"`)].join(",");
+                                            const rows = responses.map(r => {
+                                                const date = `"${new Date(r.created_at).toLocaleString()}"`;
+                                                const cols = fields.map(f => {
+                                                    const val = r.data?.[f.id];
+                                                    const str = Array.isArray(val) ? val.join(', ') : (typeof val === 'object' ? JSON.stringify(val) : String(val || ''));
+                                                    return `"${str.replace(/"/g, '""')}"`;
+                                                });
+                                                return [date, ...cols].join(",");
+                                            });
+                                            const csv = [header, ...rows].join("\n");
+                                            const blob = new Blob([csv], { type: 'text/csv' });
+                                            const url = URL.createObjectURL(blob);
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.download = `responses-${id}.csv`;
+                                            a.click();
+                                        }}
+                                        className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[11px] font-bold transition-all",
+                                            isDark ? "bg-white/5 hover:bg-white/10 text-white border border-white/5" : "bg-white border hover:bg-black/[0.02] text-black shadow-sm")}
+                                    >
+                                        <Download size={12} /> Export
+                                    </button>
+                                </div>
                             </div>
+
+                            {/* Data List */}
+                            {filteredResponses.length === 0 ? (
+                                <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                                    <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-4", isDark ? "bg-[#1a1a1a]" : "bg-[#f0f0f0]")}>
+                                        <MessageSquareIcon size={24} className="opacity-20" />
+                                    </div>
+                                    <div className={cn("font-bold text-[14px] mb-1", isDark ? "text-white/40" : "text-[#999]")}>No responses found</div>
+                                    {responses.length > 0 ? (
+                                        <button onClick={() => setResponsesSearch('')} className="text-primary text-[12px] font-medium hover:underline">Clear filters</button>
+                                    ) : (
+                                        <button onClick={copyLink}
+                                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold bg-primary text-black mt-2">
+                                            <Link2 size={13} /> Copy form link
+                                        </button>
+                                    )}
+                                </div>
+                            ) : responsesView === 'cards' ? (
+                                <div className="p-5 overflow-y-auto">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 max-w-[1600px] mx-auto">
+                                        {filteredResponses.map((r) => {
+                                            const isSelected = selectedResponseIds.has(r.id);
+                                            const primaryIdentity = Object.entries(r.data).find(([qid]) => {
+                                                const f = fields.find(field => field.id === qid);
+                                                return f?.type === 'full_name' || f?.type === 'email' || f?.label?.toLowerCase().includes('name');
+                                            })?.[1] as string || 'Respondent';
+
+                                            return (
+                                                <div 
+                                                    key={r.id} 
+                                                    onClick={() => toggleResponseSelection(r.id)}
+                                                    className={cn(
+                                                        "flex flex-col rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden group select-none relative",
+                                                        isSelected 
+                                                            ? isDark ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20" : "border-primary/30 bg-primary/5 ring-1 ring-primary/10 shadow-sm"
+                                                            : isDark ? "bg-[#1a1a1a] border-[#252525] hover:border-[#333]" : "bg-white border-[#ebebeb] hover:border-black/10 hover:shadow-sm"
+                                                    )}
+                                                >
+                                                    {/* Card Header (Contact Style) */}
+                                                    <div className="flex items-center gap-3 px-4 py-3.5 relative">
+                                                        <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold uppercase",
+                                                            isDark ? "bg-white/5 text-white/40" : "bg-black/5 text-black/40")}>
+                                                            {primaryIdentity[0]}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className={cn("text-[13px] font-bold truncate leading-tight", isDark ? "text-white" : "text-black")}>
+                                                                {primaryIdentity}
+                                                            </span>
+                                                            <span className={cn("text-[10px] opacity-40 mt-0.5", isDark ? "text-[#888]" : "text-[#111]")}>
+                                                                {new Date(r.created_at).toLocaleDateString()} at {new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Checkbox Overlay */}
+                                                        <div className={cn("absolute top-3.5 right-4 z-10 transition-opacity", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                                                            <div className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all",
+                                                                isSelected ? "bg-primary border-primary" : isDark ? "border-white/20" : "border-[#ccc]")}>
+                                                                {isSelected && <Check size={10} strokeWidth={4} className="text-black" />}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Rows (CardRow Style) */}
+                                                    <div className="flex-1">
+                                                        {fields.slice(0, 6).map(f => {
+                                                            const val = r.data?.[f.id];
+                                                            const displayVal = Array.isArray(val) ? val.join(', ') : String(val || '');
+                                                            if (!displayVal) return null;
+                                                            return (
+                                                                <div key={f.id} className="group/row">
+                                                                    <ResponseCardRow label={f.label} value={displayVal} isDark={isDark} />
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {fields.length > 6 && (
+                                                            <div className={cn("px-4 py-2 text-[10px] font-bold uppercase tracking-wider opacity-40 border-t", isDark ? "border-white/5" : "border-dashed border-[#e8e8e8]")}>
+                                                                + {fields.length - 6} more fields
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Card Actions (Hover) */}
+                                                    <div className="absolute bottom-2.5 right-3 opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1.5">
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleCopyAll(r.data); }}
+                                                            className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-white/10 text-white/50" : "hover:bg-black/5 text-black/50")}
+                                                            title="Copy all"
+                                                        >
+                                                            <Copy size={11} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex-1 overflow-x-auto p-5">
+                                    <table className="w-full text-left text-[12.5px] border-separate border-spacing-0">
+                                        <thead>
+                                            <tr>
+                                                <th className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px] first:rounded-tl-xl", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>
+                                                    <div 
+                                                        onClick={() => setSelectedResponseIds(selectedResponseIds.size === filteredResponses.length ? new Set() : new Set(filteredResponses.map(r => r.id)))}
+                                                        className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center cursor-pointer transition-all",
+                                                            selectedResponseIds.size === filteredResponses.length && filteredResponses.length > 0 ? "bg-primary border-primary" : isDark ? "border-white/20" : "border-[#ccc]")}
+                                                    >
+                                                        {selectedResponseIds.size === filteredResponses.length && filteredResponses.length > 0 && <Check size={10} strokeWidth={4} className="text-black" />}
+                                                    </div>
+                                                </th>
+                                                <th className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px]", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>Submission Date</th>
+                                                {fields.map(f => (
+                                                    <th key={f.id} className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px] whitespace-nowrap", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>
+                                                        {f.label}
+                                                    </th>
+                                                ))}
+                                                <th className={cn("px-4 py-2 border-b rounded-tr-xl", isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]")} />
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredResponses.map((r, i) => {
+                                                const isSelected = selectedResponseIds.has(r.id);
+                                                return (
+                                                    <tr 
+                                                        key={r.id} 
+                                                        onClick={() => toggleResponseSelection(r.id)}
+                                                        className={cn(
+                                                            "transition-colors cursor-pointer group",
+                                                            isSelected ? isDark ? "bg-primary/5" : "bg-primary/5" : isDark ? "hover:bg-white/[0.02]" : "hover:bg-black/[0.02]",
+                                                            isDark ? "border-[#222]" : "border-[#f5f5f5]",
+                                                            i !== filteredResponses.length - 1 && "border-b"
+                                                        )}
+                                                    >
+                                                        <td className="px-4 py-3">
+                                                            <div className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all",
+                                                                isSelected ? "bg-primary border-primary" : isDark ? "border-white/10 opacity-0 group-hover:opacity-100" : "border-[#ccc] opacity-0 group-hover:opacity-100")}>
+                                                                {isSelected && <Check size={10} strokeWidth={4} className="text-black" />}
+                                                            </div>
+                                                        </td>
+                                                        <td className={cn("px-4 py-3 whitespace-nowrap font-medium", isDark ? "text-[#888]" : "text-[#666]")}>
+                                                            {new Date(r.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                                        </td>
+                                                        {fields.map(f => {
+                                                            const val = r.data?.[f.id];
+                                                            const displayVal = Array.isArray(val) ? val.join(', ') : String(val || '-');
+                                                            return (
+                                                                <td key={f.id} className="px-4 py-3 group/td">
+                                                                    <div className="flex items-center justify-between gap-2 max-w-[240px]">
+                                                                        <span className={cn("truncate", isDark ? "text-[#aaa]" : "text-[#444]")}>{displayVal}</span>
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); handleCopyValue(displayVal); }}
+                                                                            className="p-1 opacity-0 group-hover/td:opacity-100 transition-all text-primary"
+                                                                        >
+                                                                            <Copy size={9} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className="px-4 py-3">
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); handleCopyAll(r.data); }}
+                                                                className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all", isDark ? "text-[#444] hover:text-white" : "text-[#ccc] hover:text-black")}
+                                                                title="Copy all"
+                                                            >
+                                                                <Copy size={12} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
-                        <button onClick={copyLink}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold bg-primary text-black">
-                            <Link2 size={13} /> Copy form link
-                        </button>
                     </div>
                 )}
             </div>

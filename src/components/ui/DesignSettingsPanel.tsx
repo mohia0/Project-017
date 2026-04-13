@@ -251,26 +251,26 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                         <MetaField 
                             label="Block Spacing (Top)"
-                            valueLabel={`${design.marginTop ?? 24}px`}
+                            valueLabel={`${design.marginTop ?? 0}px`}
                             isDark={isDark} 
                             onReset={() => updateDesign({ marginTop: DEFAULT_DOCUMENT_DESIGN.marginTop })}
                         >
                             <input 
                                 type="range" min="0" max="120" step="4" 
-                                value={design.marginTop ?? 24} 
+                                value={design.marginTop ?? 0} 
                                 onChange={e => updateDesign({ marginTop: Number(e.target.value) })}
                                 className="w-full cursor-pointer" 
                             />
                         </MetaField>
                         <MetaField 
                             label="Block Spacing (Bottom)"
-                            valueLabel={`${design.marginBottom ?? 24}px`}
+                            valueLabel={`${design.marginBottom ?? 0}px`}
                             isDark={isDark}
                             onReset={() => updateDesign({ marginBottom: DEFAULT_DOCUMENT_DESIGN.marginBottom })}
                         >
                             <input 
                                 type="range" min="0" max="120" step="4" 
-                                value={design.marginBottom ?? 24} 
+                                value={design.marginBottom ?? 0} 
                                 onChange={e => updateDesign({ marginBottom: Number(e.target.value) })}
                                 className="w-full cursor-pointer" 
                             />
