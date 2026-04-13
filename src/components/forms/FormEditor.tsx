@@ -148,9 +148,10 @@ const isColorDark = (color: string) => {
 };
 
 /* ── Field preview in canvas ── */
-function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryColor, isPreview, borderRadius }: {
+function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryColor, isPreview, borderRadius, marginTop, marginBottom, blockBackgroundColor }: {
     field: FormField; isDark: boolean; isSelected: boolean; onClick: () => void;
     onRemove: () => void; primaryColor: string; isPreview?: boolean; borderRadius: number;
+    marginTop?: number; marginBottom?: number; blockBackgroundColor?: string;
 }) {
     const {
         attributes, listeners, setNodeRef,
@@ -169,10 +170,13 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
             readOnly: !isPreview,
             disabled: !isPreview,
             className: cn("w-full px-3 py-2 text-[13px] border outline-none transition-all",
-                isDark ? "bg-[#181818] border-[#333] text-[#ddd]" : "bg-[#f9f9f9] border-[#e5e5e5] text-[#111]",
-                isPreview ? "focus:border-primary/50" : "pointer-events-none"
+                isDark ? "bg-white/[0.03] border-[#333] text-[#ddd]" : "bg-black/[0.02] border-[#e5e5e5] text-[#111]",
+                isPreview ? "focus:border-[var(--primary-color)]" : "pointer-events-none"
             ),
-            style: { borderRadius: `${Math.max(0, borderRadius - 4)}px` }
+            style: { 
+                borderRadius: `${Math.max(0, borderRadius - 6)}px`,
+                backgroundColor: blockBackgroundColor ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : undefined
+            }
         };
 
         switch (field.type) {
@@ -256,10 +260,16 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
     return (
         <div
             ref={setNodeRef}
-            style={{ ...style, borderRadius: `${borderRadius}px` }}
+            style={{ 
+                ...style, 
+                borderRadius: `${borderRadius}px`,
+                marginTop: `${marginTop}px`,
+                marginBottom: `${marginBottom}px`,
+                backgroundColor: blockBackgroundColor || (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)')
+            }}
             onClick={onClick}
             className={cn(
-                "group relative p-4 border-2 transition-all bg-white/[0.02] hover:bg-white/[0.04] mb-3",
+                "group relative p-4 border-2 transition-all mx-1",
                 isPreview ? "cursor-default" : "cursor-pointer",
                 isSelected
                     ? "border-primary/50 shadow-[0_0_0_3px_rgba(77,191,57,0.08)]"
@@ -295,11 +305,12 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
 
             <div className={cn(isPreview ? "pl-0" : "pl-4")}>
                 <div className="mb-3">
-                    <div className={cn("text-[13px] font-bold mb-0.5", isDark ? "text-[#eee]" : "text-[#111]")}>
-                        {field.label}
+                    <div className={cn("text-[13px] font-bold mb-1.5 px-2 py-0.5 inline-block", isDark ? "text-[#eee]" : "text-[#111]")}
+                         style={{ borderRadius: `${Math.max(0, borderRadius - 8)}px`, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}>
+                        {field.label} {field.required && <span className="text-red-500 ml-1 mt-1">*</span>}
                     </div>
                     {field.description && (
-                        <div className={cn("text-[11px] opacity-60", isDark ? "text-[#aaa]" : "text-[#555]")}>
+                        <div className={cn("text-[11px] opacity-60 px-2 mt-0.5", isDark ? "text-[#aaa]" : "text-[#555]")}>
                             {field.description}
                         </div>
                     )}
@@ -330,17 +341,29 @@ function FieldTypePill({ def, onAdd, isDark, borderRadius }: { def: FieldTypeDef
 }
 
 /* ── Insert Area ── */
-function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, isDark, primaryColor, borderRadius, hideLine }: {
+function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, isDark, primaryColor, borderRadius, hideLine, centered }: {
     index: number; totalFields: number; openIndex: number | null; setOpenIndex: (i: number | null) => void;
     onAdd: (def: FieldTypeDef, idx: number) => void; isDark: boolean; primaryColor: string;
-    borderRadius: number; hideLine?: boolean;
+    borderRadius: number; hideLine?: boolean; centered?: boolean;
 }) {
     const isOpen = openIndex === index;
     const [hovered, setHovered] = useState(false);
     const visible = hovered || isOpen;
+    const pickerRef = useRef<HTMLDivElement>(null);
 
     // Open upwards if we are at the bottom or if the form is empty
     const openUp = index === totalFields;
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const h = (e: MouseEvent) => {
+            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+                setOpenIndex(null);
+            }
+        };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [isOpen, setOpenIndex]);
 
     return (
         <div 
@@ -386,26 +409,27 @@ function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, i
 
             {/* Field type picker popup */}
             {isOpen && (
-                <div className={cn(
-                    "absolute left-1/2 -translate-x-1/2 w-[380px] p-4 border shadow-2xl z-[100] animate-in zoom-in-95 duration-150", 
-                    openUp ? "bottom-full mb-2" : "top-full mt-2",
-                    useUIStore.getState().theme === 'dark' ? "bg-[#181818] border-[#333]" : "bg-white border-[#ebebeb]"
-                )}
-                style={{ borderRadius: `${borderRadius}px` }}
-                onMouseLeave={() => { setHovered(false); setOpenIndex(null); }}
+                <div 
+                    ref={pickerRef}
+                    className={cn(
+                        "absolute left-1/2 -translate-x-1/2 w-[540px] p-4 border shadow-2xl z-[100] animate-in zoom-in-95 duration-150", 
+                        centered ? "top-1/2 -translate-y-1/2" : (openUp ? "bottom-full mb-2" : "top-full mt-2"),
+                        isDark ? "bg-[#181818] border-[#333]" : "bg-white border-[#ebebeb]"
+                    )}
+                    style={{ borderRadius: `${borderRadius}px` }}
                 >
-                    <div className="space-y-4">
+                    <div className="space-y-4 max-h-[340px] overflow-y-auto pr-1">
                         {/* Contacts Section */}
                         <div>
                             <div className={cn(
-                                "px-1 pb-2 text-[9px] font-bold uppercase tracking-widest",
-                                useUIStore.getState().theme === 'dark' ? "text-[#555]" : "text-[#bbb]"
+                                "px-1 pb-2 text-[9px] font-bold uppercase tracking-widest sticky top-0 z-10 py-1",
+                                isDark ? "bg-[#181818] text-[#555]" : "bg-white text-[#bbb]"
                             )}>
                                 Contact Info
                             </div>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-5 gap-2">
                                 {FIELD_TYPES.filter(ft => ft.section === 'contact').map(ft => (
-                                    <FieldTypePill key={ft.type} def={ft} onAdd={() => { onAdd(ft, index); setOpenIndex(null); }} isDark={useUIStore.getState().theme === 'dark'} borderRadius={borderRadius} />
+                                    <FieldTypePill key={ft.type} def={ft} onAdd={() => { onAdd(ft, index); setOpenIndex(null); }} isDark={isDark} borderRadius={borderRadius} />
                                 ))}
                             </div>
                         </div>
@@ -413,14 +437,14 @@ function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, i
                         {/* Inputs Section */}
                         <div>
                             <div className={cn(
-                                "px-1 pb-2 text-[9px] font-bold uppercase tracking-widest",
-                                useUIStore.getState().theme === 'dark' ? "text-[#555]" : "text-[#bbb]"
+                                "px-1 pb-2 text-[9px] font-bold uppercase tracking-widest sticky top-0 z-10 py-1",
+                                isDark ? "bg-[#181818] text-[#555]" : "bg-white text-[#bbb]"
                             )}>
                                 Inputs
                             </div>
-                            <div className="grid grid-cols-4 gap-2">
+                            <div className="grid grid-cols-5 gap-2">
                                 {FIELD_TYPES.filter(ft => ft.section === 'input').map(ft => (
-                                    <FieldTypePill key={ft.type} def={ft} onAdd={() => { onAdd(ft, index); setOpenIndex(null); }} isDark={useUIStore.getState().theme === 'dark'} borderRadius={borderRadius} />
+                                    <FieldTypePill key={ft.type} def={ft} onAdd={() => { onAdd(ft, index); setOpenIndex(null); }} isDark={isDark} borderRadius={borderRadius} />
                                 ))}
                             </div>
                         </div>
@@ -879,6 +903,7 @@ export default function FormEditor({ id }: { id?: string }) {
                             <div className="flex-1 flex flex-col overflow-hidden">
                                 <div
                                     className="flex-1 overflow-auto relative"
+                                    onClick={() => setSelectedId(null)}
                                     style={{
                                         backgroundColor: design.backgroundColor || '#f7f7f7',
                                         backgroundImage: getBackgroundImageWithOpacity(design.backgroundImage, design.backgroundColor || '#f7f7f7', design.backgroundImageOpacity),
@@ -952,7 +977,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                     </div>
                                                                     <div className="space-y-4">
                                                                         {fields.map(f => (
-                                                                            <FieldPreview key={f.id} field={f} isDark={isFormDark} isSelected={false} onClick={() => {}} onRemove={() => {}} primaryColor={primaryColor} isPreview={true} borderRadius={design.borderRadius ?? 16} />
+                                                                            <FieldPreview key={f.id} field={f} isDark={isFormDark} isSelected={false} onClick={() => {}} onRemove={() => {}} primaryColor={primaryColor} isPreview={true} borderRadius={design.borderRadius ?? 16} marginTop={design.marginTop} marginBottom={design.marginBottom} blockBackgroundColor={design.blockBackgroundColor} />
                                                                         ))}
                                                                     </div>
                                                                     {fields.length > 0 && <button className="mt-6 w-full py-3 font-bold text-[14px] text-black transition-all" style={{ background: primaryColor, borderRadius: `${design.borderRadius ?? 16}px` }}>Submit</button>}
@@ -1018,21 +1043,23 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                             Add a field to get started
                                                                         </div>
                                                                         {!isPreview && (
-                                                                            <button 
-                                                                                onClick={() => setOpenInsertMenu(0)}
-                                                                                className="mt-4 flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary-hover text-black transition-all shadow-sm"
-                                                                            >
-                                                                                <Plus size={14} strokeWidth={2.5} />
-                                                                                Add first field
-                                                                            </button>
+                                                                            <div className="relative mt-4">
+                                                                                <button 
+                                                                                    onClick={() => setOpenInsertMenu(0)}
+                                                                                    className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary-hover text-black transition-all shadow-sm"
+                                                                                >
+                                                                                    <Plus size={14} strokeWidth={2.5} />
+                                                                                    Add first field
+                                                                                </button>
+                                                                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0 h-0">
+                                                                                    <div className={cn("transition-opacity duration-300", openInsertMenu === 0 ? "opacity-100" : "opacity-0")}>
+                                                                                        <FieldInsertArea index={0} totalFields={0} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} hideLine centered />
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                {!isPreview && (
-                                                                    <div className={cn("transition-opacity duration-300", openInsertMenu === 0 ? "opacity-100" : "opacity-0")}>
-                                                                        <FieldInsertArea index={0} totalFields={0} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} hideLine />
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         ) : (
                                                             <div className="space-y-0">
@@ -1045,18 +1072,19 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                             {!isPreview && (
                                                                                 <FieldInsertArea index={idx} totalFields={fields.length} openIndex={openInsertMenu} setOpenIndex={setOpenInsertMenu} onAdd={addField} isDark={isFormDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} />
                                                                             )}
-                                                                            <div className={cn(!isPreview && "px-2")}>
-                                                                                <FieldPreview
-                                                                                    field={f}
-                                                                                    isDark={isFormDark}
-                                                                                    isSelected={selectedFieldId === f.id && !isPreview}
-                                                                                    onClick={() => { if (!isPreview) setSelectedFieldId(f.id === selectedFieldId ? null : f.id) }}
-                                                                                    onRemove={() => removeField(f.id)}
-                                                                                    primaryColor={primaryColor}
-                                                                                    isPreview={isPreview}
-                                                                                    borderRadius={design.borderRadius ?? 16}
-                                                                                />
-                                                                            </div>
+                                                                            <FieldPreview
+                                                                                field={f}
+                                                                                isDark={isFormDark}
+                                                                                isSelected={selectedFieldId === f.id && !isPreview}
+                                                                                onClick={() => { if (!isPreview) setSelectedFieldId(f.id === selectedFieldId ? null : f.id) }}
+                                                                                onRemove={() => removeField(f.id)}
+                                                                                primaryColor={primaryColor}
+                                                                                isPreview={isPreview}
+                                                                                borderRadius={design.borderRadius ?? 16}
+                                                                                marginTop={design.marginTop}
+                                                                                marginBottom={design.marginBottom}
+                                                                                blockBackgroundColor={design.blockBackgroundColor}
+                                                                            />
                                                                         </React.Fragment>
                                                                     ))}
                                                                 </SortableContext>

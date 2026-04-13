@@ -36,39 +36,101 @@ function fmtDate(d: string) {
 }
 
 /* ─── Shared dropdown ───────────────────────────────────────── */
-function Dropdown({ open, onClose, isDark, children }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode }) {
+function Dropdown({ open, onClose, isDark, children, side = 'bottom' }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode; side?: 'top' | 'bottom' }) {
     const ref = useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = React.useState<{ top: number; left: number } | null>(null);
+
+    React.useLayoutEffect(() => {
+        if (open && ref.current?.parentElement) {
+            const rect = ref.current.parentElement.getBoundingClientRect();
+            setCoords({
+                top: side === 'bottom' ? rect.bottom + 4 : rect.top - 4,
+                left: rect.left + rect.width / 2
+            });
+        }
+    }, [open, side]);
+
     useEffect(() => {
         if (!open) return;
         const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+        const s = () => onClose();
         document.addEventListener('mousedown', h);
-        return () => document.removeEventListener('mousedown', h);
+        window.addEventListener('scroll', s, true);
+        return () => {
+            document.removeEventListener('mousedown', h);
+            window.removeEventListener('scroll', s, true);
+        };
     }, [open, onClose]);
+
     if (!open) return null;
+
     return (
-        <div ref={ref} className={cn("absolute top-full left-1/2 -translate-x-1/2 mt-1 z-50 min-w-[160px] rounded-xl border shadow-xl overflow-hidden",
-            isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+        <div 
+            ref={ref} 
+            className={cn(
+                "fixed -translate-x-1/2 z-[1000] min-w-[160px] rounded-xl border shadow-xl overflow-hidden",
+                side === 'top' && "-translate-y-full",
+                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+            )}
+            style={coords ? {
+                top: `${coords.top}px`,
+                left: `${coords.left}px`,
+            } : { opacity: 0 }}
+        >
             {children}
         </div>
     );
 }
 
 /* ─── Status pill ───────────────────────────────────────────── */
-function StatusPill({ status, isDark }: { status: SchedulerStatus; isDark: boolean }) {
+function StatusCell({ status, onStatusChange, isDark }: {
+    status: SchedulerStatus;
+    onStatusChange: (s: SchedulerStatus) => void;
+    isDark: boolean;
+}) {
+    const [open, setOpen] = useState(false);
     const cfg = STATUS_CFG[status];
     const dark = STATUS_DARK[status];
-    if (isDark) return (
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: dark.dot }} />
-            <span style={{ color: dark.text }}>{status}</span>
-        </span>
-    );
+    const STATUSES: SchedulerStatus[] = ['Active', 'Draft', 'Inactive'];
+
     return (
-        <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border"
-            style={{ background: cfg.bg, color: cfg.text, borderColor: cfg.border }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.dot }} />
-            {status}
-        </span>
+        <div className="relative">
+            <button
+                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+                className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-all hover:brightness-95",
+                    isDark ? "bg-white/5 border-white/10" : ""
+                )}
+                style={isDark ? {} : { background: cfg.bg, color: cfg.text, borderColor: cfg.border }}
+            >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: isDark ? dark.dot : cfg.dot }} />
+                {status}
+                <ChevronDown size={10} className="ml-0.5 opacity-40" />
+            </button>
+
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} side="bottom">
+                <div className="py-1 min-w-[120px]">
+                    {STATUSES.map(s => {
+                        const sCfg = STATUS_CFG[s];
+                        const sDark = STATUS_DARK[s];
+                        const isActive = s === status;
+                        return (
+                            <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setOpen(false); }}
+                                className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
+                                    isActive ? (isDark ? "bg-white/10" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
+                                )}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: isDark ? sDark.dot : sCfg.dot }} />
+                                    <span className="font-medium" style={isDark ? { color: sDark.text } : { color: sCfg.text }}>{s}</span>
+                                </span>
+                                {isActive && <Check size={11} className="text-primary" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            </Dropdown>
+        </div>
     );
 }
 
@@ -156,7 +218,11 @@ function SchedulerCard({ s, onOpen, onDelete, onCopy, isDark, isSelected, onTogg
                             </div>
                         </div>
                     </div>
-                    <StatusPill status={s.status} isDark={isDark} />
+                    <StatusCell
+                        status={s.status}
+                        onStatusChange={(newStatus) => useSchedulerStore.getState().updateScheduler(s.id, { status: newStatus })}
+                        isDark={isDark}
+                    />
                 </div>
 
                 {/* Meta */}
@@ -218,7 +284,7 @@ function SchedulerCard({ s, onOpen, onDelete, onCopy, isDark, isSelected, onTogg
 export default function SchedulersPage() {
     const router = useRouter();
     const { theme } = useUIStore();
-    const { schedulers, fetchSchedulers, addScheduler, deleteScheduler, isLoading } = useSchedulerStore();
+    const { schedulers, fetchSchedulers, addScheduler, updateScheduler, deleteScheduler, isLoading } = useSchedulerStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
 
@@ -435,7 +501,7 @@ export default function SchedulersPage() {
             </div>
 
             {/* ── Content ── */}
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-auto pb-44">
                 {isLoading && schedulers.length === 0 ? (
                     <div className="flex items-center justify-center h-40">
                         <div className="flex flex-col items-center gap-2">
@@ -541,7 +607,11 @@ export default function SchedulersPage() {
                                                 )}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <StatusPill status={s.status} isDark={isDark} />
+                                                <StatusCell
+                                                    status={s.status}
+                                                    onStatusChange={(newStatus) => updateScheduler(s.id, { status: newStatus })}
+                                                    isDark={isDark}
+                                                />
                                             </td>
                                             <td className="px-4 py-3">
                                                 {durations.length > 0 ? (

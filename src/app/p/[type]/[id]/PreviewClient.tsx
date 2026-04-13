@@ -90,7 +90,9 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
         }
     };
 
-    const confirmationMessage = meta.confirmationMessage || "Thank you for your submission! We'll be in touch soon.";
+    const submissionLimit = meta.submissionLimit ? parseInt(meta.submissionLimit) : null;
+    const hasReachedLimit = submissionLimit !== null && (data.submissionCount || 0) >= submissionLimit;
+    const isRestricted = liveData.status === 'Draft' || liveData.status === 'Inactive' || hasReachedLimit;
 
     return (
         <div
@@ -107,7 +109,10 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                 backgroundAttachment: 'fixed',
             }}
         >
-            <div className="flex flex-col items-center min-h-full py-12 px-6">
+            <div className={cn(
+                "flex flex-col items-center min-h-screen py-12 px-6",
+                (isSubmitted || isRestricted) && "justify-center"
+            )}>
                 <div
                     className="w-full max-w-[620px] overflow-hidden shadow-2xl transition-all duration-300"
                     style={{
@@ -167,7 +172,28 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                                         </div>
                                     )}
                                 </div>
-                            ))}
+                            )).filter(Boolean)}
+                        </div>
+                    ) : (liveData.status === 'Draft' || liveData.status === 'Inactive') ? (
+                        // ── DRAFT / INACTIVE MESSAGE ─────────────────────────
+                        <div className="flex flex-col items-center justify-center text-center py-20 px-8 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className={cn(
+                                "w-16 h-16 rounded-full flex items-center justify-center",
+                                hasReachedLimit ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
+                            )}>
+                                {hasReachedLimit ? <Clock size={28} strokeWidth={2.5} /> : <Clock size={28} strokeWidth={2.5} />}
+                            </div>
+                            <div className="space-y-2">
+                                <h2 className="text-[24px] font-bold tracking-tight" style={{ color: isFormDark ? '#fff' : '#111' }}>
+                                    {hasReachedLimit ? 'Form Limit Reached' : 'Form Not Available'}
+                                </h2>
+                                <p className="text-[15px] opacity-70 leading-relaxed max-w-[340px] mx-auto" style={{ color: isFormDark ? '#ccc' : '#444' }}>
+                                    {hasReachedLimit 
+                                        ? "This form has reached its maximum number of submissions and is no longer accepting new entries."
+                                        : <>This form is currently in <b>{(liveData.status || 'Draft').toLowerCase()}</b> mode and is not accepting submissions yet.</>
+                                    }
+                                </p>
+                            </div>
                         </div>
                     ) : (
                         // ── FORM ────────────────────────────────────────────
@@ -267,6 +293,10 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
 
     const durations: number[] = Array.isArray(meta.durations) ? meta.durations : [30, 60];
 
+    const submissionLimit = meta.submissionLimit ? parseInt(meta.submissionLimit) : null;
+    const hasReachedLimit = submissionLimit !== null && (data.submissionCount || 0) >= submissionLimit;
+    const isRestricted = liveData.status === 'Draft' || liveData.status === 'Inactive' || hasReachedLimit;
+
     return (
         <div
             className="flex-1 overflow-auto relative w-full min-h-screen"
@@ -282,7 +312,10 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                 backgroundAttachment: 'fixed',
             }}
         >
-            <div className="flex flex-col items-center min-h-full py-12 px-6">
+            <div className={cn(
+                "flex flex-col items-center min-h-screen py-12 px-6",
+                isRestricted && "justify-center"
+            )}>
                 <div
                     className="w-full max-w-[680px] overflow-hidden shadow-2xl transition-all duration-300"
                     style={{
@@ -292,60 +325,84 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                         borderRadius: `${design.borderRadius ?? 16}px`,
                     }}
                 >
-                    {/* Header */}
-                    <div className="px-8 pt-8 pb-5 border-b border-black/5 dark:border-white/5">
-                        <div className="flex items-center gap-4 mb-6">
-                            {meta.logoUrl ? (
-                                <img src={meta.logoUrl} alt="Logo" className="h-10 object-contain" />
-                            ) : (
-                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-[20px]"
-                                    style={{ background: primaryColor }}>
-                                    {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
-                                </div>
-                            )}
-                            <div>
-                                <h1 className="font-bold text-[20px]" style={{ color: isDark ? '#fff' : '#111' }}>
-                                    {meta.organizer || liveData.title}
-                                </h1>
-                                <div className="text-[13px] opacity-50" style={{ color: isDark ? '#aaa' : '#777' }}>
-                                    {liveData.title}
-                                </div>
+                    {isRestricted ? (
+                        // ── DRAFT / INACTIVE MESSAGE ─────────────────────────
+                        <div className="flex flex-col items-center justify-center text-center py-20 px-8 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className={cn(
+                                "w-16 h-16 rounded-full flex items-center justify-center",
+                                hasReachedLimit ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
+                            )}>
+                                <Clock size={28} strokeWidth={2.5} />
+                            </div>
+                            <div className="space-y-2">
+                                <h2 className="text-[24px] font-bold tracking-tight" style={{ color: isDark ? '#fff' : '#111' }}>
+                                    {hasReachedLimit ? 'Booking Limit Reached' : 'Scheduler Not Available'}
+                                </h2>
+                                <p className="text-[15px] opacity-70 leading-relaxed max-w-[340px] mx-auto" style={{ color: isDark ? '#ccc' : '#444' }}>
+                                    {hasReachedLimit
+                                        ? "This scheduler has reached its maximum number of bookings and is no longer accepting new appointments."
+                                        : <>This scheduler is currently in <b>{(liveData.status || 'Draft').toLowerCase()}</b> mode and is not accepting bookings yet.</>
+                                    }
+                                </p>
                             </div>
                         </div>
-
-                        <div className="flex flex-wrap gap-2">
-                            {durations.map(d => (
-                                <div key={d} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold"
-                                    style={{ background: primaryColor, color: '#000' }}>
-                                    <Clock size={12} />
-                                    {d >= 60 ? `${d / 60}hr` : `${d}min`}
+                    ) : (
+                        <>
+                            {/* Header */}
+                            <div className="px-8 pt-8 pb-5 border-b border-black/5 dark:border-white/5">
+                                <div className="flex items-center gap-4 mb-6">
+                                    {meta.logoUrl ? (
+                                        <img src={meta.logoUrl} alt="Logo" className="h-10 object-contain" />
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-[20px]"
+                                            style={{ background: primaryColor }}>
+                                            {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <h1 className="font-bold text-[20px]" style={{ color: isDark ? '#fff' : '#111' }}>
+                                            {meta.organizer || liveData.title}
+                                        </h1>
+                                        <div className="text-[13px] opacity-50" style={{ color: isDark ? '#aaa' : '#777' }}>
+                                            {liveData.title}
+                                        </div>
+                                    </div>
                                 </div>
-                            ))}
-                            {meta.location && (
-                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium opacity-60"
-                                    style={{ color: isDark ? '#ccc' : '#444' }}>
-                                    <MapPin size={12} />
-                                    {meta.location}
-                                </div>
-                            )}
-                        </div>
-                    </div>
 
-                    {/* Placeholder Content */}
-                    <div className="p-12 text-center space-y-4">
-                        <div className="w-16 h-16 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center mx-auto">
-                            <CalendarIcon size={24} className="opacity-30" />
-                        </div>
-                        <div>
-                            <div className="font-bold text-[18px]" style={{ color: isDark ? '#fff' : '#111' }}>
-                                Public Booking Page
+                                <div className="flex flex-wrap gap-2">
+                                    {durations.map(d => (
+                                        <div key={d} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold"
+                                            style={{ background: primaryColor, color: '#000' }}>
+                                            <Clock size={12} />
+                                            {d >= 60 ? `${d / 60}hr` : `${d}min`}
+                                        </div>
+                                    ))}
+                                    {meta.location && (
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium opacity-60"
+                                            style={{ color: isDark ? '#ccc' : '#444' }}>
+                                            <MapPin size={12} />
+                                            {meta.location}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <p className="text-[14px] opacity-50 max-w-[300px] mx-auto" style={{ color: isDark ? '#aaa' : '#777' }}>
-                                This scheduler is currently in {liveData.status.toLowerCase()} mode. 
-                                Full booking functionality will be available once activated.
-                            </p>
-                        </div>
-                    </div>
+
+                            {/* Placeholder Content */}
+                            <div className="p-12 text-center space-y-4">
+                                <div className="w-16 h-16 rounded-full bg-black/5 dark:bg-white/5 flex items-center justify-center mx-auto">
+                                    <CalendarIcon size={24} className="opacity-30" />
+                                </div>
+                                <div>
+                                    <div className="font-bold text-[18px]" style={{ color: isDark ? '#fff' : '#111' }}>
+                                        Public Booking Page
+                                    </div>
+                                    <p className="text-[14px] opacity-50 max-w-[300px] mx-auto" style={{ color: isDark ? '#aaa' : '#777' }}>
+                                        Full booking functionality will be available once this scheduler is activated.
+                                    </p>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

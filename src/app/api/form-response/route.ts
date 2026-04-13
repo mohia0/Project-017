@@ -44,8 +44,8 @@ export async function POST(req: Request) {
         }
 
         // 3. Create notification
-        const notificationTitle = `New response from ${respondentName}`;
-        const notificationMessage = `Form "${form_title || 'Untitled Form'}" received a new entry.`;
+        const notificationTitle = `New Form Submission`;
+        const notificationMessage = `${respondentName} just submitted a response to "${form_title || 'Untitled Form'}".`;
 
         await supabaseService
             .from('notifications')

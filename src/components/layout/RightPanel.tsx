@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap
+    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
@@ -169,12 +169,17 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                         const isView = notif.title?.toLowerCase().includes('opened') || 
                                                      notif.message?.toLowerCase().includes('opened');
                                         
-                                        const isProposal = !isView && (
+                                        const isFormResponse = !isView && (
+                                            notif.link?.includes('/forms') || 
+                                            notif.title?.toLowerCase().includes('form') || 
+                                            notif.message?.toLowerCase().includes('form')
+                                        );
+                                        const isProposal = !isView && !isFormResponse && (
                                             notif.link?.includes('proposal') || 
                                             notif.title?.toLowerCase().includes('proposal') || 
                                             notif.message?.toLowerCase().includes('proposal')
                                         );
-                                        const isInvoice = !isView && (
+                                        const isInvoice = !isView && !isFormResponse && (
                                             notif.link?.includes('invoice') || 
                                             notif.title?.toLowerCase().includes('invoice') || 
                                             notif.message?.toLowerCase().includes('invoice')
@@ -182,6 +187,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
 
                                         const iconClass = isDark ? "text-[#888]" : "text-[#999]";
 
+                                        if (isFormResponse) return <ClipboardList size={12} className={iconClass} />;
                                         if (isProposal) return <FileText size={12} className={iconClass} />;
                                         if (isInvoice) return <Receipt size={12} className={iconClass} />;
                                         return <Eye size={12} className={iconClass} />;

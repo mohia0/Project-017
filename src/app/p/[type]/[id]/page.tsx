@@ -49,6 +49,8 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
     // If it's a project, fetch tasks and groups
     let projectTasks = [];
     let projectGroups = [];
+    let submissionCount = 0;
+
     if (type === 'project') {
         const [tasksRes, groupsRes] = await Promise.all([
             supabaseService.from('project_tasks').select('*').eq('project_id', cleanId).order('position'),
@@ -56,6 +58,19 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
         ]);
         projectTasks = tasksRes.data || [];
         projectGroups = groupsRes.data || [];
+    } else if (type === 'form' || type === 'forms') {
+        const { count } = await supabaseService
+            .from('form_responses')
+            .select('*', { count: 'exact', head: true })
+            .eq('form_id', cleanId);
+        submissionCount = count || 0;
+    } else if (type === 'scheduler' || type === 'schedulers') {
+        const { count } = await supabaseService
+            .from('scheduler_bookings')
+            .select('*', { count: 'exact', head: true })
+            .eq('scheduler_id', cleanId)
+            .neq('status', 'cancelled');
+        submissionCount = count || 0;
     }
 
     // Map data to a safe format for the client
@@ -67,6 +82,7 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
         meta: document.meta || {},
         projectTasks,
         projectGroups,
+        submissionCount,
     };
 
     return <PreviewClient type={type as any} data={safeData} />;
