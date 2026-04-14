@@ -38,6 +38,7 @@ export function CreateHookModal({ open, onClose }: Props) {
 
     const [name, setName] = useState('');
     const [title, setTitle] = useState('');
+    const [link, setLink] = useState('');
     const [color, setColor] = useState(COLORS[6]); // default blue
     const [loading, setLoading] = useState(false);
 
@@ -49,7 +50,7 @@ export function CreateHookModal({ open, onClose }: Props) {
                 name: name.trim(),
                 title: title.trim() || 'Webhook Endpoint',
                 color,
-                link: null
+                link: link.trim() || null
             });
             if (h) {
                 onClose();
@@ -122,6 +123,17 @@ export function CreateHookModal({ open, onClose }: Props) {
                                 value={title}
                                 onChange={e => setTitle(e.target.value)}
                                 placeholder="What is this hook for?"
+                                className={cn("bg-transparent outline-none text-[13px] w-full", isDark ? "placeholder:text-[#444]" : "placeholder:text-[#bbb]")}
+                            />
+                        </div>
+
+                        {/* Placement Link */}
+                        <div className={cn(field, "flex flex-col gap-0.5")}>
+                            <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Placement URL (Optional)</span>
+                            <input
+                                value={link}
+                                onChange={e => setLink(e.target.value)}
+                                placeholder="e.g. yourwebsite.com"
                                 className={cn("bg-transparent outline-none text-[13px] w-full", isDark ? "placeholder:text-[#444]" : "placeholder:text-[#bbb]")}
                             />
                         </div>

@@ -7,7 +7,7 @@ import { SettingsToggle } from '@/components/settings/SettingsField';
 import { cn } from '@/lib/utils';
 import {
     Search, Table2, LayoutGrid, Plus, ChevronDown,
-    Zap, Activity, Link, ExternalLink, Trash2,
+    Zap, Activity, Link, ExternalLink, Trash2, Pencil,
     Check, ArrowUpDown, Globe, Copy, X
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
@@ -127,18 +127,12 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
                 isDark ? "bg-[#1a1a1a] border-[#2e2e2e] hover:border-[#444]"
                     : "bg-white border-[#f0f0f0] hover:shadow-md hover:border-[#e0e0e0]"
             )}>
-            {/* Color strip */}
-            <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${h.color}, ${h.color}cc)` }} />
-
             <div className="p-4 flex flex-col gap-3 flex-1">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                        <div
-                            onClick={(e) => { e.stopPropagation(); onToggle(); }}
-                            className="mt-0.5 cursor-pointer"
-                        >
-                            <Chk checked={isSelected} isDark={isDark} />
+                        <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
+                            <Zap size={14} style={{ color: h.color }} fill="currentColor" />
                         </div>
                         <div className="min-w-0 flex-1">
                             <div className={cn("font-bold text-[14px] truncate", isDark ? "text-white" : "text-[#111]")}>
@@ -150,16 +144,11 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
                         </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                        <div onClick={(e) => e.stopPropagation()}>
-                            <SettingsToggle
-                                checked={h.status === 'Active'}
-                                onChange={(checked) => useHookStore.getState().updateHook(h.id, { status: checked ? 'Active' : 'Inactive' })}
-                            />
-                        </div>
-                        <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
-                            <Zap size={14} style={{ color: h.color }} fill="currentColor" />
-                        </div>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <SettingsToggle
+                            checked={h.status === 'Active'}
+                            onChange={(checked) => useHookStore.getState().updateHook(h.id, { status: checked ? 'Active' : 'Inactive' })}
+                        />
                     </div>
                 </div>
 
@@ -184,22 +173,28 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
             </div>
 
             {/* Footer */}
-            <div className={cn("flex items-center justify-end px-4 py-2.5 border-t gap-1",
+            <div className={cn("flex items-center justify-between px-4 py-2.5 border-t",
                 isDark ? "border-[#252525]" : "border-[#f5f5f5]")} onClick={e => e.stopPropagation()}>
-                <button onClick={() => useUIStore.getState().openRightPanel({ type: 'hook', id: h.id })}
-                    className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
-                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
-                    <Link size={12} />
-                </button>
-                {deleting ? (
-                    <InlineDeleteButton onDelete={onDelete} isDark={isDark} />
-                ) : (
-                    <button onClick={() => setDeleting(true)}
-                        className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all text-red-400",
-                            isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
-                        <Trash2 size={12} />
+                <div onClick={onToggle}>
+                    <Chk checked={isSelected} isDark={isDark} />
+                </div>
+                
+                <div className="flex items-center gap-1">
+                    <button onClick={() => useUIStore.getState().openRightPanel({ type: 'hook', id: h.id, editing: true })}
+                        className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
+                            isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                        <Pencil size={12} />
                     </button>
-                )}
+                    {deleting ? (
+                        <InlineDeleteButton onDelete={onDelete} isDark={isDark} />
+                    ) : (
+                        <button onClick={() => setDeleting(true)}
+                            className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all text-red-400",
+                                isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
+                            <Trash2 size={12} />
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -285,7 +280,7 @@ export default function HooksPage() {
                                     active
                                         ? isDark ? "bg-white/10 text-white" : "bg-white text-[#111] shadow-sm border border-[#e8e8e8]"
                                         : isDark ? "text-[#666] hover:text-[#aaa] hover:bg-white/5" : "text-[#999] hover:text-[#555] hover:bg-black/5"
-                                )}>
+                                 )}>
                                 {s !== 'All' && cfg && (
                                     <span className="w-1.5 h-1.5 rounded-full"
                                         style={{ background: isDark ? STATUS_DARK[s as HookStatus].dot : cfg.dot }} />
@@ -348,19 +343,43 @@ export default function HooksPage() {
                     )}
                 </div>
 
-                {/* Bulk banner */}
+                {/* Bulk action bar */}
                 {!isMobile && selectedIds.size > 0 && (
-                    <div className={cn("flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border ml-2",
-                        isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-white border-[#e8e8e8] text-[#666]")}>
-                        <span className="opacity-50">{selectedIds.size} selected</span>
-                        <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
-                        <div className="flex items-center gap-3">
-                            <Tooltip content="Delete" side="bottom">
-                                <button onClick={handleBulkDelete} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
-                                    <Trash2 size={11} className="opacity-70" />Delete
+                    <div className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border ml-2', 
+                        isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}>
+                        <span className={cn('text-[11px] font-semibold mr-1', 
+                            isDark ? 'text-[#aaa]' : 'text-[#666]')}>
+                            {selectedIds.size} selected
+                        </span>
+                        
+                        <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                        
+                        <Tooltip content="Delete" side="bottom">
+                            <button onClick={handleBulkDelete}
+                                className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
+                                <Trash2 size={11}/>
+                            </button>
+                        </Tooltip>
+
+                        {selectedIds.size >= 2 && (
+                            <Tooltip content={isAllSelected ? "Deselect All" : "Select All"} side="bottom">
+                                <button onClick={toggleAll}
+                                    className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', 
+                                        isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                    <CheckSquare size={11}/>
                                 </button>
                             </Tooltip>
-                        </div>
+                        )}
+
+                        <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                        
+                        <Tooltip content="Clear selection" side="bottom">
+                            <button onClick={() => setSelectedIds(new Set())}
+                                className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', 
+                                    isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
+                                <X size={11}/>
+                            </button>
+                        </Tooltip>
                     </div>
                 )}
             </div>
@@ -446,7 +465,7 @@ export default function HooksPage() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    <Zap size={12} style={{ color: h.color }} fill="currentColor" className="shrink-0" />
+                                                    <Zap size={12} style={{ color: h.color }} shrink-0 fill="currentColor" />
                                                     <div className={cn("font-semibold truncate", isDark ? "text-[#e0e0e0]" : "text-[#111]")}>
                                                         {h.name}
                                                     </div>
@@ -478,11 +497,17 @@ export default function HooksPage() {
                                             </td>
                                             <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                                                    <Tooltip content="Config & Embed" side="top">
-                                                        <button onClick={(e) => { e.stopPropagation(); openRightPanel({ type: 'hook', id: h.id }); }}
+                                                    <div className="mr-2">
+                                                        <SettingsToggle
+                                                            checked={h.status === 'Active'}
+                                                            onChange={(checked) => updateHook(h.id, { status: checked ? 'Active' : 'Inactive' })}
+                                                        />
+                                                    </div>
+                                                    <Tooltip content="Hook Settings" side="top">
+                                                        <button onClick={(e) => { e.stopPropagation(); openRightPanel({ type: 'hook', id: h.id, editing: true }); }}
                                                             className={cn("p-1.5 rounded-lg transition-colors",
                                                                 isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
-                                                            <Link size={12} />
+                                                            <Pencil size={12} />
                                                         </button>
                                                     </Tooltip>
                                                     {deletingId === h.id ? (

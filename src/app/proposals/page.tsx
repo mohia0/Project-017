@@ -10,7 +10,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { STATUS_COLORS, getStatusColors } from '@/lib/statusConfig';
 import {
     Search, Table2, LayoutGrid, Edit3, ChevronDown,
-    ArrowUpDown, Archive, Upload, Download, Plus, User, Filter,
+    ArrowUpDown, Archive, ArrowRightLeft, Download, Upload, Plus, User, Filter,
     Calendar, Check, X, ArchiveRestore, ChevronsUpDown,
     Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
     FileJson, FileSpreadsheet, Link2, ExternalLink
@@ -1007,88 +1007,96 @@ export default function ProposalsPage() {
                 </div>
             ) : (
                 /* ── Desktop toolbar ── */
-                <div className={cn("flex items-center gap-0 px-4 py-1.5 shrink-0", isDark ? "border-b border-[#252525]" : "")}>
+                <div className={cn("flex items-center gap-1 px-4 py-1.5 shrink-0", isDark ? "border-b border-[#252525]" : "")}>
+                    {/* View Settings on Left */}
+                    <div className="flex items-center gap-1">
+                        {/* Filter / date */}
+                        <div className="relative">
+                            <button onClick={() => setFilterOpen(v => !v)} className={cn(
+                                "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition-all",
+                                filterOpen
+                                    ? isDark ? "bg-[#252525] border-[#444] text-[#ccc]" : "bg-white border-[#aaa] text-[#444] shadow-xs"
+                                    : isDark ? "bg-[#252525] border-[#333] text-[#ccc] hover:border-[#444]" : "bg-white border-[#d0d0d0] text-[#444] hover:border-[#bbb] shadow-xs"
+                            )}>
+                                <Calendar size={11} className="opacity-60" />
+                                {datePill}
+                                {dateFilter !== 'all' && (
+                                    <span onClick={e => { e.stopPropagation(); setDateFilter('all'); }}
+                                        className={cn("ml-0.5 opacity-50 hover:opacity-100 transition-opacity")}>
+                                        <X size={9} />
+                                    </span>
+                                )}
+                            </button>
+                            <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark} align="left">
+                                <div className={cn("flex items-center gap-2 px-3.5 py-2.5 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
+                                    <Plus size={11} className="opacity-40" />
+                                    <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
+                                </div>
+                                <div className="py-1">
+                                    <DItem label="This Month" active={dateFilter === 'month'} onClick={() => { setDateFilter('month'); setFilterOpen(false); }} isDark={isDark} />
+                                    <DItem label="This Year" active={dateFilter === 'year'} onClick={() => { setDateFilter('year'); setFilterOpen(false); }} isDark={isDark} />
+                                    <DItem label="All time" active={dateFilter === 'all'} onClick={() => { setDateFilter('all'); setFilterOpen(false); }} isDark={isDark} />
+                                </div>
+                            </Dropdown>
+                        </div>
+
+                        <div className={cn("w-[1px] h-4 mx-0.5", isDark ? "bg-[#2e2e2e]" : "bg-[#e0e0e0]")} />
+
+                        {/* Order */}
+                        <div className="relative">
+                            <TbBtn label="Order" icon={<ArrowUpDown size={11} />} hasArrow onClick={() => setOrderOpen(v => !v)} isDark={isDark} active={orderOpen} />
+                            <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark} align="left">
+                                <div className="py-1">
+                                    <DItem label="Creation date" active={orderBy === 'created_at'} onClick={() => { setOrderBy('created_at'); setOrderOpen(false); }} isDark={isDark} />
+                                    <DItem label="Issue date" active={orderBy === 'issue_date'} onClick={() => { setOrderBy('issue_date'); setOrderOpen(false); }} isDark={isDark} />
+                                    <DItem label="Total amount" active={orderBy === 'amount'} onClick={() => { setOrderBy('amount'); setOrderOpen(false); }} isDark={isDark} />
+                                </div>
+                            </Dropdown>
+                        </div>
+
+                        <div className={cn("w-[1px] h-4 mx-0.5", isDark ? "bg-[#2e2e2e]" : "bg-[#e0e0e0]")} />
+
+                        <TbBtn label="Archived" icon={showArchived ? <ArchiveRestore size={11} /> : <Archive size={11} />}
+                            active={showArchived} onClick={() => { setShowArchived(v => !v); setSelectedIds(new Set()); }} isDark={isDark} />
+                    </div>
+
                     <div className="flex-1" />
 
-                    <SearchInput 
-                        value={searchQuery} 
-                        onChange={setSearchQuery} 
-                        isDark={isDark} 
-                    />
-                    <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+                    {/* Right Side Actions */}
+                    <div className="flex items-center gap-3">
+                        <SearchInput 
+                            value={searchQuery} 
+                            onChange={setSearchQuery} 
+                            isDark={isDark} 
+                        />
+                        
+                        <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
-                    <ViewToggle 
-                        view={view} 
-                        onViewChange={setView} 
-                        isDark={isDark} 
-                        options={[
-                            { id: 'table', icon: <Table2 size={12}/> },
-                            { id: 'cards', icon: <LayoutGrid size={12}/> }
-                        ]}
-                    />
-                    <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+                        <ViewToggle 
+                            view={view} 
+                            onViewChange={setView} 
+                            isDark={isDark} 
+                            options={[
+                                { id: 'table', icon: <Table2 size={12}/> },
+                                { id: 'cards', icon: <LayoutGrid size={12}/> }
+                            ]}
+                        />
 
-                    {/* Filter / date */}
-                    <div className="relative mx-1">
-                        <button onClick={() => setFilterOpen(v => !v)} className={cn(
-                            "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition-all",
-                            filterOpen
-                                ? isDark ? "bg-[#252525] border-[#444] text-[#ccc]" : "bg-white border-[#aaa] text-[#444] shadow-xs"
-                                : isDark ? "bg-[#252525] border-[#333] text-[#ccc] hover:border-[#444]" : "bg-white border-[#d0d0d0] text-[#444] hover:border-[#bbb] shadow-xs"
-                        )}>
-                            <Calendar size={11} className="opacity-60" />
-                            {datePill}
-                            {dateFilter !== 'all' && (
-                                <span onClick={e => { e.stopPropagation(); setDateFilter('all'); }}
-                                    className={cn("ml-0.5 opacity-50 hover:opacity-100 transition-opacity")}>
-                                    <X size={9} />
-                                </span>
-                            )}
-                        </button>
-                        <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
-                            <div className={cn("flex items-center gap-2 px-3.5 py-2.5 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
-                                <Plus size={11} className="opacity-40" />
-                                <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
-                            </div>
-                            <div className="py-1">
-                                <DItem label="This Month" active={dateFilter === 'month'} onClick={() => { setDateFilter('month'); setFilterOpen(false); }} isDark={isDark} />
-                                <DItem label="This Year" active={dateFilter === 'year'} onClick={() => { setDateFilter('year'); setFilterOpen(false); }} isDark={isDark} />
-                                <DItem label="All time" active={dateFilter === 'all'} onClick={() => { setDateFilter('all'); setFilterOpen(false); }} isDark={isDark} />
-                            </div>
-                        </Dropdown>
+                        <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+
+                        <div className="relative">
+                            <TbBtn label="Import / Export" icon={<ArrowRightLeft size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} />
+                            <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark} align="right">
+                                <div className="py-1">
+                                    <DItem label="Import CSV" icon={<Download size={12} />} onClick={() => { setImportModalOpen(true, 'Proposal'); setImportExportOpen(false); }} isDark={isDark} />
+                                    <DItem label="Import JSON" icon={<Download size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
+                                    <DItem label="Export JSON" icon={<Upload size={12} />} onClick={handleExportJSON} isDark={isDark} />
+                                </div>
+                            </Dropdown>
+                            <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
+                        </div>
                     </div>
 
-                    <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
-
-                    {/* Order */}
-                    <div className="relative">
-                        <TbBtn label="Order" icon={<ArrowUpDown size={11} />} hasArrow onClick={() => setOrderOpen(v => !v)} isDark={isDark} active={orderOpen} />
-                        <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
-                            <div className="py-1">
-                                <DItem label="Creation date" active={orderBy === 'created_at'} onClick={() => { setOrderBy('created_at'); setOrderOpen(false); }} isDark={isDark} />
-                                <DItem label="Issue date" active={orderBy === 'issue_date'} onClick={() => { setOrderBy('issue_date'); setOrderOpen(false); }} isDark={isDark} />
-                                <DItem label="Total amount" active={orderBy === 'amount'} onClick={() => { setOrderBy('amount'); setOrderOpen(false); }} isDark={isDark} />
-                            </div>
-                        </Dropdown>
-                    </div>
-
-                    <div className={cn("w-[1px] h-4 mx-1", isDark ? "bg-[#333]" : "bg-[#e0e0e0]")} />
-
-                    <TbBtn label="Archived" icon={showArchived ? <ArchiveRestore size={11} /> : <Archive size={11} />}
-                        active={showArchived} onClick={() => { setShowArchived(v => !v); setSelectedIds(new Set()); }} isDark={isDark} />
-
-
-                    <div className="relative">
-                        <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} />
-                        <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
-                            <div className="py-1">
-                                <DItem label="Import CSV" icon={<Download size={12} />} onClick={() => { setImportModalOpen(true, 'Proposal'); setImportExportOpen(false); }} isDark={isDark} />
-                                <DItem label="Import JSON" icon={<Download size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
-                                <DItem label="Export JSON" icon={<Upload size={12} />} onClick={handleExportJSON} isDark={isDark} />
-                            </div>
-                        </Dropdown>
-                        <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
-                    </div>
 
                     {/* Bulk banner */}
                     {selectedIds.size > 0 && (
@@ -1337,24 +1345,29 @@ export default function ProposalsPage() {
                                                 </div>
                                             );
                                             if (colId === 'issue') return (
-                                                <div key={colId} className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                    <span>{fmtDate(p.issue_date)}</span>
-                                                    <span className="text-[10px] opacity-50">({timeAgo(p.issue_date)})</span>
+                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-3 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                    <span className="text-[12px]">{fmtDate(p.issue_date)}</span>
+                                                    <span className="text-[10px] opacity-50">{timeAgo(p.issue_date)}</span>
                                                 </div>
                                             );
                                             if (colId === 'due') return (
-                                                <div key={colId} className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                    {p.due_date ? <span>{fmtDate(p.due_date)} <span className="text-[10px] opacity-50">({timeAgo(p.due_date)})</span></span> : '—'}
+                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-3 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                    {p.due_date ? (
+                                                        <>
+                                                            <span className="text-[12px]">{fmtDate(p.due_date)}</span>
+                                                            <span className="text-[10px] opacity-50">{timeAgo(p.due_date)}</span>
+                                                        </>
+                                                    ) : <span className="text-[12px]">—</span>}
                                                 </div>
                                             );
                                             if (colId === 'accepted') return (
-                                                <div key={colId} className={cn("flex items-center px-4 py-3 gap-1", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-3 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
                                                     {p.accepted_at ? (
                                                         <>
-                                                            <span>{fmtDate(p.accepted_at)}</span>
-                                                            <span className="text-[10px] opacity-50">({timeAgo(p.accepted_at)})</span>
+                                                            <span className="text-[12px]">{fmtDate(p.accepted_at)}</span>
+                                                            <span className="text-[10px] opacity-50">{timeAgo(p.accepted_at)}</span>
                                                         </>
-                                                    ) : '—'}
+                                                    ) : <span className="text-[12px]">—</span>}
                                                 </div>
                                             );
                                             return null;
@@ -1363,7 +1376,7 @@ export default function ProposalsPage() {
                                         <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors",
                                             isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"),
                                             isDark ? "text-[#ccc]" : "text-[#333]")}>
-                                            <span className="transition-transform group-hover:-translate-x-[90px] duration-300">
+                                            <span className="transition-transform group-hover:-translate-x-[115px] duration-300">
                                                 {fmt$(Number(p.amount || 0))}
                                             </span>
                                             <div className="absolute right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">

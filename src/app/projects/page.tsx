@@ -4,8 +4,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, LayoutGrid, List, ChevronDown, Plus, Archive,
-    ArchiveRestore, Trash2, Check, X, Filter, Edit3,
-    ArrowUpDown, Briefcase, Calendar, Users, Upload, Copy,
+    ArchiveRestore, Trash2, Check, X, Filter,
+    ArrowUpDown, Briefcase, Calendar, Users, Copy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -462,7 +462,6 @@ export default function ProjectsPage() {
     const [viewOpen, setViewOpen]         = useState(false);
     const [filterOpen, setFilterOpen]     = useState(false);
     const [orderOpen, setOrderOpen]       = useState(false);
-    const [importOpen, setImportOpen]     = useState(false);
 
     useEffect(() => { fetchProjects(); }, [fetchProjects]);
 
@@ -541,119 +540,121 @@ export default function ProjectsPage() {
             </div>
 
             {/* ── Toolbar ── */}
-            <div className={cn("flex items-center gap-1.5 px-4 py-2 border-b shrink-0 flex-wrap", isDark ? "border-[#252525]" : "border-[#ebebeb]")}>
-                <SearchInput 
-                    value={searchQuery} 
-                    onChange={setSearchQuery} 
-                    placeholder="Search projects…" 
-                    isDark={isDark} 
-                />
-                <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+            <div className={cn("flex items-center gap-1 px-4 py-2 border-b shrink-0 flex-wrap", isDark ? "border-[#252525]" : "border-[#ebebeb]")}>
+                {/* View Settings on Left */}
+                <div className="flex items-center gap-1.5">
+                    {/* Filter */}
+                    <div className="relative">
+                        <TbBtn label="Filter" icon={<Filter size={11} />} active={statusFilter !== 'All'} isDark={isDark} onClick={() => setFilterOpen(v => !v)} />
+                        <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark} align="left">
+                            <div className="py-1">
+                                {(['All', ...STATUS_ORDER] as const).map(s => (
+                                    <DItem key={s} label={s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setFilterOpen(false); }} isDark={isDark} />
+                                ))}
+                            </div>
+                        </Dropdown>
+                    </div>
 
-                <ViewToggle 
-                    view={view} 
-                    onViewChange={setView} 
-                    isDark={isDark} 
-                    options={[
-                        { id: 'cards', icon: <LayoutGrid size={12}/> },
-                        { id: 'table', icon: <List size={12}/> }
-                    ]}
-                />
-                <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+                    {/* Order */}
+                    <div className="relative">
+                        <TbBtn label="Order" icon={<ArrowUpDown size={11} />} hasArrow isDark={isDark} onClick={() => setOrderOpen(v => !v)} />
+                        <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark} align="left">
+                            <div className="py-1">
+                                <DItem label="Date created" active={orderBy === 'created_at'} onClick={() => { setOrderBy('created_at'); setOrderOpen(false); }} isDark={isDark} />
+                                <DItem label="Name (A–Z)"   active={orderBy === 'name'}       onClick={() => { setOrderBy('name');       setOrderOpen(false); }} isDark={isDark} />
+                                <DItem label="Deadline"     active={orderBy === 'deadline'}   onClick={() => { setOrderBy('deadline');   setOrderOpen(false); }} isDark={isDark} />
+                            </div>
+                        </Dropdown>
+                    </div>
 
-                <TbBtn label="Edit view" icon={<Edit3 size={11} />} isDark={isDark} />
+                    <div className={cn('w-[1px] h-4 mx-0.5', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
-                {/* Filter */}
-                <div className="relative">
-                    <TbBtn label="Filter" icon={<Filter size={11} />} active={statusFilter !== 'All'} isDark={isDark} onClick={() => setFilterOpen(v => !v)} />
-                    <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
-                        <div className="py-1">
-                            {(['All', ...STATUS_ORDER] as const).map(s => (
-                                <DItem key={s} label={s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setFilterOpen(false); }} isDark={isDark} />
-                            ))}
-                        </div>
-                    </Dropdown>
-                </div>
-
-                {/* Order */}
-                <div className="relative">
-                    <TbBtn label="Order" icon={<ArrowUpDown size={11} />} hasArrow isDark={isDark} onClick={() => setOrderOpen(v => !v)} />
-                    <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
-                        <div className="py-1">
-                            <DItem label="Date created" active={orderBy === 'created_at'} onClick={() => { setOrderBy('created_at'); setOrderOpen(false); }} isDark={isDark} />
-                            <DItem label="Name (A–Z)"   active={orderBy === 'name'}       onClick={() => { setOrderBy('name');       setOrderOpen(false); }} isDark={isDark} />
-                            <DItem label="Deadline"     active={orderBy === 'deadline'}   onClick={() => { setOrderBy('deadline');   setOrderOpen(false); }} isDark={isDark} />
-                        </div>
-                    </Dropdown>
+                    <TbBtn
+                        label={showArchived ? 'Active Projects' : 'Archived'}
+                        icon={showArchived ? <ArchiveRestore size={11} /> : <Archive size={11} />}
+                        active={showArchived} isDark={isDark}
+                        onClick={() => setShowArchived(v => !v)}
+                    />
                 </div>
 
                 <div className="flex-1" />
 
-                {/* Top-Right Bulk Edit Pill */}
-                <AnimatePresence mode="popLayout">
-                    {totalSelected > 0 && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, x: 10 }}
-                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, x: 10 }}
-                            transition={{ duration: 0.15 }}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 py-1 rounded-xl border mr-2",
-                                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-[#f8f8f8] border-[#e8e8e8]"
-                            )}
-                        >
-                            <span className={cn("text-[11px] font-semibold mr-1 pl-1", isDark ? "text-[#aaa]" : "text-[#666]")}>
-                                {totalSelected} selected
-                            </span>
-                            <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
-                            
-                            <Tooltip content="Duplicate" side="bottom">
-                                <button
-                                    onClick={async () => {
-                                        const ids = Array.from(selectedIds);
-                                        await bulkDuplicateProjects(ids);
-                                        gooeyToast.success(`${totalSelected} project${totalSelected > 1 ? 's' : ''} duplicated`);
-                                        setSelectedIds(new Set());
-                                    }}
-                                    className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-[#777] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-[#333] hover:bg-[#ececec]")}
-                                >
-                                    <Copy size={11} strokeWidth={2.5} />
-                                </button>
-                            </Tooltip>
-                            
-                            <Tooltip content="Delete" side="bottom">
-                                <button
-                                    onClick={() => setDeletingId('bulk')}
-                                    className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-red-400 hover:text-red-400 hover:bg-red-500/10" : "text-red-400 hover:bg-red-50 focus:text-red-500")}
-                                >
-                                    <Trash2 size={11} strokeWidth={2.5} />
-                                </button>
-                            </Tooltip>
-                            
-                            <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
-                            
-                            <Tooltip content="Clear selection" side="bottom">
-                                <button
-                                    onClick={() => setSelectedIds(new Set())}
-                                    className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-[#555] hover:text-white hover:bg-white/5" : "text-[#bbb] hover:text-[#333] hover:bg-[#ececec]")}
-                                >
-                                    <X size={11} strokeWidth={3} />
-                                </button>
-                            </Tooltip>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* Search & View Actions on Right */}
+                <div className="flex items-center gap-3">
+                    <SearchInput 
+                        value={searchQuery} 
+                        onChange={setSearchQuery} 
+                        placeholder="Search projects…" 
+                        isDark={isDark} 
+                    />
+                    
+                    <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
-                <TbBtn
-                    label={showArchived ? 'Active Projects' : 'Archived'}
-                    icon={showArchived ? <ArchiveRestore size={11} /> : <Archive size={11} />}
-                    active={showArchived} isDark={isDark}
-                    onClick={() => setShowArchived(v => !v)}
-                />
+                    <ViewToggle 
+                        view={view} 
+                        onViewChange={setView} 
+                        isDark={isDark} 
+                        options={[
+                            { id: 'cards', icon: <LayoutGrid size={12}/> },
+                            { id: 'table', icon: <List size={12}/> }
+                        ]}
+                    />
 
-                <div className={cn("h-4 w-[1px] mx-1", isDark ? "bg-[#2a2a2a]" : "bg-[#e5e5e5]")} />
-
-                <TbBtn label="Import / Export" icon={<Upload size={11} />} isDark={isDark} />
+                    {/* Top-Right Bulk Edit Pill */}
+                    <AnimatePresence mode="popLayout">
+                        {totalSelected > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, x: 10 }}
+                                animate={{ opacity: 1, scale: 1, x: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, x: 10 }}
+                                transition={{ duration: 0.15 }}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-3 py-1 rounded-xl border",
+                                    isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-[#f8f8f8] border-[#e8e8e8]"
+                                )}
+                            >
+                                <span className={cn("text-[11px] font-semibold mr-1 pl-1", isDark ? "text-[#aaa]" : "text-[#666]")}>
+                                    {totalSelected} selected
+                                </span>
+                                <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
+                                
+                                <Tooltip content="Duplicate" side="bottom">
+                                    <button
+                                        onClick={async () => {
+                                            const ids = Array.from(selectedIds);
+                                            await bulkDuplicateProjects(ids);
+                                            gooeyToast.success(`${totalSelected} project${totalSelected > 1 ? 's' : ''} duplicated`);
+                                            setSelectedIds(new Set());
+                                        }}
+                                        className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-[#777] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-[#333] hover:bg-[#ececec]")}
+                                    >
+                                        <Copy size={11} strokeWidth={2.5} />
+                                    </button>
+                                </Tooltip>
+                                
+                                <Tooltip content="Delete" side="bottom">
+                                    <button
+                                        onClick={() => setDeletingId('bulk')}
+                                        className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-red-400 hover:text-red-400 hover:bg-red-500/10" : "text-red-400 hover:bg-red-50 focus:text-red-500")}
+                                    >
+                                        <Trash2 size={11} strokeWidth={2.5} />
+                                    </button>
+                                </Tooltip>
+                                
+                                <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
+                                
+                                <Tooltip content="Clear selection" side="bottom">
+                                    <button
+                                        onClick={() => setSelectedIds(new Set())}
+                                        className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-[#555] hover:text-white hover:bg-white/5" : "text-[#bbb] hover:text-[#333] hover:bg-[#ececec]")}
+                                    >
+                                        <X size={11} strokeWidth={3} />
+                                    </button>
+                                </Tooltip>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
 
             {/* ── Status pills (matches proposals) ── */}

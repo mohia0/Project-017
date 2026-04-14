@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Calendar as CalendarIcon
+    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Calendar as CalendarIcon, Palette
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,11 @@ import { formatDistanceToNow } from 'date-fns';
 import { useRouter, usePathname } from 'next/navigation';
 import { Radio, Copy } from 'lucide-react';
 import { gooeyToast } from 'goey-toast';
+
+const COLORS = [
+    '#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9',
+    '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316',
+];
 
 /* ─── Shared helpers ─── */
 function getInitials(name: string) {
@@ -839,16 +844,45 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
 }
 
 /* ─── Hook Detail Panel ─── */
-function HookPanel({ id, isDark }: { id: string; isDark: boolean }) {
-    const { hooks } = useHookStore();
+function HookPanel({ id, initialEditing = false, isDark }: { id: string; initialEditing?: boolean; isDark: boolean }) {
+    const { hooks, updateHook } = useHookStore();
     const hook = hooks.find(h => h.id === id);
+    
+    const [editing, setEditing] = useState(initialEditing);
+
+    useEffect(() => {
+        setEditing(initialEditing);
+    }, [id, initialEditing]);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [form, setForm] = useState({ name: '', title: '', link: '', color: '' });
     const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        if (hook) setForm({ 
+            name: hook.name || '', 
+            title: hook.title || '', 
+            link: hook.link || '',
+            color: hook.color || COLORS[6] 
+        });
+    }, [hook]);
 
     if (!hook) return (
         <div className={cn("flex-1 flex items-center justify-center text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>
             Hook not found
         </div>
     );
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await updateHook(hook.id, form);
+            setSaved(true);
+            setTimeout(() => { setSaved(false); setEditing(false); }, 1200);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const getBaseUrl = () => typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || '');
     const pixelUrl = `${getBaseUrl()}/api/h/${hook.id}`;
@@ -862,67 +896,146 @@ function HookPanel({ id, isDark }: { id: string; isDark: boolean }) {
     };
 
     return (
-        <div className="flex-1 flex flex-col overflow-y-auto px-4 py-5 gap-5">
-            {/* Pixel URL */}
-            <div>
-                <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Pixel URL</p>
-                <div className={cn('flex items-center gap-2 rounded-xl border px-3 py-2', isDark ? 'bg-[#1a1a1a] border-[#2e2e2e]' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
-                    <span className={cn('text-[11px] font-mono flex-1 truncate', isDark ? 'text-[#888]' : 'text-[#666]')}>
-                        {pixelUrl}
-                    </span>
-                    <button onClick={() => copy(pixelUrl)} className={cn('p-1 rounded-lg transition-colors shrink-0', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-black/5')}>
-                        {copied ? <Check size={11} className="text-primary" /> : <Copy size={11} />}
+        <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Hero / Header info */}
+            <div className={cn("flex items-center gap-3 px-4 py-4 border-b shrink-0", isDark ? "border-[#252525]" : "border-[#ebebeb]")}>
+                <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
+                    <Zap size={18} style={{ color: editing ? form.color : hook.color }} fill="currentColor" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    {editing ? (
+                        <input 
+                            value={form.name} 
+                            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                            className={cn("text-[14px] font-bold bg-transparent outline-none w-full border-b pb-0.5",
+                                isDark ? "text-white border-[#333]" : "text-[#111] border-[#e0e0e0]")}
+                        />
+                    ) : (
+                        <h2 className={cn("text-[14px] font-bold truncate", isDark ? "text-white" : "text-[#111]")}>{hook.name}</h2>
+                    )}
+                    <p className={cn("text-[11px] mt-0.5 truncate", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                        {editing ? 'Editing configuration' : 'Tracking Pixel Hook'}
+                    </p>
+                </div>
+                {!editing && (
+                    <button onClick={() => setEditing(true)}
+                        className={cn("w-7 h-7 rounded-lg flex items-center justify-center transition-colors",
+                            isDark ? "text-[#555] hover:text-[#ccc] hover:bg-white/5" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
+                        <Pencil size={12} />
                     </button>
-                </div>
+                )}
             </div>
 
-            {/* Embed Code */}
-            <div>
-                <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>HTML embed code</p>
-                <div className={cn('rounded-xl border overflow-hidden', isDark ? 'bg-[#1a1a1a] border-[#2e2e2e]' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
-                    <div className={cn('flex items-center justify-between px-3 py-1.5 border-b', isDark ? 'border-[#252525]' : 'border-[#e8e8e8]')}>
-                        <span className={cn('text-[9px] font-bold uppercase tracking-wider', isDark ? 'text-[#444]' : 'text-[#ccc]')}>HTML</span>
-                        <button onClick={() => copy(embedCode)} className={cn('flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#aaa] hover:text-[#333] hover:bg-black/5')}>
-                            {copied ? <Check size={8} className="text-primary" /> : <Copy size={8} />}
-                            Copy
-                        </button>
+            <div className="flex-1 overflow-y-auto py-1">
+                {editing ? (
+                    <div className="p-4 flex flex-col gap-5">
+                        <Field label="Description" icon={<FileText size={11} />} value={form.title} editing onChange={v => setForm(f => ({ ...f, title: v }))} placeholder="What is this hook for?" isDark={isDark} />
+                        <Field label="Placement URL" icon={<Globe size={11} />} value={form.link} editing onChange={v => setForm(f => ({ ...f, link: v }))} placeholder="e.g. project-website.com" isDark={isDark} />
+                        
+                        {/* Color Picker */}
+                        <div className="px-4">
+                            <p className={cn("text-[10px] font-semibold uppercase tracking-wide mb-3 flex items-center gap-1.5", isDark ? "text-[#444]" : "text-[#bbb]")}>
+                                <Palette size={10} /> Brand Color
+                            </p>
+                            <div className="grid grid-cols-8 gap-2">
+                                {COLORS.map(c => (
+                                    <button
+                                        key={c}
+                                        onClick={() => setForm(f => ({ ...f, color: c }))}
+                                        className={cn(
+                                            "w-7 h-7 rounded-full border-2 transition-all hover:scale-110",
+                                            form.color === c ? (isDark ? "border-white" : "border-[#111]") : "border-transparent"
+                                        )}
+                                        style={{ backgroundColor: c }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
                     </div>
-                    <pre className={cn('px-3 py-3 text-[10px] font-mono leading-relaxed whitespace-pre-wrap break-all select-all', isDark ? 'text-[#8ec07c]' : 'text-[#555]')}>
-                        {embedCode}
-                    </pre>
-                </div>
-            </div>
+                ) : (
+                    <div className="px-4 py-5 flex flex-col gap-6">
+                        {/* Placement link */}
+                        {hook.link && (
+                            <div>
+                                <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Currently tracking</p>
+                                <a
+                                    href={hook.link.startsWith('http') ? hook.link : `https://${hook.link}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={cn('flex items-center gap-2 text-[11px] hover:underline', isDark ? 'text-primary' : 'text-primary')}
+                                >
+                                    <ExternalLink size={10} />
+                                    {hook.link}
+                                </a>
+                            </div>
+                        )}
 
-            {/* Instructions */}
-            <div className={cn('rounded-xl border p-4', isDark ? 'bg-[#1a1a1a] border-[#252525]' : 'bg-[#f7f7f9] border-[#e8e8f0]')}>
-                <p className={cn('text-[11px] font-bold mb-3', isDark ? 'text-[#aaa]' : 'text-[#555]')}>How to use</p>
-                {[
-                    'Copy the HTML embed code above.',
-                    'Paste it anywhere inside the <body> of a page.',
-                    'When the page loads, the hook fires silently.',
-                ].map((step, i) => (
-                    <div key={i} className="flex items-start gap-3 mb-2 last:mb-0">
-                        <span className={cn('w-4 h-4 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold mt-0.5', isDark ? 'bg-white/8 text-[#666]' : 'bg-[#eaeaef] text-[#999]')}>
-                            {i + 1}
-                        </span>
-                        <p className={cn('text-[11px] leading-relaxed', isDark ? 'text-[#666]' : 'text-[#888]')}>{step}</p>
+                        {/* Pixel URL */}
+                        <div>
+                            <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Pixel URL</p>
+                            <div className={cn('flex items-center gap-2 rounded-xl border px-3 py-2', isDark ? 'bg-[#1a1a1a] border-[#2e2e2e]' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
+                                <span className={cn('text-[11px] font-mono flex-1 truncate', isDark ? 'text-[#888]' : 'text-[#666]')}>
+                                    {pixelUrl}
+                                </span>
+                                <button onClick={() => copy(pixelUrl)} className={cn('p-1 rounded-lg transition-colors shrink-0', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-black/5')}>
+                                    {copied ? <Check size={11} className="text-primary" /> : <Copy size={11} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Embed Code */}
+                        <div>
+                            <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>HTML embed code</p>
+                            <div className={cn('rounded-xl border overflow-hidden', isDark ? 'bg-[#1a1a1a] border-[#2e2e2e]' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
+                                <div className={cn('flex items-center justify-between px-3 py-1.5 border-b', isDark ? 'border-[#252525]' : 'border-[#e8e8e8]')}>
+                                    <span className={cn('text-[9px] font-bold uppercase tracking-wider', isDark ? 'text-[#444]' : 'text-[#ccc]')}>HTML</span>
+                                    <button onClick={() => copy(embedCode)} className={cn('flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[9px] font-bold transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#aaa] hover:text-[#333] hover:bg-black/5')}>
+                                        {copied ? <Check size={8} className="text-primary" /> : <Copy size={8} />}
+                                        Copy
+                                    </button>
+                                </div>
+                                <pre className={cn('px-3 py-3 text-[10px] font-mono leading-relaxed whitespace-pre-wrap break-all select-all', isDark ? 'text-[#8ec07c]' : 'text-[#555]')}>
+                                    {embedCode}
+                                </pre>
+                            </div>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className={cn('rounded-xl border p-4', isDark ? 'bg-[#1a1a1a] border-[#252525]' : 'bg-[#f7f7f9] border-[#e8e8f0]')}>
+                            <p className={cn('text-[11px] font-bold mb-3', isDark ? 'text-[#aaa]' : 'text-[#555]')}>How to use</p>
+                            {[
+                                'Copy the HTML embed code above.',
+                                'Paste it anywhere inside the <body> of a page.',
+                                'When the page loads, the hook fires silently.',
+                            ].map((step, i) => (
+                                <div key={i} className="flex items-start gap-3 mb-2 last:mb-0">
+                                    <span className={cn('w-4 h-4 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold mt-0.5', isDark ? 'bg-white/8 text-[#666]' : 'bg-[#eaeaef] text-[#999]')}>
+                                        {i + 1}
+                                    </span>
+                                    <p className={cn('text-[11px] leading-relaxed', isDark ? 'text-[#666]' : 'text-[#888]')}>{step}</p>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                ))}
+                )}
             </div>
 
-            {/* Placement link */}
-            {hook.link && (
-                <div>
-                    <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Currently tracking</p>
-                    <a
-                        href={hook.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={cn('flex items-center gap-2 text-[11px] hover:underline', isDark ? 'text-primary' : 'text-primary')}
-                    >
-                        <ExternalLink size={10} />
-                        {hook.link}
-                    </a>
+            {/* Footer actions when editing */}
+            {editing && (
+                <div className={cn("px-4 py-3 border-t shrink-0 flex items-center justify-end gap-2", isDark ? "border-[#252525]" : "border-[#e4e4e4]")}>
+                    <button 
+                        onClick={() => setEditing(false)}
+                        className={cn("text-[11px] px-3 py-1.5 rounded-lg font-medium transition-colors",
+                            isDark ? "text-[#666] hover:bg-white/5" : "text-[#999] hover:bg-[#f0f0f0]")}>
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handleSave} 
+                        disabled={saving || !form.name.trim()}
+                        className={cn("flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold rounded-lg transition-colors min-w-[80px] justify-center",
+                            saved ? "bg-primary text-black" : "bg-primary hover:bg-primary-hover text-black disabled:opacity-60")}>
+                        {saved ? <><Check size={12} />Saved</> : <><Save size={12} />{saving ? '...' : 'Save'}</>}
+                    </button>
                 </div>
             )}
         </div>
@@ -995,7 +1108,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                 {rightPanel.type === 'notifications' && <NotificationsPanel isDark={isDark} />}
                 {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
                 {rightPanel.type === 'company' && <CompanyPanel id={rightPanel.id} isDark={isDark} />}
-                {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} isDark={isDark} />}
+                {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} initialEditing={rightPanel.editing} isDark={isDark} />}
             </div>
         );
     }
@@ -1050,7 +1163,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                         {rightPanel.type === 'notifications' && <NotificationsPanel isDark={isDark} />}
                         {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
                         {rightPanel.type === 'company' && <CompanyPanel id={rightPanel.id} isDark={isDark} />}
-                        {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} isDark={isDark} />}
+                        {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} initialEditing={rightPanel.editing} isDark={isDark} />}
                     </div>
                 </motion.div>
             )}

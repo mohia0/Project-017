@@ -6,7 +6,7 @@ import {
     Users, Mail, Phone, MapPin, Building2,
     Globe, Briefcase, Trash2, Archive, ArchiveRestore,
     Copy, Check, CheckSquare, X, MoreHorizontal,
-    FileSpreadsheet, Upload, Download, ChevronRight, ArrowUpDown
+    FileSpreadsheet, Upload, Download, ChevronDown, ArrowUpDown, ArrowRightLeft
 } from 'lucide-react';
 import { gooeyToast } from 'goey-toast';
 import { useClientStore } from '@/store/useClientStore';
@@ -69,12 +69,12 @@ function TbBtn({ label, icon, active, onClick, isDark, hasArrow }: { label: stri
         <button onClick={onClick} className={cn(
             "flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-medium rounded transition-all",
             active
-                ? (isDark ? "bg-white/10 text-white shadow-sm" : "bg-[#f0f0f0] text-black shadow-sm")
+                ? (isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-black")
                 : (isDark ? "text-[#666] hover:text-[#aaa] hover:bg-white/5" : "text-[#888] hover:text-black hover:bg-black/5")
         )}>
             {icon}
             <span>{label}</span>
-            {hasArrow && <ChevronRight size={11} className={cn("opacity-40 transition-transform", active ? "rotate-90" : "rotate-0")} />}
+            {hasArrow && <ChevronDown size={11} className={cn("opacity-40 transition-transform", active ? "rotate-180" : "rotate-0")} />}
         </button>
     );
 }
@@ -416,7 +416,7 @@ export default function ClientsPage() {
                     )}
 
                     <div className="relative">
-                        <TbBtn label="Import / Export" icon={<Upload size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} active={importExportOpen} />
+                        <TbBtn label="Import / Export" icon={<ArrowRightLeft size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} active={importExportOpen} />
                         <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
                             <div className="py-1">
                                 <DItem label="Import CSV" icon={<Download size={12} />} onClick={() => { setImportModalOpen(true, tab === 'people' ? 'Contact' : 'Company'); setImportExportOpen(false); }} isDark={isDark} />

@@ -55,6 +55,8 @@ export const useHookStore = create<HookState>((set) => ({
         } else {
             const enriched: Hook[] = (data || []).map((h: any) => ({
                 ...h,
+                status: h.status || 'Active',
+                color: h.color || '#4dbf39',
                 event_count: h.hook_events?.[0]?.count ?? 0,
                 hook_events: undefined,
             }));
