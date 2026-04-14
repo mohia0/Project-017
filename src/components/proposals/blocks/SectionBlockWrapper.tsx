@@ -166,8 +166,8 @@ export function SectionBlockWrapper({
                         )}
                         style={{ 
                             top: isFirst 
-                                ? 'calc(100% - var(--block-margin-bottom) + 8px)' 
-                                : 'calc(var(--block-margin-top) - 36px)' 
+                                ? 'calc(100% - var(--block-margin-bottom) + 14px)' 
+                                : 'calc(var(--block-margin-top) - 42px)' 
                         }}
                     >
                         {/* Drag handle */}

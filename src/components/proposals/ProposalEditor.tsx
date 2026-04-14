@@ -23,6 +23,8 @@ import {
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
+import { CURRENCIES, getCurrency } from '@/lib/currencies';
+import { Dropdown, DItem } from '@/components/ui/Dropdown';
 import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore } from '@/store/useProposalStore';
@@ -46,7 +48,7 @@ import { gooeyToast } from 'goey-toast';
 /* ═══════════════════════════════════════════════════════
    TYPES
 ═══════════════════════════════════════════════════════ */
-type BlockType = 'heading' | 'text' | 'pricing' | 'signature' | 'divider' | 'image' | 'header';
+type BlockType = 'heading' | 'text' | 'pricing' | 'breakdown' | 'signature' | 'divider' | 'image' | 'header';
 
 interface PricingRow {
     id: string;
@@ -110,6 +112,7 @@ const BLOCK_MENU = [
     { type: 'header'    as BlockType, label: 'Header & Meta', icon: PanelTop,            tag: 'Layout' },
     { type: 'text'      as BlockType, label: 'Content',       icon: FileText,            tag: 'Text' },
     { type: 'pricing'   as BlockType, label: 'Pricing Table', icon: Table,               tag: 'Finance' },
+    { type: 'breakdown' as BlockType, label: 'Breakdown',     icon: Table,               tag: 'Finance' },
     { type: 'signature' as BlockType, label: 'Signature',     icon: PenLine,             tag: 'Legal' },
     { type: 'divider'   as BlockType, label: 'Divider',       icon: SeparatorHorizontal, tag: 'Layout' },
     { type: 'image'     as BlockType, label: 'Image',         icon: ImageIcon,               tag: 'Media' },
@@ -151,6 +154,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
 
     const statusRef = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
@@ -315,6 +319,13 @@ export default function ProposalEditor({ id }: { id?: string }) {
             ...(type === 'heading'   ? { content: 'New Section',  level: 2 } : {}),
             ...(type === 'text'      ? { content: '' } : {}),
             ...(type === 'pricing'   ? { rows: [{ id: uuidv4(), description: '', qty: 1, rate: 0 }], taxRate: 0, discountRate: 0, showTax: false, showDiscount: false } : {}),
+            ...(type === 'breakdown' ? { 
+                title: 'PRELIMINARY BUDGET BREAKDOWN',
+                rows: [
+                    { id: uuidv4(), label: 'Deposit', description: 'A deposit is required to secure the project in my schedule.', percentage: 50 },
+                    { id: uuidv4(), label: 'Full Balance Required', description: 'Full balance due before the digital deliverables files can be released.', percentage: 50 }
+                ] 
+            } : {}),
             ...(type === 'signature' ? { signerName: '', signerRole: 'Client', signed: false } : {}),
         };
         setBlocks(prev => {
@@ -635,6 +646,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             backgroundAttachment: 'fixed',
                         }}
                     >
+                        {!isMobilePreview && (
                             <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none">
                                 <div 
                                     className="absolute inset-0 pointer-events-none"
@@ -664,6 +676,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     />
                                 </div>
                             </div>
+                        )}
                         <div className={cn(
                             "flex flex-col items-center min-h-full",
                             isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
@@ -952,20 +965,40 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         icon={<DollarSign size={11} className="opacity-50" />}
                                         onReset={() => updateMeta({ currency: 'USD' })}
                                     >
-                                        <select
-                                            value={meta.currency}
-                                            onChange={e => updateMeta({ currency: e.target.value })}
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium appearance-none",
-                                                isDark ? "text-[#ccc]" : "text-[#333]"
-                                            )}
-                                        >
-                                            <option value="USD">US Dollar ($)</option>
-                                            <option value="EUR">Euro (€)</option>
-                                            <option value="GBP">British Pound (£)</option>
-                                            <option value="SAR">Saudi Riyal (﷼)</option>
-                                            <option value="AED">UAE Dirham (د.إ)</option>
-                                        </select>
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setCurrencyDropdownOpen(prev => !prev)}
+                                                className={cn(
+                                                    "w-full flex items-center justify-between text-[12px] bg-transparent outline-none font-medium transition-opacity hover:opacity-80",
+                                                    isDark ? "text-[#ccc]" : "text-[#333]"
+                                                )}
+                                            >
+                                                <span className="truncate">
+                                                    {getCurrency(meta.currency)?.label || meta.currency} ({getCurrency(meta.currency)?.symbol})
+                                                </span>
+                                                <ChevronDown size={11} className={cn("transition-transform duration-200 opacity-40 shrink-0", currencyDropdownOpen ? "rotate-180" : "")} />
+                                            </button>
+                                            <Dropdown 
+                                                open={currencyDropdownOpen} 
+                                                onClose={() => setCurrencyDropdownOpen(false)} 
+                                                isDark={isDark}
+                                                className="w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-t-none max-h-[220px] overflow-y-auto custom-scrollbar"
+                                                align="left"
+                                            >
+                                                {CURRENCIES.map(c => (
+                                                    <DItem
+                                                        key={c.code}
+                                                        label={`${c.label} (${c.symbol})`}
+                                                        active={meta.currency === c.code}
+                                                        isDark={isDark}
+                                                        onClick={() => {
+                                                            updateMeta({ currency: c.code });
+                                                            setCurrencyDropdownOpen(false);
+                                                        }}
+                                                    />
+                                                ))}
+                                            </Dropdown>
+                                        </div>
                                     </MetaField>
 
                                     <MetaField
@@ -1296,6 +1329,7 @@ export function ProposalDocument({
                             <React.Fragment key={block.id}>
                                 <SortableBlock
                                     block={block}
+                                    blocks={blocks}
                                     isDark={false}
                                     isPreview={isPreview}
                                     updateBlock={updateBlock}
@@ -1350,10 +1384,11 @@ export function ProposalDocument({
    SORTABLE BLOCK WRAPPER
 ═══════════════════════════════════════════════════════ */
 function SortableBlock({
-    block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, onMoveUp, onMoveDown, onDuplicate, meta, updateMeta,
+    block, blocks, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, onMoveUp, onMoveDown, onDuplicate, meta, updateMeta,
     setImageUploadOpen, setUploadTarget, isFirst, isLast
 }: {
     block: BlockData;
+    blocks: BlockData[];
     isDark: boolean;
     isPreview: boolean;
     updateBlock: (id: string, patch: Partial<BlockData>) => void;
@@ -1391,6 +1426,7 @@ function SortableBlock({
         >
             <BlockRenderer
                 block={block}
+                blocks={blocks} // Pass the blocks array here
                 isDark={isDark}
                 isPreview={isPreview}
                 updateBlock={updateBlock}
@@ -1408,10 +1444,11 @@ function SortableBlock({
    BLOCK RENDERER
 ═══════════════════════════════════════════════════════ */
 function BlockRenderer({
-    block, isDark, isPreview, updateBlock, currency, meta, updateMeta,
+    block, blocks, isDark, isPreview, updateBlock, currency, meta, updateMeta,
     setImageUploadOpen, setUploadTarget
 }: {
     block: BlockData;
+    blocks: BlockData[]; // Added blocks array
     isDark: boolean;
     isPreview: boolean;
     updateBlock: (id: string, patch: Partial<BlockData>) => void;
@@ -1430,6 +1467,8 @@ function BlockRenderer({
             return <TextBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} meta={meta} />;
         case 'pricing':
             return <PricingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} />;
+        case 'breakdown':
+            return <BreakdownBlock block={block} blocks={blocks} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} />;
         case 'signature':
             return <SignatureBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} />;
         case 'divider':
@@ -1671,6 +1710,12 @@ function TextBlock({ block, isDark, isPreview, updateBlock, meta }: any) {
 function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }: any) {
     const rows: PricingRow[] = block.rows || [];
     const hideQty = block.hideQty || false;
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
     const subtotal = rows.reduce((s: number, r: PricingRow) => s + (hideQty ? 1 : r.qty) * r.rate, 0);
     const discAmt  = subtotal * ((block.discountRate || 0) / 100);
     const taxBase  = subtotal - discAmt;
@@ -1687,121 +1732,86 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
             rows: [...rows, { id: uuidv4(), title: '', description: '', qty: 1, rate: 0 }]
         });
     };
+    const duplicateRow = (row: PricingRow) => {
+        const nextRows = [...rows];
+        const idx = nextRows.findIndex(r => r.id === row.id);
+        nextRows.splice(idx + 1, 0, { ...row, id: uuidv4() });
+        updateBlock(block.id, { rows: nextRows });
+    };
     const removeRow = (rowId: string) => {
         updateBlock(block.id, { rows: rows.filter((r: PricingRow) => r.id !== rowId) });
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = rows.findIndex(r => r.id === active.id);
+            const newIndex = rows.findIndex(r => r.id === over.id);
+            updateBlock(block.id, { rows: arrayMove(rows, oldIndex, newIndex) });
+        }
     };
 
     const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black/40");
     const td = cn("py-2", isDark ? "text-white/80" : "text-black/80");
 
     return (
-        <div 
-            className={cn("overflow-hidden transition-all duration-300", isDark ? "bg-transparent text-white/90" : "bg-white text-black")} 
-            style={{ 
-                borderRadius: 'var(--table-border-radius)', 
-                borderColor: 'var(--table-border-color)',
-                borderWidth: 'var(--table-stroke-width)',
-                borderStyle: 'solid',
-                fontSize: 'var(--table-font-size)'
-            }}
-        >
-            <table className="w-full">
-                <thead style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderBottomWidth: 'var(--table-stroke-width)', borderBottomStyle: 'solid' }}>
-                    <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                        <th className={cn(th, "px-4 py-2 w-full")}>Item</th>
-                        {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
-                        <th className={cn(th, "px-3 py-2 text-right w-24")}>Amount</th>
-                        {!hideQty && <th className={cn(th, "px-4 py-2 text-right w-24")}>Total</th>}
-                        {!isPreview && <th className="w-8" />}
-                    </tr>
-                </thead>
-                <tbody className="divide-y" style={{ borderColor: 'var(--table-border-color)' }}>
-                    <style dangerouslySetInnerHTML={{ __html: `
-                        .divide-y > * + * {
-                            border-top-width: var(--table-stroke-width) !important;
-                            border-color: var(--table-border-color) !important;
-                        }
-                    ` }} />
-                    {rows.map((row: PricingRow) => (
-                        <tr key={row.id} className="group/row transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.01]">
-                            <td className={cn(td, "px-4")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
-                                {isPreview
-                                    ? (
-                                        <div className="flex flex-col">
-                                            <div className="font-bold" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || row.description || 'Item'}</div>
-                                            {(row.title && row.description) && <div className={cn("mt-0.5 opacity-60")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>{row.description}</div>}
-                                        </div>
-                                    )
-                                    : (
-                                        <div className="flex flex-col gap-1">
-                                            <input
-                                                value={row.title || ''}
-                                                onChange={e => updateRow(row.id, { title: e.target.value })}
-                                                placeholder={row.description ? "Item title..." : "Item Name..."}
-                                                className={cn("w-full bg-transparent outline-none font-bold", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
-                                                style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}
-                                            />
-                                            <input
-                                                value={row.description}
-                                                onChange={e => updateRow(row.id, { description: e.target.value })}
-                                                placeholder="Description (optional)..."
-                                                className={cn("w-full bg-transparent outline-none opacity-60", isDark ? "text-white placeholder:text-white/10" : "text-black placeholder:text-black/10")}
-                                                style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
-                                            />
-                                        </div>
-                                    )
+        <div className="flex flex-col gap-2">
+            <div 
+                className={cn("overflow-visible transition-all duration-300", isDark ? "bg-transparent text-white/90" : "bg-white text-black")} 
+                style={{ 
+                    borderRadius: 'var(--table-border-radius)', 
+                    borderColor: 'var(--table-border-color)',
+                    borderWidth: 'var(--table-stroke-width)',
+                    borderStyle: 'solid',
+                    fontSize: 'var(--table-font-size)',
+                    borderCollapse: 'separate',
+                    borderSpacing: 0
+                }}
+            >
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <table className="w-full relative" style={{ borderRadius: 'var(--table-border-radius)', borderCollapse: 'separate', borderSpacing: 0 }}>
+                        <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
+                            <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
+                                <th className="w-8" style={{ borderTopLeftRadius: 'var(--table-border-radius)' }} />
+                                <th className={cn(th, "px-2 py-2 w-full")}>Item</th>
+                                {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
+                                <th className={cn(th, "px-3 py-2 text-right w-24", hideQty && "rounded-tr-[var(--table-border-radius)]")}>Amount</th>
+                                {!hideQty && <th className={cn(th, "px-4 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
+                                {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                            <style dangerouslySetInnerHTML={{ __html: `
+                                .divide-y > * + * {
+                                    border-top-width: var(--table-stroke-width) !important;
+                                    border-color: var(--table-border-color) !important;
                                 }
-                            </td>
-                            {!hideQty && (
-                                <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
-                                    {isPreview
-                                        ? row.qty
-                                        : <input
-                                            type="number"
-                                            value={row.qty}
-                                            onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
-                                            className={cn("w-12 text-right bg-transparent outline-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
-                                            style={{ fontSize: 'var(--table-font-size)' }}
-                                        />
-                                    }
-                                </td>
-                            )}
-                            <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
-                                {isPreview
-                                    ? fmt(row.rate, currency)
-                                    : <input
-                                        type="number"
-                                        value={row.rate}
-                                        onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
-                                        className={cn("w-20 text-right bg-transparent outline-none font-medium", isDark ? "text-white/80" : "text-black/80")}
-                                        style={{ fontSize: 'var(--table-font-size)' }}
+                            ` }} />
+                            <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                                {rows.map((row: PricingRow) => (
+                                    <SortableRow 
+                                        key={row.id} 
+                                        row={row} 
+                                        isDark={isDark} 
+                                        isPreview={isPreview} 
+                                        hideQty={hideQty} 
+                                        currency={currency} 
+                                        updateRow={updateRow} 
+                                        removeRow={removeRow} 
+                                        duplicateRow={duplicateRow}
+                                        td={td}
                                     />
-                                }
-                            </td>
-                            {!hideQty && <td className={cn(td, "px-4 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}>{fmt(row.qty * row.rate, currency)}</td>}
-                            {!isPreview && (
-                                <td className="w-0 relative p-0 border-0">
-                                    <button
-                                        onClick={() => removeRow(row.id)}
-                                        className={cn(
-                                            "absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 p-2 rounded-full transition-all hover:bg-red-500/10 hover:text-red-500 animate-in fade-in duration-200",
-                                            isDark ? "text-[#aaa] hover:text-red-500 bg-[#333] shadow-sm border border-white/5" : "text-[#ccc] hover:text-red-500 bg-white shadow-sm border border-black/5"
-                                        )}
-                                        title="Delete row"
-                                    >
-                                        <Trash2 size={13} />
-                                    </button>
-                                </td>
-                            )}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                                ))}
+                            </SortableContext>
+                        </tbody>
+                    </table>
+                </DndContext>
+            </div>
 
             {/* Totals Section */}
-            <div className="px-4 py-3 space-y-1 border-t" style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)' }}>
+            <div className="px-4 py-3" style={{ backgroundColor: isPreview ? 'transparent' : 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)' }}>
                 {!isPreview && (
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="flex justify-between items-center mb-4">
                         <button
                             onClick={addRow}
                             className={cn("flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 border border-dashed transition-all", isDark ? "border-white/10 text-white/40 hover:border-white/20 hover:text-white/60" : "border-black/10 text-black/40 hover:border-black/20 hover:text-black/60")}
@@ -1820,54 +1830,455 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                         </label>
                     </div>
                 )}
-                {(!isPreview || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
-                    <div className={cn("flex justify-between font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                        <span>Subtotal</span>
-                        <span>{fmt(subtotal, currency)}</span>
-                    </div>
-                )}
-                {/* Discount row */}
-                {(!isPreview || (block.discountRate || 0) > 0) && (
-                    <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                        <div className="flex items-center gap-2">
-                            <span>Discount</span>
-                            {!isPreview && (
-                                <input
-                                    type="number"
-                                    value={block.discountRate || 0}
-                                    onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
-                                    className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                />
-                            )}
-                            {(!isPreview || (block.discountRate || 0) > 0) && <span>%</span>}
-                        </div>
-                        <span>−{fmt(discAmt, currency)}</span>
-                    </div>
-                )}
+                
+                <div className="flex flex-col items-end">
+                    <div className="w-full max-w-[180px] space-y-1.5">
+                        {(!isPreview || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
+                            <div className={cn("flex justify-between font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                <span>Subtotal</span>
+                                <span>{fmt(subtotal, currency)}</span>
+                            </div>
+                        )}
+                        {/* Discount row */}
+                        {(!isPreview || (block.discountRate || 0) > 0) && (
+                            <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                <div className="flex items-center gap-2">
+                                    <span>Discount</span>
+                                    {!isPreview && (
+                                        <input
+                                            type="number"
+                                            value={block.discountRate || 0}
+                                            onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
+                                            className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                        />
+                                    )}
+                                    {(!isPreview || (block.discountRate || 0) > 0) && <span>%</span>}
+                                </div>
+                                <span>−{fmt(discAmt, currency)}</span>
+                            </div>
+                        )}
 
-                {/* Tax row */}
-                {(!isPreview || (block.taxRate || 0) > 0) && (
-                    <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                        <div className="flex items-center gap-2">
-                            <span>Tax</span>
-                            {!isPreview && (
-                                <input
-                                    type="number"
-                                    value={block.taxRate || 0}
-                                    onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
-                                    className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                />
-                            )}
-                            {(!isPreview || (block.taxRate || 0) > 0) && <span>%</span>}
+                        {/* Tax row */}
+                        {(!isPreview || (block.taxRate || 0) > 0) && (
+                            <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                <div className="flex items-center gap-2">
+                                    <span>Tax</span>
+                                    {!isPreview && (
+                                        <input
+                                            type="number"
+                                            value={block.taxRate || 0}
+                                            onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
+                                            className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                        />
+                                    )}
+                                    {(!isPreview || (block.taxRate || 0) > 0) && <span>%</span>}
+                                </div>
+                                <span>{fmt(taxAmt, currency)}</span>
+                            </div>
+                        )}
+                        <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
+                            <span>Total</span>
+                            <span>{fmt(total, currency)}</span>
                         </div>
-                        <span>{fmt(taxAmt, currency)}</span>
                     </div>
-                )}
-                <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
-                    <span>Total</span>
-                    <span>{fmt(total, currency)}</span>
                 </div>
             </div>
+        </div>
+    );
+}
+
+/* ─── Sortable Row Helpers ─── */
+function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td }: any) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
+    const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 0 };
+
+    return (
+        <tr 
+            ref={setNodeRef} 
+            style={style} 
+            className={cn(
+                "group/row transition-colors relative", 
+                isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.01]" : "hover:bg-black/[0.01]")
+            )}
+        >
+            <td className="w-8 pl-4">
+                {!isPreview && (
+                    <button {...attributes} {...listeners} className="opacity-0 group-hover/row:opacity-50 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1">
+                        <GripVertical size={14} />
+                    </button>
+                )}
+            </td>
+            <td className={cn(td, "px-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
+                {isPreview ? (
+                    <div className="flex flex-col">
+                        <div className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || row.description || 'Item'}</div>
+                        {(row.title && row.description) && (
+                            <div 
+                                className={cn("mt-0.5 opacity-60")} 
+                                style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
+                                dangerouslySetInnerHTML={{ __html: row.description }}
+                            />
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex flex-col">
+                        <input
+                            value={row.title || ''}
+                            onChange={e => updateRow(row.id, { title: e.target.value })}
+                            placeholder={row.description ? "Item title..." : "Item Name..."}
+                            className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
+                            style={{ fontSize: 'calc(var(--table-font-size) + 2px)', fontWeight: 700 }}
+                        />
+                        <div
+                            contentEditable={!isPreview}
+                            suppressContentEditableWarning
+                            onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
+                            dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                            className={cn(
+                                "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-10", 
+                                isDark ? "text-white" : "text-black"
+                            )}
+                            data-placeholder="Description (optional)..."
+                            style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
+                        />
+                    </div>
+                )}
+            </td>
+            {!hideQty && (
+                <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
+                    {isPreview ? row.qty : (
+                        <input
+                            type="number"
+                            value={row.qty}
+                            onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
+                            className={cn("w-12 text-right bg-transparent outline-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
+                        />
+                    )}
+                </td>
+            )}
+            <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
+                {isPreview ? <span className={cn(hideQty && "font-bold")}>{fmt(row.rate, currency)}</span> : (
+                    <input
+                        type="number"
+                        value={row.rate}
+                        onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
+                        className={cn("w-20 text-right bg-transparent outline-none p-0 border-none font-inherit leading-tight", hideQty ? "font-bold" : "font-medium")}
+                        style={{ fontWeight: hideQty ? 700 : 500 }}
+                    />
+                )}
+            </td>
+            {!hideQty && <td className={cn(td, "px-4 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}>{fmt(row.qty * row.rate, currency)}</td>}
+            {!isPreview && (
+                <td className="w-0 relative">
+                    <div className={cn(
+                        "absolute left-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pl-3",
+                        "opacity-0 invisible pointer-events-none group-hover/row:opacity-100 group-hover/row:visible group-hover/row:pointer-events-auto"
+                    )}>
+                        <button 
+                            onClick={() => duplicateRow(row)} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95", 
+                                isDark ? "text-white/30 hover:text-white hover:bg-white/10" : "text-black/30 hover:text-black hover:bg-black/5"
+                            )} 
+                            title="Duplicate row"
+                        >
+                            <Copy size={13} />
+                        </button>
+                        <button 
+                            onClick={() => removeRow(row.id)} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95", 
+                                isDark ? "text-red-400/50 hover:text-red-400 hover:bg-red-500/20" : "text-red-500/50 hover:text-red-500 hover:bg-red-50"
+                            )} 
+                            title="Delete row"
+                        >
+                            <Trash2 size={13} />
+                        </button>
+                    </div>
+                </td>
+            )}
+        </tr>
+    );
+}
+
+function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currency, updateRow, duplicateRow, removeRow, td, hasError, isLast }: any) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
+    const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 0 };
+
+    return (
+        <tr 
+            ref={setNodeRef} 
+            style={style} 
+            className={cn(
+                "group/row transition-colors relative", 
+                isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.01]" : "hover:bg-black/[0.01]")
+            )}
+        >
+            <td className="w-8 pl-4">
+                {!isPreview && (
+                    <button {...attributes} {...listeners} className="opacity-0 group-hover/row:opacity-50 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1">
+                        <GripVertical size={14} />
+                    </button>
+                )}
+            </td>
+            <td className={cn(td, "px-2")}>
+                {isPreview ? (
+                    <div className="flex flex-col">
+                        <div className="font-bold">{row.label || 'Item'}</div>
+                        {row.description && (
+                            <div 
+                                className={cn("text-[11px] opacity-60 mt-0.5")}
+                                dangerouslySetInnerHTML={{ __html: row.description }}
+                            />
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex flex-col">
+                        <input 
+                            value={row.label || ''} 
+                            onChange={e => updateRow(row.id, { label: e.target.value })} 
+                            placeholder="Label..." 
+                            className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight placeholder:opacity-30", isDark ? "text-white" : "text-black")} 
+                            style={{ fontWeight: 700 }}
+                        />
+                        <div 
+                            contentEditable={!isPreview}
+                            suppressContentEditableWarning
+                            onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
+                            dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                            className={cn(
+                                "w-full bg-transparent outline-none text-[11px] opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-30", 
+                                isDark ? "text-white" : "text-black"
+                            )} 
+                            data-placeholder="Description..."
+                        />
+                    </div>
+                )}
+            </td>
+            <td className={cn(td, "px-3 text-right")}>
+                {isPreview ? <span>{row.percentage}%</span> : (
+                    <div className="flex items-center justify-end gap-1">
+                        <input type="number" value={row.percentage} onChange={e => updateRow(row.id, { percentage: Number(e.target.value) })} className={cn("w-12 text-right bg-transparent outline-none font-medium p-1 rounded-md transition-colors", hasError && isLast ? "bg-amber-500/10 text-amber-500" : "")} />
+                        <span>%</span>
+                    </div>
+                )}
+            </td>
+            <td className={cn(td, "px-4 text-right font-bold")}>{fmt(totalAbove * (row.percentage / 100), currency)}</td>
+            {!isPreview && (
+                <td className="w-0 relative">
+                    <div className={cn(
+                        "absolute left-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pl-3",
+                        "opacity-0 invisible pointer-events-none group-hover/row:opacity-100 group-hover/row:visible group-hover/row:pointer-events-auto"
+                    )}>
+                        <button 
+                            onClick={() => duplicateRow(row)} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95", 
+                                isDark ? "text-white/30 hover:text-white hover:bg-white/10" : "text-black/30 hover:text-black hover:bg-black/5"
+                            )} 
+                            title="Duplicate row"
+                        >
+                            <Copy size={13} />
+                        </button>
+                        <button 
+                            onClick={() => removeRow(row.id)} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95", 
+                                isDark ? "text-red-400/50 hover:text-red-400 hover:bg-red-500/20" : "text-red-500/50 hover:text-red-500 hover:bg-red-50"
+                            )} 
+                            title="Delete row"
+                        >
+                            <Trash2 size={13} />
+                        </button>
+                    </div>
+                </td>
+            )}
+        </tr>
+    );
+}
+
+/* ─── Breakdown Block ─── */
+function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currency }: any) {
+    const rows = block.rows || [];
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    
+    // Calculate total from all pricing tables ABOVE this block
+    const thisIdx = blocks.findIndex((b: any) => b.id === block.id);
+    const pricingAbove = blocks.slice(0, thisIdx).filter((b: any) => b.type === 'pricing');
+    
+    let totalAbove = 0;
+    pricingAbove.forEach((pb: any) => {
+        const pRows = pb.rows || [];
+        const sub = pRows.reduce((s: number, r: any) => s + (pb.hideQty ? 1 : r.qty) * r.rate, 0);
+        const disc = sub * ((pb.discountRate || 0) / 100);
+        const tax = (sub - disc) * ((pb.taxRate || 0) / 100);
+        totalAbove += (sub - disc + tax);
+    });
+
+    const totalPercentage = rows.reduce((acc: number, r: any) => acc + (r.percentage || 0), 0);
+    const diff = 100 - totalPercentage;
+    const hasError = Math.abs(diff) > 0.01;
+
+    const updateRow = (rowId: string, patch: Partial<any>) => {
+        updateBlock(block.id, {
+            rows: rows.map((r: any) => r.id === rowId ? { ...r, ...patch } : r)
+        });
+    };
+
+    const duplicateRow = (row: any) => {
+        const nextRows = [...rows];
+        const idx = nextRows.findIndex(r => r.id === row.id);
+        nextRows.splice(idx + 1, 0, { ...row, id: uuidv4() });
+        updateBlock(block.id, { rows: nextRows });
+    };
+
+    const fixPercentages = () => {
+        if (rows.length === 0) return;
+        const nextRows = [...rows];
+        const lastRow = nextRows[nextRows.length - 1];
+        lastRow.percentage = Math.round((lastRow.percentage + diff) * 100) / 100;
+        updateBlock(block.id, { rows: nextRows });
+    };
+
+    const addRow = (atIdx?: number) => {
+        const isMiddle = typeof atIdx === 'number';
+        const newRow = { 
+            id: uuidv4(), 
+            label: isMiddle ? 'Milestone' : 'Full Balance Required', 
+            description: isMiddle ? '' : 'Full balance due before the digital deliverables files can be released.', 
+            percentage: isMiddle ? 0 : Math.max(0, diff) 
+        };
+        const nextRows = [...rows];
+        if (isMiddle) {
+            nextRows.splice(atIdx + 1, 0, newRow);
+        } else {
+            nextRows.push(newRow);
+        }
+        updateBlock(block.id, { rows: nextRows });
+    };
+
+    const removeRow = (rowId: string) => {
+        const remainingRows = rows.filter((r: any) => r.id !== rowId);
+        updateBlock(block.id, { rows: remainingRows });
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = rows.findIndex(r => r.id === active.id);
+            const newIndex = rows.findIndex(r => r.id === over.id);
+            updateBlock(block.id, { rows: arrayMove(rows, oldIndex, newIndex) });
+        }
+    };
+
+    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black/40");
+    const td = cn("py-1.5", isDark ? "text-white/80" : "text-black/80");
+
+    return (
+        <div className="flex flex-col gap-2">
+            <div 
+                className={cn("overflow-visible transition-all duration-300", isDark ? "bg-transparent text-white/90" : "bg-white text-black")} 
+                style={{ 
+                    borderRadius: 'var(--table-border-radius)', 
+                    borderColor: 'var(--table-border-color)',
+                    borderWidth: 'var(--table-stroke-width)',
+                    borderStyle: 'solid',
+                    fontSize: 'var(--table-font-size)',
+                    borderCollapse: 'separate',
+                    borderSpacing: 0
+                }}
+            >
+                <div className="px-4 py-3 border-b flex items-center justify-between gap-4" style={{ backgroundColor: 'var(--table-header-bg)', borderTopLeftRadius: 'var(--table-border-radius)', borderTopRightRadius: 'var(--table-border-radius)', borderColor: 'var(--table-border-color)', borderBottomWidth: 'var(--table-stroke-width)' }}>
+                    <div 
+                        contentEditable={!isPreview}
+                        suppressContentEditableWarning
+                        onBlur={e => updateBlock(block.id, { title: e.currentTarget.textContent || '' })}
+                        className={cn(
+                            "font-bold text-[14px] outline-none",
+                            !isPreview && "hover:bg-black/5 dark:hover:bg-white/5 rounded px-1 -mx-1"
+                        )}
+                    >
+                        {block.title || 'PRELIMINARY BUDGET BREAKDOWN'}
+                    </div>
+                    {!isPreview && hasError && (
+                        <div className="flex items-center gap-3">
+                            <span className={cn("text-[10px] font-bold whitespace-nowrap", diff > 0 ? "text-amber-500" : "text-red-500")}>
+                                {totalPercentage}% ({diff > 0 ? `+${diff.toFixed(0)}%` : `${diff.toFixed(0)}%`})
+                            </span>
+                            <button
+                                onClick={fixPercentages}
+                                className={cn(
+                                    "flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 border border-dashed transition-all",
+                                    isDark ? "border-white/20 text-white/50 hover:text-white/80" : "border-black/20 text-black/50 hover:text-black/80"
+                                )}
+                                style={{ borderRadius: 'var(--block-button-radius)' }}
+                                title="Click to fix and balance to 100%"
+                            >
+                                <Zap size={10} className="fill-current" />
+                                FIX
+                            </button>
+                        </div>
+                    )}
+                </div>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <table className="w-full relative" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+                        <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
+                            <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
+                                <th className="w-8" />
+                                <th className={cn(th, "px-2 py-2 w-full")}>Description</th>
+                                <th className={cn(th, "px-3 py-2 text-right w-24")}>Percentage</th>
+                                <th className={cn(th, "px-4 py-2 text-right w-32")}>Amount</th>
+                                {!isPreview && <th className="w-0" />}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                            <style dangerouslySetInnerHTML={{ __html: `
+                                .divide-y > * + * {
+                                    border-top-width: var(--table-stroke-width) !important;
+                                    border-color: var(--table-border-color) !important;
+                                }
+                            ` }} />
+                            <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                                {rows.map((row: any, idx: number) => (
+                                    <SortableBreakdownRow 
+                                        key={row.id} 
+                                        row={row} 
+                                        idx={idx}
+                                        isDark={isDark}
+                                        isPreview={isPreview}
+                                        totalAbove={totalAbove}
+                                        currency={currency}
+                                        updateRow={updateRow}
+                                        duplicateRow={duplicateRow}
+                                        removeRow={removeRow}
+                                        td={td}
+                                        hasError={hasError}
+                                        isLast={idx === rows.length - 1}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </tbody>
+                    </table>
+                </DndContext>
+            </div>
+
+            {/* Actions Footer Section (Outside Border) */}
+            {!isPreview && (
+                <div className="px-1 py-1">
+                    <button
+                        onClick={() => addRow()}
+                        className={cn("flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 border border-dashed transition-all", isDark ? "border-white/10 text-white/40 hover:border-white/60" : "border-black/10 text-black/40 hover:border-black/20 hover:text-black/60")}
+                        style={{ borderRadius: 'var(--block-button-radius)' }}
+                    >
+                        <Plus size={10} /> ADD BREAKDOWN ROW
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

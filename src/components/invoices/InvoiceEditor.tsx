@@ -23,6 +23,8 @@ import {
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
+import { CURRENCIES, getCurrency } from '@/lib/currencies';
+import { Dropdown, DItem } from '@/components/ui/Dropdown';
 import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
@@ -145,6 +147,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [copied, setCopied] = useState(false);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
     const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+    const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
 
     const [meta, setMeta] = useState<InvoiceMeta>({
         clientName: '',
@@ -929,20 +932,40 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         icon={<DollarSign size={11} className="opacity-50" />}
                                         onReset={() => updateMeta({ currency: 'USD' })}
                                     >
-                                        <select
-                                            value={meta.currency}
-                                            onChange={e => updateMeta({ currency: e.target.value })}
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium appearance-none",
-                                                isDark ? "text-[#ccc]" : "text-[#333]"
-                                            )}
-                                        >
-                                            <option value="USD">US Dollar ($)</option>
-                                            <option value="EUR">Euro (€)</option>
-                                            <option value="GBP">British Pound (£)</option>
-                                            <option value="SAR">Saudi Riyal (﷼)</option>
-                                            <option value="AED">UAE Dirham (د.إ)</option>
-                                        </select>
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setCurrencyDropdownOpen(prev => !prev)}
+                                                className={cn(
+                                                    "w-full flex items-center justify-between text-[12px] bg-transparent outline-none font-medium transition-opacity hover:opacity-80",
+                                                    isDark ? "text-[#ccc]" : "text-[#333]"
+                                                )}
+                                            >
+                                                <span className="truncate">
+                                                    {getCurrency(meta.currency)?.label || meta.currency} ({getCurrency(meta.currency)?.symbol})
+                                                </span>
+                                                <ChevronDown size={11} className={cn("transition-transform duration-200 opacity-40 shrink-0", currencyDropdownOpen ? "rotate-180" : "")} />
+                                            </button>
+                                            <Dropdown 
+                                                open={currencyDropdownOpen} 
+                                                onClose={() => setCurrencyDropdownOpen(false)} 
+                                                isDark={isDark}
+                                                className="w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-t-none max-h-[220px] overflow-y-auto custom-scrollbar"
+                                                align="left"
+                                            >
+                                                {CURRENCIES.map(c => (
+                                                    <DItem
+                                                        key={c.code}
+                                                        label={`${c.label} (${c.symbol})`}
+                                                        active={meta.currency === c.code}
+                                                        isDark={isDark}
+                                                        onClick={() => {
+                                                            updateMeta({ currency: c.code });
+                                                            setCurrencyDropdownOpen(false);
+                                                        }}
+                                                    />
+                                                ))}
+                                            </Dropdown>
+                                        </div>
                                     </MetaField>
 
                                     <MetaField

@@ -901,39 +901,41 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     backgroundAttachment: 'fixed',
                 }}
             >
-                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none">
-                    <div 
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                            backdropFilter: 'blur(12px)',
-                            WebkitBackdropFilter: 'blur(12px)',
-                            maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                            WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                        }}
-                    >
-                        <div className={cn(
-                            "absolute inset-0 pointer-events-none",
-                            isDark 
-                                ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
-                                : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
-                        )} />
+                {!isMobileViewport && (
+                    <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none">
+                        <div 
+                            className="absolute inset-0 pointer-events-none"
+                            style={{
+                                backdropFilter: 'blur(12px)',
+                                WebkitBackdropFilter: 'blur(12px)',
+                                maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                            }}
+                        >
+                            <div className={cn(
+                                "absolute inset-0 pointer-events-none",
+                                isDark 
+                                    ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
+                                    : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                            )} />
+                        </div>
+                        <div className="relative z-10 w-full pointer-events-auto">
+                            <ClientActionBar
+                                type="proposal"
+                                status={meta.status as any}
+                                design={meta.design}
+                                signedBy={signedBy}
+                                signedAt={signedAt}
+                                inline={true}
+                                onDownloadPDF={() => window.print()}
+                                onPrint={() => window.print()}
+                                onAccept={() => setIsSignModalOpen(true)}
+                                onDecline={() => setIsDeclineModalOpen(true)}
+                                className="w-full max-w-[850px] mx-auto px-6"
+                            />
+                        </div>
                     </div>
-                    <div className="relative z-10 w-full pointer-events-auto">
-                        <ClientActionBar
-                            type="proposal"
-                            status={meta.status as any}
-                            design={meta.design}
-                            signedBy={signedBy}
-                            signedAt={signedAt}
-                            inline={true}
-                            onDownloadPDF={() => window.print()}
-                            onPrint={() => window.print()}
-                            onAccept={() => setIsSignModalOpen(true)}
-                            onDecline={() => setIsDeclineModalOpen(true)}
-                            className="w-full max-w-[850px] mx-auto px-6"
-                        />
-                    </div>
-                </div>
+                )}
 
                 <div className={cn("flex flex-col items-center min-h-full pb-20", isMobileViewport ? "pt-2 px-4" : "pt-4 px-6")}>
                     <div
@@ -944,6 +946,25 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             boxShadow:       meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                         }}
                     >
+                        {isMobileViewport && (
+                            <div className={cn(
+                                "sticky top-0 z-30 backdrop-blur-lg border-b transition-all",
+                                meta.design?.topBlurTheme === 'dark' ? "bg-black/40 border-white/5" : "bg-white/40 border-black/5"
+                            )}>
+                                <ClientActionBar
+                                    type="proposal"
+                                    status={meta.status as any}
+                                    isMobile={true}
+                                    inline={true}
+                                    design={meta.design}
+                                    onAccept={() => setIsSignModalOpen(true)}
+                                    onDecline={() => setIsDeclineModalOpen(true)}
+                                    onDownloadPDF={() => window.print()}
+                                    onPrint={() => window.print()}
+                                    className="!py-3"
+                                />
+                            </div>
+                        )}
                         <ProposalDocument
                             meta={meta}
                             blocks={liveData.blocks || []}
@@ -1017,39 +1038,41 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     backgroundAttachment: 'fixed',
                 }}
             >
-                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none">
-                    <div 
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                            backdropFilter: 'blur(12px)',
-                            WebkitBackdropFilter: 'blur(12px)',
-                            maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                            WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                        }}
-                    >
-                        <div className={cn(
-                            "absolute inset-0 pointer-events-none",
-                            isDark 
-                                ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
-                                : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
-                        )} />
+                {!isMobileViewport && (
+                    <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none">
+                        <div 
+                            className="absolute inset-0 pointer-events-none"
+                            style={{
+                                backdropFilter: 'blur(12px)',
+                                WebkitBackdropFilter: 'blur(12px)',
+                                maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                            }}
+                        >
+                            <div className={cn(
+                                "absolute inset-0 pointer-events-none",
+                                isDark 
+                                    ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
+                                    : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                            )} />
+                        </div>
+                        <div className="relative z-10 w-full pointer-events-auto">
+                            <ClientActionBar
+                                type="invoice"
+                                status={invoiceMeta.status as any}
+                                amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 2 }).format(totals.total)}
+                                paidAt={paidAt}
+                                paidBy={paidBy}
+                                design={invoiceMeta.design}
+                                inline={true}
+                                onDownloadPDF={() => window.print()}
+                                onPrint={() => window.print()}
+                                onPay={() => setIsBankModalOpen(true)}
+                                className="w-full max-w-[850px] mx-auto px-6"
+                            />
+                        </div>
                     </div>
-                    <div className="relative z-10 w-full pointer-events-auto">
-                        <ClientActionBar
-                            type="invoice"
-                            status={invoiceMeta.status as any}
-                            amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 2 }).format(totals.total)}
-                            paidAt={paidAt}
-                            paidBy={paidBy}
-                            design={invoiceMeta.design}
-                            inline={true}
-                            onDownloadPDF={() => window.print()}
-                            onPrint={() => window.print()}
-                            onPay={() => setIsBankModalOpen(true)}
-                            className="w-full max-w-[850px] mx-auto px-6"
-                        />
-                    </div>
-                </div>
+                )}
 
                 <div className={cn("flex flex-col items-center min-h-full pb-20", isMobileViewport ? "pt-2 px-4" : "pt-4 px-6")}>
                     <div
@@ -1060,6 +1083,25 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             boxShadow:       invoiceMeta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                         }}
                     >
+                        {isMobileViewport && (
+                            <div className={cn(
+                                "sticky top-0 z-30 backdrop-blur-lg border-b transition-all",
+                                invoiceMeta.design?.topBlurTheme === 'dark' ? "bg-black/40 border-white/5" : "bg-white/40 border-black/5"
+                            )}>
+                                <ClientActionBar
+                                    type="invoice"
+                                    status={invoiceMeta.status as any}
+                                    amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 2 }).format(totals.total)}
+                                    isMobile={true}
+                                    inline={true}
+                                    design={invoiceMeta.design}
+                                    onPay={() => setIsBankModalOpen(true)}
+                                    onDownloadPDF={() => window.print()}
+                                    onPrint={() => window.print()}
+                                    className="!py-3"
+                                />
+                            </div>
+                        )}
                         <InvoiceDocument
                             meta={invoiceMeta}
                             blocks={liveData.blocks || []}
