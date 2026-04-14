@@ -53,14 +53,39 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
 
     // Custom slash menu items including columns
     const getSlashMenuItems = useMemo(() => {
-        return async (query: string) =>
-            filterSuggestionItems(
-                combineByGroup(
-                    getDefaultReactSlashMenuItems(editor),
-                    getMultiColumnSlashMenuItems(editor)
-                ),
-                query
+        return async (query: string) => {
+            // Get defaults and filter out Audio/File as requested
+            const defaultItems = getDefaultReactSlashMenuItems(editor).filter(item => 
+                item.title !== "Audio" && item.title !== "File"
             );
+            
+            // Setup Grid items
+            const gridItems = getMultiColumnSlashMenuItems(editor).map(item => ({
+                ...item,
+                group: "Grids"
+            }));
+
+            // Split default items into their respective groups for custom ordering
+            const headingItems = defaultItems.filter(i => i.group === "Headings");
+            const basicItems = defaultItems.filter(i => i.group === "Basic Blocks");
+            const listItems = defaultItems.filter(i => i.group === "List");
+            const mediaItems = defaultItems.filter(i => i.group === "Media");
+            const otherItems = defaultItems.filter(i => 
+                !["Headings", "Basic Blocks", "List", "Media"].includes(i.group)
+            );
+
+            // Combine with strict ordering: Headings -> Grids -> Basic -> List -> Media -> Others
+            const orderedItems = combineByGroup(
+                headingItems,
+                gridItems,
+                basicItems,
+                listItems,
+                mediaItems,
+                otherItems
+            );
+
+            return filterSuggestionItems(orderedItems, query);
+        };
     }, [editor]);
 
     // Persist changes
@@ -77,9 +102,14 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
             ...baseTheme.colors,
             editor: {
                 ...baseTheme.colors.editor,
-                text: isDarkBg ? "#ffffff" : "#555555",
+                text: isDarkBg ? "#ffffff" : "#000000",
                 background: "transparent",
             },
+            colors: {
+                ...baseTheme.colors.colors,
+                // Remap brown to black so users have an explicit "Black" option in the menu
+                brown: "#000000",
+            }
         },
     };
 
