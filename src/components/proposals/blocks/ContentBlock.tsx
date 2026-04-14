@@ -1,10 +1,17 @@
 "use client";
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { BlockNoteView, lightDefaultTheme, darkDefaultTheme } from "@blocknote/mantine";
-import { useCreateBlockNote } from "@blocknote/react";
+import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
+import { BlockNoteSchema, defaultBlockSpecs, filterSuggestionItems, combineByGroup } from "@blocknote/core";
+import * as locales from "@blocknote/core/locales";
+import { 
+    withMultiColumn, 
+    multiColumnDropCursor, 
+    locales as multiColumnLocales,
+    getMultiColumnSlashMenuItems
+} from "@blocknote/xl-multi-column";
 import "@blocknote/mantine/style.css";
-import { useUIStore } from '@/store/useUIStore';
 
 export interface ContentBlockProps {
     id: string;
@@ -14,29 +21,55 @@ export interface ContentBlockProps {
     readOnly?: boolean;
 }
 
+// Create a schema that includes multi-column support
+const schema = withMultiColumn(
+    BlockNoteSchema.create({
+        blockSpecs: {
+            ...defaultBlockSpecs,
+        },
+    })
+);
+
 export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }: ContentBlockProps) {
-    // Determine if the background is dark to switch editor theme (for readable text)
+    // Determine if the background is dark to switch editor theme
     const isDarkBg = backgroundColor ? (
         backgroundColor.includes('dark') || 
         ['#1a1f2e', '#1e1e1e', '#111827', '#161616', '#0d0d0d', '#080808'].includes(backgroundColor) ||
         (backgroundColor.startsWith('#') && parseInt(backgroundColor.replace('#', ''), 16) < 0x888888)
     ) : false;
 
-    // Prefer saved BlockNote blocks; fall back to a blank paragraph if no content at all
+    // Initialize BlockNote editor with multi-column support
     const editor = useCreateBlockNote({
+        schema,
         initialContent: data.blocks?.length
             ? data.blocks
             : [{ type: "paragraph", content: "" }],
+        dropCursor: multiColumnDropCursor,
+        dictionary: {
+            ...locales.en,
+            multi_column: multiColumnLocales.en,
+        },
     });
 
-    // On every editor change, persist both the block structure (lossless) and HTML (for preview)
+    // Custom slash menu items including columns
+    const getSlashMenuItems = useMemo(() => {
+        return async (query: string) =>
+            filterSuggestionItems(
+                combineByGroup(
+                    getDefaultReactSlashMenuItems(editor),
+                    getMultiColumnSlashMenuItems(editor)
+                ),
+                query
+            );
+    }, [editor]);
+
+    // Persist changes
     const onChange = useCallback(async () => {
         const editorBlocks = editor.document;
         const html = await editor.blocksToHTMLLossy(editorBlocks);
         updateData(id, { blocks: editorBlocks, content: html });
     }, [editor, id, updateData]);
 
-    // Define a custom theme to ensure text contrast and transparent background
     const baseTheme = isDarkBg ? darkDefaultTheme : lightDefaultTheme;
     const customTheme = {
         ...baseTheme,
@@ -58,7 +91,13 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                 onChange={onChange}
                 editable={!readOnly}
                 className="min-h-[50px]"
-            />
+                slashMenu={false}
+            >
+                <SuggestionMenuController
+                    triggerCharacter={"/"}
+                    getItems={getSlashMenuItems}
+                />
+            </BlockNoteView>
             <style jsx global>{`
                 .bn-container {
                     background: transparent !important;
@@ -66,6 +105,10 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                 .bn-editor {
                     padding-inline: 0 !important;
                     background: transparent !important;
+                }
+                /* Ensure columns have some spacing and look good */
+                .bn-column-list {
+                    gap: 24px !important;
                 }
             `}</style>
         </div>

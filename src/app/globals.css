@@ -113,6 +113,25 @@
   .prose strong, .blocknote-editor strong {
     font-weight: bold;
   }
+
+  /* BlockNote Multi-Column Styles */
+  .bn-column-list {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 24px !important;
+    width: 100% !important;
+    margin-block: 1rem !important;
+  }
+  .bn-column {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+  @media (max-width: 640px) {
+    .bn-column-list {
+      flex-direction: column !important;
+      gap: 16px !important;
+    }
+  }
 }
 
 @layer utilities {
