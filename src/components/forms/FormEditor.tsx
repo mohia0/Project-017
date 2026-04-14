@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
     ArrowLeft, ChevronDown, Link2, MoreHorizontal, Trash2, Copy,
     Check, Settings, Palette, ChevronRight, Plus, Search,
-    Type, AlignLeft, ChevronDown as ChevronDownIcon, CheckSquare,
+    Type, AlignLeft, ChevronDown as ChevronDownIcon, SquareCheck,
     Image, Upload, Mail, Phone, User, MapPin, Globe, Hash,
     Sliders as SlidersIcon, Calendar, LinkIcon, PenLine, Filter,
     GripVertical, X, Download, Eye, Monitor, Smartphone, LayoutTemplate,
@@ -52,7 +52,7 @@ const FIELD_TYPES: FieldTypeDef[] = [
     { type: 'short_text',    label: 'Short text',     icon: <Type size={14} />,          section: 'input',   defaultLabel: 'Short answer' },
     { type: 'long_text',     label: 'Long text',      icon: <AlignLeft size={14} />,     section: 'input',   defaultLabel: 'Long answer' },
     { type: 'dropdown',      label: 'Dropdown',       icon: <ChevronDownIcon size={14} />, section: 'input', defaultLabel: 'Select option' },
-    { type: 'multi_choice',  label: 'Multi choice',   icon: <CheckSquare size={14} />,   section: 'input',   defaultLabel: 'Multiple choice' },
+    { type: 'multi_choice',  label: 'Multi choice',   icon: <SquareCheck size={14} />,   section: 'input',   defaultLabel: 'Multiple choice' },
     { type: 'picture_choice',label: 'Picture choice', icon: <Image size={14} />,         section: 'input',   defaultLabel: 'Picture choice' },
     { type: 'file_upload',   label: 'File upload',    icon: <Upload size={14} />,        section: 'input',   defaultLabel: 'Upload file' },
     { type: 'number',        label: 'Number',         icon: <Hash size={14} />,          section: 'input',   defaultLabel: 'Enter number' },

@@ -1056,7 +1056,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
         
         const handleMouseMove = (moveEvent: MouseEvent) => {
             const delta = startX - moveEvent.pageX;
-            const newWidth = Math.max(280, Math.min(800, startWidth + delta));
+            const newWidth = Math.max(280, Math.min(600, startWidth + delta));
             setRightPanelWidth(newWidth);
         };
         

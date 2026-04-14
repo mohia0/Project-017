@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import {
     Search, Table2, LayoutGrid, Plus, ChevronDown,
     Zap, Activity, Link, ExternalLink, Trash2, Pencil,
-    Check, ArrowUpDown, Globe, Copy, X
+    Check, ArrowUpDown, Globe, Copy, X, SquareCheck
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -127,18 +127,18 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
                 isDark ? "bg-[#1a1a1a] border-[#2e2e2e] hover:border-[#444]"
                     : "bg-white border-[#f0f0f0] hover:shadow-md hover:border-[#e0e0e0]"
             )}>
-            <div className="p-4 flex flex-col gap-3 flex-1">
+            <div className="p-3 flex flex-col gap-2 flex-1">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                        <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
-                            <Zap size={14} style={{ color: h.color }} fill="currentColor" />
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                        <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center shrink-0", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
+                            <Zap size={13} style={{ color: h.color }} fill="currentColor" />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <div className={cn("font-bold text-[14px] truncate", isDark ? "text-white" : "text-[#111]")}>
+                            <div className={cn("font-bold text-[13px] truncate", isDark ? "text-white" : "text-[#111]")}>
                                 {h.name}
                             </div>
-                            <div className={cn("text-[11px] mt-0.5 flex items-center gap-1.5", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                            <div className={cn("text-[10px] mt-0.5 flex items-center gap-1.5", isDark ? "text-[#555]" : "text-[#aaa]")}>
                                 <span>Created {fmtDate(h.created_at)}</span>
                             </div>
                         </div>
@@ -153,33 +153,41 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
                 </div>
 
                 {/* Subtitle */}
-                <div className={cn("text-[12px] truncate px-1", isDark ? "text-[#666]" : "text-[#888]")}>
+                <div className={cn("text-[11px] opacity-70 truncate px-1", isDark ? "text-[#888]" : "text-[#666]")}>
                     {h.title}
                 </div>
 
-                {/* Meta */}
-                <div className={cn("flex items-center gap-3 text-[12px]", isDark ? "text-[#666]" : "text-[#888]")}>
+                <div className={cn("flex items-center gap-3 text-[11px]", isDark ? "text-[#666]" : "text-[#888]")}>
                     <span className="flex items-center gap-1">
-                        <Activity size={11} />
+                        <Activity size={10} />
                         {h.event_count ?? 0} triggers
                     </span>
                     {h.link && (
                         <span className="flex items-center gap-1 min-w-0">
-                            <Globe size={11} className="shrink-0" />
-                            <span className="truncate">{h.link}</span>
+                            <Globe size={10} className="shrink-0" />
+                            <span className="truncate max-w-[100px]">{h.link}</span>
                         </span>
                     )}
                 </div>
             </div>
 
             {/* Footer */}
-            <div className={cn("flex items-center justify-between px-4 py-2.5 border-t",
+            <div className={cn("flex items-center justify-between px-3 py-2 border-t",
                 isDark ? "border-[#252525]" : "border-[#f5f5f5]")} onClick={e => e.stopPropagation()}>
                 <div onClick={onToggle}>
                     <Chk checked={isSelected} isDark={isDark} />
                 </div>
                 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
+                    <button onClick={async () => {
+                        const { duplicateHook } = useHookStore.getState();
+                        await duplicateHook(h.id);
+                        gooeyToast.success('Hook duplicated');
+                    }}
+                        className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
+                            isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                        <Copy size={12} />
+                    </button>
                     <button onClick={() => useUIStore.getState().openRightPanel({ type: 'hook', id: h.id, editing: true })}
                         className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
                             isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
@@ -354,6 +362,18 @@ export default function HooksPage() {
                         
                         <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
                         
+                        <Tooltip content="Duplicate" side="bottom">
+                            <button onClick={async () => {
+                                const ids = Array.from(selectedIds);
+                                await useHookStore.getState().bulkDuplicateHooks(ids);
+                                gooeyToast.success(`${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated`);
+                                setSelectedIds(new Set());
+                            }}
+                                className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                <Copy size={11}/>
+                            </button>
+                        </Tooltip>
+
                         <Tooltip content="Delete" side="bottom">
                             <button onClick={handleBulkDelete}
                                 className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
@@ -366,7 +386,7 @@ export default function HooksPage() {
                                 <button onClick={toggleAll}
                                     className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', 
                                         isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
-                                    <CheckSquare size={11}/>
+                                    <SquareCheck size={11}/>
                                 </button>
                             </Tooltip>
                         )}
@@ -412,7 +432,7 @@ export default function HooksPage() {
                         )}
                     </div>
                 ) : view === 'cards' ? (
-                    <div className="p-4 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="p-3 grid gap-2 grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(220px,320px))]">
                         {filtered.map(h => (
                             <HookCard
                                 key={h.id} h={h}
@@ -465,7 +485,7 @@ export default function HooksPage() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    <Zap size={12} style={{ color: h.color }} shrink-0 fill="currentColor" />
+                                                    <Zap size={12} style={{ color: h.color }} className="shrink-0" fill="currentColor" />
                                                     <div className={cn("font-semibold truncate", isDark ? "text-[#e0e0e0]" : "text-[#111]")}>
                                                         {h.name}
                                                     </div>
@@ -488,7 +508,7 @@ export default function HooksPage() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 {h.link ? (
-                                                    <span className={cn(isDark ? "text-[#555]" : "text-[#aaa] truncate max-w-[200px] block")}>
+                                                    <span className={cn(isDark ? "text-[#555]" : "text-[#aaa] truncate max-w-[120px] block")}>
                                                         {h.link}
                                                     </span>
                                                 ) : (

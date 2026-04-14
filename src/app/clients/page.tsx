@@ -5,7 +5,7 @@ import {
     Search, Plus, Filter, LayoutGrid, List,
     Users, Mail, Phone, MapPin, Building2,
     Globe, Briefcase, Trash2, Archive, ArchiveRestore,
-    Copy, Check, CheckSquare, X, MoreHorizontal,
+    Copy, Check, SquareCheck, X, MoreHorizontal,
     FileSpreadsheet, Upload, Download, ChevronDown, ArrowUpDown, ArrowRightLeft
 } from 'lucide-react';
 import { gooeyToast } from 'goey-toast';
@@ -401,7 +401,7 @@ export default function ClientsPage() {
                                 <Tooltip content={selectedIds.size === (tab === 'people' ? filteredPeople.length : filteredCompanies.length) ? "Deselect All" : "Select All"} side="bottom">
                                     <button onClick={() => toggleAll(tab === 'people' ? filteredPeople : filteredCompanies)}
                                         className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
-                                        <CheckSquare size={11}/>
+                                        <SquareCheck size={11}/>
                                     </button>
                                 </Tooltip>
                             )}

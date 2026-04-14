@@ -67,8 +67,8 @@ function TbBtn({ label, icon, active, hasArrow, onClick, isDark }: {
 
 // ─── Dropdown ─────────────────────────────────────────────────────────────────
 
-function Dropdown({ open, onClose, isDark, children }: {
-    open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode
+function Dropdown({ open, onClose, isDark, children, align = 'right' }: {
+    open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode; align?: 'left' | 'right'
 }) {
     const ref = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -80,7 +80,8 @@ function Dropdown({ open, onClose, isDark, children }: {
     if (!open) return null;
     return (
         <div ref={ref} className={cn(
-            "absolute top-full right-0 mt-1 z-50 min-w-[170px] rounded-xl border shadow-xl overflow-hidden",
+            "absolute top-full mt-1 z-50 min-w-[170px] rounded-xl border shadow-xl overflow-hidden",
+            align === 'right' ? "right-0" : "left-0",
             isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
         )}>
             {children}

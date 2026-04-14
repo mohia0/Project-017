@@ -26,6 +26,8 @@ interface HookState {
     updateHook: (id: string, updates: Partial<Pick<Hook, 'name' | 'title' | 'link' | 'color' | 'status'>>) => Promise<void>;
     deleteHook: (id: string) => Promise<void>;
     bulkDeleteHooks: (ids: string[]) => Promise<void>;
+    duplicateHook: (id: string) => Promise<Hook | null>;
+    bulkDuplicateHooks: (ids: string[]) => Promise<void>;
 }
 
 export const useHookStore = create<HookState>((set) => ({
@@ -118,4 +120,37 @@ export const useHookStore = create<HookState>((set) => ({
             set((state) => ({ hooks: state.hooks.filter((h) => !ids.includes(h.id)) }));
         }
     },
+
+    duplicateHook: async (id) => {
+        const h = useHookStore.getState().hooks.find(x => x.id === id);
+        if (!h) return null;
+        const { id: _, created_at: __, workspace_id: ___, event_count: ____, ...payload } = h;
+        const newHookPayload = { ...payload, name: `${payload.name} (Copy)`, title: `${payload.title} (Copy)`, status: 'Active' };
+        const { data, error } = await supabase.from('hooks').insert(newHookPayload).select().single();
+        if (error) {
+            set({ error: error.message });
+            return null;
+        }
+        const newHook: Hook = { ...(data as Hook), event_count: 0 };
+        set((state) => ({ hooks: [newHook, ...state.hooks] }));
+        return newHook;
+    },
+
+    bulkDuplicateHooks: async (ids) => {
+        const hooksToDuplicate = useHookStore.getState().hooks.filter(h => ids.includes(h.id));
+        if (!hooksToDuplicate.length) return;
+        
+        const payloads = hooksToDuplicate.map(h => {
+            const { id: _, created_at: __, workspace_id: ___, event_count: ____, ...payload } = h;
+            return { ...payload, name: `${payload.name} (Copy)`, title: `${payload.title} (Copy)`, status: 'Active' };
+        });
+
+        const { data, error } = await supabase.from('hooks').insert(payloads).select();
+        if (error) {
+            set({ error: error.message });
+        } else if (data) {
+            const newHooks = (data as any[]).map(h => ({ ...h, event_count: 0 }));
+            set((state) => ({ hooks: [...newHooks, ...state.hooks] }));
+        }
+    }
 }));
