@@ -26,8 +26,8 @@ export interface DocumentDesign {
 }
 
 export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
-    marginTop: 0,
-    marginBottom: 0,
+    marginTop: 20,
+    marginBottom: 20,
     borderRadius: 16,
     signBarColor: '#000000',
     signBarThickness: 1,
@@ -47,7 +47,7 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     actionButtonMarginTop: 12,
     actionButtonMarginBottom: 8,
     blockBackgroundColor: '#ffffff',
-    blockShadow: '0 4px 20px -4px rgba(0,0,0,0.05)',
+    blockShadow: '0 8px 30px -6px rgba(0,0,0,0.08)',
     actionTheme: 'light',
     topBlurTheme: 'light',
 };

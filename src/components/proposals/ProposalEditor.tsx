@@ -181,6 +181,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
         status: 'Draft',
         logoUrl: '',
         documentTitle: 'PROPOSAL &\nAGREEMENT',
+        design: DEFAULT_DOCUMENT_DESIGN,
     });
 
     const [blocks, setBlocks] = useState<BlockData[]>([
@@ -751,9 +752,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             <div 
                                 className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
                                 style={{ 
-                                    borderRadius: `${meta.design?.borderRadius ?? 16}px`,
-                                    backgroundColor: (meta.design?.blockBackgroundColor) || '#ffffff',
-                                    boxShadow: meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
+                                    borderRadius: `${meta.design?.borderRadius ?? DEFAULT_DOCUMENT_DESIGN.borderRadius}px`,
+                                    backgroundColor: (meta.design?.blockBackgroundColor) || DEFAULT_DOCUMENT_DESIGN.blockBackgroundColor,
+                                    boxShadow: meta.design?.blockShadow || DEFAULT_DOCUMENT_DESIGN.blockShadow,
                                 }}
                             >
                                 <ProposalDocument
