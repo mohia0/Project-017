@@ -66,8 +66,8 @@ interface BlockData {
     level?: 1 | 2 | 3;
     // image
     url?: string;
-    // pricing
-    rows?: PricingRow[];
+    // pricing / breakdown
+    rows?: any[];
     taxRate?: number;
     discountRate?: number;
     showTax?: boolean;
@@ -2170,8 +2170,8 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
-            const oldIndex = rows.findIndex(r => r.id === active.id);
-            const newIndex = rows.findIndex(r => r.id === over.id);
+            const oldIndex = rows.findIndex((r: any) => r.id === active.id);
+            const newIndex = rows.findIndex((r: any) => r.id === over.id);
             updateBlock(block.id, { rows: arrayMove(rows, oldIndex, newIndex) });
         }
     };
@@ -2243,7 +2243,7 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                                     border-color: var(--table-border-color) !important;
                                 }
                             ` }} />
-                            <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                            <SortableContext items={rows.map((r: any) => r.id)} strategy={verticalListSortingStrategy}>
                                 {rows.map((row: any, idx: number) => (
                                     <SortableBreakdownRow 
                                         key={row.id} 

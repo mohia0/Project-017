@@ -71,7 +71,7 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
             const listItems = defaultItems.filter(i => i.group === "List");
             const mediaItems = defaultItems.filter(i => i.group === "Media");
             const otherItems = defaultItems.filter(i => 
-                !["Headings", "Basic Blocks", "List", "Media"].includes(i.group)
+                i.group === undefined || !["Headings", "Basic Blocks", "List", "Media"].includes(i.group)
             );
 
             // Combine with strict ordering: Headings -> Grids -> Basic -> List -> Media -> Others
@@ -105,11 +105,12 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                 text: isDarkBg ? "#ffffff" : "#000000",
                 background: "transparent",
             },
-            colors: {
-                ...baseTheme.colors.colors,
-                // Remap brown to black so users have an explicit "Black" option in the menu
-                brown: "#000000",
-            }
+            ...('colors' in baseTheme.colors ? {
+                colors: {
+                    ...(baseTheme.colors as any).colors,
+                    brown: "#000000",
+                }
+            } : {})
         },
     };
 
