@@ -695,23 +695,38 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                  backgroundPosition: 'center',
                                              }}
                                         >
-                                            <div className={cn(
-                                                "sticky top-0 z-30 backdrop-blur-lg border-b transition-all",
-                                                meta.design?.topBlurTheme === 'dark' ? "bg-black/40 border-white/5" : "bg-white/40 border-black/5"
-                                            )}>
-                                                <ClientActionBar
-                                                    type="invoice"
-                                                    status={meta.status as any}
-                                                    amountDue={fmt(totals.total, meta.currency)}
-                                                    paidAt="July 4, 2026"
-                                                    isMobile={true}
-                                                    inline={true}
-                                                    design={meta.design}
-                                                    onDownloadPDF={() => console.log('Download PDF')}
-                                                    onPrint={() => window.print()}
-                                                    onPay={() => setIsPayModalOpen(true)}
-                                                    className="!py-3"
-                                                />
+                                            <div className="sticky top-0 z-30 transition-all w-full pt-1 pb-0 pointer-events-none">
+                                                <div 
+                                                    className="absolute inset-0 pointer-events-none"
+                                                    style={{
+                                                        backdropFilter: 'blur(12px)',
+                                                        WebkitBackdropFilter: 'blur(12px)',
+                                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                                    }}
+                                                >
+                                                    <div className={cn(
+                                                        "absolute inset-0 pointer-events-none",
+                                                        meta.design?.topBlurTheme === 'dark'
+                                                            ? "bg-gradient-to-b from-[#000]/80 to-transparent" 
+                                                            : "bg-gradient-to-b from-white/80 to-transparent"
+                                                    )} />
+                                                </div>
+                                                <div className="relative z-10 w-full pointer-events-auto">
+                                                    <ClientActionBar
+                                                        type="invoice"
+                                                        status={meta.status as any}
+                                                        amountDue={fmt(totals.total, meta.currency)}
+                                                        paidAt="July 4, 2026"
+                                                        isMobile={true}
+                                                        inline={true}
+                                                        design={meta.design}
+                                                        onDownloadPDF={() => console.log('Download PDF')}
+                                                        onPrint={() => window.print()}
+                                                        onPay={() => setIsPayModalOpen(true)}
+                                                        className="!py-3"
+                                                    />
+                                                </div>
                                             </div>
                                             <InvoiceDocument
                                                 meta={meta}

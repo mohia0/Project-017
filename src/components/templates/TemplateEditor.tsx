@@ -325,7 +325,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                     }}
                 >
                     {isPreview && previewMode !== 'mobile' && (
-                            <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                            <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-1 pb-0 pointer-events-none">
                                 <div 
                                     className="absolute inset-0 pointer-events-none"
                                     style={{
@@ -337,9 +337,9 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                 >
                                     <div className={cn(
                                         "absolute inset-0 pointer-events-none",
-                                        isDark 
-                                            ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
-                                            : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                        template.design?.topBlurTheme === 'dark'
+                                            ? "bg-gradient-to-b from-[#000]/80 to-transparent" 
+                                            : "bg-gradient-to-b from-white/80 to-transparent"
                                     )} />
                                 </div>
                                 <div className="relative z-10 w-full pointer-events-auto">
@@ -353,7 +353,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                         onPrint={() => {}}
                                         onAccept={() => {}}
                                         onPay={() => {}}
-                                        className="w-full max-w-[850px] mx-auto px-6"
+                                        className="w-full max-w-[850px] mx-auto"
                                     />
                                 </div>
                             </div>
@@ -381,7 +381,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                          }}
                                     >
                                         <div className="w-full">
-                                            <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-4 pb-8 pointer-events-none">
+                                            <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-1 pb-0 pointer-events-none">
                                                 <div 
                                                     className="absolute inset-0 pointer-events-none"
                                                     style={{
@@ -393,9 +393,9 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                                 >
                                                     <div className={cn(
                                                         "absolute inset-0 pointer-events-none",
-                                                        isDark 
-                                                            ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
-                                                            : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                                        template.design?.topBlurTheme === 'dark'
+                                                            ? "bg-gradient-to-b from-[#000]/80 to-transparent" 
+                                                            : "bg-gradient-to-b from-white/80 to-transparent"
                                                     )} />
                                                 </div>
                                                 <div className="relative z-10 w-full pointer-events-auto">
@@ -410,7 +410,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                                         onPrint={() => {}}
                                                         onAccept={() => {}}
                                                         onPay={() => {}}
-                                                        className="px-6"
+                                                        className=""
                                                     />
                                                 </div>
                                             </div>
