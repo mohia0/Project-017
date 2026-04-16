@@ -372,6 +372,8 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
         return brightness < 128;
     }
 
+    const [formValues, setFormValues] = useState<Record<string, any>>({});
+
     if (isRestricted) {
         return (
             <div
@@ -430,7 +432,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
         );
     }
 
-    const [formValues, setFormValues] = useState<Record<string, any>>({});
+
 
     const handleConfirmBooking = async () => {
         if (!info.name || !info.email || !selDate || !selTime) return;
@@ -864,6 +866,34 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
             supabasePublic.removeChannel(channel);
         };
     }, [type, data.id]);
+    
+    const handleDownload = async () => {
+        const docTitle = liveData.title || liveData.meta?.invoiceNumber || liveData.meta?.projectName || 'Document';
+        const fileName = `${docTitle}-${data.id.substring(0, 8)}.pdf`;
+        
+        appToast.promise(
+            (async () => {
+                const response = await fetch(`/api/download-pdf?type=${type}&id=${data.id}`);
+                if (!response.ok) throw new Error('Failed to generate PDF');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })(),
+            {
+                loading: 'Generating your PDF...',
+                success: 'PDF downloaded successfully!',
+                error: 'Could not generate PDF. Please try again.'
+            }
+        );
+    };
 
     const handleUpdateStatus = async (status: string, signatureData?: any) => {
         if (isUpdating) return;
@@ -914,7 +944,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
 
         return (
             <div
-                className="flex-1 overflow-auto relative w-full h-screen"
+                className="flex-1 overflow-auto relative w-full h-screen preview-scroll-container"
                 style={{
                     backgroundColor:   meta.design?.backgroundColor  || (isDark ? '#080808' : '#f7f7f7'),
                     backgroundImage:   getBackgroundImageWithOpacity(meta.design?.backgroundImage, meta.design?.backgroundColor || (isDark ? '#080808' : '#f7f7f7'), meta.design?.backgroundImageOpacity),
@@ -924,7 +954,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 }}
             >
                 {!isMobileViewport && (
-                    <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none">
+                    <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none no-print">
                         <div 
                             className="absolute inset-0 pointer-events-none"
                             style={{
@@ -945,7 +975,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                 signedBy={signedBy}
                                 signedAt={signedAt}
                                 inline={true}
-                                onDownloadPDF={() => window.print()}
+                                onDownloadPDF={handleDownload}
                                 onPrint={() => window.print()}
                                 onAccept={() => setIsSignModalOpen(true)}
                                 onDecline={() => setIsDeclineModalOpen(true)}
@@ -987,7 +1017,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                         design={meta.design}
                                         onAccept={() => setIsSignModalOpen(true)}
                                         onDecline={() => setIsDeclineModalOpen(true)}
-                                        onDownloadPDF={() => window.print()}
+                                        onDownloadPDF={handleDownload}
                                         onPrint={() => window.print()}
                                         className="!py-3"
                                     />
@@ -1058,7 +1088,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
 
         return (
             <div
-                className="flex-1 overflow-auto relative w-full h-screen"
+                className="flex-1 overflow-auto relative w-full h-screen preview-scroll-container"
                 style={{
                     backgroundColor:   invoiceMeta.design?.backgroundColor  || (isDark ? '#080808' : '#f7f7f7'),
                     backgroundImage:   getBackgroundImageWithOpacity(invoiceMeta.design?.backgroundImage, invoiceMeta.design?.backgroundColor || (isDark ? '#080808' : '#f7f7f7'), invoiceMeta.design?.backgroundImageOpacity),
@@ -1068,7 +1098,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 }}
             >
                 {!isMobileViewport && (
-                    <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none">
+                    <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none no-print">
                         <div 
                             className="absolute inset-0 pointer-events-none"
                             style={{
@@ -1090,7 +1120,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                 paidBy={paidBy}
                                 design={invoiceMeta.design}
                                 inline={true}
-                                onDownloadPDF={() => window.print()}
+                                onDownloadPDF={handleDownload}
                                 onPrint={() => window.print()}
                                 onPay={() => setIsBankModalOpen(true)}
                                 className="w-full max-w-[850px] mx-auto px-6"
@@ -1131,7 +1161,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                         inline={true}
                                         design={invoiceMeta.design}
                                         onPay={() => setIsBankModalOpen(true)}
-                                        onDownloadPDF={() => window.print()}
+                                        onDownloadPDF={handleDownload}
                                         onPrint={() => window.print()}
                                         className="!py-3"
                                     />

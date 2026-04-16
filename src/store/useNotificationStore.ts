@@ -25,6 +25,7 @@ interface NotificationState {
     subscribe: () => void;
     unsubscribe: () => void;
     clearAll: () => Promise<void>;
+    updateNotification: (id: string, updates: Partial<AppNotification>) => Promise<void>;
 }
 
 let subscription: any = null;
@@ -87,6 +88,19 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         if (!error) {
             set(state => ({
                 notifications: state.notifications.map(n => n.id === id ? { ...n, read: true } : n)
+            }));
+        }
+    },
+
+    updateNotification: async (id: string, updates: Partial<AppNotification>) => {
+        const { error } = await supabase
+            .from('notifications')
+            .update(updates)
+            .eq('id', id);
+
+        if (!error) {
+            set(state => ({
+                notifications: state.notifications.map(n => n.id === id ? { ...n, ...updates } : n)
             }));
         }
     },

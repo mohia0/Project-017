@@ -30,6 +30,14 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
         subject: 'Payment Receipt — Invoice #{{invoice_number}}',
         body: `Hi {{client_name}},\n\nThank you! We have received your payment.\n\nInvoice #{{invoice_number}}\nAmount Paid: {{amount_paid}}\n\nYou can view your receipt here:\n{{document_link}}\n\nWe appreciate your business!\n\nBest regards,\n{{sender_name}}`,
     },
+    overdue_remind: {
+        subject: 'Action Required: Overdue Invoice #{{invoice_number}}',
+        body: `Hi {{client_name}},\n\nThis is a gentle reminder that your payment for invoice #{{invoice_number}} is currently {{days_overdue}} days overdue.\n\nAmount Due: {{amount_due}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nIf you have already made the payment, please disregard this message.\n\nBest regards,\n{{sender_name}}`,
+    },
+    booking_confirmed: {
+        subject: 'Booking Confirmed: {{scheduler_title}}',
+        body: `Hi {{client_name}},\n\nYour booking for "{{scheduler_title}}" has been confirmed.\n\nDate: {{booked_date}}\nTime: {{booked_time}}\nTimezone: {{timezone}}\n\nWe look forward to meeting with you!\n\nBest regards,\n{{sender_name}}`,
+    },
 };
 
 export async function POST(req: NextRequest) {

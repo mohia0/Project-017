@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, DragEndEvent
@@ -18,7 +18,7 @@ import {
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image as ImageIcon, SeparatorHorizontal,
     Settings, ChevronRight, ChevronLeft, RotateCcw, Monitor, Smartphone, PanelTop,
-    X, Upload, LayoutTemplate, ExternalLink
+    X, Upload, LayoutTemplate, ExternalLink, Printer
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
@@ -26,6 +26,7 @@ import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { CURRENCIES, getCurrency } from '@/lib/currencies';
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
 import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useClientStore } from '@/store/useClientStore';
@@ -51,7 +52,7 @@ import { supabase } from '@/lib/supabase';
 /* ═══════════════════════════════════════════════════════
    TYPES
 ═══════════════════════════════════════════════════════ */
-type BlockType = 'heading' | 'text' | 'pricing' | 'breakdown' | 'signature' | 'divider' | 'image' | 'header';
+type BlockType = 'heading' | 'text' | 'pricing' | 'breakdown' | 'signature' | 'divider' | 'image' | 'header' | 'page_break';
 
 interface PricingRow {
     id: string;
@@ -119,6 +120,7 @@ const BLOCK_MENU = [
     { type: 'signature' as BlockType, label: 'Signature',     icon: PenLine,             tag: 'Legal' },
     { type: 'divider'   as BlockType, label: 'Divider',       icon: SeparatorHorizontal, tag: 'Layout' },
     { type: 'image'     as BlockType, label: 'Image',         icon: ImageIcon,               tag: 'Media' },
+    { type: 'page_break' as BlockType, label: 'Page Break',   icon: SeparatorHorizontal, tag: 'Layout' },
 ];
 
 /* ═══════════════════════════════════════════════════════
@@ -132,7 +134,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const { updateProposal, deleteProposal, fetchProposals, proposals } = useProposalStore();
     const { addTemplate } = useTemplateStore();
     const { projects, fetchProjects, addProjectItem, itemsByProject, fetchProjectItems, removeProjectItem } = useProjectStore();
-    const { emailConfig, emailTemplates, fetchEmailConfig, fetchEmailTemplates } = useSettingsStore();
+    const { emailConfig, emailTemplates, fetchEmailConfig, fetchEmailTemplates, statuses, fetchStatuses } = useSettingsStore();
 
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
 
@@ -198,6 +200,45 @@ export default function ProposalEditor({ id }: { id?: string }) {
     }, []);
 
     const isMobilePreview = isPreview && previewMode === 'mobile';
+
+    const handlePrint = () => {
+        setIsPreview(true);
+        setTimeout(() => window.print(), 500);
+    };
+
+    const handleDownloadPDF = async () => {
+        if (!id) {
+            appToast.error('Download Failed', 'Proposal ID is missing.');
+            return;
+        }
+
+        const fileName = `${meta.projectName || 'Proposal'}-${id.substring(0, 8)}.pdf`;
+        
+        appToast.promise(
+            (async () => {
+                const response = await fetch(`/api/download-pdf?type=proposal&id=${id}`);
+                if (!response.ok) throw new Error('Failed to generate PDF');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })(),
+            {
+                loading: 'Generating your PDF...',
+                success: 'PDF downloaded successfully!',
+                error: 'Could not generate PDF. Please try again.'
+            }
+        );
+    };
+
+
 
     const [meta, setMeta] = useState<ProposalMeta>({
         clientName: '',
@@ -285,14 +326,21 @@ export default function ProposalEditor({ id }: { id?: string }) {
             });
             setSelectedProject(project.name);
             setSelectedProjectId(project.id);
-            appToast.success(`Linked to ${project.name}`);
+            appToast.success('Project Linked');
         } else {
             setSelectedProject('');
             setSelectedProjectId(null);
-            appToast.success('Project unlinked');
+            appToast.success('Project Unlinked');
         }
         setShowProjectDrop(false);
     };
+
+    const customStatuses = React.useMemo(() => statuses.filter(s => s.tool === 'proposals'), [statuses]);
+    const activeStatuses = React.useMemo(() => customStatuses.filter(s => s.is_active || s.name === meta.status).sort((a,b) => a.position - b.position), [customStatuses, meta.status]);
+
+    React.useEffect(() => {
+        if (activeWorkspaceId) fetchStatuses(activeWorkspaceId);
+    }, [activeWorkspaceId, fetchStatuses]);
     
     const [isLoaded, setIsLoaded] = useState(false);
     const debouncedMeta = useDebounce(meta, 1000);
@@ -468,7 +516,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
             });
             setIsClientEditorOpen(false);
             setClientDropdownOpen(false);
-            appToast.success('Contact created and selected');
+            appToast.success('Contact Created');
         }
     };
 
@@ -493,7 +541,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
         return { subtotal, discAmt, taxAmt, total: subtotal - discAmt + taxAmt };
     }, [blocks]);
 
-    const sc = getStatusColors(meta.status);
+    const sc = getStatusColors(meta.status, customStatuses);
 
     /* ═══ RENDER ═══ */
     return (
@@ -548,11 +596,10 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     <div className="relative hidden md:flex items-center" ref={statusRef}>
                         <button
                             onClick={() => setShowStatusMenu(s => !s)}
+                            style={sc.dynamic ? { backgroundColor: sc.dynamic.bg, color: sc.dynamic.text, borderColor: sc.dynamic.border } : {}}
                             className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all border",
-                                isDark
-                                    ? "bg-white/[0.06] text-[#aaa] border-white/10"
-                                    : cn(sc.badge, sc.badgeText, sc.badgeBorder)
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-bold transition-all border",
+                                !sc.dynamic ? (isDark ? "bg-white/[0.05] border-white/10 text-white/40" : cn(sc.badge, sc.badgeText, sc.badgeBorder)) : "hover:brightness-110"
                             )}
                         >
                             <div className={cn("w-1.5 h-1.5 rounded-full bg-current opacity-70")} />
@@ -561,23 +608,34 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         </button>
                         {showStatusMenu && (
                             <div className={cn(
-                                "absolute right-0 top-full mt-1.5 w-40 rounded-[10px] shadow-xl py-1 z-50 border",
-                                isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]"
+                                "absolute right-0 top-full mt-1.5 w-40 rounded-[10px] border shadow-xl py-1 z-50",
+                                isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#d2d2eb]"
                             )}>
-                                {Object.keys(STATUS_COLORS).filter(k => k !== 'All' && k !== 'Paid').map(s => (
-                                    <button
-                                        key={s}
-                                        onClick={() => { handleStatusChange(s as any); setShowStatusMenu(false); }}
-                                        className={cn(
-                                            "w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
-                                            isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
-                                            meta.status === s ? "font-semibold" : ""
-                                        )}
-                                    >
-                                        {meta.status === s ? <Check size={12} className="text-emerald-500" /> : <div className="w-[12px]" />}
-                                        <span>{s}</span>
-                                    </button>
-                                ))}
+                                {activeStatuses.map(s => {
+                                    const sSc = getStatusColors(s.name, customStatuses);
+                                    const isActive = s.name === meta.status;
+                                    const sDynamic = (sSc as any).dynamic;
+                                    return (
+                                        <button
+                                            key={s.name}
+                                            onClick={() => { handleStatusChange(s.name as any); setShowStatusMenu(false); }}
+                                            className={cn(
+                                                "w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
+                                                isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
+                                                isActive ? "font-semibold" : ""
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-2 flex-1">
+                                                <div 
+                                                    className="w-1.5 h-1.5 rounded-full shrink-0" 
+                                                    style={{ backgroundColor: isDark ? sSc.bar : (sDynamic ? sDynamic.text : sSc.bar) }} 
+                                                />
+                                                <span>{s.name}</span>
+                                            </div>
+                                            {isActive && <Check size={12} className="text-primary" />}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -693,7 +751,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     { icon: LayoutTemplate, label: 'Save as Template', action: () => setIsSaveTemplateModalOpen(true) },
                                     { icon: ExternalLink,  label: 'Open Link',         action: () => window.open(window.location.origin + '/p/proposal/' + id, '_blank') },
                                     { icon: Link2,          label: 'Copy Link',         action: copyLink },
-                                    { icon: Download,       label: 'Download PDF',      action: () => console.log('Download') },
+                                    { icon: Download,       label: 'Download PDF',      action: handleDownloadPDF },
+                                    { icon: Printer,        label: 'Print',             action: handlePrint },
                                     { icon: Copy,           label: 'Duplicate',         action: () => console.log('Duplicate') },
                                     { 
                                         icon: Trash2,         
@@ -757,8 +816,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         inline={true}
                                         design={meta.design}
                                         onAccept={() => setIsSignModalOpen(true)}
-                                        onDecline={() => updateMeta({ status: 'Declined' as any })}
-                                        onPrint={() => window.print()}
+                                        onDownloadPDF={handleDownloadPDF}
+                                        onPrint={handlePrint}
                                     />
                                 </div>
                             </div>
@@ -820,8 +879,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                     design={meta.design}
                                                     onAccept={() => setIsSignModalOpen(true)}
                                                     onDecline={() => updateMeta({ status: 'Declined' as any })}
-                                                    onDownloadPDF={() => console.log('Download PDF pressed')}
-                                                    onPrint={() => window.print()}
+                                                    onDownloadPDF={handleDownloadPDF}
+                                                    onPrint={handlePrint}
                                                     className="!py-3"
                                                 />
                                             </div>
@@ -1317,6 +1376,14 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             });
                         }
                     });
+
+                    // Trigger notification
+                    useNotificationStore.getState().addNotification({
+                        title: 'Proposal Signed 🎉',
+                        message: `${signature.name || meta.clientName || 'A client'} just signed the proposal "${meta.projectName || 'Untitled'}"`,
+                        link: `/proposals/${id}`,
+                        type: 'success'
+                    });
                 }}
                 documentType="proposal"
             />
@@ -1625,9 +1692,35 @@ function BlockRenderer({
         case 'breakdown':
             return <BreakdownBlock block={block} blocks={blocks} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} />;
         case 'signature':
-            return <SignatureBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} design={meta.design} />;
+            return <SignatureBlock 
+                block={block} 
+                isDark={isDark} 
+                isPreview={isPreview} 
+                updateBlock={updateBlock} 
+                design={meta.design} 
+                meta={meta} 
+                updateMeta={updateMeta} 
+                addNotification={useNotificationStore.getState().addNotification}
+            />;
         case 'divider':
             return <div className={cn("my-4 border-t", isDark ? "border-[#2a2a2a]" : "border-[#f0f0f0]")} />;
+        case 'page_break':
+            return (
+                <div className={cn("my-6 page-break-block group flex items-center justify-center relative", isPreview ? "opacity-0 h-0 my-0 overflow-hidden" : "h-6")}>
+                    {!isPreview && (
+                        <>
+                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                <div className="w-full border-t border-dashed border-gray-300 dark:border-gray-700"></div>
+                            </div>
+                            <div className="relative flex justify-center">
+                                <span className={cn("px-3 text-[10px] font-medium tracking-widest uppercase", isDark ? "bg-[#111] text-[#666]" : "bg-white text-[#999]")}>
+                                    Page Break
+                                </span>
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
         case 'image':
             return (
                 <div className="my-2">
@@ -2465,7 +2558,7 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
 }
 
 /* ─── Signature Block ─── */
-function SignatureBlock({ block, isDark, isPreview, updateBlock, design }: any) {
+function SignatureBlock({ block, isDark, isPreview, updateBlock, design, meta, updateMeta, addNotification }: any) {
     const sigTheme = design?.signTheme || 'light';
     const isSigDark = sigTheme === 'dark';
 
@@ -2545,7 +2638,32 @@ function SignatureBlock({ block, isDark, isPreview, updateBlock, design }: any) 
                 
                 {!isPreview && (
                     <button
-                        onClick={() => updateBlock(block.id, { signed: !block.signed })}
+                        onClick={() => {
+                            const isNowSigned = !block.signed;
+                            const patch: any = { signed: isNowSigned };
+                            
+                            // If marking as signed and name is empty, pre-fill with client name
+                            if (isNowSigned && !block.signerName) {
+                                patch.signerName = meta?.clientName || 'Client';
+                            }
+                            
+                            updateBlock(block.id, patch);
+                            
+                            // If marking as signed, also update global status to Accepted
+                            if (isNowSigned) {
+                                if (meta?.status !== 'Accepted') {
+                                    updateMeta?.({ status: 'Accepted' as any });
+                                }
+
+                                // Trigger notification as if it was signed by client
+                                addNotification?.({
+                                    title: 'Proposal Signed 🎉',
+                                    message: `${patch.signerName || meta?.clientName || 'A client'} just signed the proposal "${meta?.projectName || 'Untitled'}"`,
+                                    link: `/proposals/${block.proposalId || ''}`,
+                                    type: 'success'
+                                });
+                            }
+                        }}
                         className={cn(
                             "px-4 py-2 w-full text-[12px] font-bold transition-all active:scale-95 shadow-sm border",
                             block.signed
@@ -2654,9 +2772,23 @@ function InsertZone({
 }) {
     const [hovered, setHovered] = useState(false);
     const visible = hovered || isOpen;
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Handle click outside to close the menu
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                onClose();
+                setHovered(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen, onClose]);
 
     return (
-        <div className="relative h-0 z-20 w-full">
+        <div className="relative h-0 z-20 w-full" ref={menuRef}>
             <div 
                 className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center group/insert h-8" 
                 style={{
@@ -2675,67 +2807,67 @@ function InsertZone({
                 )}>
                     <div className={cn(
                         "flex-1 border-t border-dashed",
-                    isDark ? "border-[#363636]" : "border-[#d8d8d8]"
-                )} />
-                <button
-                    onClick={(e) => { e.stopPropagation(); onOpen(); }}
-                    className={cn(
-                        "mx-2 w-5 h-5 flex items-center justify-center border transition-all shrink-0 shadow-sm",
-                        isOpen
-                            ? isDark ? "bg-[var(--primary-color)] border-[var(--primary-color)] text-white" : "bg-[var(--primary-color)] border-[var(--primary-color)] text-white"
-                            : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
-                                     : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
-                    )}
-                    style={{ borderRadius: 'var(--block-button-radius)' }}
-                >
-                    <Plus size={12} strokeWidth={2.5} />
-                </button>
-                <div className={cn(
-                    "flex-1 border-t border-dashed",
-                    isDark ? "border-[#363636]" : "border-[#d8d8d8]"
-                )} />
-            </div>
-
-            {/* Block type picker popup */}
-            {isOpen && (
-                <div
-                    className={cn(
-                        "absolute left-1/2 -translate-x-1/2 w-56 rounded-xl border shadow-xl py-1.5 z-50",
-                        isLast ? "bottom-full mb-1" : "top-full mt-1",
-                        isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#e5e5e5]"
-                    )}
-                    onMouseLeave={() => { setHovered(false); onClose(); }}
-                >
+                        isDark ? "border-[#363636]" : "border-[#d8d8d8]"
+                    )} />
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onOpen(); }}
+                        className={cn(
+                            "mx-2 w-5 h-5 flex items-center justify-center border transition-all shrink-0 shadow-sm",
+                            isOpen
+                                ? isDark ? "bg-[var(--primary-color)] border-[var(--primary-color)] text-white" : "bg-[var(--primary-color)] border-[var(--primary-color)] text-white"
+                                : isDark ? "bg-[#252525] border-[#363636] text-[#777] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
+                                         : "bg-white border-[#d0d0d0] text-[#aaa] hover:border-[var(--primary-color)] hover:text-[var(--primary-color)]"
+                        )}
+                        style={{ borderRadius: 'var(--block-button-radius)' }}
+                    >
+                        <Plus size={12} strokeWidth={2.5} />
+                    </button>
                     <div className={cn(
-                        "px-3 pb-1 pt-0.5 text-[9px] font-bold uppercase tracking-widest",
-                        isDark ? "text-[#555]" : "text-[#bbb]"
-                    )}>
-                        Insert block
-                    </div>
-                    {BLOCK_MENU.filter(b => !(b.type === 'header' && hasHeader)).map(({ type, label, icon: Icon, tag }) => (
-                        <button
-                            key={type}
-                            onClick={() => { onAdd(type); onClose(); setHovered(false); }}
-                            className={cn(
-                                "w-full flex items-center justify-between px-3 py-2 text-[12px] transition-colors",
-                                isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Icon size={13} className="opacity-50" />
-                                {label}
-                            </div>
-                            <span className={cn(
-                                "text-[9px] px-1.5 py-0.5 rounded font-semibold",
-                                isDark ? "bg-[#2a2a2a] text-[#666]" : "bg-[#f0f0f0] text-[#999]"
-                            )}>
-                                {tag}
-                            </span>
-                        </button>
-                    ))}
+                        "flex-1 border-t border-dashed",
+                        isDark ? "border-[#363636]" : "border-[#d8d8d8]"
+                    )} />
                 </div>
-            )}
+
+                {/* Block type picker popup */}
+                {isOpen && (
+                    <div
+                        className={cn(
+                            "absolute left-1/2 -translate-x-1/2 w-56 rounded-xl border shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100",
+                            isLast ? "bottom-full mb-1" : "top-full mt-1",
+                            isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#e5e5e5]"
+                        )}
+                    >
+                        <div className={cn(
+                            "px-3 pb-1 pt-0.5 text-[9px] font-bold uppercase tracking-widest",
+                            isDark ? "text-[#555]" : "text-[#bbb]"
+                        )}>
+                            Insert block
+                        </div>
+                        {BLOCK_MENU.filter(b => !(b.type === 'header' && hasHeader)).map(({ type, label, icon: Icon, tag }) => (
+                            <button
+                                key={type}
+                                onClick={() => { onAdd(type); onClose(); setHovered(false); }}
+                                className={cn(
+                                    "w-full flex items-center justify-between px-3 py-2 text-[12px] transition-colors",
+                                    isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                )}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Icon size={13} className="opacity-50" />
+                                    {label}
+                                </div>
+                                <span className={cn(
+                                    "text-[9px] px-1.5 py-0.5 rounded font-semibold",
+                                    isDark ? "bg-[#2a2a2a] text-[#666]" : "bg-[#f0f0f0] text-[#999]"
+                                )}>
+                                    {tag}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
-    </div>
-);
+    );
 }
+

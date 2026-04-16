@@ -193,7 +193,7 @@ function ToolStatusList({ tool, isDark }: { tool: Tool; isDark: boolean }) {
 
     const handleDelete = async (id: string) => {
         await deleteStatus(id);
-        appToast.success('Status Removed', 'The status has been deleted');
+        appToast.success('Status Removed');
     };
 
     const handleAdd = async () => {
@@ -207,7 +207,7 @@ function ToolStatusList({ tool, isDark }: { tool: Tool; isDark: boolean }) {
             position: localList.length,
             is_active: true,
         });
-        appToast.success('Status Added', 'A new status has been created');
+        appToast.success('Status Added');
     };
 
     const handleSaveOrder = async () => {
@@ -216,7 +216,7 @@ function ToolStatusList({ tool, isDark }: { tool: Tool; isDark: boolean }) {
         if (!activeWorkspaceId) return;
         await reorderStatuses(activeWorkspaceId, tool, reordered);
         setIsSaving(false);
-        appToast.success('Order Saved', 'Status order has been updated');
+        appToast.success('Order Saved');
     };
 
     // Drag

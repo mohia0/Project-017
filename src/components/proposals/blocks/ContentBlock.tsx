@@ -3,7 +3,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { BlockNoteView, lightDefaultTheme, darkDefaultTheme } from "@blocknote/mantine";
 import { useCreateBlockNote, SuggestionMenuController, getDefaultReactSlashMenuItems } from "@blocknote/react";
-import { BlockNoteSchema, defaultBlockSpecs, filterSuggestionItems, combineByGroup } from "@blocknote/core";
+import { BlockNoteSchema, defaultBlockSpecs, filterSuggestionItems, combineByGroup, withPageBreak } from "@blocknote/core";
 import * as locales from "@blocknote/core/locales";
 import { 
     withMultiColumn, 
@@ -11,6 +11,7 @@ import {
     locales as multiColumnLocales,
     getMultiColumnSlashMenuItems
 } from "@blocknote/xl-multi-column";
+import { getPageBreakReactSlashMenuItems } from "@blocknote/react";
 import "@blocknote/mantine/style.css";
 
 export interface ContentBlockProps {
@@ -21,13 +22,15 @@ export interface ContentBlockProps {
     readOnly?: boolean;
 }
 
-// Create a schema that includes multi-column support
-const schema = withMultiColumn(
-    BlockNoteSchema.create({
-        blockSpecs: {
-            ...defaultBlockSpecs,
-        },
-    })
+// Create a schema that includes multi-column and page break support
+const schema = withPageBreak(
+    withMultiColumn(
+        BlockNoteSchema.create({
+            blockSpecs: {
+                ...defaultBlockSpecs,
+            },
+        })
+    )
 );
 
 // Block types that exist in our current schema — used to filter out
@@ -35,7 +38,7 @@ const schema = withMultiColumn(
 const VALID_BLOCK_TYPES = new Set([
     'paragraph', 'heading', 'bulletListItem', 'numberedListItem',
     'checkListItem', 'table', 'image', 'video', 'audio', 'file',
-    'quote', 'codeBlock', 'column', 'columnList',
+    'quote', 'codeBlock', 'column', 'columnList', 'pageBreak',
 ]);
 
 function sanitizeBlocks(blocks: any[]): any[] | undefined {
@@ -103,6 +106,12 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                 i.group === undefined || !["Headings", "Basic Blocks", "List", "Media"].includes(i.group)
             );
 
+            // Add page break items
+            const pageBreakItems = getPageBreakReactSlashMenuItems(editor).map(item => ({
+                ...item,
+                group: "Basic Blocks"
+            }));
+
             // Combine with strict ordering: Headings -> Grids -> Basic -> List -> Media -> Others
             const orderedItems = combineByGroup(
                 headingItems,
@@ -110,6 +119,7 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                 basicItems,
                 listItems,
                 mediaItems,
+                pageBreakItems,
                 otherItems
             );
 

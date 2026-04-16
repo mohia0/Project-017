@@ -203,7 +203,7 @@ export default function BrandingSettingsPage() {
             try {
                 await updateBranding(activeWorkspaceId, debouncedFormData);
                 setIsDirty(false); // Reset dirty flag after successful save
-                appToast.success('Branding Saved', 'Settings updated successfully');
+                appToast.success('Branding Saved');
             } catch (err) {
                 console.error("Auto-save failed:", err);
                 appToast.error('Save Failed', 'Connection lost. Changes may not be saved.');

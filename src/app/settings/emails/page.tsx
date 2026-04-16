@@ -9,7 +9,8 @@ import { appToast } from '@/lib/toast';
 import {
     Mail, Send, Activity, ShieldCheck, Globe, RotateCcw, CheckCircle2,
     Lightbulb, Receipt, FileText, FileSignature, UserPlus, Eye, EyeOff,
-    Sparkles, Loader2, ChevronDown, Check, AlertCircle, Zap
+    Sparkles, Loader2, ChevronDown, Check, AlertCircle, Zap,
+    AlertTriangle, CalendarCheck
 } from 'lucide-react';
 
 /* ─────────────── Constants ─────────────── */
@@ -29,6 +30,16 @@ const TEMPLATE_DEFS = [
         vars: ['{{client_name}}', '{{invoice_number}}', '{{amount_paid}}', '{{document_link}}', '{{sender_name}}'],
         sample: { client_name: 'John Smith', invoice_number: 'INV-0042', amount_paid: '$3,200', document_link: 'https://app.example.com/p/invoice/xxx', sender_name: 'Acme Studio' }
     },
+    {
+        key: 'overdue_remind', label: 'Overdue Reminder', icon: AlertTriangle, color: '#ef4444',
+        vars: ['{{client_name}}', '{{invoice_number}}', '{{days_overdue}}', '{{amount_due}}', '{{document_link}}', '{{sender_name}}'],
+        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', days_overdue: '3', amount_due: '$3,200', document_link: 'https://app.example.com/p/invoice/xxx', sender_name: 'Acme Studio' }
+    },
+    {
+        key: 'booking_confirmed', label: 'Booking', icon: CalendarCheck, color: '#8b5cf6',
+        vars: ['{{client_name}}', '{{scheduler_title}}', '{{booked_date}}', '{{booked_time}}', '{{timezone}}', '{{sender_name}}'],
+        sample: { client_name: 'John Smith', scheduler_title: 'Strategy Session', booked_date: 'May 20, 2026', booked_time: '10:00 AM', timezone: '(UTC-05:00) Eastern Time', sender_name: 'Acme Studio' }
+    },
 ];
 
 const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
@@ -43,6 +54,14 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
     receipt: {
         subject: "Payment Receipt — Invoice #{{invoice_number}}",
         body: "Hi {{client_name}},\n\nThank you for your payment! We have received your payment of {{amount_paid}} for Invoice #{{invoice_number}}.\n\nYou can view your receipt here:\n{{document_link}}\n\nYour business is much appreciated!\n\nBest regards,\n{{sender_name}}"
+    },
+    overdue_remind: {
+        subject: "Action Required: Invoice #{{invoice_number}} is Overdue",
+        body: "Hi {{client_name}},\n\nThis is a friendly reminder that invoice #{{invoice_number}} is currently {{days_overdue}} days overdue.\n\nAmount Due: {{amount_due}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nIf you have already submitted your payment, please disregard this notice.\n\nBest regards,\n{{sender_name}}"
+    },
+    booking_confirmed: {
+        subject: "Booking Confirmed: {{scheduler_title}}",
+        body: "Hi {{client_name}},\n\nYour booking for \"{{scheduler_title}}\" has been confirmed!\n\nDate: {{booked_date}}\nTime: {{booked_time}}\nTimezone: {{timezone}}\n\nWe look forward to speaking with you. If you need to make changes, please reach out to us.\n\nBest regards,\n{{sender_name}}"
     },
 };
 

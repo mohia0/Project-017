@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, Send, Mail, User, ChevronDown, Check, Loader2, AlertCircle, Sparkles, Settings2, FileText, Receipt, FileCheck } from 'lucide-react';
+import { X, Send, Mail, User, ChevronDown, Check, Loader2, AlertCircle, Sparkles, Settings2, FileText, Receipt, FileCheck, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -11,29 +11,36 @@ import { appToast } from '@/lib/toast';
 interface SendEmailModalProps {
     isOpen: boolean;
     onClose: () => void;
-    templateKey: 'proposal' | 'invoice' | 'receipt';
+    templateKey: 'proposal' | 'invoice' | 'receipt' | 'overdue_remind' | 'booking_confirmed';
     to: string;
     variables: Record<string, string>;
     workspaceId: string;
     documentTitle?: string;
+    onSuccess?: () => void;
 }
 
 const TEMPLATE_INFO = {
     proposal: { label: 'Proposal', color: '#6366f1', icon: FileText },
     invoice:  { label: 'Invoice',  color: '#f59e0b', icon: Receipt },
     receipt:  { label: 'Receipt',  color: '#10b981', icon: FileCheck },
+    overdue_remind: { label: 'Overdue Reminder', color: '#ef4444', icon: AlertCircle },
+    booking_confirmed: { label: 'Booking Confirmed', color: '#8b5cf6', icon: Calendar },
 };
 
 const DEFAULT_SUBJECTS: Record<string, string> = {
     proposal: 'Proposal: {{document_title}}',
     invoice:  'Invoice #{{invoice_number}} from {{sender_name}}',
     receipt:  'Payment Receipt — Invoice #{{invoice_number}}',
+    overdue_remind: 'Action Required: Overdue Invoice #{{invoice_number}}',
+    booking_confirmed: 'Booking Confirmed: {{scheduler_title}}',
 };
 
 const DEFAULT_BODIES: Record<string, string> = {
     proposal: `Hi {{client_name}},\n\nI've prepared a proposal for {{document_title}} as we discussed.\n\nYou can review the details and accept it via the secure link below:\n{{document_link}}\n\nPlease let me know if you have any questions.\n\nBest regards,\n{{sender_name}}`,
     invoice:  `Hi {{client_name}},\n\nYour invoice #{{invoice_number}} is now available.\n\nAmount Due: {{amount_due}}\nDue Date: {{due_date}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nThank you for your business!\n\nBest regards,\n{{sender_name}}`,
     receipt:  `Hi {{client_name}},\n\nThank you for your payment! We have received your payment of {{amount_paid}} for Invoice #{{invoice_number}}.\n\nYou can view your receipt here:\n{{document_link}}\n\nYour business is much appreciated!\n\nBest regards,\n{{sender_name}}`,
+    overdue_remind: `Hi {{client_name}},\n\nThis is a gentle reminder that your payment for invoice #{{invoice_number}} is currently {{days_overdue}} days overdue.\n\nAmount Due: {{amount_due}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nIf you have already made the payment, please disregard this message.\n\nBest regards,\n{{sender_name}}`,
+    booking_confirmed: `Hi {{client_name}},\n\nYour booking for "{{scheduler_title}}" has been confirmed.\n\nDate: {{booked_date}}\nTime: {{booked_time}}\nTimezone: {{timezone}}\n\nWe look forward to meeting with you!\n\nBest regards,\n{{sender_name}}`,
 };
 
 function renderTemplate(template: string, vars: Record<string, string>) {
@@ -48,6 +55,7 @@ export function SendEmailModal({
     variables,
     workspaceId,
     documentTitle,
+    onSuccess,
 }: SendEmailModalProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
@@ -108,6 +116,7 @@ export function SendEmailModal({
             if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send email');
             setSent(true);
             appToast.success('Email Sent', 'Email sent successfully!');
+            onSuccess?.();
             setTimeout(() => { onClose(); setSent(false); }, 1800);
         } catch (err: any) {
             setError(err.message);

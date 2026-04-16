@@ -82,7 +82,7 @@ export function ClientActionBar({
         return (
             <div 
                 className={cn(
-                    "relative w-full max-w-[850px] mx-auto z-10 flex transition-all",
+                    "relative w-full max-w-[850px] mx-auto z-10 flex transition-all no-print ClientActionBar",
                     inline 
                         ? (isMobile ? "flex-row justify-between px-6 items-center" : "justify-between")
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
@@ -132,7 +132,7 @@ export function ClientActionBar({
         return (
             <div 
                 className={cn(
-                    "relative w-full max-w-[850px] mx-auto z-10 flex items-center transition-all",
+                    "relative w-full max-w-[850px] mx-auto z-10 flex items-center transition-all no-print ClientActionBar",
                     inline 
                         ? (isMobile ? "flex-row justify-between px-6 gap-2" : "flex-col md:flex-row md:justify-between items-center gap-3 md:gap-0") 
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
@@ -226,7 +226,7 @@ export function ClientActionBar({
         return (
             <div 
                 className={cn(
-                    "relative w-full max-w-[850px] mx-auto z-10 flex transition-all",
+                    "relative w-full max-w-[850px] mx-auto z-10 flex transition-all no-print ClientActionBar",
                     inline 
                         ? (isMobile ? "flex-row justify-between px-6 items-center" : "justify-between")
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
@@ -276,7 +276,7 @@ export function ClientActionBar({
         return (
             <div 
                 className={cn(
-                    "relative w-full max-w-[850px] mx-auto z-10 flex transition-all",
+                    "relative w-full max-w-[850px] mx-auto z-10 flex transition-all no-print ClientActionBar",
                     inline 
                         ? (isMobile ? "flex-row justify-between px-6 items-center" : "justify-between")
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",

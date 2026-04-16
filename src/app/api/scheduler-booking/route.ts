@@ -100,6 +100,30 @@ export async function POST(req: Request) {
                 read: false
             });
 
+        // 3. Send confirmation email via /api/send-email
+        try {
+            const origin = new URL(req.url).origin;
+            await fetch(`${origin}/api/send-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    workspace_id,
+                    template_key: 'booking_confirmed',
+                    to: booker_email,
+                    variables: {
+                        client_name: booker_name,
+                        scheduler_title: scheduler_title || 'Untitled Scheduler',
+                        booked_date,
+                        booked_time,
+                        timezone,
+                    }
+                })
+            });
+        } catch (emailErr) {
+            console.error('Failed to send booking confirmation email:', emailErr);
+            // We do not fail the booking if email fails
+        }
+
         return NextResponse.json({ success: true, data: bookingData });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });

@@ -896,6 +896,33 @@ export default function ProposalsPage() {
         setSelectedIds(new Set());
     };
 
+    const handleDownloadPDF = async (p: Proposal) => {
+        const fileName = `${p.title || 'Proposal'}-${p.id.substring(0, 8)}.pdf`;
+        
+        appToast.promise(
+            (async () => {
+                const response = await fetch(`/api/download-pdf?type=proposal&id=${p.id}`);
+                if (!response.ok) throw new Error('Failed to generate PDF');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })(),
+            {
+                loading: 'Generating your PDF...',
+                success: 'PDF downloaded successfully!',
+                error: 'Could not generate PDF. Please try again.'
+            }
+        );
+    };
+
     const handleExportJSON = () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(proposals));
         const downloadAnchorNode = document.createElement('a');

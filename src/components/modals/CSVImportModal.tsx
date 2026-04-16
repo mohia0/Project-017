@@ -6,7 +6,7 @@ import { useClientStore } from '@/store/useClientStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import {
-    X, ChevronRight, FileSpreadsheet, Upload, AlertCircle, 
+    X, ChevronRight, FileSpreadsheet, Upload, Download, AlertCircle, 
     CheckCircle2, ArrowLeft, MoreHorizontal, HelpCircle, 
     Calendar, User, DollarSign, Tag, Info, AlertTriangle, Building2, Mail, Phone, MapPin, Globe, Briefcase
 } from 'lucide-react';
@@ -375,16 +375,16 @@ export default function CSVImportModal() {
             const workspaceId = useUIStore.getState().activeWorkspaceId;
             if (!workspaceId) throw new Error('No active workspace');
 
-            // 1. If importing Invoices/Proposals, pre-create unknown clients/companies first
+            // 1. Pre-create unknown clients/companies first
+            const currentClients = useClientStore.getState().clients;
+            const currentCompanies = useCompanyStore.getState().companies;
+
             if (importType === 'Invoice' || importType === 'Proposal') {
                 const uniqueClientNames = Array.from(new Set(
                     previewData
                         .map(item => item.client_name?.trim())
                         .filter(Boolean)
                 ));
-
-                const currentClients = useClientStore.getState().clients;
-                const currentCompanies = useCompanyStore.getState().companies;
 
                 const clientsToCreate = uniqueClientNames.filter(name => {
                     const nameLower = name.toLowerCase();
@@ -402,12 +402,13 @@ export default function CSVImportModal() {
                         if (createUnknownAs === 'company') {
                             return {
                                 workspace_id: workspaceId,
-                                name, industry: '', email: '', phone: '', website: '', address: '', country: '', tax_number: '', notes: 'Automatically created during CSV import'
+                                name
                             };
                         } else {
                             return {
                                 workspace_id: workspaceId,
-                                contact_person: name, company_name: '', email: '', phone: '', address: '', country: '', tax_number: '', notes: 'Automatically created during CSV import'
+                                contact_person: name, 
+                                company_name: ''
                             };
                         }
                     });
@@ -416,6 +417,7 @@ export default function CSVImportModal() {
                     const { error } = await supabase.from(table).insert(entityPayloads);
                     if (error) console.error(`Error auto-creating ${table}:`, error);
 
+                    // Refresh stores to get the newly created IDs
                     if (createUnknownAs === 'company') {
                         await useCompanyStore.getState().fetchCompanies();
                     } else {
@@ -424,9 +426,38 @@ export default function CSVImportModal() {
                 }
             }
 
+            if (importType === 'Contact' && createUnknownAs === 'contact') {
+                const uniqueCompanyNames = Array.from(new Set(
+                    previewData
+                        .map(item => item.company_name?.trim())
+                        .filter(Boolean)
+                ));
+
+                const companiesToCreate = uniqueCompanyNames.filter(name => {
+                    const nameLower = name.toLowerCase();
+                    return !currentCompanies.some(c => c.name?.toLowerCase() === nameLower);
+                });
+
+                if (companiesToCreate.length > 0) {
+                    const companyPayloads = companiesToCreate.map(name => ({
+                        workspace_id: workspaceId,
+                        name
+                    }));
+
+                    const { error } = await supabase.from('companies').insert(companyPayloads);
+                    if (error) {
+                        console.error('Error auto-creating companies from contact import:', error.message, error.details, error.hint);
+                        throw error;
+                    }
+                    
+                    // Refresh companies store
+                    await useCompanyStore.getState().fetchCompanies();
+                }
+            }
+
             // 2. Prepare payload for all items
-            const currentClients = useClientStore.getState().clients;
-            const currentCompanies = useCompanyStore.getState().companies;
+            const updatedClients = useClientStore.getState().clients;
+            const updatedCompanies = useCompanyStore.getState().companies;
 
             let tableName = '';
             if (importType === 'Contact') tableName = 'clients';
@@ -438,18 +469,22 @@ export default function CSVImportModal() {
                 if (importType === 'Contact') {
                     return {
                         workspace_id: workspaceId,
-                        contact_person: item.contact_person, company_name: item.company_name || '', email: item.email || '', phone: item.phone || '', address: item.address || '', country: item.country || '', tax_number: item.tax_number || '', notes: item.notes || ''
+                        contact_person: item.contact_person, 
+                        company_name: item.company_name || '', 
+                        email: item.email || '', 
+                        phone: item.phone || '', 
+                        address: item.address || ''
                     };
                 } else if (importType === 'Company') {
                     return {
                         workspace_id: workspaceId,
-                        name: item.name, industry: item.industry || '', email: item.email || '', phone: item.phone || '', website: item.website || '', address: item.address || '', country: item.country || ''
+                        name: item.name, email: item.email || '', phone: item.phone || '', website: item.website || '', address: item.address || ''
                     };
                 } else {
                     let clientId = null;
                     const nameLower = item.client_name?.toLowerCase()?.trim();
-                    const existingClient = currentClients.find(c => c.contact_person?.toLowerCase()?.trim() === nameLower || c.company_name?.toLowerCase()?.trim() === nameLower);
-                    const existingCompany = currentCompanies.find(c => c.name?.toLowerCase()?.trim() === nameLower);
+                    const existingClient = updatedClients.find(c => c.contact_person?.toLowerCase()?.trim() === nameLower || c.company_name?.toLowerCase()?.trim() === nameLower);
+                    const existingCompany = updatedCompanies.find(c => c.name?.toLowerCase()?.trim() === nameLower);
                     clientId = existingClient ? existingClient.id : existingCompany?.id;
 
                     const base = {
@@ -482,7 +517,7 @@ export default function CSVImportModal() {
                     successCount += chunk.length;
                 } else {
                     errorCount += chunk.length;
-                    console.error('Bulk insert error:', error);
+                    console.error('Bulk insert error:', error.message, error.details, error.hint);
                 }
                 
                 setProgress(Math.round((Math.min(i + CHUNK_SIZE, payloads.length) / payloads.length) * 100));
@@ -566,7 +601,7 @@ export default function CSVImportModal() {
                                 )}
                             >
                                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <Upload size={28} className="text-primary" />
+                                    <Download size={28} className="text-primary" />
                                 </div>
                                 <div className="text-center">
                                     <p className={cn("text-[14px] font-bold mb-1", isDark ? "text-white" : "text-[#111]")}>
@@ -679,15 +714,29 @@ export default function CSVImportModal() {
                                         {previewData.length} entries found
                                     </p>
                                     <div className="flex items-center gap-2">
-                                        {!['Contact', 'Company'].includes(importType) && (
-                                            <div className="flex items-center gap-2 mr-3">
-                                                <span className={cn("text-[10px] font-semibold opacity-50", isDark ? "text-white" : "text-[#111]")}>Create unknown names as:</span>
-                                                <div className={cn("flex items-center p-0.5 rounded-lg border", isDark ? "border-[#333] bg-[#000]" : "border-[#e0e0e0] bg-[#f0f0f0]")}>
-                                                    <button onClick={() => setCreateUnknownAs('contact')} className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-md transition-all", createUnknownAs === 'contact' ? "bg-white text-black shadow-sm" : (isDark ? "text-[#888]" : "text-[#666]"))}>Contacts</button>
-                                                    <button onClick={() => setCreateUnknownAs('company')} className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-md transition-all", createUnknownAs === 'company' ? "bg-white text-black shadow-sm" : (isDark ? "text-[#888]" : "text-[#666]"))}>Companies</button>
-                                                </div>
-                                            </div>
-                                        )}
+                                        <div className="flex items-center gap-2 mr-3">
+                                            {importType === 'Contact' && (
+                                                <>
+                                                    <span className={cn("text-[10px] font-semibold opacity-50", isDark ? "text-white" : "text-[#111]")}>
+                                                        Missing companies:
+                                                    </span>
+                                                    <div className={cn("flex items-center p-0.5 rounded-lg border", isDark ? "border-[#333] bg-[#000]" : "border-[#e0e0e0] bg-[#f0f0f0]")}>
+                                                        <button 
+                                                            onClick={() => setCreateUnknownAs('contact')} 
+                                                            className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-md transition-all", createUnknownAs === 'contact' ? "bg-white text-black shadow-sm" : (isDark ? "text-[#888]" : "text-[#666]"))}
+                                                        >
+                                                            Auto-create
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setCreateUnknownAs('company')} 
+                                                            className={cn("px-2 py-0.5 text-[10px] font-semibold rounded-md transition-all", createUnknownAs === 'company' ? "bg-white text-black shadow-sm" : (isDark ? "text-[#888]" : "text-[#666]"))}
+                                                        >
+                                                            Skip
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
                                         <span className="w-2 h-2 rounded-full bg-green-500" />
                                         <span className={cn("text-[10px] font-bold uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#aaa]")}>
                                             Ready to import

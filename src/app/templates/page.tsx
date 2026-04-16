@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LayoutTemplate, Plus, FileText, Trash2, Calendar, FileType2, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, Pencil } from 'lucide-react';
+import { LayoutTemplate, Plus, FileText, Trash2, Calendar, FileType2, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, Pencil, BookmarkCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useTemplateStore, Template } from '@/store/useTemplateStore';
@@ -14,7 +14,7 @@ export default function TemplatesPage() {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     
-    const { templates, fetchTemplates, deleteTemplate, isLoading } = useTemplateStore();
+    const { templates, fetchTemplates, deleteTemplate, isLoading, setDefaultTemplate } = useTemplateStore();
     const { addProposal } = useProposalStore();
     const { addInvoice } = useInvoiceStore();
     
@@ -249,6 +249,17 @@ export default function TemplatesPage() {
                                                 title="Edit template"
                                             >
                                                 <Pencil size={14} />
+                                            </button>
+                                            <button 
+                                                onClick={() => setDefaultTemplate(template.id, template.entity_type)}
+                                                className={cn(
+                                                    "w-9 h-9 rounded-xl flex items-center justify-center transition-all border shrink-0",
+                                                    template.is_default 
+                                                        ? (isDark ? "bg-primary/20 border-primary/20 text-primary-hover shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]" : "bg-primary/10 border-primary/20 text-primary shadow-sm")
+                                                        : (isDark ? "bg-white/5 border-white/5 hover:bg-white/10 text-[#666] hover:text-white" : "bg-white border-black/5 hover:bg-black/5 text-[#888] hover:text-black")
+                                                )}
+                                            >
+                                                <BookmarkCheck size={14} fill={template.is_default ? "currentColor" : "none"} strokeWidth={template.is_default ? 2.5 : 2} />
                                             </button>
                                             <button
                                                 onClick={() => {

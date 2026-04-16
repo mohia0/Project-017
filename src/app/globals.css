@@ -380,12 +380,12 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media print {
-  /* Hide UI elements */
-  nav, header, button, .sidebar, .no-print, .actions-menu, .client-action-bar, [role="button"] {
+  /* Hide UI elements and navigation */
+  nav, header, footer, .no-print, [role="navigation"], .ClientActionBar, .action-bar, .sidebar {
     display: none !important;
   }
 
-  /* Make sure the page background is white */
+  /* Reset layout for print to prevent truncation */
   body, html {
     background-color: white !important;
     height: auto !important;
@@ -394,17 +394,48 @@ input[type="range"]::-moz-range-thumb {
     print-color-adjust: exact !important;
   }
 
-  /* Target the document container to remove shadows, margins, and max-widths */
-  .max-w-\[850px\] {
+  /* Ensure all nested scrollable containers expand for print */
+  main, .flex-1, .overflow-auto, .overflow-y-auto, .h-full, .min-h-full, .h-screen, .min-h-screen, .preview-scroll-container {
+    height: auto !important;
+    overflow: visible !important;
+    max-height: none !important;
+    display: block !important;
+  }
+
+  /* Expand document container to full page width */
+  .max-w-\[850px\], .max-w-\[820px\], .max-w-4xl {
     max-width: 100% !important;
     box-shadow: none !important;
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
+    border: none !important;
   }
 
-  /* Hide the action bar inside preview */
-  .pointer-events-none {
-    display: none !important;
+  /* Page breaks */
+  .page-break-block, [data-content-type="pageBreak"] {
+    display: block !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    height: 0 !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    visibility: hidden;
+  }
+
+  /* Ensure signature blocks and other critical blocks don't break mid-page */
+  .signature-block, [data-content-type="signature"], .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: block !important;
+  }
+
+  /* BlockNote specific: ensure blocks use full width */
+  .bn-container, .bn-editor {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
   }
 }
 

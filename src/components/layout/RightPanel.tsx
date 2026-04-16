@@ -91,10 +91,10 @@ function PanelHeader({ title, icon: Icon, isDark, onClose, onAction, actionIcon:
 function NotificationsPanel({ isDark }: { isDark: boolean }) {
     const router = useRouter();
     const { toggleNotifications } = useUIStore();
-    const { notifications, fetchNotifications, subscribe, unsubscribe, markAsRead, markAllAsRead } = useNotificationStore();
+    const { notifications, fetchNotifications, subscribe, unsubscribe, markAsRead, markAllAsRead, updateNotification } = useNotificationStore();
     const [filterUnread, setFilterUnread] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [receiptModal, setReceiptModal] = useState<{ isOpen: boolean; metadata?: Record<string, any> }>({ isOpen: false });
+    const [receiptModal, setReceiptModal] = useState<{ isOpen: boolean; metadata?: Record<string, any>; notificationId?: string }>({ isOpen: false });
 
     useEffect(() => {
         fetchNotifications();
@@ -150,9 +150,9 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                     </div>
                 ) : (
                     <div className="flex flex-col">
-                        {filteredNotifications.map((notif) => (
+                        {filteredNotifications.map((notif, index) => (
                             <div 
-                                key={notif.id}
+                                key={`${notif.id}-${index}`}
                                 className={cn(
                                     "flex flex-col gap-0 border-b last:border-0 transition-colors relative",
                                     isDark ? "border-[#252525]" : "border-[#f0f0f0]",
@@ -205,10 +205,20 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                 notif.message?.toLowerCase().includes('invoice')
                                             );
 
+                                            const isSuccess = notif.type === 'success' || 
+                                                notif.title?.toLowerCase().includes('signed') || 
+                                                notif.title?.toLowerCase().includes('accepted') || 
+                                                notif.title?.toLowerCase().includes('paid');
+
                                             const iconClass = isDark ? "text-[#888]" : "text-[#999]";
 
                                             if (isLimitReached) return <AlertCircle size={12} className="text-amber-500" />;
                                             if (isReceiptPending) return <Receipt size={12} className="text-emerald-500" />;
+                                            if (isSuccess) {
+                                                if (isProposal) return <FileText size={12} className="text-emerald-500" />;
+                                                if (isInvoice) return <Receipt size={12} className="text-emerald-500" />;
+                                                return <Check size={12} className="text-emerald-500" />;
+                                            }
                                             if (isFormResponse) return <ClipboardList size={12} className={iconClass} />;
                                             if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
                                             if (isProposal) return <FileText size={12} className={iconClass} />;
@@ -250,7 +260,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 markAsRead(notif.id);
-                                                setReceiptModal({ isOpen: true, metadata: notif.metadata });
+                                                setReceiptModal({ isOpen: true, metadata: notif.metadata, notificationId: notif.id });
                                             }}
                                             className={cn(
                                                 "flex-[2] flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95",
@@ -339,6 +349,15 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                     variables={receiptModal.metadata.variables || {}}
                     workspaceId={receiptModal.metadata.workspace_id || ''}
                     documentTitle="Receipt"
+                    onSuccess={() => {
+                        if (receiptModal.notificationId) {
+                            updateNotification(receiptModal.notificationId, {
+                                title: 'Receipt Sent',
+                                message: 'The receipt has been successfully sent to the client.',
+                                read: true
+                            });
+                        }
+                    }}
                 />
             )}
         </div>
@@ -952,7 +971,7 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
         navigator.clipboard.writeText(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        appToast.success('Copied', 'Copied to clipboard');
+        appToast.success('Copied to clipboard');
     };
 
     return (

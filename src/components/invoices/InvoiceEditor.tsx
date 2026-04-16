@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
     useSensor, useSensors, DragEndEvent
@@ -23,6 +23,7 @@ import {
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 import { CURRENCIES, getCurrency } from '@/lib/currencies';
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
 import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
@@ -52,7 +53,7 @@ import { appToast } from '@/lib/toast';
    TYPES
    (Sync with ProposalEditor but for Invoices)
 ═══════════════════════════════════════════════════════ */
-type BlockType = 'heading' | 'text' | 'pricing' | 'divider' | 'image' | 'header';
+type BlockType = 'heading' | 'text' | 'pricing' | 'divider' | 'image' | 'header' | 'page_break';
 
 interface PricingRow {
     id: string;
@@ -111,6 +112,7 @@ const BLOCK_MENU = [
     { type: 'pricing'   as BlockType, label: 'Items Table',   icon: Table,               tag: 'Finance' },
     { type: 'divider'   as BlockType, label: 'Divider',       icon: SeparatorHorizontal, tag: 'Layout' },
     { type: 'image'     as BlockType, label: 'Image',         icon: Image,               tag: 'Media' },
+    { type: 'page_break' as BlockType, label: 'Page Break',   icon: SeparatorHorizontal, tag: 'Layout' },
 ];
 
 export default function InvoiceEditor({ id }: { id?: string }) {
@@ -243,11 +245,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 item_type: 'invoice',
                 item_id: id
             });
-            appToast.success('Project Linked', `Linked to ${project.name}`);
+            setSelectedProjectId(project.id);
+            setSelectedProject(project.name);
+            appToast.success('Project Linked');
         } else {
             setSelectedProject('');
             setSelectedProjectId(null);
-            appToast.success('Project Unlinked', 'Project unlinked');
+            appToast.success('Project Unlinked');
         }
         setShowProjectDrop(false);
     };
@@ -280,6 +284,44 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     }, []);
 
     const isMobilePreview = isPreview && previewMode === 'mobile';
+
+    const handlePrint = () => {
+        setIsPreview(true);
+        setTimeout(() => window.print(), 500);
+    };
+
+    const handleDownloadPDF = async () => {
+        if (!id) {
+            appToast.error('Download Failed', 'Invoice ID is missing.');
+            return;
+        }
+
+        const fileName = `${meta.invoiceNumber || 'Invoice'}-${id.substring(0, 8)}.pdf`;
+        
+        appToast.promise(
+            (async () => {
+                const response = await fetch(`/api/download-pdf?type=invoice&id=${id}`);
+                if (!response.ok) throw new Error('Failed to generate PDF');
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })(),
+            {
+                loading: 'Generating your PDF...',
+                success: 'PDF downloaded successfully!',
+                error: 'Could not generate PDF. Please try again.'
+            }
+        );
+    };
+
 
     // Polling effect to keep editor in sync with backend
     React.useEffect(() => {
@@ -423,7 +465,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 })
                     .then(r => r.json())
                     .then(data => {
-                        if (data.success) appToast.success('Email Sent', 'Receipt has been emailed to the client');
+                        if (data.success) appToast.success('Email Sent');
                         else appToast.error('Email Failed', data.error || 'Auto-receipt could not be sent');
                     })
                     .catch(err => console.error('Auto-receipt failed:', err));
@@ -465,7 +507,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             });
             setIsClientEditorOpen(false);
             setClientDropdownOpen(false);
-            appToast.success('Contact Created', 'Contact created and selected');
+            appToast.success('Contact Created');
         }
     };
 
@@ -671,19 +713,19 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         <Printer size={14} />
                     </button>
 
-                    {/* Send — active only when Pending */}
-                    <Tooltip content={meta.status === 'Pending' ? 'Send invoice to client' : 'Set status to Pending to send'} side="bottom">
+                    {/* Send — active only when Pending or Overdue */}
+                    <Tooltip content={meta.status === 'Pending' ? 'Send invoice to client' : meta.status === 'Overdue' ? 'Send reminder to client' : 'Set status to Pending or Overdue to send'} side="bottom">
                         <button
-                            onClick={() => meta.status === 'Pending' && setIsSendModalOpen(true)}
+                            onClick={() => (meta.status === 'Pending' || meta.status === 'Overdue') && setIsSendModalOpen(true)}
                             className={cn(
                                 "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
-                                meta.status === 'Pending'
+                                (meta.status === 'Pending' || meta.status === 'Overdue')
                                     ? "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.35)]"
                                     : isDark ? "bg-[#2a2a2a] text-white/20 cursor-not-allowed" : "bg-[#f0f0f0] text-black/20 cursor-not-allowed"
                             )}
                         >
                             <Send size={14} />
-                            <span className="hidden md:inline">Send</span>
+                            <span className="hidden md:inline">{meta.status === 'Overdue' ? 'Reminder' : 'Send'}</span>
                         </button>
                     </Tooltip>
 
@@ -706,7 +748,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     { icon: LayoutTemplate, label: 'Save as Template', action: () => setIsSaveTemplateModalOpen(true) },
                                     { icon: ExternalLink,  label: 'Open Link',         action: () => window.open(window.location.origin + '/p/invoice/' + id, '_blank') },
                                     { icon: Link2,          label: 'Copy Link',         action: copyLink },
-                                    { icon: Download, label: 'Download PDF', action: () => console.log('Download') },
+                                    { icon: Download, label: 'Download PDF', action: handleDownloadPDF },
+                                    { icon: Printer, label: 'Print', action: handlePrint },
                                     { 
                                         icon: Trash2,   
                                         label: 'Delete', 
@@ -775,8 +818,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         paidAt="July 4, 2026"
                                         inline={true}
                                         design={meta.design}
-                                        onDownloadPDF={() => console.log('Download PDF')}
-                                        onPrint={() => window.print()}
+                                        onDownloadPDF={handleDownloadPDF}
+                                        onPrint={handlePrint}
                                         onPay={() => setIsPayModalOpen(true)}
                                         className=""
                                     />
@@ -840,8 +883,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                         isMobile={true}
                                                         inline={true}
                                                         design={meta.design}
-                                                        onDownloadPDF={() => console.log('Download PDF')}
-                                                        onPrint={() => window.print()}
+                                                        onDownloadPDF={handleDownloadPDF}
+                                                        onPrint={handlePrint}
                                                         onPay={() => setIsPayModalOpen(true)}
                                                         className="!py-3"
                                                     />
@@ -1346,7 +1389,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             <SendEmailModal
                 isOpen={isSendModalOpen}
                 onClose={() => setIsSendModalOpen(false)}
-                templateKey="invoice"
+                templateKey={meta.status === 'Overdue' ? 'overdue_remind' : 'invoice'}
                 to={meta.clientEmail || ''}
                 variables={{
                     client_name: meta.clientName || '',
@@ -1355,6 +1398,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                     amount_paid: fmt(totals.total, meta.currency),
                     due_date: meta.dueDate || '',
                     document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${id}` : '',
+                    days_overdue: meta.dueDate ? String(Math.max(0, Math.floor((new Date().getTime() - new Date(meta.dueDate).getTime()) / (1000 * 3600 * 24)))) : '0',
                 }}
                 workspaceId={activeWorkspaceId || ''}
                 documentTitle={meta.projectName || 'Invoice'}
@@ -1834,6 +1878,23 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
             );
         case 'divider':
             return <div className="py-6"><div className={cn("border-t w-full", isDark ? "border-white/10" : "border-black/5")} /></div>;
+        case 'page_break':
+            return (
+                <div className={cn("my-6 page-break-block group flex items-center justify-center relative", isPreview ? "opacity-0 h-0 my-0 overflow-hidden" : "h-6")}>
+                    {!isPreview && (
+                        <>
+                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                <div className="w-full border-t border-dashed border-gray-300 dark:border-gray-700"></div>
+                            </div>
+                            <div className="relative flex justify-center">
+                                <span className={cn("px-3 text-[10px] font-medium tracking-widest uppercase", isDark ? "bg-[#111] text-[#666]" : "bg-white text-[#999]")}>
+                                    Page Break
+                                </span>
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
         default: return null;
     }
 }
@@ -1884,9 +1945,23 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
 }) {
     const [hovered, setHovered] = useState(false);
     const visible = hovered || isOpen;
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Handle click outside to close the menu
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                onClose();
+                setHovered(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen, onClose]);
 
     return (
-        <div className="relative h-0 z-20 w-full">
+        <div className="relative h-0 z-20 w-full" ref={menuRef}>
             <div 
                 className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center group/insert h-8" 
                 style={{
@@ -1919,48 +1994,49 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
                     <div className={cn("flex-1 border-t border-dashed", isDark ? "border-[#363636]" : "border-[#d8d8d8]")} />
                 </div>
 
-            {isOpen && (
-                <div 
-                    className={cn(
-                        "absolute left-1/2 -translate-x-1/2 w-56 rounded-xl border shadow-xl py-1.5 z-50",
-                        isLast ? "bottom-full mb-1" : "top-full mt-1",
-                        isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#e5e5e5]"
-                    )}
-                    onMouseLeave={() => { setHovered(false); onClose(); }}
-                >
-                    <div className={cn(
-                        "px-3 pb-1 pt-0.5 text-[9px] font-bold uppercase tracking-widest",
-                        isDark ? "text-[#555]" : "text-[#bbb]"
-                    )}>
-                        Insert block
+                {/* Block type picker popup */}
+                {isOpen && (
+                    <div 
+                        className={cn(
+                            "absolute left-1/2 -translate-x-1/2 w-56 rounded-xl border shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100",
+                            isLast ? "bottom-full mb-1" : "top-full mt-1",
+                            isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#e5e5e5]"
+                        )}
+                    >
+                        <div className={cn(
+                            "px-3 pb-1 pt-0.5 text-[9px] font-bold uppercase tracking-widest",
+                            isDark ? "text-[#555]" : "text-[#bbb]"
+                        )}>
+                            Insert block
+                        </div>
+                        {BLOCK_MENU.map(({ type, label, icon: Icon, tag }) => (
+                            <button 
+                                key={type} 
+                                onClick={() => { onAdd(type); onClose(); setHovered(false); }} 
+                                className={cn(
+                                    "w-full flex items-center justify-between px-3 py-2 text-[12px] transition-colors",
+                                    isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                )}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Icon size={13} className="opacity-50" />
+                                    {label}
+                                </div>
+                                <span className={cn(
+                                    "text-[9px] px-1.5 py-0.5 rounded font-semibold",
+                                    isDark ? "bg-[#2a2a2a] text-[#666]" : "bg-[#f0f0f0] text-[#999]"
+                                )}>
+                                    {tag}
+                                </span>
+                            </button>
+                        ))}
                     </div>
-                    {BLOCK_MENU.map(({ type, label, icon: Icon, tag }) => (
-                        <button 
-                            key={type} 
-                            onClick={() => { onAdd(type); onClose(); setHovered(false); }} 
-                            className={cn(
-                                "w-full flex items-center justify-between px-3 py-2 text-[12px] transition-colors",
-                                isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Icon size={13} className="opacity-50" />
-                                {label}
-                            </div>
-                            <span className={cn(
-                                "text-[9px] px-1.5 py-0.5 rounded font-semibold",
-                                isDark ? "bg-[#2a2a2a] text-[#666]" : "bg-[#f0f0f0] text-[#999]"
-                            )}>
-                                {tag}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-            )}
+                )}
             </div>
         </div>
     );
 }
+
 
 function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
