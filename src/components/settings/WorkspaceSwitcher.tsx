@@ -9,7 +9,7 @@ import { Check, ChevronDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 
-export default function WorkspaceSwitcher({ isLightSidebar }: { isLightSidebar?: boolean }) {
+export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLightSidebar?: boolean, isBranded?: boolean }) {
     const { workspaces, fetchWorkspaces, createWorkspace, isLoading } = useWorkspaceStore();
     const { activeWorkspaceId, setActiveWorkspaceId, isLeftMenuExpanded, theme } = useUIStore();
     const { profile } = useSettingsStore();
@@ -102,12 +102,16 @@ export default function WorkspaceSwitcher({ isLightSidebar }: { isLightSidebar?:
                             </span>
                             <span className={cn(
                                 "text-[10px] font-medium",
-                                isLightSidebar ? "text-black/40" : "text-white/40"
+                                isBranded
+                                    ? (isLightSidebar ? "text-black" : "text-white")
+                                    : (isLightSidebar ? "text-black/40" : "text-white/40")
                             )}>Free Plan</span>
                         </div>
                         <ChevronDown size={14} className={cn(
                             "transition-transform shrink-0",
-                            isLightSidebar ? "text-black/30" : "text-white/30",
+                            isBranded
+                                ? (isLightSidebar ? "text-black" : "text-white")
+                                : (isLightSidebar ? "text-black/30" : "text-white/30"),
                             isOpen && "rotate-180"
                         )} />
                     </>

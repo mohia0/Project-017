@@ -130,7 +130,7 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div 
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+                className="absolute inset-0 bg-black/[0.15] backdrop-blur-[2px] transition-opacity" 
                 onClick={onClose} 
             />
             
@@ -189,45 +189,49 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                 {/* Content */}
                 <div className="p-6">
                     {tab === 'upload' ? (
-                        <div 
-                            onDragEnter={handleDrag}
-                            className={cn(
-                                "relative flex flex-col items-center justify-center h-48 rounded-[20px] border-2 border-dashed transition-all duration-300",
-                                dragActive 
-                                    ? isDark ? "border-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--brand-primary-rgb),0.1)]" : "border-primary bg-primary/5"
-                                    : isDark ? "border-white/10 hover:border-primary/30 bg-white/[0.01]" : "border-gray-200 hover:border-primary/30 bg-gray-50",
-                                uploading && "opacity-50 pointer-events-none"
-                            )}
-                        >
-                            <input 
-                                ref={fileInputRef}
-                                type="file" 
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                accept="image/*"
-                                onChange={(e) => e.target.files && handleFiles(e.target.files)}
-                            />
-                            
-                            {uploading ? (
-                                <div className="flex flex-col items-center gap-4 w-full px-8">
-                                    <div className="w-full bg-black/5 dark:bg-white/10 rounded-full h-2 overflow-hidden shadow-inner">
-                                        <div 
-                                            className="bg-primary h-2 rounded-full transition-all duration-300 ease-out" 
-                                            style={{ width: `${Math.max(uploadProgress, 5)}%` }} // Minimum width 5% when uploading starts
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Loader2 size={14} className="text-primary animate-spin" />
-                                        <span className={cn("text-[12px] font-bold", isDark ? "text-white/60" : "text-black/60")}>
-                                            Uploading {uploadProgress}%
-                                        </span>
-                                    </div>
-                                </div>
-                            ) : (
+                        <div className="relative h-48 rounded-[20px] overflow-hidden">
+                            <div 
+                                onDragEnter={handleDrag}
+                                className={cn(
+                                    "absolute inset-0 flex flex-col items-center justify-center transition-all duration-300",
+                                    dragActive 
+                                        ? isDark ? "bg-primary/10" : "bg-primary/5"
+                                        : isDark ? "bg-white/[0.01]" : "bg-gray-50",
+                                    uploading && "opacity-20 blur-sm pointer-events-none"
+                                )}
+                            >
+                                {/* High-fidelity SVG Dashed Border */}
+                                <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                                    <rect 
+                                        x="1" y="1" 
+                                        width="calc(100% - 2px)" height="calc(100% - 2px)" 
+                                        rx="20" 
+                                        fill="none" 
+                                        stroke="currentColor" 
+                                        strokeWidth="2" 
+                                        strokeDasharray="8 6"
+                                        className={cn(
+                                            "transition-colors duration-300",
+                                            dragActive 
+                                                ? "text-primary" 
+                                                : isDark ? "text-white/10" : "text-gray-200"
+                                        )}
+                                    />
+                                </svg>
+
+                                <input 
+                                    ref={fileInputRef}
+                                    type="file" 
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    accept="image/*"
+                                    onChange={(e) => e.target.files && handleFiles(e.target.files)}
+                                />
+                                
                                 <div className="flex flex-col items-center gap-3">
                                     <div className={cn(
                                         "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300",
                                         dragActive
-                                            ? isDark ? "bg-primary/20 text-primary scale-110 animate-pulse" : "bg-primary/10 text-primary scale-110"
+                                            ? isDark ? "bg-primary/20 text-primary scale-110" : "bg-primary/10 text-primary scale-110"
                                             : isDark ? "bg-white/5 text-white/20" : "bg-white text-gray-300 shadow-sm"
                                     )}>
                                         <ImageIcon size={24} />
@@ -241,9 +245,31 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                                         </p>
                                     </div>
                                 </div>
+                            </div>
+
+                            {uploading && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-transparent z-20 animate-in fade-in duration-300">
+                                    <div className="flex flex-col items-center gap-4 w-full px-8">
+                                        <div className={cn(
+                                            "w-full rounded-full h-2 overflow-hidden shadow-inner",
+                                            isDark ? "bg-white/10" : "bg-black/5"
+                                        )}>
+                                            <div 
+                                                className="bg-primary h-2 rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(var(--brand-primary-rgb),0.3)]" 
+                                                style={{ width: `${Math.max(uploadProgress, 5)}%` }} 
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 size={14} className="text-primary animate-spin" />
+                                            <span className={cn("text-[12px] font-bold", isDark ? "text-white/90" : "text-black/90")}>
+                                                Uploading {uploadProgress}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
 
-                            {dragActive && (
+                            {dragActive && !uploading && (
                                 <div 
                                     className="absolute inset-0 w-full h-full z-10"
                                     onDragEnter={handleDrag}

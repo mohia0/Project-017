@@ -22,8 +22,8 @@ export async function GET(
         const command = new GetObjectCommand({
             Bucket: process.env.B2_BUCKET_NAME,
             Key: decodedKey,
-            // Force the download filename to be the original one (without the timestamp)
-            ResponseContentDisposition: `attachment; filename="${decodedKey.split('-').slice(1).join('-')}"`,
+            // inline = browser renders the file (image/svg) rather than downloading it
+            ResponseContentDisposition: `inline`,
         });
 
         // Generate a presigned URL valid for 1 hour

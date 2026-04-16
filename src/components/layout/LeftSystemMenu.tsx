@@ -29,7 +29,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { motion, AnimatePresence } from 'framer-motion';
 
-function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onToggleVisibility, isLightBg }: { 
+function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onToggleVisibility, isLightBg, isBranded }: { 
     item: NavItem; 
     isExpanded: boolean; 
     isActive: boolean;
@@ -37,6 +37,7 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
     onUpdate: (id: string, label: string) => void;
     onToggleVisibility: (id: string) => void;
     isLightBg?: boolean;
+    isBranded?: boolean;
 }) {
     const [isHovered, setIsHovered] = React.useState(false);
     const {
@@ -72,9 +73,9 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
                     <div className="flex items-center gap-1.5 shrink-0 -ml-1.5">
                         <div {...attributes} {...listeners} className={cn(
                             "cursor-grab active:cursor-grabbing w-5 h-5 flex items-center justify-center shrink-0 rounded-[6px] transition-colors",
-                            isLightBg 
-                                ? "text-black/20 hover:text-black/60 bg-black/5 hover:bg-black/10" 
-                                : "text-white/20 hover:text-white/60 bg-white/5 hover:bg-white/10"
+                            isBranded
+                                ? (isLightBg ? "text-black/40 hover:text-black bg-black/5 hover:bg-black/10" : "text-white/40 hover:text-white bg-white/5 hover:bg-white/10")
+                                : (isLightBg ? "text-black/20 hover:text-black/60 bg-black/5 hover:bg-black/10" : "text-white/20 hover:text-white/60 bg-white/5 hover:bg-white/10")
                         )}>
                             <GripVertical size={10} />
                         </div>
@@ -82,9 +83,13 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
                             onClick={(e) => { e.stopPropagation(); onToggleVisibility(item.id); }}
                             className={cn(
                                 "w-5 h-5 flex items-center justify-center transition-colors rounded-[6px]",
-                                isLightBg 
-                                    ? (item.isHidden ? "text-orange-600/60 bg-black/5 hover:bg-black/10" : "text-black/20 bg-black/5 hover:bg-black/10")
-                                    : (item.isHidden ? "text-orange-400/60 bg-white/5 hover:bg-white/10" : "text-white/20 bg-white/5 hover:bg-white/10")
+                                isBranded
+                                    ? (item.isHidden 
+                                        ? (isLightBg ? "text-orange-600 bg-black/5 hover:bg-black/10" : "text-orange-400 bg-white/5 hover:bg-white/10")
+                                        : (isLightBg ? "text-black/40 hover:text-black bg-black/5 hover:bg-black/10" : "text-white/40 hover:text-white bg-white/5 hover:bg-white/10"))
+                                    : (isLightBg 
+                                        ? (item.isHidden ? "text-orange-600/60 bg-black/5 hover:bg-black/10" : "text-black/20 bg-black/5 hover:bg-black/10")
+                                        : (item.isHidden ? "text-orange-400/60 bg-white/5 hover:bg-white/10" : "text-white/20 bg-white/5 hover:bg-white/10"))
                             )}
                             title={item.isHidden ? "Show in Menu" : "Hide in Menu"}
                         >
@@ -102,7 +107,11 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
                         }}
                         className={cn(item.isHidden && "opacity-30")}
                     >
-                        <Icon size={14} className={cn("shrink-0 opacity-40 group-hover:opacity-100 transition-opacity", isExpanded ? "mr-2.5" : "")} />
+                        <Icon size={14} className={cn(
+                            "shrink-0 transition-opacity", 
+                            isBranded ? "opacity-100" : "opacity-40 group-hover:opacity-100",
+                            isExpanded ? "mr-2.5" : ""
+                        )} />
                     </motion.div>
                 </div>
                 {isExpanded && (
@@ -143,7 +152,9 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
                 isExpanded ? (isEditing ? "justify-start gap-4 px-4" : "justify-start gap-3 px-3") : "justify-center px-1.5",
                 isActive
                     ? (isLightBg ? "text-black" : "text-white")
-                    : (isLightBg ? "text-black/30 hover:text-black" : "text-white/30 hover:text-white"),
+                    : isBranded 
+                        ? (isLightBg ? "text-black" : "text-white")
+                        : (isLightBg ? "text-black/30 hover:text-black" : "text-white/30 hover:text-white"),
                 item.isHidden && "hidden"
             )}
         >
@@ -181,13 +192,22 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
     return content;
 }
 
-const NavIconButton = ({ children, onClick, title, className, isLightBg }: { children: React.ReactNode, onClick?: () => void, title?: string, className?: string, isLightBg?: boolean }) => (
+const NavIconButton = ({ children, onClick, title, className, isLightBg, isBranded }: { 
+    children: React.ReactNode, 
+    onClick?: () => void, 
+    title?: string, 
+    className?: string, 
+    isLightBg?: boolean,
+    isBranded?: boolean
+}) => (
     <button
         onClick={onClick}
         title={title}
         className={cn(
             "w-9 h-8 rounded-xl flex items-center justify-center transition-colors",
-            isLightBg ? "text-black/30 hover:text-black hover:bg-black/5" : "text-white/30 hover:text-white hover:bg-white/5",
+            isBranded
+                ? (isLightBg ? "text-black hover:bg-black/5" : "text-white hover:bg-white/5")
+                : (isLightBg ? "text-black/30 hover:text-black hover:bg-black/5" : "text-white/30 hover:text-white hover:bg-white/5"),
             className
         )}
     >
@@ -263,7 +283,7 @@ export default function LeftSystemMenu() {
 
             {/* Workspace logo & Switcher */}
             <div className="flex w-full shrink-0">
-                <WorkspaceSwitcher isLightSidebar={isLightBg} />
+                <WorkspaceSwitcher isLightSidebar={isLightBg} isBranded={applyBrandColor} />
             </div>
 
             {/* Nav icons */}
@@ -293,6 +313,7 @@ export default function LeftSystemMenu() {
                                     onUpdate={handleUpdateLabel}
                                     onToggleVisibility={handleToggleVisibility}
                                     isLightBg={isLightBg}
+                                    isBranded={applyBrandColor}
                                 />
                             );
                         })}
@@ -323,7 +344,9 @@ export default function LeftSystemMenu() {
                                 title="Reset to default"
                                 className={cn(
                                     "flex-1 h-8 flex items-center justify-center rounded-xl transition-all active:scale-95",
-                                    isLightBg ? "bg-black/5 text-black/30 hover:text-black hover:bg-black/10" : "bg-white/5 text-white/30 hover:text-white hover:bg-white/10"
+                                    applyBrandColor
+                                        ? (isLightBg ? "bg-black/5 text-black hover:bg-black/10" : "bg-white/5 text-white hover:bg-white/10")
+                                        : (isLightBg ? "bg-black/5 text-black/30 hover:text-black hover:bg-black/10" : "bg-white/5 text-white/30 hover:text-white hover:bg-white/10")
                                 )}
                             >
                                 <RotateCcw size={13} />
@@ -333,7 +356,9 @@ export default function LeftSystemMenu() {
                                 title="Cancel"
                                 className={cn(
                                     "flex-1 h-8 flex items-center justify-center rounded-xl transition-all active:scale-95",
-                                    isLightBg ? "bg-black/5 text-black/30 hover:text-black hover:bg-black/10" : "bg-white/5 text-white/30 hover:text-white hover:bg-white/10"
+                                    applyBrandColor
+                                        ? (isLightBg ? "bg-black/5 text-black hover:bg-black/10" : "bg-white/5 text-white hover:bg-white/10")
+                                        : (isLightBg ? "bg-black/5 text-black/30 hover:text-black hover:bg-black/10" : "bg-white/5 text-white/30 hover:text-white hover:bg-white/10")
                                 )}
                             >
                                 <X size={13} />
@@ -349,31 +374,36 @@ export default function LeftSystemMenu() {
                             }}
                             title="Edit Navigation"
                             isLightBg={isLightBg}
+                            isBranded={applyBrandColor}
                         >
-                            <motion.div 
-                                whileHover={{ scale: 1.1, opacity: [1, 0.85, 1] }} 
-                                transition={{ 
-                                    scale: { type: "spring", stiffness: 400, damping: 15 },
-                                    opacity: { type: "keyframes", duration: 0.4 }
-                                }}
+                                <motion.div 
+                                    whileHover={{ scale: 1.1, opacity: [1, 0.85, 1] }} 
+                                    transition={{ 
+                                        scale: { type: "spring", stiffness: 400, damping: 15 },
+                                        opacity: { type: "keyframes", duration: 0.4 }
+                                    }}
+                                >
+                                    <Settings size={14} strokeWidth={2} />
+                                </motion.div>
+                            </NavIconButton>
+    
+                            <NavIconButton 
+                                onClick={toggleLeftMenu} 
+                                isLightBg={isLightBg}
+                                isBranded={applyBrandColor}
                             >
-                                <Settings size={14} strokeWidth={2} />
-                            </motion.div>
-                        </NavIconButton>
-
-                        <NavIconButton onClick={toggleLeftMenu} isLightBg={isLightBg}>
-                            <motion.div 
-                                whileHover={{ scale: 1.1, opacity: [1, 0.85, 1] }}
-                                transition={{ 
-                                    scale: { type: "spring", stiffness: 400, damping: 15 },
-                                    opacity: { type: "keyframes", duration: 0.4 }
-                                }}
-                            >
-                                {isLeftMenuExpanded
-                                    ? <ChevronLeft size={14} strokeWidth={2} />
-                                    : <ChevronRight size={14} strokeWidth={2} />}
-                            </motion.div>
-                        </NavIconButton>
+                                <motion.div 
+                                    whileHover={{ scale: 1.1, opacity: [1, 0.85, 1] }}
+                                    transition={{ 
+                                        scale: { type: "spring", stiffness: 400, damping: 15 },
+                                        opacity: { type: "keyframes", duration: 0.4 }
+                                    }}
+                                >
+                                    {isLeftMenuExpanded
+                                        ? <ChevronLeft size={14} strokeWidth={2} />
+                                        : <ChevronRight size={14} strokeWidth={2} />}
+                                </motion.div>
+                            </NavIconButton>
                     </>
                 )}
             </div>

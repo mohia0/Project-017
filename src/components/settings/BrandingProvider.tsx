@@ -98,14 +98,38 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     
     // Update favicon dynamically
     useEffect(() => {
-        if (branding?.favicon_url) {
-            let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-            if (!link) {
-                link = document.createElement('link');
-                link.rel = 'icon';
-                document.getElementsByTagName('head')[0].appendChild(link);
+        const setFavicon = (url: string) => {
+            // Find or create the primary favicon link
+            let icon: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+            if (!icon) {
+                icon = document.createElement('link');
+                icon.rel = 'shortcut icon';
+                document.head.appendChild(icon);
             }
-            link.href = branding.favicon_url;
+            
+            // Set type if it's an SVG
+            if (url.endsWith('.svg')) {
+                icon.type = 'image/svg+xml';
+            } else if (url.endsWith('.png')) {
+                icon.type = 'image/png';
+            } else if (url.endsWith('.ico')) {
+                icon.type = 'image/x-icon';
+            }
+            
+            icon.href = url;
+            
+            // Also update any others (some templates have multiple icon tags)
+            const icons = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+            icons.forEach(link => {
+                link.href = url;
+            });
+        };
+
+        if (branding?.favicon_url) {
+            setFavicon(branding.favicon_url);
+        } else {
+            // Fallback to default system favicon
+            setFavicon('/favicon.svg');
         }
     }, [branding?.favicon_url]);
 

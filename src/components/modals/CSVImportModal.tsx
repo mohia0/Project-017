@@ -39,6 +39,7 @@ export default function CSVImportModal() {
 
 
     const [createUnknownAs, setCreateUnknownAs] = useState<'contact' | 'company'>('contact');
+    const [combineNames, setCombineNames] = useState(true);
 
     const [step, setStep] = useState<Step>('upload');
     const [file, setFile] = useState<File | null>(null);
@@ -52,14 +53,15 @@ export default function CSVImportModal() {
     const getSystemFields = (type: string) => {
         if (type === 'Contact') {
             return [
-                { id: 'contact_person', label: 'Contact Person', icon: <User size={12} />, required: true, aliases: ['name', 'full name', 'person'] },
+                { id: 'first_name', label: 'First Name', icon: <User size={12} />, aliases: ['first name', 'first', 'given name', 'fname'] },
+                { id: 'last_name', label: 'Last Name', icon: <User size={12} />, aliases: ['last name', 'last', 'surname', 'lname'] },
                 { id: 'company_name', label: 'Company Name', icon: <Building2 size={12} />, aliases: ['company', 'organization'] },
-                { id: 'email', label: 'Email', icon: <Mail size={12} />, aliases: ['email address'] },
-                { id: 'phone', label: 'Phone', icon: <Phone size={12} />, aliases: ['phone number', 'mobile'] },
-                { id: 'address', label: 'Address', icon: <MapPin size={12} />, aliases: ['location'] },
-                { id: 'tax_number', label: 'Tax Number', icon: <FileSpreadsheet size={12} />, aliases: ['vat', 'tax/vat'] },
+                { id: 'email', label: 'Email', icon: <Mail size={12} />, aliases: ['email address', 'email'] },
+                { id: 'phone', label: 'Phone', icon: <Phone size={12} />, aliases: ['phone number', 'mobile', 'cell', 'telephone'] },
+                { id: 'address', label: 'Address', icon: <MapPin size={12} />, aliases: ['location', 'street', 'city'] },
+                { id: 'tax_number', label: 'Tax Number', icon: <FileSpreadsheet size={12} />, aliases: ['vat', 'tax/vat', 'tax id', 'ein'] },
                 { id: 'country', label: 'Country', icon: <Globe size={12} />, aliases: ['nation', 'state', 'location'] },
-                { id: 'notes', label: 'Notes', icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo'] },
+                { id: 'notes', label: 'Notes', icon: <MoreHorizontal size={12} />, aliases: ['description', 'memo', 'comments'] },
             ];
         }
         if (type === 'Company') {
@@ -115,6 +117,7 @@ export default function CSVImportModal() {
             setMapping({});
             setPreviewData([]);
             setProgress(0);
+            setCombineNames(true);
         }
     }, [isImportModalOpen]);
 
@@ -146,22 +149,39 @@ export default function CSVImportModal() {
                 // Auto-suggest mapping
                 const newMapping: Mapping = {};
                 const csvHeaders = results.meta.fields || [];
+                const usedHeaders = new Set<string>();
                 
                 currentSystemFields.forEach(field => {
-                    const match = csvHeaders.find(h => {
+                    const matchesLower = [
+                        field.id.toLowerCase(),
+                        field.label.toLowerCase(),
+                        ...(field.aliases || [])
+                    ].map(s => s.trim());
+                    
+                    // 1. Try exact match first
+                    let match = csvHeaders.find(h => {
+                        if (usedHeaders.has(h)) return false;
                         const headerLower = h.toLowerCase().trim();
-                        const matchesLower = [
-                            field.id.toLowerCase(),
-                            field.label.toLowerCase(),
-                            ...(field.aliases || [])
-                        ];
-                        return matchesLower.some(m => 
-                            headerLower === m || 
-                            headerLower.includes(m) || 
-                            (m.includes(headerLower) && headerLower.length > 3)
-                        );
+                        return matchesLower.includes(headerLower);
                     });
-                    if (match) newMapping[field.id] = match;
+                    
+                    // 2. Try partial match if no exact match
+                    if (!match) {
+                        match = csvHeaders.find(h => {
+                            if (usedHeaders.has(h)) return false;
+                            const headerLower = h.toLowerCase().trim();
+                            // Only match if the header contains a significant word from the aliases
+                            return matchesLower.some(m => {
+                                if (m.length <= 3) return headerLower === m;
+                                return headerLower.includes(m) || m.includes(headerLower);
+                            });
+                        });
+                    }
+                    
+                    if (match) {
+                        newMapping[field.id] = match;
+                        usedHeaders.add(match);
+                    }
                 });
                 
                 setMapping(newMapping);
@@ -220,9 +240,18 @@ export default function CSVImportModal() {
     const proceedToPreview = () => {
         // Validate required mappings
         const missing = currentSystemFields.filter(f => f.required && !mapping[f.id]);
-        if (missing.length > 0) {
-            gooeyToast.error(`Please map required fields: ${missing.map(f => f.label).join(', ')}`);
-            return;
+        
+        if (importType === 'Contact') {
+            const hasFirstOrLastName = !!mapping['first_name'] || !!mapping['last_name'];
+            if (!hasFirstOrLastName) {
+                gooeyToast.error(`Please map either First Name or Last Name for contacts`);
+                return;
+            }
+        } else {
+            if (missing.length > 0) {
+                gooeyToast.error(`Please map required fields: ${missing.map(f => f.label).join(', ')}`);
+                return;
+            }
         }
 
         // Generate preview
@@ -313,6 +342,22 @@ export default function CSVImportModal() {
 
                 item[f.id] = val;
             });
+            
+            if (importType === 'Contact') {
+                if (!item.contact_person) {
+                    const first = item.first_name || '';
+                    const last = item.last_name || '';
+                    if (combineNames) {
+                        item.contact_person = `${first} ${last}`.trim();
+                    } else {
+                        item.contact_person = first.trim() || last.trim();
+                    }
+                }
+                if (!item.contact_person) {
+                    item.contact_person = item.company_name || item.email || 'Unknown Contact';
+                }
+            }
+            
             return item;
         });
 
@@ -593,6 +638,35 @@ export default function CSVImportModal() {
                                     </div>
                                 ))}
                             </div>
+
+                            {importType === 'Contact' && (mapping['first_name'] || mapping['last_name']) && (
+                                <div className={cn("mt-6 p-4 rounded-xl border flex items-center justify-between", isDark ? "bg-[#1c1c1c] border-[#252525]" : "bg-white border-[#f0f0f5] shadow-sm")}>
+                                    <div className="flex-1">
+                                        <p className={cn("text-[13px] font-bold flex items-center gap-2", isDark ? "text-white" : "text-[#111]")}>
+                                            Combine First & Last Name
+                                        </p>
+                                        <p className={cn("text-[11px] opacity-60 mt-0.5", isDark ? "text-white" : "text-[#111]")}>
+                                            Merge the mapped first and last names into a single name field. If disabled, only the first name is used.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCombineNames(!combineNames)}
+                                        className={cn(
+                                            "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                                            combineNames ? "bg-primary" : isDark ? "bg-[#333]" : "bg-[#e0e0e0]"
+                                        )}
+                                    >
+                                        <span
+                                            aria-hidden="true"
+                                            className={cn(
+                                                "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                                combineNames ? "translate-x-5" : "translate-x-0"
+                                            )}
+                                        />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 

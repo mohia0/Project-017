@@ -144,6 +144,7 @@ export default function BrandingSettingsPage() {
     const debouncedFormData = useDebounce(formData, 1000);
 
     const [isSaving, setIsSaving] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
 
 
 
@@ -156,8 +157,7 @@ export default function BrandingSettingsPage() {
 
 
     useEffect(() => {
-        // Only update local state if we aren't currently saving (to avoid overwriting user edits)
-        if (branding && !isSaving) {
+        if (branding && !isSaving && !isDirty) {
             setFormData({
                 primary_color: branding.primary_color || DEFAULT_BRANDING.primary_color,
                 secondary_color: branding.secondary_color || '',
@@ -167,26 +167,34 @@ export default function BrandingSettingsPage() {
                 favicon_url: branding.favicon_url || '',
             });
         }
-    }, [branding, isSaving]);
+    }, [branding, isSaving, isDirty]);
+
+    const updateField = (updates: Partial<BrandingFormData>) => {
+        setFormData(prev => ({ ...prev, ...updates }));
+        setIsDirty(true);
+    };
 
     const resetField = (field: keyof BrandingFormData) => {
-        setFormData(prev => ({ ...prev, [field]: DEFAULT_BRANDING[field as keyof typeof DEFAULT_BRANDING] }));
+        updateField({ [field]: DEFAULT_BRANDING[field as keyof typeof DEFAULT_BRANDING] });
     };
 
 
 
     useEffect(() => {
-        // Prevent auto-save on initial mount, before data is fetched, or if the store state is missing
-        if (!activeWorkspaceId || !hasFetched.branding || !branding || isSaving) return;
+        // 1. Don't save if we haven't fetched yet, if we aren't dirty, or if we are already saving
+        if (!activeWorkspaceId || !hasFetched.branding || !isDirty || isSaving) return;
 
-        // Compare current debounced state with the actual data in the store
+        // 2. Compare against what is CURRENTLY in the server store
+        // If there is no record yet (branding is null), we compare against DEFAULT_BRANDING
+        const serverState = branding || DEFAULT_BRANDING;
+        
         const hasChanges = 
-            debouncedFormData.primary_color !== (branding.primary_color || DEFAULT_BRANDING.primary_color) ||
-            debouncedFormData.secondary_color !== (branding.secondary_color || '') ||
-            debouncedFormData.apply_color_to_sidebar !== (branding.apply_color_to_sidebar || false) ||
-            debouncedFormData.logo_light_url !== (branding.logo_light_url || '') ||
-            debouncedFormData.logo_dark_url !== (branding.logo_dark_url || '') ||
-            debouncedFormData.favicon_url !== (branding.favicon_url || '');
+            debouncedFormData.primary_color !== (serverState.primary_color || DEFAULT_BRANDING.primary_color) ||
+            debouncedFormData.secondary_color !== (serverState.secondary_color || '') ||
+            debouncedFormData.apply_color_to_sidebar !== (serverState.apply_color_to_sidebar || false) ||
+            debouncedFormData.logo_light_url !== (serverState.logo_light_url || '') ||
+            debouncedFormData.logo_dark_url !== (serverState.logo_dark_url || '') ||
+            debouncedFormData.favicon_url !== (serverState.favicon_url || '');
 
         if (!hasChanges) return;
 
@@ -194,10 +202,11 @@ export default function BrandingSettingsPage() {
             setIsSaving(true);
             try {
                 await updateBranding(activeWorkspaceId, debouncedFormData);
+                setIsDirty(false); // Reset dirty flag after successful save
                 gooeyToast.success('Branding saved', { duration: 2000 });
             } catch (err) {
-                console.error("Save failed:", err);
-                gooeyToast.error('Failed to auto-save');
+                console.error("Auto-save failed:", err);
+                gooeyToast.error('Connection lost. Changes may not be saved.');
             } finally {
                 setIsSaving(false);
             }
@@ -227,7 +236,7 @@ export default function BrandingSettingsPage() {
                     <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-2 duration-500">
                         <ColorisInput 
                             value={formData.primary_color}
-                            onChange={val => setFormData({ ...formData, primary_color: val })}
+                            onChange={val => updateField({ primary_color: val })}
                             className="w-60"
                             large
                         />
@@ -244,7 +253,7 @@ export default function BrandingSettingsPage() {
                             </div>
                             <Toggle 
                                 checked={formData.apply_color_to_sidebar} 
-                                onChange={(v) => setFormData(prev => ({ ...prev, apply_color_to_sidebar: v }))}
+                                onChange={(v) => updateField({ apply_color_to_sidebar: v })}
                                 isDark={isDark} 
                             />
                         </div>
@@ -261,7 +270,7 @@ export default function BrandingSettingsPage() {
                             label="Light Logo"
                             description="For dark backgrounds"
                             value={formData.logo_light_url || ''}
-                            onChange={(url) => setFormData({ ...formData, logo_light_url: url })}
+                            onChange={(url) => updateField({ logo_light_url: url })}
                             onReset={() => resetField('logo_light_url')}
                             isDark={isDark}
                         />
@@ -270,7 +279,7 @@ export default function BrandingSettingsPage() {
                             label="Dark Logo"
                             description="For light backgrounds"
                             value={formData.logo_dark_url || ''}
-                            onChange={(url) => setFormData({ ...formData, logo_dark_url: url })}
+                            onChange={(url) => updateField({ logo_dark_url: url })}
                             onReset={() => resetField('logo_dark_url')}
                             isDark={isDark}
                         />
@@ -279,7 +288,7 @@ export default function BrandingSettingsPage() {
                             label="Favicon"
                             description="Browser tab icon (32x32)"
                             value={formData.favicon_url || ''}
-                            onChange={(url) => setFormData({ ...formData, favicon_url: url })}
+                            onChange={(url) => updateField({ favicon_url: url })}
                             onReset={() => resetField('favicon_url')}
                             isDark={isDark}
                         />
