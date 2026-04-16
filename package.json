@@ -39,6 +39,7 @@
     "lucide-react": "^0.575.0",
     "luxon": "^3.7.2",
     "next": "16.1.6",
+    "nodemailer": "^8.0.5",
     "papaparse": "^5.5.3",
     "playwright": "^1.58.2",
     "react": "19.2.3",
@@ -52,6 +53,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

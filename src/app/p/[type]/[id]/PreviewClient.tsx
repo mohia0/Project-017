@@ -15,6 +15,7 @@ import { Check, Clock, Calendar as CalendarIcon, MapPin, ChevronRight, User, Mai
 import { gooeyToast } from 'goey-toast';
 import { CalendarPreview, getAvailableSlots, timeToMinutes } from '@/components/schedulers/CalendarPreview';
 import { AnimatePresence } from 'framer-motion';
+import { DateTime } from 'luxon';
 
 const KanbanBoard = dynamic(() => import('@/components/projects/KanbanBoard'), { ssr: false });
 const TaskDetailPanel = dynamic(() => import('@/components/projects/TaskDetailPanel'), { ssr: false });
@@ -334,13 +335,19 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
     const primaryColor = design.primaryColor || '#4dbf39';
 
     const [step, setStep] = useState<'scheduler' | 'form' | 'confirmation'>('scheduler');
-    const [selDate, setSelDate] = useState<number | null>(null);
+    const [selDate, setSelDate] = useState<string | null>(null);
     const [selTime, setSelTime] = useState<string | null>(null);
     const [duration, setDuration] = useState<number>(Array.isArray(meta.durations) ? meta.durations[0] : 30);
+    
+    const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const workspaceTimezone = data.workspaceTimezone || 'UTC';
     
     // Booker info
     const [info, setInfo] = useState({ name: '', email: '', phone: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const hasCustomName = (meta.fields || []).some((f: any) => f.type === 'full_name');
+    const hasCustomEmail = (meta.fields || []).some((f: any) => f.type === 'email');
 
     const limitVal = meta.submissionLimit ?? meta.submissionsLimit;
     const submissionLimit = (limitVal !== undefined && limitVal !== null && limitVal !== '') ? parseInt(String(limitVal)) : null;
@@ -351,7 +358,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
     const isNotYetActive = meta.activationDate && new Date(meta.activationDate) > now;
     const isRestricted = liveData.status === 'Draft' || liveData.status === 'Inactive' || hasReachedLimit || isExpired || isNotYetActive;
 
-    const availableSlots = getAvailableSlots(selDate, [duration], meta.availability, data.schedulerBookings || []);
+    const availableSlots = getAvailableSlots(selDate, [duration], meta.availability, data.schedulerBookings || [], workspaceTimezone, clientTimezone);
 
     function isColorDark(color: string) {
         if (!color) return false;
@@ -430,7 +437,6 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
 
         setIsSubmitting(true);
         try {
-            const localDateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(selDate).padStart(2, '0');
             const res = await fetch('/api/scheduler-booking', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -440,9 +446,9 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                     booker_name: info.name,
                     booker_email: info.email,
                     booker_phone: info.phone,
-                    booked_date: localDateStr,
+                    booked_date: selDate,
                     booked_time: selTime,
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    timezone: clientTimezone,
                     duration_minutes: duration,
                     scheduler_title: liveData.title,
                     custom_fields: formValues, // Send custom fields
@@ -548,21 +554,24 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                     {/* Canvas step content */}
                     <div className="p-5 md:p-8">
                         {step === 'scheduler' && (
-                            <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-6 animate-in fade-in duration-300">
-                                <CalendarPreview
-                                    isDark={isBlockDark}
-                                    primaryColor={design.primaryColor || '#4dbf39'}
-                                    selDate={selDate}
-                                    meta={meta}
-                                    onDateSelect={(d) => { setSelDate(d); setSelTime(null); }}
-                                />
-                                <div>
-                                    <div className="text-[10.5px] font-bold uppercase tracking-wider mb-3 opacity-40" style={{ color: isBlockDark ? '#fff' : '#000' }}>
-                                        {selDate
-                                            ? new Date(now.getFullYear(), now.getMonth(), selDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-                                            : 'Select a date'
-                                        }
-                                    </div>
+                            <>
+                                <div className="grid grid-cols-1 md:grid-cols-[1fr_200px] gap-6 animate-in fade-in duration-300">
+                                    <CalendarPreview
+                                        isDark={isBlockDark}
+                                        primaryColor={design.primaryColor || '#4dbf39'}
+                                        selDate={selDate}
+                                        meta={meta}
+                                        workspaceTimezone={workspaceTimezone}
+                                        clientTimezone={clientTimezone}
+                                        onDateSelect={(d) => { setSelDate(d); setSelTime(null); }}
+                                    />
+                                    <div>
+                                        <div className="text-[10.5px] font-bold uppercase tracking-wider mb-3 opacity-40" style={{ color: isBlockDark ? '#fff' : '#000' }}>
+                                            {selDate
+                                                ? DateTime.fromISO(selDate, { zone: clientTimezone }).toFormat('cccc, MMMM d')
+                                                : 'Select a date'
+                                            }
+                                        </div>
                                     {!selDate ? (
                                         <div className="text-[11px] opacity-40 italic" style={{ color: isBlockDark ? '#aaa' : '#888' }}>Choose a date to see available times</div>
                                     ) : (
@@ -570,7 +579,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                             {availableSlots.length > 0 ? (
                                                 availableSlots.map(t => (
                                                     <button key={t}
-                                                        onClick={() => { setSelTime(t); setStep('form'); }}
+                                                        onClick={() => setSelTime(t)}
                                                         className="w-full py-2 rounded-lg text-[12px] font-semibold border text-center transition-all"
                                                         style={selTime === t
                                                             ? { background: design.primaryColor || '#4dbf39', color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000', borderColor: 'transparent', borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 8)}px` }
@@ -588,64 +597,71 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                     )}
                                 </div>
                             </div>
-                        )}
+                            {selDate && selTime && (
+                                <div className="mt-8 flex justify-center animate-in fade-in slide-in-from-top-2">
+                                    <button
+                                        onClick={() => setStep('form')}
+                                        className="px-10 py-3 rounded-xl font-bold text-[15px] transition-all hover:brightness-110 active:scale-[0.98] shadow-lg"
+                                        style={{
+                                            background: design.primaryColor || '#4dbf39',
+                                            color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
+                                        }}
+                                    >
+                                        Next Step
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
 
                         {step === 'form' && (
-                            <div className="max-w-[460px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                            <div className="max-w-[460px] mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4">
                                 <div className="text-center space-y-1">
                                     <h3 className="text-[18px] font-bold" style={{ color: isBlockDark ? '#fff' : '#111' }}>Confirm Details</h3>
                                     <p className="text-[13px] opacity-50" style={{ color: isBlockDark ? '#ccc' : '#777' }}>
-                                        {selDate && new Date(now.getFullYear(), now.getMonth(), selDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} at {selTime} ({duration}m)
+                                        {selDate && DateTime.fromISO(selDate, { zone: clientTimezone }).toFormat('cccc, MMMM d')} at {selTime} ({duration}m)
                                     </p>
                                 </div>
                                 
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[11px] font-bold uppercase tracking-wider opacity-40" style={{ color: isBlockDark ? '#fff' : '#111' }}>Name</label>
-                                        <input 
-                                            type="text" 
-                                            value={info.name}
-                                            onChange={e => setInfo({ ...info, name: e.target.value })}
-                                            className={cn(
-                                                "w-full px-4 py-3 rounded-xl border outline-none transition-all text-[14px]",
-                                                isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
-                                            )}
-                                            placeholder="Enter your name"
-                                            style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[11px] font-bold uppercase tracking-wider opacity-40" style={{ color: isBlockDark ? '#fff' : '#111' }}>Email</label>
-                                        <input 
-                                            type="email" 
-                                            value={info.email}
-                                            onChange={e => setInfo({ ...info, email: e.target.value })}
-                                            className={cn(
-                                                "w-full px-4 py-3 rounded-xl border outline-none transition-all text-[14px]",
-                                                isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
-                                            )}
-                                            placeholder="your@email.com"
-                                            style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[11px] font-bold uppercase tracking-wider opacity-40" style={{ color: isBlockDark ? '#fff' : '#111' }}>Phone (Optional)</label>
-                                        <input 
-                                            type="tel" 
-                                            value={info.phone}
-                                            onChange={e => setInfo({ ...info, phone: e.target.value })}
-                                            className={cn(
-                                                "w-full px-4 py-3 rounded-xl border outline-none transition-all text-[14px]",
-                                                isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
-                                            )}
-                                            placeholder="+1 (555) 000-0000"
-                                            style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
-                                        />
-                                    </div>
+                                <div className="space-y-2">
+                                    {!hasCustomName && (
+                                        <div className="space-y-0.5">
+                                            <label className={cn("text-[13px] font-bold mb-0.5 block", isBlockDark ? "text-[#eee]" : "text-[#111]")}>Full name</label>
+                                            <input 
+                                                type="text" 
+                                                value={info.name}
+                                                onChange={e => setInfo({ ...info, name: e.target.value })}
+                                                className={cn(
+                                                    "w-full px-4 py-2 rounded-xl border outline-none transition-all text-[14px]",
+                                                    isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
+                                                )}
+                                                placeholder="Enter your name"
+                                                style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {!hasCustomEmail && (
+                                        <div className="space-y-0.5">
+                                            <label className={cn("text-[13px] font-bold mb-0.5 block", isBlockDark ? "text-[#eee]" : "text-[#111]")}>Email address</label>
+                                            <input 
+                                                type="email" 
+                                                value={info.email}
+                                                onChange={e => setInfo({ ...info, email: e.target.value })}
+                                                className={cn(
+                                                    "w-full px-4 py-2 rounded-xl border outline-none transition-all text-[14px]",
+                                                    isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
+                                                )}
+                                                placeholder="Enter your email"
+                                                style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
+                                            />
+                                        </div>
+                                    )}
+
 
                                     {/* Render custom fields if any */}
                                     {meta.fields && meta.fields.length > 0 && (
-                                        <div className="pt-2 space-y-4">
+                                        <div className="pt-1.5 space-y-2">
                                             {meta.fields.map((field: any) => (
                                                 <FieldPreview 
                                                     key={field.id}
@@ -654,14 +670,20 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                                     primaryColor={primaryColor}
                                                     borderRadius={design.borderRadius ?? 16}
                                                     value={formValues[field.id]}
-                                                    onChange={(val) => setFormValues(prev => ({ ...prev, [field.id]: val }))}
+                                                    onChange={(val) => {
+                                                        setFormValues(prev => ({ ...prev, [field.id]: val }));
+                                                        // Sync custom contact info fields to the primary info state
+                                                        if (field.type === 'full_name') setInfo(prev => ({ ...prev, name: val }));
+                                                        if (field.type === 'email') setInfo(prev => ({ ...prev, email: val }));
+                                                        if (field.type === 'phone') setInfo(prev => ({ ...prev, phone: val }));
+                                                    }}
                                                 />
                                             ))}
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="flex gap-3 pt-4">
+                                <div className="flex gap-3 pt-2">
                                     <button 
                                         onClick={() => setStep('scheduler')}
                                         className={cn(
@@ -706,7 +728,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                     <div className="flex items-center gap-3">
                                         <CalendarIcon size={16} className="opacity-50" />
                                         <span className="text-[14px] font-medium" style={{ color: isBlockDark ? '#eee' : '#111' }}>
-                                            {selDate && new Date(now.getFullYear(), now.getMonth(), selDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                            {selDate && DateTime.fromISO(selDate, { zone: clientTimezone }).toFormat('cccc, MMMM d')}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -906,10 +928,6 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         <div 
                             className="absolute inset-0 pointer-events-none"
                             style={{
-                                backdropFilter: 'blur(12px)',
-                                WebkitBackdropFilter: 'blur(12px)',
-                                maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                             }}
                         >
                             <div className={cn(
@@ -951,10 +969,6 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                 <div 
                                     className="absolute inset-0 pointer-events-none"
                                     style={{
-                                        backdropFilter: 'blur(12px)',
-                                        WebkitBackdropFilter: 'blur(12px)',
-                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                     }}
                                 >
                                     <div className={cn(
@@ -1058,10 +1072,6 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         <div 
                             className="absolute inset-0 pointer-events-none"
                             style={{
-                                backdropFilter: 'blur(12px)',
-                                WebkitBackdropFilter: 'blur(12px)',
-                                maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                             }}
                         >
                             <div className={cn(
@@ -1103,10 +1113,6 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                 <div 
                                     className="absolute inset-0 pointer-events-none"
                                     style={{
-                                        backdropFilter: 'blur(12px)',
-                                        WebkitBackdropFilter: 'blur(12px)',
-                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                     }}
                                 >
                                     <div className={cn(

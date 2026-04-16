@@ -12,6 +12,17 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const TIMEZONE_OPTIONS = Intl.supportedValuesOf('timeZone').map(tz => {
+  try {
+    const parts = tz.split('/');
+    const city = parts[parts.length - 1].replace(/_/g, ' ');
+    const region = parts.length > 1 ? parts[0] : '';
+    const offset = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || '';
+    return { label: `${offset} ${city} (${region})`, value: tz };
+  } catch (e) {
+    return { label: tz.replace(/_/g, ' '), value: tz };
+  }
+}).sort((a, b) => a.label.localeCompare(b.label));
 
 export default function WorkspaceSettingsPage() {
     const router = useRouter();
@@ -25,6 +36,7 @@ export default function WorkspaceSettingsPage() {
     // General State
     const [name, setName] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
+    const [timezone, setTimezone] = useState('UTC');
     
     // Contact State
     const [emails, setEmails] = useState<{value: string, type: string}[]>([]);
@@ -65,6 +77,7 @@ export default function WorkspaceSettingsPage() {
         if (activeWorkspace) {
             setName(activeWorkspace.name || '');
             setLogoUrl(activeWorkspace.logo_url || '');
+            setTimezone(activeWorkspace.timezone || 'UTC');
             
             // Contact
             setEmails(activeWorkspace.contact_emails?.length ? activeWorkspace.contact_emails : [{ value: '', type: 'Email' }]);
@@ -121,6 +134,8 @@ export default function WorkspaceSettingsPage() {
         switch (section) {
             case 'general':
                 return name !== (activeWorkspace.name || '') || logoUrl !== (activeWorkspace.logo_url || '');
+            case 'regional':
+                return timezone !== (activeWorkspace.timezone || 'UTC');
             case 'contact':
                 const currentEms = JSON.stringify(emails.filter(e => e.value.trim() !== ''));
                 const savedEms = JSON.stringify(activeWorkspace.contact_emails || []);
@@ -239,6 +254,31 @@ export default function WorkspaceSettingsPage() {
                             </div>
                         </SettingsField>
                     </div>
+                </div>
+            </SettingsCard>
+
+            {/* Regional Settings */}
+            <SettingsCard
+                title="Regional Settings"
+                description="Set the default timezone for your workspace for accurate scheduling and reporting."
+                onSave={() => handleSaveSection('regional', { timezone })}
+                isSaving={isSaving['regional']}
+                unsavedChanges={hasChanged('regional')}
+                collapsible
+                defaultCollapsed
+            >
+                <div className="flex flex-col gap-6">
+                    <SettingsField label="Workspace Timezone" description="New schedulers will use this timezone by default.">
+                        <div className="w-full max-w-sm">
+                            <SettingsSelect
+                                isDark={isDark}
+                                value={timezone}
+                                onChange={setTimezone}
+                                options={TIMEZONE_OPTIONS}
+                                allowSearch={true}
+                            />
+                        </div>
+                    </SettingsField>
                 </div>
             </SettingsCard>
 

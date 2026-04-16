@@ -23,6 +23,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useRouter, usePathname } from 'next/navigation';
 import { Radio, Copy } from 'lucide-react';
 import { gooeyToast } from 'goey-toast';
+import { SendEmailModal } from '@/components/modals/SendEmailModal';
 
 const COLORS = [
     '#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9',
@@ -93,6 +94,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
     const { notifications, fetchNotifications, subscribe, unsubscribe, markAsRead, markAllAsRead } = useNotificationStore();
     const [filterUnread, setFilterUnread] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [receiptModal, setReceiptModal] = useState<{ isOpen: boolean; metadata?: Record<string, any> }>({ isOpen: false });
 
     useEffect(() => {
         fetchNotifications();
@@ -151,72 +153,117 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                         {filteredNotifications.map((notif) => (
                             <div 
                                 key={notif.id}
-                                onClick={() => {
-                                    if (!notif.read) markAsRead(notif.id);
-                                    if (notif.link) {
-                                        router.push(notif.link);
-                                        toggleNotifications();
-                                    }
-                                }}
                                 className={cn(
-                                    "flex items-start gap-2.5 px-4 py-2 border-b last:border-0 transition-colors cursor-pointer relative",
-                                    isDark ? "border-[#252525] hover:bg-white/[0.02]" : "border-[#f0f0f0] hover:bg-[#f9f9f9]",
-                                    !notif.read && (isDark ? "bg-white/[0.08]" : "bg-blue-500/[0.05]")
+                                    "flex flex-col gap-0 border-b last:border-0 transition-colors relative",
+                                    isDark ? "border-[#252525]" : "border-[#f0f0f0]",
+                                    !notif.read && notif.type === 'receipt_pending' && "animate-soft-blink",
+                                    !notif.read && notif.type !== 'receipt_pending' && (isDark ? "bg-white/[0.08]" : "bg-blue-500/[0.05]")
                                 )}
                             >
-                                {!notif.read && (
-                                    <div className="absolute left-2.5 top-5 w-1 h-1 rounded-full bg-primary" />
+                                <div
+                                    onClick={() => {
+                                        if (!notif.read) markAsRead(notif.id);
+                                        if (notif.link && notif.type !== 'receipt_pending') {
+                                            router.push(notif.link);
+                                            toggleNotifications();
+                                        }
+                                    }}
+                                    className={cn(
+                                        "flex items-start gap-2.5 px-4 py-2 cursor-pointer",
+                                        notif.type !== 'receipt_pending' && (isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#f9f9f9]")
+                                    )}
+                                >
+                                    {!notif.read && (
+                                        <div className="absolute left-2.5 top-5 w-1 h-1 rounded-full bg-primary" />
+                                    )}
+                                    <div className={cn("w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 mt-0.5", 
+                                        isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
+                                    )}>
+                                        {(() => {
+                                            const isLimitReached = notif.type === 'limit_reached' || notif.title?.toLowerCase().includes('limit');
+                                            const isView = notif.type === 'view' || notif.title?.toLowerCase().includes('opened');
+                                            const isReceiptPending = notif.type === 'receipt_pending';
+                                            const isFormResponse = !isView && !isLimitReached && !isReceiptPending && (
+                                                notif.link?.includes('/forms') || 
+                                                notif.title?.toLowerCase().includes('form') || 
+                                                notif.message?.toLowerCase().includes('form')
+                                            );
+                                            const isScheduler = !isView && !isLimitReached && !isFormResponse && !isReceiptPending && (
+                                                notif.link?.includes('/schedulers') || 
+                                                notif.title?.toLowerCase().includes('scheduler') || 
+                                                notif.message?.toLowerCase().includes('booking') ||
+                                                notif.message?.toLowerCase().includes('meeting')
+                                            );
+                                            const isProposal = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isReceiptPending && (
+                                                notif.link?.includes('proposal') || 
+                                                notif.title?.toLowerCase().includes('proposal') || 
+                                                notif.message?.toLowerCase().includes('proposal')
+                                            );
+                                            const isInvoice = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isProposal && !isReceiptPending && (
+                                                notif.link?.includes('invoice') || 
+                                                notif.title?.toLowerCase().includes('invoice') || 
+                                                notif.message?.toLowerCase().includes('invoice')
+                                            );
+
+                                            const iconClass = isDark ? "text-[#888]" : "text-[#999]";
+
+                                            if (isLimitReached) return <AlertCircle size={12} className="text-amber-500" />;
+                                            if (isReceiptPending) return <Receipt size={12} className="text-emerald-500" />;
+                                            if (isFormResponse) return <ClipboardList size={12} className={iconClass} />;
+                                            if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
+                                            if (isProposal) return <FileText size={12} className={iconClass} />;
+                                            if (isInvoice) return <Receipt size={12} className={iconClass} />;
+                                            return <Eye size={12} className={iconClass} />;
+                                        })()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className={cn("text-[12px] font-medium leading-tight", isDark ? "text-[#eee]" : "text-[#222]")}>
+                                            {notif.title}
+                                        </p>
+                                        <p className={cn("text-[10px] mt-0.5 leading-tight opacity-70", isDark ? "text-[#888]" : "text-[#666]")}>
+                                            {notif.message}
+                                        </p>
+                                        <p className={cn("text-[9px] mt-1 font-medium", isDark ? "text-[#444]" : "text-[#aaa]")}>
+                                            {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Receipt pending CTA */}
+                                {notif.type === 'receipt_pending' && !notif.read && (
+                                    <div className="flex items-center gap-2 px-4 pb-3">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                markAsRead(notif.id);
+                                            }}
+                                            className={cn(
+                                                "flex-1 flex items-center justify-center py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95",
+                                                isDark
+                                                    ? "bg-white/5 hover:bg-white/10 text-[#aaa] border border-white/5"
+                                                    : "bg-black/5 hover:bg-black/10 text-[#555] border border-black/5"
+                                            )}
+                                        >
+                                            Dismiss
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                markAsRead(notif.id);
+                                                setReceiptModal({ isOpen: true, metadata: notif.metadata });
+                                            }}
+                                            className={cn(
+                                                "flex-[2] flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95",
+                                                isDark
+                                                    ? "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20"
+                                                    : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                            )}
+                                        >
+                                            <Mail size={11} />
+                                            Send Receipt
+                                        </button>
+                                    </div>
                                 )}
-                                <div className={cn("w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 mt-0.5", 
-                                    isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
-                                )}>
-                                    {(() => {
-                                        const isLimitReached = notif.type === 'limit_reached' || notif.title?.toLowerCase().includes('limit');
-                                        const isView = notif.type === 'view' || notif.title?.toLowerCase().includes('opened');
-                                        
-                                        const isFormResponse = !isView && !isLimitReached && (
-                                            notif.link?.includes('/forms') || 
-                                            notif.title?.toLowerCase().includes('form') || 
-                                            notif.message?.toLowerCase().includes('form')
-                                        );
-                                        const isScheduler = !isView && !isLimitReached && !isFormResponse && (
-                                            notif.link?.includes('/schedulers') || 
-                                            notif.title?.toLowerCase().includes('scheduler') || 
-                                            notif.message?.toLowerCase().includes('booking') ||
-                                            notif.message?.toLowerCase().includes('meeting')
-                                        );
-                                        const isProposal = !isView && !isLimitReached && !isFormResponse && !isScheduler && (
-                                            notif.link?.includes('proposal') || 
-                                            notif.title?.toLowerCase().includes('proposal') || 
-                                            notif.message?.toLowerCase().includes('proposal')
-                                        );
-                                        const isInvoice = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isProposal && (
-                                            notif.link?.includes('invoice') || 
-                                            notif.title?.toLowerCase().includes('invoice') || 
-                                            notif.message?.toLowerCase().includes('invoice')
-                                        );
-
-                                        const iconClass = isDark ? "text-[#888]" : "text-[#999]";
-
-                                        if (isLimitReached) return <AlertCircle size={12} className="text-amber-500" />;
-                                        if (isFormResponse) return <ClipboardList size={12} className={iconClass} />;
-                                        if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
-                                        if (isProposal) return <FileText size={12} className={iconClass} />;
-                                        if (isInvoice) return <Receipt size={12} className={iconClass} />;
-                                        return <Eye size={12} className={iconClass} />;
-                                    })()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className={cn("text-[12px] font-medium leading-tight", isDark ? "text-[#eee]" : "text-[#222]")}>
-                                        {notif.title}
-                                    </p>
-                                    <p className={cn("text-[10px] mt-0.5 leading-tight opacity-70", isDark ? "text-[#888]" : "text-[#666]")}>
-                                        {notif.message}
-                                    </p>
-                                    <p className={cn("text-[9px] mt-1 font-medium", isDark ? "text-[#444]" : "text-[#aaa]")}>
-                                        {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
-                                    </p>
-                                </div>
                             </div>
                         ))}
                     </div>
@@ -281,6 +328,19 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                     </span>
                 </div>
             </div>
+
+            {/* Receipt send modal */}
+            {receiptModal.isOpen && receiptModal.metadata && (
+                <SendEmailModal
+                    isOpen={receiptModal.isOpen}
+                    onClose={() => setReceiptModal({ isOpen: false })}
+                    templateKey="receipt"
+                    to={receiptModal.metadata.to || ''}
+                    variables={receiptModal.metadata.variables || {}}
+                    workspaceId={receiptModal.metadata.workspace_id || ''}
+                    documentTitle="Receipt"
+                />
+            )}
         </div>
     );
 }

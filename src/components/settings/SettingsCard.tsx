@@ -122,7 +122,7 @@ export function SettingsCard({
                         className={cn(
                             "h-9 px-4 rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-all",
                             unsavedChanges && !isSaving
-                                ? "bg-black text-white dark:bg-white dark:text-black hover:opacity-90 active:scale-[0.98]"
+                                ? "bg-primary text-[var(--brand-primary-foreground)] hover:bg-primary-hover active:scale-[0.98] shadow-sm"
                                 : (isDark ? "bg-white/10 text-white/40 cursor-not-allowed" : "bg-black/5 text-black/40 cursor-not-allowed")
                         )}
                     >

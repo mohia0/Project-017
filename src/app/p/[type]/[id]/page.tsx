@@ -75,6 +75,13 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
         schedulerBookings = bookingsRes || [];
     }
 
+    // Fetch workspace timezone
+    let workspaceTimezone = 'UTC';
+    if (document.workspace_id) {
+        const { data: wsData } = await supabaseService.from('workspaces').select('timezone').eq('id', document.workspace_id).single();
+        if (wsData?.timezone) workspaceTimezone = wsData.timezone;
+    }
+
     // Map data to a safe format for the client
     const safeData = {
         ...document,
@@ -86,6 +93,7 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
         projectGroups,
         submissionCount,
         schedulerBookings,
+        workspaceTimezone,
     };
 
     return <PreviewClient type={type as any} data={safeData} />;

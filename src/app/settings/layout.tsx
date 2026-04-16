@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import SettingsSidebar from '@/components/settings/SettingsSidebar';
 import { useUIStore } from '@/store/useUIStore';
@@ -13,8 +13,10 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme } = useUIStore();
   const isDark = theme === 'dark';
+  const isEmailsPage = pathname === '/settings/emails';
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
@@ -34,7 +36,7 @@ export default function SettingsLayout({
         <SettingsSidebar />
         
         <main className={cn("flex-1 overflow-y-auto p-6 md:p-10", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
-            <div className="max-w-[720px] mx-auto pb-24">
+            <div className={cn("mx-auto pb-24", isEmailsPage ? "max-w-[1400px]" : "max-w-[720px]")}>
                 {children}
             </div>
         </main>

@@ -13,6 +13,7 @@ interface ColorPickerProps {
     className?: string;
     isDark?: boolean;
     compact?: boolean;
+    large?: boolean;
 }
 
 // ── COLOR UTILS ──
@@ -90,7 +91,7 @@ function rgbaToHex(r: number, g: number, b: number, a: number) {
     return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
 }
 
-export function ColorisInput({ value, onChange, className, isDark: isDarkProp, compact }: ColorPickerProps) {
+export function ColorisInput({ value, onChange, className, isDark: isDarkProp, compact, large }: ColorPickerProps) {
     const { theme } = useUIStore();
 
     const isDark = isDarkProp ?? (theme === 'dark');
@@ -163,7 +164,8 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
         <div className={cn("relative", className)} ref={containerRef}>
             <div 
                 className={cn(
-                    "flex items-center gap-2 p-1 rounded-lg transition-all cursor-pointer border",
+                    "flex items-center gap-2 rounded-xl transition-all cursor-pointer border",
+                    large ? "p-3" : "p-1 rounded-lg",
                     isDark 
                         ? (isOpen ? "border-[#4dbf39]/50 bg-[#1a1a1a]" : "border-white/5 hover:border-white/10 bg-white/5")
                         : (isOpen ? "border-[#4dbf39]/50 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)]" : "border-gray-100 hover:border-gray-200 bg-gray-50/50")
@@ -173,10 +175,22 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
                     setIsOpen(!isOpen);
                 }}
             >
-                <div className="w-5 h-5 rounded shadow-inner border border-black/5 shrink-0" style={{ backgroundColor: value }} />
+                <div 
+                    className={cn(
+                        "rounded shadow-inner border border-black/5 shrink-0",
+                        large ? "w-6 h-6" : "w-5 h-5"
+                    )} 
+                    style={{ backgroundColor: value }} 
+                />
                 {!compact && (
                     <div className="flex flex-col min-w-0 flex-1">
-                        <span className={cn("text-[11px] font-mono font-medium truncate", isDark ? "text-white/90" : "text-gray-700")}>{value}</span>
+                        <span className={cn(
+                            "font-mono font-bold truncate tracking-tight",
+                            large ? "text-[13px]" : "text-[11px]",
+                            isDark ? "text-white/90" : "text-gray-700"
+                        )}>
+                            {value}
+                        </span>
                     </div>
                 )}
             </div>

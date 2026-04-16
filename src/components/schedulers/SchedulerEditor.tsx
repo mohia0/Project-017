@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft, ChevronDown, Link2, MoreHorizontal, Trash2, Copy,
     Check, Settings, Palette, ChevronRight, Clock, Calendar,
@@ -10,8 +10,10 @@ import {
 } from 'lucide-react';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useSchedulerStore, SchedulerStatus } from '@/store/useSchedulerStore';
 import { useDebounce } from '@/hooks/useDebounce';
+import { supabase } from '@/lib/supabase';
 import { DesignSettingsPanel, MetaField } from '@/components/ui/DesignSettingsPanel';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -26,7 +28,7 @@ import { SettingsSelect, SettingsToggle } from '@/components/settings/SettingsFi
 ══════════════════════════════════════════════════════════ */
 type EditorTab    = 'editor' | 'bookings' | 'availability';
 type CanvasStep   = 'scheduler' | 'form' | 'confirmation';
-type RightTab     = 'details' | 'design';
+type RightPanelTab = 'details' | 'design';
 
 interface SchedulerMeta {
     organizer: string;
@@ -79,7 +81,18 @@ const STATUS_COLORS: Record<SchedulerStatus, string> = {
     Draft: '#888',
     Inactive: '#f97316',
 };
-const DURATION_OPTS = [15, 30, 60, 120];
+const DURATION_OPTS = [15, 30, 45, 60, 90, 120];
+const TIMEZONE_OPTIONS = Intl.supportedValuesOf('timeZone').map(tz => {
+    try {
+        const parts = tz.split('/');
+        const city = parts[parts.length - 1].replace(/_/g, ' ');
+        const region = parts.length > 1 ? parts[0] : '';
+        const offset = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || '';
+        return { label: `${offset} ${city} (${region})`, value: tz };
+    } catch (e) {
+        return { label: tz.replace(/_/g, ' '), value: tz };
+    }
+}).sort((a, b) => a.label.localeCompare(b.label));
 
 function isColorDark(color: string) {
     if (!color) return false;
@@ -264,6 +277,24 @@ function AvailabilityTab({ isDark, meta, updateMeta, primaryColor }: {
     );
 }
 
+function TinyCopy({ text, isDark }: { text: string; isDark: boolean }) {
+    const [copied, setCopied] = useState(false);
+    const onCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+    return (
+        <button onClick={onCopy} className={cn(
+            "p-1 rounded-[4px] transition-all opacity-0 group-hover/line:opacity-100 shrink-0",
+            isDark ? "hover:bg-white/10 text-white/30 hover:text-white" : "hover:bg-black/5 text-black/30 hover:text-black"
+        )}>
+            {copied ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} />}
+        </button>
+    );
+}
+
 /* ══════════════════════════════════════════════════════════
    MAIN EDITOR
 ══════════════════════════════════════════════════════════ */
@@ -271,7 +302,15 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     const router = useRouter();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { schedulers, updateScheduler, deleteScheduler, fetchSchedulers } = useSchedulerStore();
+    const searchParams = useSearchParams();
+    const highlightId = searchParams.get('highlight');
+    const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+    const tabParam = searchParams.get('tab');
+    const { workspaces } = useWorkspaceStore();
+    const activeWorkspaceId = useUIStore.getState().activeWorkspaceId;
+    const activeWorkspace = workspaces.find((w: any) => w.id === activeWorkspaceId);
+    const workspaceTimezone = activeWorkspace?.timezone || 'UTC';
+    const { schedulers, updateScheduler, deleteScheduler, fetchSchedulers, bookings, fetchBookings } = useSchedulerStore();
 
     const [title, setTitle] = useState('New Scheduler');
     const [status, setStatus] = useState<SchedulerStatus>('Draft');
@@ -280,8 +319,10 @@ export default function SchedulerEditor({ id }: { id?: string }) {
 
     const [editorTab, setEditorTab] = useState<EditorTab>('editor');
     const [canvasStep, setCanvasStep] = useState<CanvasStep>('scheduler');
-    const [rightTab, setRightTab] = useState<RightTab>('details');
+    const [rightTab, setRightTab] = useState<RightPanelTab>('details');
+    const [prevRightTab, setPrevRightTab] = useState<RightPanelTab>('details');
     const [showStatus, setShowStatus] = useState(false);
+    const [mobileBottomPanelOpen, setMobileBottomPanelOpen] = useState(false);
     const [showActions, setShowActions] = useState(false);
     const [copied, setCopied] = useState(false);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
@@ -290,7 +331,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     // Preview calendar state (editor preview only)
-    const [previewSelDate, setPreviewSelDate] = useState<number | null>(null);
+    const [previewSelDate, setPreviewSelDate] = useState<string | null>(null);
     const [previewSelTime, setPreviewSelTime] = useState<string | null>(null);
     const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
 
@@ -301,7 +342,12 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     useEffect(() => { metaRef.current = meta; }, [meta]);
 
     useEffect(() => {
-        if (selectedFieldId) setRightTab('details');
+        if (selectedFieldId) {
+            setPrevRightTab(rightTab === 'details' ? prevRightTab : rightTab);
+            setRightTab('details');
+        } else {
+            setRightTab(prevRightTab);
+        }
     }, [selectedFieldId]);
 
     useEffect(() => {
@@ -312,6 +358,36 @@ export default function SchedulerEditor({ id }: { id?: string }) {
         document.addEventListener('mousedown', h);
         return () => document.removeEventListener('mousedown', h);
     }, []);
+    
+    useEffect(() => {
+        if (tabParam === 'bookings') {
+            setEditorTab('bookings');
+        }
+    }, [tabParam]);
+
+    useEffect(() => {
+        if (activeHighlightId && bookings.length > 0) {
+            // Wait for render
+            const tid = setTimeout(() => {
+                const el = document.getElementById(`booking-${activeHighlightId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 300);
+            return () => clearTimeout(tid);
+        }
+    }, [activeHighlightId, bookings.length]);
+
+    useEffect(() => {
+        if (highlightId) {
+            setActiveHighlightId(highlightId.trim());
+        }
+    }, [highlightId]);
+
+    // Stop highlight on any interaction
+    const stopHighlight = () => {
+        if (activeHighlightId) setActiveHighlightId(null);
+    };
 
     useEffect(() => {
         if (!id || isLoaded || schedulers.length === 0) return;
@@ -327,6 +403,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                 m.fields = [
                     { id: 'f_name', type: 'full_name', label: 'Full name', required: true, placeholder: 'Enter your name' },
                     { id: 'f_email', type: 'email', label: 'Email address', required: true, placeholder: 'Enter your email' },
+                    { id: 'f_phone', type: 'phone', label: 'Phone number', required: false, placeholder: 'Enter your phone number' },
                     { id: 'f_notes', type: 'long_text', label: 'Additional notes', required: false, placeholder: 'Any details you want to share...' }
                 ];
             }
@@ -336,6 +413,47 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     }, [id, schedulers, isLoaded]);
 
     useEffect(() => { fetchSchedulers(); }, [fetchSchedulers]);
+    useEffect(() => { if (id) fetchBookings(id); }, [id, fetchBookings]);
+
+    // Realtime subscription for new bookings
+    useEffect(() => {
+        if (!id) return;
+        
+        const channel = supabase
+            .channel(`scheduler_bookings_${id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'scheduler_bookings',
+                    filter: `scheduler_id=eq.${id}`
+                },
+                (payload) => {
+                    const newBooking = payload.new as any;
+                    
+                    // Add to store
+                    useSchedulerStore.setState((state) => {
+                        const exists = state.bookings.some(b => b.id === newBooking.id);
+                        if (exists) return state;
+                        return {
+                            bookings: [newBooking, ...state.bookings]
+                        };
+                    });
+
+                    // Set highlight after state update
+                    setTimeout(() => {
+                        setActiveHighlightId(String(newBooking.id));
+                        gooeyToast.success(`New booking: ${newBooking.booker_name}`);
+                    }, 100);
+                }
+            )
+            .subscribe();
+            
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [id]);
 
     const debouncedTitle = useDebounce(title, 1000);
     const debouncedStatus = useDebounce(status, 500);
@@ -391,7 +509,9 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     ];
 
     return (
-        <div className={cn("flex flex-col h-full w-full overflow-hidden font-sans text-[13px]",
+        <div 
+            onClick={stopHighlight}
+            className={cn("flex flex-col h-full w-full overflow-hidden font-sans text-[13px]",
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-white text-[#111]")}>
 
             {/* ── TOP BAR ── */}
@@ -566,9 +686,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                         {/* ── CANVAS ── */}
                         <div
                             className="flex-1 overflow-auto relative"
-                            onClick={(e) => {
-                                if (e.target === e.currentTarget) setSelectedFieldId(null);
-                            }}
+                            onClick={() => setSelectedFieldId(null)}
                             style={{
                                 backgroundColor: design.backgroundColor || '#f7f7f7',
                                 backgroundImage: getBackgroundImageWithOpacity(design.backgroundImage, design.backgroundColor || '#f7f7f7', design.backgroundImageOpacity),
@@ -579,10 +697,6 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                             <div className="z-30 flex justify-center sticky top-0 w-full pt-4 pb-6 pointer-events-none">
                                 <div className="absolute inset-0 pointer-events-none"
                                     style={{
-                                        backdropFilter: 'blur(12px)',
-                                        WebkitBackdropFilter: 'blur(12px)',
-                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                     }}>
                                     <div className={cn("absolute inset-0",
                                         design.topBlurTheme === 'dark'
@@ -616,7 +730,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                             <div className={cn("flex flex-col items-center min-h-full", isPreview && previewMode === 'mobile' ? "py-8 px-4" : "pb-20 px-4 pt-2")}>
                                 {isPreview && previewMode === 'mobile' ? (
                                     <div className="flex flex-col items-center">
-                                        <div className={cn("relative rounded-[44px] border-[4px] overflow-hidden shrink-0 transition-all duration-300 bg-[#000] w-[390px] h-[844px]", isDark ? "border-[#1a1a1a] shadow-2xl" : "border-[#000] shadow-2xl")}>
+                                        <div className={cn("relative rounded-[44px] border-[4px] overflow-visible shrink-0 transition-all duration-300 bg-[#000] w-[390px] h-[844px]", isDark ? "border-[#1a1a1a] shadow-2xl" : "border-[#000] shadow-2xl")}>
                                             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[100px] h-[24px] rounded-b-[16px] z-10 bg-white/[0.05]" />
                                             <div className="flex items-center justify-between px-8 pt-4 pb-2 text-[11px] font-medium z-10 relative opacity-40 text-white">
                                                 <span>9:41</span>
@@ -624,9 +738,9 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                     <div className="w-4 h-2.5 rounded-[2px] border border-current opacity-50" />
                                                 </div>
                                             </div>
-                                            <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0"
+                                            <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-visible scrollbar-none z-0"
                                                 style={{ backgroundColor: design.backgroundColor || (isDark ? '#080808' : '#f7f7f7') }}>
-                                                <div className="pb-8 overflow-hidden min-h-full"
+                                                <div className="pb-8 overflow-visible min-h-full"
                                                     style={{
                                                         backgroundColor: design.blockBackgroundColor || '#fff',
                                                         fontFamily: design.fontFamily || 'Inter',
@@ -684,15 +798,18 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                                     primaryColor={design.primaryColor || '#4dbf39'}
                                                                     selDate={previewSelDate}
                                                                     meta={meta}
+                                                                    workspaceTimezone={workspaceTimezone}
                                                                     onDateSelect={(d) => { setPreviewSelDate(d); setPreviewSelTime(null); }}
                                                                 />
-                                                                {previewSelDate && (
+                                                                {previewSelDate && (() => {
+                                                                    const availableSlots = getAvailableSlots(previewSelDate, meta?.durations || [30], meta?.availability || {}, [], workspaceTimezone, Intl.DateTimeFormat().resolvedOptions().timeZone);
+                                                                    return (
                                                                     <div>
                                                                         <div className="text-[10.5px] font-bold uppercase tracking-wider mb-2 opacity-40" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#000' }}>
                                                                             Available times
                                                                         </div>
-                                                                        <div className="grid grid-cols-2 gap-1.5">
-                                                                            {TIME_SLOTS_PREVIEW.map(t => (
+                                                                        <div className="grid grid-cols-2 gap-1.5 overflow-y-auto max-h-[250px] pr-1 custom-scrollbar">
+                                                                            {availableSlots.length > 0 ? availableSlots.map(t => (
                                                                                 <button key={t}
                                                                                     onClick={() => setPreviewSelTime(t)}
                                                                                     className="px-2 py-1.5 rounded-lg text-[11.5px] font-medium border transition-all text-center"
@@ -702,15 +819,20 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                                                     }>
                                                                                     {t}
                                                                                 </button>
-                                                                            ))}
+                                                                            )) : (
+                                                                                <div className="col-span-2 text-[11px] opacity-40 italic text-center py-4" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#888' }}>
+                                                                                    No slots available for this day
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </div>
-                                                                )}
+                                                                    );
+                                                                })()}
                                                             </div>
                                                         )}
 
                                                         {canvasStep === 'form' && (
-                                                            <div className="max-w-[460px] mx-auto space-y-5 animate-in fade-in slide-in-from-bottom-4">
+                                                            <div className="max-w-[460px] mx-auto space-y-3 animate-in fade-in slide-in-from-bottom-4">
                                                                 <SchedulerFormBuilder 
                                                                     isDark={isColorDark(design.blockBackgroundColor || '#fff')} 
                                                                     design={design} 
@@ -767,7 +889,8 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                     </div>
                                 ) : (
                                     <div
-                                        className="w-full max-w-[680px] overflow-hidden"
+                                        className="w-full max-w-[680px] overflow-visible"
+                                        onClick={() => setSelectedFieldId(null)}
                                         style={{
                                             backgroundColor: design.blockBackgroundColor || '#fff',
                                             boxShadow: design.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.08)',
@@ -863,7 +986,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                             )}
 
                                             {canvasStep === 'form' && (
-                                                <div className="max-w-[460px] mx-auto space-y-5 animate-in fade-in slide-in-from-bottom-4">
+                                                <div className="max-w-[460px] mx-auto space-y-3 animate-in fade-in slide-in-from-bottom-4">
                                                     <SchedulerFormBuilder 
                                                         isDark={isColorDark(design.blockBackgroundColor || '#fff')} 
                                                         design={design} 
@@ -871,6 +994,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                         updateFields={(newFields) => updateMeta({ fields: newFields })} 
                                                         selectedFieldId={selectedFieldId}
                                                         onSelectField={setSelectedFieldId}
+                                                        isReadOnly={isPreview}
                                                     />
                                                     <div className="flex gap-3 pt-2">
                                                         <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all"
@@ -925,8 +1049,11 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                         )}>
                             {/* Tab switcher */}
                             <div className="flex items-center shrink-0 p-1.5 gap-1">
-                                {([['details', Settings, 'Details'], ['design', Palette, 'Design']] as const).map(([tab, Icon, label]) => (
-                                    <button key={tab} onClick={() => setRightTab(tab)}
+                                {([['details', Settings, selectedFieldId ? 'Field' : 'Details'], ['design', Palette, 'Design']] as const).map(([tab, Icon, label]) => (
+                                    <button key={tab} onClick={() => {
+                                        setRightTab(tab);
+                                        if (tab !== 'details') setSelectedFieldId(null);
+                                    }}
                                         className={cn(
                                             "flex-1 flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold transition-all rounded-xl",
                                             rightTab === tab
@@ -940,149 +1067,151 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                             </div>
 
                             <div className="flex-1 overflow-y-auto">
-                                {rightTab === 'details' && (
+                                 {rightTab === 'details' && (
                                     <div className={cn("divide-y", isDark ? "divide-[#252525]" : "divide-[#f0f0f0]")}>
-                                        <SectionAccordion label="Organizer" icon={<User size={11} />} isDark={isDark}>
-                                            <MetaField isDark={isDark}>
-                                                <PanelInput value={meta.organizer} onChange={v => updateMeta({ organizer: v })}
-                                                    placeholder="Your name or team" isDark={isDark} />
-                                            </MetaField>
-                                        </SectionAccordion>
+                                        {!selectedFieldId ? (
+                                            <>
+                                                <SectionAccordion label="Organizer" icon={<User size={11} />} isDark={isDark}>
+                                                    <MetaField isDark={isDark}>
+                                                        <PanelInput value={meta.organizer} onChange={v => updateMeta({ organizer: v })}
+                                                            placeholder="Your name or team" isDark={isDark} />
+                                                    </MetaField>
+                                                </SectionAccordion>
 
-                                        <SectionAccordion label="Location" icon={<MapPin size={11} />} isDark={isDark}>
-                                            <MetaField isDark={isDark}>
-                                                <PanelInput value={meta.location} onChange={v => updateMeta({ location: v })}
-                                                    placeholder="Google Meet / Zoom / address" isDark={isDark} />
-                                            </MetaField>
-                                        </SectionAccordion>
+                                                <SectionAccordion label="Location" icon={<MapPin size={11} />} isDark={isDark}>
+                                                    <MetaField isDark={isDark}>
+                                                        <PanelInput value={meta.location} onChange={v => updateMeta({ location: v })}
+                                                            placeholder="Google Meet / Zoom / address" isDark={isDark} />
+                                                    </MetaField>
+                                                </SectionAccordion>
 
-                                        <SectionAccordion label="Durations" icon={<Clock size={11} />} isDark={isDark}>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {DURATION_OPTS.map(d => {
-                                                    const on = (meta.durations || []).includes(d);
-                                                    return (
-                                                        <button key={d}
-                                                            onClick={() => {
-                                                                const cur = meta.durations || [];
-                                                                updateMeta({ durations: on ? cur.filter(x => x !== d) : [...cur, d].sort((a, b) => a - b) });
-                                                            }}
-                                                            className={cn(
-                                                                "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all",
-                                                                on
-                                                                    ? "text-black border-transparent"
-                                                                    : (isDark ? "border-[#2a2a2a] text-[#555] hover:text-[#aaa]" : "border-[#e0e0e0] text-[#aaa] hover:text-[#555]")
-                                                            )}
-                                                            style={on ? { background: design.primaryColor || '#4dbf39', borderColor: 'transparent' } : undefined}>
-                                                            <Clock size={9} />
-                                                            {d >= 60 ? `${d / 60}hr` : `${d}min`}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </SectionAccordion>
+                                                <SectionAccordion label="Durations" icon={<Clock size={11} />} isDark={isDark}>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {DURATION_OPTS.map(d => {
+                                                            const on = (meta.durations || []).includes(d);
+                                                            return (
+                                                                <button key={d}
+                                                                    onClick={() => {
+                                                                        const cur = meta.durations || [];
+                                                                        updateMeta({ durations: on ? cur.filter(x => x !== d) : [...cur, d].sort((a, b) => a - b) });
+                                                                    }}
+                                                                    className={cn(
+                                                                        "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all",
+                                                                        on
+                                                                            ? "text-black border-transparent"
+                                                                            : (isDark ? "border-[#2a2a2a] text-[#555] hover:text-[#aaa]" : "border-[#e0e0e0] text-[#aaa] hover:text-[#555]")
+                                                                    )}
+                                                                    style={on ? { background: design.primaryColor || '#4dbf39', borderColor: 'transparent' } : undefined}>
+                                                                    <Clock size={9} />
+                                                                    {d >= 60 ? `${d / 60}hr` : `${d}min`}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </SectionAccordion>
 
-                                        <SectionAccordion label="Buffers" icon={<Sliders size={11} />} isDark={isDark}>
-                                            <div className="space-y-2">
-                                                {[['Before', 'bufferBefore'], ['After', 'bufferAfter']].map(([label, key]) => (
-                                                    <MetaField key={key} label={label as string} isDark={isDark}>
+                                                <SectionAccordion label="Buffers" icon={<Sliders size={11} />} isDark={isDark}>
+                                                    <div className="space-y-2">
+                                                        {[['Before', 'bufferBefore'], ['After', 'bufferAfter']].map(([label, key]) => (
+                                                            <MetaField key={key} label={label as string} isDark={isDark}>
+                                                                <SettingsSelect
+                                                                    isDark={isDark}
+                                                                    value={String((meta as any)[key])}
+                                                                    onChange={val => updateMeta({ [key]: Number(val) } as any)}
+                                                                    options={[0, 5, 10, 15, 30, 60].map(v => ({ 
+                                                                        label: v === 0 ? 'None' : `${v} min`, 
+                                                                        value: String(v) 
+                                                                    }))}
+                                                                    className="!h-7 !text-[11px] !border-none !bg-transparent !px-0"
+                                                                />
+                                                            </MetaField>
+                                                        ))}
+                                                    </div>
+                                                </SectionAccordion>
+
+                                                <SectionAccordion label="Limits" icon={<Tag size={11} />} isDark={isDark}>
+                                                    <div className="space-y-2">
+                                                        <MetaField label="Max per day" isDark={isDark}>
+                                                            <PanelInput type="number" min={1} max={50} value={meta.maxPerDay}
+                                                                    onChange={v => updateMeta({ maxPerDay: Number(v) })}
+                                                                    isDark={isDark} />
+                                                        </MetaField>
+                                                        <MetaField label="Advance notice (hrs)" isDark={isDark}>
+                                                            <PanelInput type="number" min={0} value={meta.advanceNotice}
+                                                                    onChange={v => updateMeta({ advanceNotice: Number(v) })}
+                                                                    isDark={isDark} />
+                                                        </MetaField>
+                                                        <MetaField label="Future limit (days)" isDark={isDark}>
+                                                            <PanelInput type="number" min={1} value={meta.futureLimit}
+                                                                    onChange={v => updateMeta({ futureLimit: Number(v) })}
+                                                                    isDark={isDark} />
+                                                        </MetaField>
+                                                        <MetaField label="Submission limit" isDark={isDark}>
+                                                            <PanelInput type="number" value={meta.submissionLimit ?? ''}
+                                                                    onChange={v => updateMeta({ submissionLimit: v ? Number(v) : null })}
+                                                                    placeholder="Unlimited" isDark={isDark} />
+                                                        </MetaField>
+                                                    </div>
+                                                </SectionAccordion>
+
+                                                <SectionAccordion label="Automation" icon={<Bell size={11} />} isDark={isDark}>
+                                                    <div className="space-y-2.5 pt-1">
+                                                        {['Email confirmation to booker', 'Email notification to organizer'].map(label => (
+                                                            <label key={label} className="flex items-center gap-2.5 cursor-pointer group">
+                                                                <div className={cn("w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
+                                                                    isDark ? "border-[#333] bg-[#151515]" : "border-[#ddd] bg-white")}>
+                                                                    <Check size={9} className="text-primary opacity-80" />
+                                                                </div>
+                                                                <span className={cn("text-[11.5px] font-medium transition-colors", 
+                                                                    isDark ? "text-[#555] group-hover:text-[#888]" : "text-[#aaa] group-hover:text-[#555]")}>{label}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </SectionAccordion>
+
+                                                <SectionAccordion label="Dates" icon={<Calendar size={11} />} isDark={isDark}>
+                                                    <div className="space-y-2">
+                                                        <MetaField label="Activation date" isDark={isDark}>
+                                                            <DatePicker 
+                                                                value={meta.activationDate} 
+                                                                onChange={v => updateMeta({ activationDate: v })} 
+                                                                isDark={isDark} 
+                                                                placeholder="No activation date"
+                                                                className="!h-auto !p-0 !bg-transparent !border-none"
+                                                            />
+                                                        </MetaField>
+                                                        <MetaField label="Expiration date" isDark={isDark}>
+                                                            <DatePicker 
+                                                                value={meta.expirationDate} 
+                                                                onChange={v => updateMeta({ expirationDate: v })} 
+                                                                isDark={isDark} 
+                                                                placeholder="No expiration date"
+                                                                className="!h-auto !p-0 !bg-transparent !border-none"
+                                                            />
+                                                        </MetaField>
+                                                    </div>
+                                                </SectionAccordion>
+
+                                                <SectionAccordion label="Localisation" icon={<Globe size={11} />} isDark={isDark}>
+                                                    <MetaField label="Timezone" isDark={isDark}>
                                                         <SettingsSelect
                                                             isDark={isDark}
-                                                            value={String((meta as any)[key])}
-                                                            onChange={val => updateMeta({ [key]: Number(val) } as any)}
-                                                            options={[0, 5, 10, 15, 30, 60].map(v => ({ 
-                                                                label: v === 0 ? 'None' : `${v} min`, 
-                                                                value: String(v) 
-                                                            }))}
+                                                            value={activeWorkspace?.timezone || 'UTC'}
+                                                            onChange={val => {
+                                                                // If workspace-level timezone update is needed, handle it here
+                                                                // For now just showing the active workspace timezone
+                                                            }}
+                                                            options={TIMEZONE_OPTIONS}
                                                             className="!h-7 !text-[11px] !border-none !bg-transparent !px-0"
                                                         />
                                                     </MetaField>
-                                                ))}
-                                            </div>
-                                        </SectionAccordion>
-
-                                        <SectionAccordion label="Limits" icon={<Tag size={11} />} isDark={isDark}>
-                                            <div className="space-y-2">
-                                                <MetaField label="Max per day" isDark={isDark}>
-                                                    <PanelInput type="number" min={1} max={50} value={meta.maxPerDay}
-                                                            onChange={v => updateMeta({ maxPerDay: Number(v) })}
-                                                            isDark={isDark} />
-                                                </MetaField>
-                                                <MetaField label="Advance notice (hrs)" isDark={isDark}>
-                                                    <PanelInput type="number" min={0} value={meta.advanceNotice}
-                                                            onChange={v => updateMeta({ advanceNotice: Number(v) })}
-                                                            isDark={isDark} />
-                                                </MetaField>
-                                                <MetaField label="Future limit (days)" isDark={isDark}>
-                                                    <PanelInput type="number" min={1} value={meta.futureLimit}
-                                                            onChange={v => updateMeta({ futureLimit: Number(v) })}
-                                                            isDark={isDark} />
-                                                </MetaField>
-                                                <MetaField label="Submission limit" isDark={isDark}>
-                                                    <PanelInput type="number" value={meta.submissionLimit ?? ''}
-                                                            onChange={v => updateMeta({ submissionLimit: v ? Number(v) : null })}
-                                                            placeholder="Unlimited" isDark={isDark} />
-                                                </MetaField>
-                                            </div>
-                                        </SectionAccordion>
-
-                                        <SectionAccordion label="Automation" icon={<Bell size={11} />} isDark={isDark}>
-                                            <div className="space-y-2.5 pt-1">
-                                                {['Email confirmation to booker', 'Email notification to organizer'].map(label => (
-                                                    <label key={label} className="flex items-center gap-2.5 cursor-pointer group">
-                                                        <div className={cn("w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
-                                                            isDark ? "border-[#333] bg-[#151515]" : "border-[#ddd] bg-white")}>
-                                                            <Check size={9} className="text-primary opacity-80" />
-                                                        </div>
-                                                        <span className={cn("text-[11.5px] font-medium transition-colors", 
-                                                            isDark ? "text-[#555] group-hover:text-[#888]" : "text-[#aaa] group-hover:text-[#555]")}>{label}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </SectionAccordion>
-
-                                        <SectionAccordion label="Dates" icon={<Calendar size={11} />} isDark={isDark}>
-                                            <div className="space-y-2">
-                                                <MetaField label="Activation date" isDark={isDark}>
-                                                    <DatePicker 
-                                                        value={meta.activationDate} 
-                                                        onChange={v => updateMeta({ activationDate: v })} 
-                                                        isDark={isDark} 
-                                                        placeholder="No activation date"
-                                                        className="!h-auto !p-0 !bg-transparent !border-none"
-                                                    />
-                                                </MetaField>
-                                                <MetaField label="Expiration date" isDark={isDark}>
-                                                    <DatePicker 
-                                                        value={meta.expirationDate} 
-                                                        onChange={v => updateMeta({ expirationDate: v })} 
-                                                        isDark={isDark} 
-                                                        placeholder="No expiration date"
-                                                        className="!h-auto !p-0 !bg-transparent !border-none"
-                                                    />
-                                                </MetaField>
-                                            </div>
-                                        </SectionAccordion>
-
-                                        <SectionAccordion label="Localisation" icon={<Globe size={11} />} isDark={isDark}>
-                                            <MetaField label="Timezone" isDark={isDark}>
-                                                <SettingsSelect
-                                                    isDark={isDark}
-                                                    value="UTC" // Static for now as meta doesn't have it
-                                                    onChange={() => {}}
-                                                    options={['UTC', 'Europe/London', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo'].map(t => ({ 
-                                                        label: t, 
-                                                        value: t 
-                                                    }))}
-                                                    className="!h-7 !text-[11px] !border-none !bg-transparent !px-0"
-                                                />
-                                            </MetaField>
-                                        </SectionAccordion>
-
-                                        {canvasStep === 'form' && selectedFieldId && (() => {
+                                                </SectionAccordion>
+                                            </>
+                                        ) : (() => {
                                             const field = (meta.fields || []).find(f => f.id === selectedFieldId);
                                             if (!field) return null;
                                             return (
-                                                <div className="border-t mt-4 pt-4 px-4 space-y-4">
+                                                <div className="p-4 space-y-4">
                                                     <div className={cn("text-[10px] font-bold uppercase tracking-wider mb-2", isDark ? "text-[#555]" : "text-[#bbb]")}>
                                                         Field Settings
                                                     </div>
@@ -1094,6 +1223,16 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                         <div>
                                                             <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Placeholder</label>
                                                             <PanelInput value={field.placeholder || ''} onChange={v => updateField(field.id, { placeholder: v })} isDark={isDark} />
+                                                        </div>
+                                                        <div>
+                                                            <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Description</label>
+                                                            <textarea
+                                                                rows={2}
+                                                                value={field.description || ''}
+                                                                onChange={e => updateField(field.id, { description: e.target.value })}
+                                                                className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none resize-none",
+                                                                    isDark ? "bg-[#151515] border-[#2a2a2a] text-[#ddd]" : "bg-white border-[#e5e5e5] text-[#111]")}
+                                                            />
                                                         </div>
                                                         <label className="flex items-center gap-2.5 cursor-pointer"
                                                             onClick={() => updateField(field.id, { required: !field.required })}>
@@ -1110,7 +1249,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                                 <textarea
                                                                     rows={4}
                                                                     value={(field.options || []).join('\n')}
-                                                                    onChange={e => updateField(field.id, { options: e.target.value.split('\n').filter(Boolean) })}
+                                                                    onChange={e => updateField(field.id, { options: e.target.value.split('\n') })}
                                                                     className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none resize-none",
                                                                         isDark ? "bg-[#151515] border-[#2a2a2a] text-[#ddd]" : "bg-white border-[#e5e5e5] text-[#111]")}
                                                                 />
@@ -1122,7 +1261,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                                 updateMeta({ fields: (meta.fields || []).filter(f => f.id !== field.id) });
                                                                 setSelectedFieldId(null);
                                                             }}
-                                                            className="w-full py-2.5 flex items-center justify-center gap-2 text-[11px] font-bold text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-xl transition-all"
+                                                            className="w-full py-2.5 mt-4 flex items-center justify-center gap-2 text-[11px] font-bold text-red-500 bg-red-500/5 hover:bg-red-500/10 rounded-xl transition-all"
                                                         >
                                                             <Trash2 size={13} /> Delete Field
                                                         </button>
@@ -1157,20 +1296,149 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                 )}
 
                 {editorTab === 'bookings' && (
-                    <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
-                            isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
-                            <Calendar size={24} className={isDark ? "text-[#444]" : "text-[#ccc]"} />
-                        </div>
-                        <div className="text-center">
-                            <div className={cn("font-semibold text-[14px] mb-1", isDark ? "text-[#444]" : "text-[#bbb]")}>No bookings yet</div>
-                            <div className={cn("text-[12px]", isDark ? "text-[#333]" : "text-[#ccc]")}>Bookings will appear here once people schedule time</div>
+                    <div className={cn("flex-1 overflow-auto p-4 md:p-8", isDark ? "bg-[#141414]" : "bg-[#fafafa]")}>
+                        <div className="max-w-[1000px] mx-auto w-full">
+                            {bookings && bookings.length > 0 ? (
+                                <div className="w-full">
+                                    <div className={cn("text-[14px] font-semibold mb-4", isDark ? "text-white" : "text-black")}>
+                                        Recent Bookings ({bookings.length})
+                                    </div>
+                                    <div className={cn("overflow-hidden rounded-xl border", isDark ? "border-[#252525] bg-[#1a1a1a]" : "border-[#ebebeb] bg-white")}>
+                                        <table className="w-full text-left border-collapse text-[12.5px]">
+                                            <thead>
+                                                <tr className={cn("border-b text-[10.5px] uppercase tracking-wider", isDark ? "border-[#252525] text-[#888] bg-[#111]" : "border-[#ebebeb] text-[#888] bg-[#f8f8f8]")}>
+                                                    <th className="px-5 py-3.5 font-semibold">Booker</th>
+                                                    <th className="px-5 py-3.5 font-semibold">Location</th>
+                                                    <th className="px-5 py-3.5 font-semibold">Date & Time</th>
+                                                    <th className="px-5 py-3.5 font-semibold">Duration</th>
+                                                    <th className="px-5 py-3.5 font-semibold">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className={cn("divide-y", isDark ? "divide-[#252525]" : "divide-[#ebebeb]")}>
+                                                {bookings.map((booking) => (
+                                                    <tr key={booking.id} 
+                                                        id={`booking-${booking.id}`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            stopHighlight();
+                                                        }}
+                                                        className={cn(
+                                                            "group transition-all duration-500", 
+                                                            isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#fafafa]",
+                                                            activeHighlightId === String(booking.id) && "animate-highlight-row"
+                                                        )}
+                                                        style={activeHighlightId === String(booking.id) ? {
+                                                            backgroundColor: isDark ? `${design.primaryColor || '#4dbf39'}33` : `${design.primaryColor || '#4dbf39'}1a`,
+                                                            boxShadow: `inset 3px 0 0 ${design.primaryColor || '#4dbf39'}`,
+                                                        } : undefined}>
+                                                        <td className="px-5 py-4">
+                                                            <div className={cn("group/line font-semibold text-[13px] flex items-center gap-1.5", isDark ? "text-white" : "text-black")}>
+                                                                <User size={12} className="opacity-40" />
+                                                                <span className="truncate">{booking.booker_name}</span>
+                                                                <TinyCopy text={booking.booker_name} isDark={isDark} />
+                                                            </div>
+                                                            <div className={cn("group/line text-[11.5px] mt-1 flex items-center gap-1.5", isDark ? "text-[#888]" : "text-[#888]")}>
+                                                                <Mail size={11} className="opacity-40" />
+                                                                <span className="truncate">{booking.booker_email}</span>
+                                                                <TinyCopy text={booking.booker_email} isDark={isDark} />
+                                                            </div>
+                                                            {booking.booker_phone && (
+                                                                <div className={cn("group/line text-[11.5px] mt-1 flex items-center gap-1.5", isDark ? "text-[#888]" : "text-[#888]")}>
+                                                                    <Phone size={11} className="opacity-40" />
+                                                                    <span className="truncate">{booking.booker_phone}</span>
+                                                                    <TinyCopy text={booking.booker_phone} isDark={isDark} />
+                                                                </div>
+                                                            )}
+                                                            
+                                                            {(() => {
+                                                                const customData = (booking as any).custom_fields || {};
+                                                                const fields = meta.fields || [];
+                                                                const answers = Object.entries(customData).filter(([id, val]) => {
+                                                                    const field = fields.find(f => f.id === id);
+                                                                    if (!field) return false;
+                                                                    if (field.type === 'full_name' || field.type === 'email' || field.type === 'phone') return false;
+                                                                    if (typeof val === 'string' && !val.trim()) return false;
+                                                                    return val !== null && val !== undefined;
+                                                                });
+
+                                                                if (answers.length === 0) return null;
+
+                                                                return (
+                                                                    <div className={cn("mt-3 pt-3 border-t space-y-1.5", isDark ? "border-[#252525]" : "border-[#ebebeb]")}>
+                                                                        {answers.map(([id, val]) => {
+                                                                            const field = fields.find(f => f.id === id);
+                                                                            return (
+                                                                                <div key={id} className="text-[11px] leading-tight">
+                                                                                    <span className={cn("font-semibold mr-1", isDark ? "text-[#888]" : "text-[#999]")}>
+                                                                                        {field?.label || 'Unknown'}:
+                                                                                    </span>
+                                                                                    <span className={cn("break-words", isDark ? "text-[#ccc]" : "text-[#444]")}>
+                                                                                        {typeof val === 'string' ? val : JSON.stringify(val)}
+                                                                                    </span>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </td>
+                                                        <td className="px-5 py-4">
+                                                            <div className={cn("text-[12px] flex items-center gap-1.5", isDark ? "text-[#ccc]" : "text-[#444]")}>
+                                                                <MapPin size={12} className="opacity-40" />
+                                                                {booking.location || <span className="opacity-20">-</span>}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-5 py-4 whitespace-nowrap">
+                                                            <div className={cn("font-medium text-[12.5px]", isDark ? "text-white" : "text-black")}>
+                                                                {new Date(booking.booked_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                                            </div>
+                                                            <div className={cn("text-[11.5px] mt-0.5", isDark ? "text-[#888]" : "text-[#888]")}>
+                                                                {booking.booked_time} • {booking.timezone}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-5 py-4 whitespace-nowrap">
+                                                            <div className={cn("text-[12.5px] font-medium", isDark ? "text-[#ccc]" : "text-[#555]")}>
+                                                                {booking.duration_minutes} min
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-5 py-4">
+                                                            <span className={cn(
+                                                                "px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider",
+                                                                booking.status === 'cancelled' 
+                                                                    ? (isDark ? "bg-red-500/10 text-red-400" : "bg-red-500/10 text-red-600")
+                                                                    : (isDark ? "bg-green-500/10 text-green-400" : "bg-green-500/10 text-green-600")
+                                                            )}>
+                                                                {booking.status}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center gap-4 mt-20">
+                                    <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
+                                        isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
+                                        <Calendar size={24} className={isDark ? "text-[#444]" : "text-[#ccc]"} />
+                                    </div>
+                                    <div className="text-center">
+                                        <div className={cn("font-semibold text-[14px] mb-1", isDark ? "text-[#444]" : "text-[#bbb]")}>No bookings yet</div>
+                                        <div className={cn("text-[12px]", isDark ? "text-[#333]" : "text-[#ccc]")}>Bookings will appear here once people schedule time</div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
                 {editorTab === 'availability' && (
-                    <AvailabilityTab isDark={isDark} meta={meta} updateMeta={updateMeta} primaryColor={design.primaryColor || '#4dbf39'} />
+                    <div className={cn("flex-1 overflow-auto p-4 md:p-8", isDark ? "bg-[#141414]" : "bg-[#fafafa]")}>
+                        <div className="max-w-[800px] mx-auto w-full">
+                            <AvailabilityTab isDark={isDark} meta={meta} updateMeta={updateMeta} primaryColor={design.primaryColor || '#4dbf39'} />
+                        </div>
+                    </div>
                 )}
             </div>
 

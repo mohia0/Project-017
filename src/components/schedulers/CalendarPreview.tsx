@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { DateTime } from 'luxon';
 
 /* ══════════════════════════════════════════════════════════
    HELPERS
@@ -19,49 +20,94 @@ export const timeToMinutes = (timeStr: string) => {
     return h * 60 + m;
 };
 
-export const getAvailableSlots = (date: number | null, durations: number[], availability: any, existingBookings: any[] = []) => {
-    if (!date) return [];
-    const today = new Date();
-    const d = new Date(today.getFullYear(), today.getMonth(), date);
+function timeTo24H(time12h: string) {
+    const parts = (time12h || '').trim().split(/\s+/);
+    if (parts.length < 2) return '00:00:00';
+    const [time, period] = parts;
+    let [hStr, mStr] = time.split(':');
+    let h = parseInt(hStr, 10);
+    if (period.toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (period.toUpperCase() === 'AM' && h === 12) h = 0;
+    return `${String(h).padStart(2, '0')}:${String(mStr).padStart(2, '0')}:00`;
+}
+
+export const getAvailableSlots = (
+    viewDateStr: string | null, // 'YYYY-MM-DD'
+    durations: number[],
+    availability: any,
+    existingBookings: any[] = [],
+    workspaceTimezone: string = 'UTC',
+    clientTimezone: string = Intl.DateTimeFormat().resolvedOptions().timeZone
+) => {
+    if (!viewDateStr) return [];
+    
+    const clientDayStart = DateTime.fromISO(viewDateStr, { zone: clientTimezone }).startOf('day');
+    const clientDayEnd = clientDayStart.endOf('day');
+
+    const wsCheckStart = clientDayStart.setZone(workspaceTimezone);
+    const wsCheckEnd = clientDayEnd.setZone(workspaceTimezone);
+    
+    // Determine the unique dates in the workspace timezone that span this window
+    const wsDatesToCheck = [wsCheckStart.toISODate(), wsCheckEnd.toISODate()].filter((v, i, a) => a.indexOf(v) === i);
+
     const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const dayStr = WEEKDAYS[d.getDay()];
-    const config = (availability || {})[dayStr] || { active: true, start: '9:00 AM', end: '5:00 PM' };
-    
-    if (!config.active) return [];
-    
-    const startMins = timeToMinutes(config.start);
-    const endMins = timeToMinutes(config.end);
     const duration = durations[0] || 30;
+    
+    let rawWorkspaceSlots: DateTime[] = [];
+    
+    for (const wsDateStr of wsDatesToCheck) {
+        if (!wsDateStr) continue;
+        const d = DateTime.fromISO(wsDateStr, { zone: workspaceTimezone });
+        const luxonWeekdayToOurIndex = d.weekday === 7 ? 0 : d.weekday;
+        const dayName = WEEKDAYS[luxonWeekdayToOurIndex];
 
-    const allSlots: string[] = [];
-    for (let m = startMins; m + duration <= endMins; m += duration) {
-        const h = Math.floor(m / 60);
-        const mn = m % 60;
-        const ampm = h >= 12 ? 'PM' : 'AM';
-        const h12 = h % 12 === 0 ? 12 : h % 12;
-        allSlots.push(`${h12}:${String(mn).padStart(2, '0')} ${ampm}`);
+        const config = (availability || {})[dayName] || { active: true, start: '9:00 AM', end: '5:00 PM' };
+        if (!config.active) continue;
+
+        const startMins = timeToMinutes(config.start);
+        const endMins = timeToMinutes(config.end);
+
+        for (let m = startMins; m + duration <= endMins; m += duration) {
+            const h = Math.floor(m / 60);
+            const mn = m % 60;
+            const slotTime = d.set({ hour: h, minute: mn, second: 0, millisecond: 0 });
+            rawWorkspaceSlots.push(slotTime);
+        }
     }
 
-    // Filter by existing bookings
-    if (existingBookings && existingBookings.length > 0) {
-        const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-        const dayBookings = existingBookings.filter((b: any) => b.booked_date === dateStr);
+    const now = DateTime.now();
+
+    const validSlots = rawWorkspaceSlots.filter(wsSlot => {
+        const clientSlot = wsSlot.setZone(clientTimezone);
+        if (clientSlot.toISODate() !== viewDateStr) return false;
+        if (wsSlot < now) return false; // In the past?
+
+        const slotStartUnix = wsSlot.toMillis();
+        const slotEndUnix = slotStartUnix + duration * 60000;
         
-        return allSlots.filter(slot => {
-            const slotStart = timeToMinutes(slot);
-            const slotEnd = slotStart + duration;
-            for (const b of dayBookings) {
-                const bStart = timeToMinutes(b.booked_time);
-                const bEnd = bStart + (b.duration_minutes || 30);
-                if (Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd)) {
-                    return false;
-                }
-            }
-            return true;
-        });
-    }
+        for (const b of existingBookings) {
+            if (b.status === 'cancelled') continue;
+            
+            const rawTime = b.booked_time;
+            const bDateTimeStr = `${b.booked_date}T${timeTo24H(rawTime)}`;
+            const bStart = DateTime.fromISO(bDateTimeStr, { zone: b.timezone });
+            if (!bStart.isValid) continue;
 
-    return allSlots;
+            const bStartUnix = bStart.toMillis();
+            const bEndUnix = bStartUnix + (b.duration_minutes || 30) * 60000;
+
+            if (Math.max(slotStartUnix, bStartUnix) < Math.min(slotEndUnix, bEndUnix)) {
+                return false;
+            }
+        }
+        return true;
+    });
+
+    return validSlots.map(slot => {
+        const clientSlot = slot.setZone(clientTimezone);
+        // Match the previous h:mm AM format
+        return clientSlot.toFormat('h:mm a').replace(' ', ' '); // toFormat sometimes includes a narrow no-break space
+    });
 };
 
 /* ══════════════════════════════════════════════════════════
@@ -70,17 +116,27 @@ export const getAvailableSlots = (date: number | null, durations: number[], avai
 export interface CalendarPreviewProps {
     isDark: boolean;
     primaryColor: string;
-    onDateSelect?: (d: number | null) => void;
-    selDate?: number | null;
+    onDateSelect?: (d: string | null) => void;
+    selDate?: string | null;
     meta?: any;
     currentMonthDate?: Date;
+    workspaceTimezone?: string;
+    clientTimezone?: string;
 }
 
-export function CalendarPreview({ isDark, primaryColor, onDateSelect, selDate: externalSelDate, meta, currentMonthDate }: CalendarPreviewProps) {
-    const today = new Date();
-    const [internalSelDate, setInternalSelDate] = useState<number | null>(null);
+export function CalendarPreview({ 
+    isDark, primaryColor, onDateSelect, selDate: externalSelDate, meta, currentMonthDate,
+    workspaceTimezone = 'UTC',
+    clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+}: CalendarPreviewProps) {
+    
+    const [internalSelDate, setInternalSelDate] = useState<string | null>(null);
     const [viewDate, setViewDate] = useState(currentMonthDate || new Date());
+    
+    // We render the calendar based on the client's current viewing month
+    const activeDateStr = onDateSelect !== undefined ? externalSelDate : internalSelDate;
 
+    // We use standard JS date for the grid layout, representing the "local" month view
     const month = viewDate.getMonth();
     const year = viewDate.getFullYear();
 
@@ -88,18 +144,14 @@ export function CalendarPreview({ isDark, primaryColor, onDateSelect, selDate: e
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
     const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    // Fill to 6 rows
     while (cells.length % 7 !== 0) cells.push(null);
 
-    const activeDate = onDateSelect !== undefined ? externalSelDate : internalSelDate;
-    
-    const handleClick = (d: number, isPast: boolean, isDisabled: boolean) => {
+    const handleClick = (dStr: string, isPast: boolean, isDisabled: boolean) => {
         if (isPast || isDisabled) return;
-        if (onDateSelect) onDateSelect(d);
-        else setInternalSelDate(d);
+        if (onDateSelect) onDateSelect(dStr);
+        else setInternalSelDate(dStr);
     };
 
     const changeMonth = (delta: number) => {
@@ -107,9 +159,10 @@ export function CalendarPreview({ isDark, primaryColor, onDateSelect, selDate: e
         setViewDate(next);
     };
 
+    const todayStr = DateTime.now().setZone(clientTimezone).toISODate();
+
     return (
         <div className={cn("rounded-xl overflow-hidden", isDark ? "bg-[#111]" : "bg-white")}>
-            {/* Month header */}
             <div className="flex items-center justify-between px-4 pt-4 pb-2">
                 <span className={cn("font-bold text-[14px]", isDark ? "text-white" : "text-[#111]")}>
                     {MONTHS[month]} {year}
@@ -117,48 +170,41 @@ export function CalendarPreview({ isDark, primaryColor, onDateSelect, selDate: e
                 <div className="flex gap-1">
                     <button 
                         onClick={() => changeMonth(-1)}
-                        className={cn(
-                            "w-7 h-7 rounded-lg flex items-center justify-center text-[14px] transition-colors",
-                            isDark ? "text-[#555] hover:text-white hover:bg-white/5" : "text-[#bbb] hover:text-[#111] hover:bg-[#f5f5f5]"
-                        )}>←</button>
+                        className={cn("w-7 h-7 rounded-lg flex items-center justify-center text-[14px] transition-colors",
+                            isDark ? "text-[#555] hover:text-white hover:bg-white/5" : "text-[#bbb] hover:text-[#111] hover:bg-[#f5f5f5]")}>←</button>
                     <button 
                         onClick={() => changeMonth(1)}
-                        className={cn(
-                            "w-7 h-7 rounded-lg flex items-center justify-center text-[14px] transition-colors",
-                            isDark ? "text-[#555] hover:text-white hover:bg-white/5" : "text-[#bbb] hover:text-[#111] hover:bg-[#f5f5f5]"
-                        )}>→</button>
+                        className={cn("w-7 h-7 rounded-lg flex items-center justify-center text-[14px] transition-colors",
+                            isDark ? "text-[#555] hover:text-white hover:bg-white/5" : "text-[#bbb] hover:text-[#111] hover:bg-[#f5f5f5]")}>→</button>
                 </div>
             </div>
-            {/* Week headers */}
             <div className="grid grid-cols-7 px-4">
                 {DAYS.map((d, i) => (
-                    <div key={i} className={cn("text-center text-[10px] font-bold py-1.5",
-                        isDark ? "text-[#444]" : "text-[#ccc]")}>{d}</div>
+                    <div key={i} className={cn("text-center text-[10px] font-bold py-1.5", isDark ? "text-[#444]" : "text-[#ccc]")}>{d}</div>
                 ))}
             </div>
-            {/* Day grid */}
             <div className="grid grid-cols-7 gap-0.5 px-4 pb-4">
                 {cells.map((d, i) => {
                     if (!d) return <div key={i} />;
-                    const date = new Date(year, month, d);
+                    // Construct string representing this day in the currently viewed month
+                    const cellDateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const luxonCell = DateTime.fromISO(cellDateStr, { zone: clientTimezone });
                     
-                    // Is today or future?
-                    const isPast = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                    const isPast = luxonCell.startOf('day') < DateTime.now().setZone(clientTimezone).startOf('day');
                     
-                    const dayStr = WEEKDAYS[date.getDay()];
-                    const availability = (meta?.availability) || {};
-                    const defaultAvail: Record<string, boolean> = { Monday: true, Tuesday: true, Wednesday: true, Thursday: true, Friday: true, Saturday: false, Sunday: false };
-                    const isActive = availability[dayStr] ? availability[dayStr].active : (defaultAvail[dayStr] ?? true);
+                    // Simple active check: are any slots available on this day?
+                    const daySlots = getAvailableSlots(cellDateStr, meta?.durations || [30], meta?.availability || {}, [], workspaceTimezone, clientTimezone);
+                    const isActive = daySlots.length > 0;
+                    
                     const isDisabled = isPast || !isActive;
-
-                    const isSel = d === activeDate && month === viewDate.getMonth() && year === viewDate.getFullYear();
-                    const isToday = d === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                    const isSel = cellDateStr === activeDateStr;
+                    const isToday = cellDateStr === todayStr;
 
                     return (
                         <button
                             key={i}
                             type="button"
-                            onClick={() => handleClick(d, isPast, isDisabled)}
+                            onClick={() => handleClick(cellDateStr, isPast, isDisabled)}
                             disabled={isDisabled}
                             className={cn(
                                 "aspect-square flex items-center justify-center text-[11.5px] font-medium rounded-lg transition-all",

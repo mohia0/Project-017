@@ -3,6 +3,7 @@
 import React from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { Plus, Moon, Sun, Bell, LayoutTemplate, Settings, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter, usePathname } from 'next/navigation';
@@ -28,6 +29,7 @@ export default function RightToolsMenu() {
     
     // Notifications state
     const { notifications } = useNotificationStore();
+    const { branding } = useSettingsStore();
     const unreadCount = notifications.filter(n => !n.read).length;
 
     return (
@@ -39,7 +41,7 @@ export default function RightToolsMenu() {
             <div className="flex flex-col items-center pt-1.5 pb-3 w-full px-1 gap-2">
                 <button
                     onClick={() => setCreateModalOpen(true)}
-                    className="w-9 h-9 rounded-[12px] flex items-center justify-center transition-all bg-primary hover:bg-primary-hover text-black group"
+                    className="w-9 h-9 rounded-[12px] flex items-center justify-center transition-all bg-primary hover:bg-primary-hover text-[var(--brand-primary-foreground)] group"
                 >
                     <Plus size={16} strokeWidth={2.5} className="transition-transform duration-300 group-hover:scale-125" />
                 </button>
@@ -59,7 +61,14 @@ export default function RightToolsMenu() {
                     <div className="relative">
                         <Bell size={16} strokeWidth={1.75} className="transition-transform duration-300 group-hover:scale-110 group-hover:text-current" />
                         {unreadCount > 0 && (
-                            <div className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-red-500" />
+                            <div className={cn(
+                                "absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-bold text-white",
+                                notifications.some(n => !n.read && n.type === 'receipt_pending')
+                                    ? "bg-emerald-500 animate-bell-pulse"
+                                    : "bg-red-500"
+                            )}>
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </div>
                         )}
                     </div>
                 </button>

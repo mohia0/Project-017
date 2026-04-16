@@ -985,10 +985,6 @@ export default function FormEditor({ id }: { id?: string }) {
                                     <div className="z-30 flex justify-center sticky top-0 w-full pt-4 pb-6 pointer-events-none">
                                         <div className="absolute inset-0 pointer-events-none"
                                             style={{
-                                                backdropFilter: 'blur(12px)',
-                                                WebkitBackdropFilter: 'blur(12px)',
-                                                maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                                WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                             }}>
                                             <div className={cn("absolute inset-0",
                                                 design.topBlurTheme === 'dark'

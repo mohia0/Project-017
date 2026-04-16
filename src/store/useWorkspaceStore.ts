@@ -9,6 +9,7 @@ export interface Workspace {
     plan: string;
     owner_id: string;
     created_at: string;
+    timezone?: string;
     contact_emails?: any;
     contact_phones?: any;
     contact_address?: any;

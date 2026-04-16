@@ -5,6 +5,7 @@ import { X, ChevronRight, Clock, MapPin, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useSchedulerStore } from '@/store/useSchedulerStore';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useRouter } from 'next/navigation';
 import { gooeyToast } from 'goey-toast';
 
@@ -24,6 +25,7 @@ export function CreateSchedulerModal({ open, onClose }: Props) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     const { addScheduler } = useSchedulerStore();
+    const { workspaces } = useWorkspaceStore();
     const router = useRouter();
 
     const [title, setTitle]           = useState('New Scheduler');
@@ -39,10 +41,34 @@ export function CreateSchedulerModal({ open, onClose }: Props) {
         if (!title.trim()) return;
         setLoading(true);
         try {
+            const activeWorkspaceId = useUIStore.getState().activeWorkspaceId;
+            const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+            
+            const format24to12 = (time24: string) => {
+                if (!time24 || !time24.includes(':')) return time24;
+                let [h, m] = time24.split(':');
+                let hours = parseInt(h, 10);
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+                return `${hours}:${m} ${ampm}`;
+            };
+
+            const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const availability: any = {};
+            
+            DAYS_OF_WEEK.forEach(day => {
+                const wh = activeWorkspace?.working_hours?.[day] || { start: '09:00', end: '17:00', closed: day === 'Saturday' || day === 'Sunday' };
+                availability[day] = {
+                    active: !wh.closed,
+                    start: wh.start.includes('M') ? wh.start : format24to12(wh.start),
+                    end: wh.end.includes('M') ? wh.end : format24to12(wh.end)
+                };
+            });
+
             const s = await addScheduler({
                 title: title.trim(),
                 status: 'Draft',
-                meta: { organizer, location, durations } as any,
+                meta: { organizer, location, durations, availability } as any,
             });
             if (s) {
                 onClose();

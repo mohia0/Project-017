@@ -179,7 +179,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                 }}
                 className={cn(
                     "w-full flex items-center justify-between text-left text-[11.5px] outline-none h-[22px]",
-                    !value ? "text-[#bbb]" : (isDark ? "text-[#ccc]" : "text-[#111]"),
+                    !value ? "text-black/40" : (isDark ? "text-white/80" : "text-black"),
                     disabled && "opacity-50 cursor-not-allowed"
                 )}
             >
@@ -297,7 +297,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                         {weekDays.map((wd) => (
                             <span key={wd} className={cn(
                                 "text-[10px] font-bold uppercase",
-                                isDark ? "text-[#555]" : "text-[#999]"
+                                isDark ? "text-[#555]" : "text-black/50"
                             )}>
                                 {wd}
                             </span>
@@ -326,7 +326,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                                             ? "bg-primary text-black shadow-[0_2px_8px_rgba(var(--brand-primary-rgb),0.4)]" 
                                             : isDark 
                                                 ? "text-white hover:bg-[#333] hover:text-white" 
-                                                : "text-[#333] hover:bg-[#f0f0f0]",
+                                                : "text-black hover:bg-[#f0f0f0]",
                                         (!isSelected && isToday) && (isDark ? "border border-[#444] text-[#ccc]" : "border border-[#ccc]")
                                     )}
                                 >

@@ -200,11 +200,11 @@ export default function FieldPreview({
     return (
         <div
             style={{ marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px`, borderRadius: `${borderRadius}px` }}
-            className="group relative p-0 py-4 transition-all cursor-default"
+            className="group relative p-0 py-1.5 transition-all cursor-default"
         >
-            <div className="mb-3">
+            <div className="mb-1.5">
                 <div className={cn("text-[13px] font-bold mb-0.5", isDark ? "text-[#eee]" : "text-[#111]")}>
-                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                    {field.label}
                 </div>
                 {field.description && (
                     <div className={cn("text-[11px] opacity-60", isDark ? "text-[#aaa]" : "text-[#555]")}>

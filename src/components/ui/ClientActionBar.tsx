@@ -94,10 +94,10 @@ export function ClientActionBar({
                 {/* Left Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-md",
+                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#111]/80 border-[#333] text-white" : "bg-white/80 border-[#eaeaea] text-[#111]"
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
                     )}
                     style={parentRadiusStyle}
                 >
@@ -110,10 +110,10 @@ export function ClientActionBar({
                 {/* Right Action Icons Pill */}
                 <div 
                     className={cn(
-                        "flex items-center shadow-sm border backdrop-blur-md",
+                        "flex items-center shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
                         isMobile ? "gap-1 px-2 py-1" : "gap-1.5 px-3 py-2",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#111]/80 border-[#333] text-[#ccc]" : "bg-white/80 border-[#eaeaea] text-[#555]"
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-[#ccc]" : "bg-white/70 border-white/50 text-[#555]"
                     )}
                     style={parentRadiusStyle}
                 >
@@ -144,10 +144,10 @@ export function ClientActionBar({
                 {/* Left Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-md transition-all",
+                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8] transition-all",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#111]/80 border-[#333] text-white" : "bg-white text-[#111] border-[#eaeaea]"
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/80 text-[#111] border-white/50"
                     )}
                     style={parentRadiusStyle}
                 >
@@ -173,10 +173,10 @@ export function ClientActionBar({
                 {/* Right Action Icons Pill */}
                 <div 
                     className={cn(
-                        "flex items-center shadow-sm border backdrop-blur-md transition-all shrink-0",
+                        "flex items-center shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8] transition-all shrink-0",
                         isMobile ? "gap-1 p-1" : "gap-1.5 p-1.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#111]/80 border-[#333] text-[#ccc]" : "bg-white border-[#eaeaea] text-[#555]"
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-[#ccc]" : "bg-white/70 border-white/50 text-[#555]"
                     )}
                     style={parentRadiusStyle}
                 >
@@ -238,10 +238,10 @@ export function ClientActionBar({
                 {/* Left Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-md",
+                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#111]/80 border-[#333] text-white" : "bg-white/80 border-[#eaeaea] text-[#111]"
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
                     )}
                     style={parentRadiusStyle}
                 >
@@ -254,10 +254,10 @@ export function ClientActionBar({
                 {/* Right Action Icons Pill */}
                 <div 
                     className={cn(
-                        "flex items-center shadow-sm border backdrop-blur-md",
+                        "flex items-center shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
                         isMobile ? "gap-1 px-2 py-1" : "gap-1.5 px-3 py-2",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#111]/80 border-[#333] text-[#ccc]" : "bg-white/80 border-[#eaeaea] text-[#555]"
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-[#ccc]" : "bg-white/70 border-white/50 text-[#555]"
                     )}
                     style={parentRadiusStyle}
                 >
@@ -288,10 +288,10 @@ export function ClientActionBar({
                 {/* Left Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-md",
+                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#111]/80 border-[#333] text-white" : "bg-white/80 border-[#eaeaea] text-[#111]"
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
                     )}
                     style={parentRadiusStyle}
                 >
@@ -304,10 +304,10 @@ export function ClientActionBar({
                 {/* Right Action Icons Pill */}
                 <div 
                     className={cn(
-                        "flex items-center shadow-sm border backdrop-blur-md",
+                        "flex items-center shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
                         isMobile ? "gap-1 px-2 py-1" : "gap-1.5 px-3 py-2",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#111]/80 border-[#333] text-[#ccc]" : "bg-white/80 border-[#eaeaea] text-[#555]"
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-[#ccc]" : "bg-white/70 border-white/50 text-[#555]"
                     )}
                     style={parentRadiusStyle}
                 >
@@ -336,10 +336,10 @@ export function ClientActionBar({
         >
             <div 
                 className={cn(
-                    "flex items-center shadow-lg border backdrop-blur-xl transition-all w-max max-w-full overflow-hidden",
+                    "flex items-center shadow-lg border backdrop-blur-[24px] backdrop-saturate-[1.8] transition-all w-max max-w-full overflow-hidden",
                     isMobile ? "gap-1 p-1" : "gap-2 p-1.5",
                     !inline && "pointer-events-auto",
-                    isDark ? "bg-[#1f1f1f]/80 border-[#333]" : "bg-white/90 border-[#eaeaea]"
+                    isDark ? "bg-[#1a1a1a]/70 border-white/10 shadow-black/20" : "bg-white/70 border-white/50 shadow-black/5"
                 )}
                 style={parentRadiusStyle}
             >

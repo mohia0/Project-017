@@ -207,7 +207,8 @@ export default function BrandingSettingsPage() {
                         <ColorisInput 
                             value={formData.primary_color}
                             onChange={val => setFormData({ ...formData, primary_color: val })}
-                            className="w-48"
+                            className="w-60"
+                            large
                         />
                     </div>
                 </SettingsField>

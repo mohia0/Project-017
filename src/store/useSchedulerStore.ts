@@ -15,6 +15,7 @@ export interface SchedulerBooking {
     booked_time: string;
     timezone: string;
     duration_minutes: number;
+    location?: string;
     status: 'confirmed' | 'cancelled' | 'pending';
     created_at: string;
 }

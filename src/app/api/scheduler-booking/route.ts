@@ -96,7 +96,7 @@ export async function POST(req: Request) {
                 workspace_id,
                 title: notificationTitle,
                 message: notificationMessage,
-                link: `/schedulers/${scheduler_id}?tab=bookings`,
+                link: `/schedulers/${scheduler_id}?tab=bookings&highlight=${bookingData.id}`,
                 read: false
             });
 

@@ -213,7 +213,7 @@ export function SettingsSelect({
                     onKeyDown={handleKeyDown}
                     placeholder="Select..."
                     className={cn(
-                        "w-full bg-transparent border-none outline-none text-sm p-0 placeholder:text-black/30 dark:placeholder:text-white/20",
+                        "w-full bg-transparent border-none outline-none text-sm p-0 placeholder:text-black/50 dark:placeholder:text-white/20",
                         isDark ? "text-white" : "text-black"
                     )}
                 />
@@ -236,21 +236,41 @@ export function SettingsSelect({
                     isDark ? "bg-[#1c1c1c] border-[#2e2e2e] shadow-black/50" : "bg-white border-[#ebebeb] shadow-black/5"
                 )}>
                     {filteredOptions.length > 0 ? (
-                        filteredOptions.map((option) => (
-                            <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => handleSelect(option.value)}
-                                className={cn(
-                                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors mb-0.5 last:mb-0",
-                                    value === option.value
-                                        ? isDark ? "bg-white/10 text-white" : "bg-black/5 text-[#111]"
-                                        : isDark ? "text-white/60 hover:bg-white/5 hover:text-white" : "text-black/60 hover:bg-black/[0.03] hover:text-black"
-                                )}
-                            >
-                                {option.label}
-                            </button>
-                        ))
+                        filteredOptions.map((option) => {
+                            return (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => handleSelect(option.value)}
+                                    className={cn(
+                                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all mb-0.5 last:mb-0",
+                                        value === option.value
+                                            ? isDark ? "bg-white/10 text-white font-bold" : "bg-black/5 text-black font-bold"
+                                            : isDark 
+                                                ? "text-white font-bold"
+                                                : "text-black font-normal hover:bg-black/[0.03]"
+                                    )}
+                                >
+                                    {(() => {
+                                        if (!search) return option.label;
+                                        const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                        const regex = new RegExp(`(${escapedSearch})`, 'gi');
+                                        const parts = option.label.split(regex);
+                                        return (
+                                            <>
+                                                {parts.map((p, i) => 
+                                                    regex.test(p) ? (
+                                                        <span key={i} className={cn("rounded-sm px-0.5", isDark ? "bg-white/20 text-white" : "bg-primary/30 text-black")}>{p}</span>
+                                                    ) : (
+                                                        <span key={i}>{p}</span>
+                                                    )
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </button>
+                            );
+                        })
                     ) : (
                         <div className={cn("px-3 py-2 text-sm italic opacity-50", isDark ? "text-white" : "text-black")}>
                             {allowCustom ? `Press Enter to use "${search}"` : "No results found"}

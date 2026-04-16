@@ -11,6 +11,7 @@ export interface AppNotification {
     link?: string;
     read: boolean;
     type?: string;
+    metadata?: Record<string, any>;
     created_at: string;
 }
 
@@ -18,6 +19,7 @@ interface NotificationState {
     notifications: AppNotification[];
     isLoading: boolean;
     fetchNotifications: () => Promise<void>;
+    addNotification: (n: { title: string; message: string; link?: string; type?: string; metadata?: Record<string, any> }) => Promise<void>;
     markAsRead: (id: string) => Promise<void>;
     markAllAsRead: () => Promise<void>;
     subscribe: () => void;
@@ -50,6 +52,29 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             set({ notifications: data as AppNotification[], isLoading: false });
         } else {
             set({ isLoading: false });
+        }
+    },
+
+    addNotification: async ({ title, message, link, type, metadata }) => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) return;
+
+        const { data, error } = await supabase
+            .from('notifications')
+            .insert({
+                workspace_id: workspaceId,
+                title,
+                message,
+                link: link || null,
+                type: type || 'info',
+                metadata: metadata || null,
+                read: false,
+            })
+            .select()
+            .single();
+
+        if (!error && data) {
+            set(state => ({ notifications: [data as AppNotification, ...state.notifications] }));
         }
     },
 
@@ -101,13 +126,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                 filter: `workspace_id=eq.${workspaceId}`
             }, (payload) => {
                 const newNotification = payload.new as AppNotification;
-                
-                // Add to local state and trigger toast
+
                 set(state => ({
                     notifications: [newNotification, ...state.notifications]
                 }));
 
-                // Trigger pure visual toast showing who opened what
                 gooeyToast.success(newNotification.title, {
                     duration: 6000,
                 });

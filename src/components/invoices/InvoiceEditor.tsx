@@ -41,8 +41,10 @@ import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSel
 import ImageUploadModal from '../modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
+import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { gooeyToast } from 'goey-toast';
 
 /* ═══════════════════════════════════════════════════════
@@ -117,15 +119,17 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const { clients, fetchClients } = useClientStore();
     const { updateInvoice, deleteInvoice, fetchInvoices, invoices } = useInvoiceStore();
     const { addTemplate } = useTemplateStore();
-    const { payments, fetchPayments } = useSettingsStore();
 
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
+    const { payments, fetchPayments, emailConfig, emailTemplates, fetchEmailConfig, fetchEmailTemplates, toolSettings } = useSettingsStore();
 
     React.useEffect(() => {
         if (activeWorkspaceId) {
             fetchPayments(activeWorkspaceId);
+            fetchEmailConfig(activeWorkspaceId);
+            fetchEmailTemplates(activeWorkspaceId);
         }
-    }, [activeWorkspaceId, fetchPayments]);
+    }, [activeWorkspaceId, fetchPayments, fetchEmailConfig, fetchEmailTemplates]);
 
     React.useEffect(() => {
         fetchClients();
@@ -148,6 +152,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
     const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
     const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
+    const [isSendModalOpen, setIsSendModalOpen] = useState(false);
 
     const [meta, setMeta] = useState<InvoiceMeta>({
         clientName: '',
@@ -319,12 +324,63 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const updateMeta = (patch: Partial<InvoiceMeta>) => setMeta(m => ({ ...m, ...patch }));
 
     const handleStatusChange = (newStatus: string) => {
-        // Pattern matched from proposals
+        // Guard: require confirmation to leave Paid
         if (meta.status === 'Paid') {
             setPendingStatusChange(newStatus);
             return;
         }
         updateMeta({ status: newStatus as any });
+
+        // Receipt logic when status → Paid
+        if (newStatus === 'Paid') {
+            const autoReceiptEnabled = toolSettings?.invoices?.auto_receipt !== false;
+            const hasEmail = !!meta.clientEmail;
+            const docLink = typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${id}` : '';
+            const receiptVars = {
+                client_name: meta.clientName || '',
+                invoice_number: meta.invoiceNumber || '',
+                amount_paid: fmt(totals.total, meta.currency),
+                amount_due: fmt(totals.total, meta.currency),
+                document_link: docLink,
+                sender_name: '',
+            };
+
+            if (autoReceiptEnabled && hasEmail) {
+                // Auto-send receipt
+                fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        workspace_id: activeWorkspaceId,
+                        template_key: 'receipt',
+                        to: meta.clientEmail,
+                        variables: receiptVars,
+                    }),
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) gooeyToast.success('Receipt emailed to client ✓');
+                        else gooeyToast.error('Auto-receipt failed: ' + data.error);
+                    })
+                    .catch(err => console.error('Auto-receipt failed:', err));
+            } else {
+                // Push actionable notification for manual dispatch
+                const reason = !hasEmail ? 'No client email on file.' : 'Auto-receipt is disabled.';
+                useNotificationStore.getState().addNotification({
+                    title: `Receipt pending — ${meta.clientName || 'Client'}`,
+                    message: `${reason} Open the notification to send the receipt for ${meta.invoiceNumber || 'this invoice'} (${fmt(totals.total, meta.currency)}).`,
+                    link: `/invoices/${id}`,
+                    type: 'receipt_pending',
+                    metadata: {
+                        invoice_id: id,
+                        workspace_id: activeWorkspaceId,
+                        to: meta.clientEmail || '',
+                        variables: receiptVars,
+                    },
+                });
+                gooeyToast.info('Receipt queued — check your notifications to send manually.');
+            }
+        }
     };
 
     const confirmStatusChange = () => {
@@ -551,14 +607,21 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         <Printer size={14} />
                     </button>
 
-                    <button
-                        className={cn(
-                            "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
-                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
-                        )}
-                    >
-                        <Send size={14} />
-                    </button>
+                    {/* Send — active only when Pending */}
+                    <Tooltip content={meta.status === 'Pending' ? 'Send invoice to client' : 'Set status to Pending to send'} side="bottom">
+                        <button
+                            onClick={() => meta.status === 'Pending' && setIsSendModalOpen(true)}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
+                                meta.status === 'Pending'
+                                    ? "bg-primary hover:bg-primary-hover text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.35)]"
+                                    : isDark ? "bg-[#2a2a2a] text-white/20 cursor-not-allowed" : "bg-[#f0f0f0] text-black/20 cursor-not-allowed"
+                            )}
+                        >
+                            <Send size={14} />
+                            <span className="hidden md:inline">Send</span>
+                        </button>
+                    </Tooltip>
 
                     <div className="relative ml-1" ref={actionsRef}>
                         <button
@@ -631,10 +694,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 <div 
                                     className="absolute inset-0 pointer-events-none"
                                     style={{
-                                        backdropFilter: 'blur(12px)',
-                                        WebkitBackdropFilter: 'blur(12px)',
-                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                     }}
                                 >
                                     <div className={cn(
@@ -699,10 +758,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                 <div 
                                                     className="absolute inset-0 pointer-events-none"
                                                     style={{
-                                                        backdropFilter: 'blur(12px)',
-                                                        WebkitBackdropFilter: 'blur(12px)',
-                                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                                     }}
                                                 >
                                                     <div className={cn(
@@ -1176,6 +1231,23 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             />
             </div>
             </div>
+
+            <SendEmailModal
+                isOpen={isSendModalOpen}
+                onClose={() => setIsSendModalOpen(false)}
+                templateKey="invoice"
+                to={meta.clientEmail || ''}
+                variables={{
+                    client_name: meta.clientName || '',
+                    invoice_number: meta.invoiceNumber || '',
+                    amount_due: fmt(totals.total, meta.currency),
+                    amount_paid: fmt(totals.total, meta.currency),
+                    due_date: meta.dueDate || '',
+                    document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${id}` : '',
+                }}
+                workspaceId={activeWorkspaceId || ''}
+                documentTitle={meta.projectName || 'Invoice'}
+            />
         </div>
     );
 }

@@ -42,6 +42,7 @@ import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
 import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { gooeyToast } from 'goey-toast';
 
@@ -128,6 +129,16 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const { clients, fetchClients } = useClientStore();
     const { updateProposal, deleteProposal, fetchProposals, proposals } = useProposalStore();
     const { addTemplate } = useTemplateStore();
+    const { emailConfig, emailTemplates, fetchEmailConfig, fetchEmailTemplates } = useSettingsStore();
+
+    const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
+
+    React.useEffect(() => {
+        if (activeWorkspaceId) {
+            fetchEmailConfig(activeWorkspaceId);
+            fetchEmailTemplates(activeWorkspaceId);
+        }
+    }, [activeWorkspaceId]);
 
 
     React.useEffect(() => {
@@ -154,6 +165,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isSendModalOpen, setIsSendModalOpen] = useState(false);
     const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
 
     const statusRef = useRef<HTMLDivElement>(null);
@@ -576,12 +588,21 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         {copied ? <Check size={14} className="text-primary" /> : <Link2 size={14} />}
                     </button>
 
-                    {/* Send — always visible */}
-                    <button
-                        className="flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all bg-primary hover:bg-primary-hover text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
-                    >
-                        <Send size={14} />
-                    </button>
+                    {/* Send — active only when Pending */}
+                    <Tooltip content={meta.status === 'Pending' ? 'Send proposal to client' : 'Set status to Pending to send'} side="bottom">
+                        <button
+                            onClick={() => meta.status === 'Pending' && setIsSendModalOpen(true)}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
+                                meta.status === 'Pending'
+                                    ? "bg-primary hover:bg-primary-hover text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.35)]"
+                                    : isDark ? "bg-[#2a2a2a] text-white/20 cursor-not-allowed" : "bg-[#f0f0f0] text-black/20 cursor-not-allowed"
+                            )}
+                        >
+                            <Send size={14} />
+                            <span className="hidden md:inline">Send</span>
+                        </button>
+                    </Tooltip>
 
                     {/* Actions dropdown */}
                     <div className="relative" ref={actionsRef}>
@@ -651,10 +672,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 <div 
                                     className="absolute inset-0 pointer-events-none"
                                     style={{
-                                        backdropFilter: 'blur(12px)',
-                                        WebkitBackdropFilter: 'blur(12px)',
-                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                     }}
                                 >
                                     <div className={cn(
@@ -716,10 +733,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                             <div 
                                                 className="absolute inset-0 pointer-events-none"
                                                 style={{
-                                                    backdropFilter: 'blur(12px)',
-                                                    WebkitBackdropFilter: 'blur(12px)',
-                                                    maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                                    WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                                 }}
                                             >
                                                 <div className={cn(
@@ -1258,6 +1271,20 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     }}
                 />
             )}
+
+            <SendEmailModal
+                isOpen={isSendModalOpen}
+                onClose={() => setIsSendModalOpen(false)}
+                templateKey="proposal"
+                to={meta.clientEmail || ''}
+                variables={{
+                    client_name: meta.clientName || '',
+                    document_title: meta.projectName || 'Proposal',
+                    document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/proposal/${id}` : '',
+                }}
+                workspaceId={activeWorkspaceId || ''}
+                documentTitle={meta.projectName || 'Proposal'}
+            />
         </div>
     );
 }

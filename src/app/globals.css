@@ -22,6 +22,7 @@
 
   --color-primary: var(--brand-primary);
   --color-primary-hover: var(--brand-primary-hover);
+  --color-primary-foreground: var(--brand-primary-foreground);
 
   --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.04);
@@ -173,17 +174,39 @@
     scrollbar-width: none; /* Firefox */
   }
 
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
+  }
+  .dark .custom-scrollbar {
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
+  }
+
   .custom-scrollbar::-webkit-scrollbar {
-    width: 5px;
+    width: 8px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+    background-color: rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-black/10 rounded-full;
+    background-color: rgba(0, 0, 0, 0.45);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-track {
+    background-color: rgba(255, 255, 255, 0.08);
   }
   .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-white/10;
+    background-color: rgba(255, 255, 255, 0.45);
+    border-radius: 10px;
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.6);
   }
 }
 
@@ -253,7 +276,37 @@ button {
   .overflow-y-auto, .overflow-auto {
     -webkit-overflow-scrolling: touch;
   }
+
+  @keyframes highlight-pulse-bg {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.2); opacity: 0.7; }
+  }
+
+  .animate-highlight-row {
+    animation: highlight-pulse-bg 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+  }
+
+  /* ── Soft-blink for new receipt/actionable notifications ── */
+  @keyframes soft-blink {
+    0%, 100% { opacity: 1; background-color: transparent; }
+    50% { opacity: 0.75; background-color: rgba(16, 185, 129, 0.06); }
+  }
+
+  .animate-soft-blink {
+    animation: soft-blink 2.4s ease-in-out infinite;
+  }
+
+  /* ── Notification bell badge pulse ── */
+  @keyframes bell-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(77, 191, 57, 0.5); }
+    60% { box-shadow: 0 0 0 5px rgba(77, 191, 57, 0); }
+  }
+
+  .animate-bell-pulse {
+    animation: bell-pulse 2s ease-in-out infinite;
+  }
 }
+
 
 /* ─── Range Slider Styling ─────────────────────────────────────── */
 input[type="range"] {

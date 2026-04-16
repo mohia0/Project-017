@@ -329,10 +329,6 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                 <div 
                                     className="absolute inset-0 pointer-events-none"
                                     style={{
-                                        backdropFilter: 'blur(12px)',
-                                        WebkitBackdropFilter: 'blur(12px)',
-                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                     }}
                                 >
                                     <div className={cn(
@@ -385,10 +381,6 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                                 <div 
                                                     className="absolute inset-0 pointer-events-none"
                                                     style={{
-                                                        backdropFilter: 'blur(12px)',
-                                                        WebkitBackdropFilter: 'blur(12px)',
-                                                        maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
-                                                        WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
                                                     }}
                                                 >
                                                     <div className={cn(
