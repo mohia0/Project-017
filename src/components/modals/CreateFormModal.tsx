@@ -165,7 +165,7 @@ export function CreateFormModal({ open, onClose }: Props) {
                                 {template === t.id && (
                                     <div className="ml-auto shrink-0 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
                                         <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                                            <path d="M1 4l2 2 4-4" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                            <path d="M1 4l2 2 4-4" stroke="var(--brand-primary-foreground)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                         </svg>
                                     </div>
                                 )}
@@ -191,7 +191,7 @@ export function CreateFormModal({ open, onClose }: Props) {
                     <button
                         onClick={handleCreate}
                         disabled={loading || !title.trim()}
-                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-black transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-colors disabled:opacity-50"
                     >
                         {loading ? 'Creating…' : 'Create form'}
                         {!loading && <ChevronRight size={14} />}

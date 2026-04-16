@@ -876,7 +876,7 @@ export default function FormEditor({ id }: { id?: string }) {
                         className={cn(
                             "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
                             isPreview
-                                ? "bg-primary text-black hover:bg-primary-hover"
+                                ? "bg-primary text-primary-foreground hover:bg-primary-hover"
                                 : isDark
                                     ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]"
                                     : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
@@ -1121,7 +1121,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                             <div className="relative mt-4">
                                                                                 <button 
                                                                                     onClick={(e) => { e.stopPropagation(); setOpenInsertMenu(0); }}
-                                                                                    className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary-hover text-black transition-all shadow-sm"
+                                                                                    className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground transition-all shadow-sm"
                                                                                 >
                                                                                     <Plus size={14} strokeWidth={2.5} />
                                                                                     Add first field
@@ -1589,7 +1589,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                         <button onClick={() => setResponsesSearch('')} className="text-primary text-[12px] font-medium hover:underline">Clear filters</button>
                                     ) : (
                                         <button onClick={copyLink}
-                                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold bg-primary text-black mt-2">
+                                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold bg-primary text-primary-foreground mt-2">
                                             <Link2 size={13} /> Copy form link
                                         </button>
                                     )}

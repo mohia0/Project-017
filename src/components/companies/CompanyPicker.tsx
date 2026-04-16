@@ -156,7 +156,7 @@ export function CompanyPicker({
                                     onMouseDown={e => { e.preventDefault(); setOpen(false); setShowCreateModal(true); }}
                                     className={cn(
                                         "w-full flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium transition-colors",
-                                        isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-[#f5f5f5]"
+                                        "text-primary hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
                                     )}
                                 >
                                     <Plus size={13} />

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, Send, Mail, User, ChevronDown, Check, Loader2, AlertCircle, Sparkles, Settings2 } from 'lucide-react';
+import { X, Send, Mail, User, ChevronDown, Check, Loader2, AlertCircle, Sparkles, Settings2, FileText, Receipt, FileCheck } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -19,9 +19,9 @@ interface SendEmailModalProps {
 }
 
 const TEMPLATE_INFO = {
-    proposal: { label: 'Proposal', color: '#6366f1', icon: '📋' },
-    invoice:  { label: 'Invoice',  color: '#f59e0b', icon: '🧾' },
-    receipt:  { label: 'Receipt',  color: '#10b981', icon: '✅' },
+    proposal: { label: 'Proposal', color: '#6366f1', icon: FileText },
+    invoice:  { label: 'Invoice',  color: '#f59e0b', icon: Receipt },
+    receipt:  { label: 'Receipt',  color: '#10b981', icon: FileCheck },
 };
 
 const DEFAULT_SUBJECTS: Record<string, string> = {
@@ -151,10 +151,10 @@ export function SendEmailModal({
                 )}>
                     <div className="flex items-center gap-3">
                         <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[16px]"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center"
                             style={{ backgroundColor: `${info.color}18` }}
                         >
-                            {info.icon}
+                            <info.icon size={16} style={{ color: info.color }} />
                         </div>
                         <div>
                             <h2 className={cn("text-[15px] font-bold leading-tight", isDark ? "text-white" : "text-[#111]")}>

@@ -379,7 +379,7 @@ export function SchedulerFormBuilder({ isDark, design, fields, updateFields, sel
                                     <div className="relative mt-4">
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); setOpenFieldIndex(0); }}
-                                            className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary-hover text-black transition-all shadow-sm"
+                                            className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary-hover text-primary-foreground transition-all shadow-sm"
                                         >
                                             <Plus size={14} strokeWidth={2.5} />
                                             Add first field

@@ -585,7 +585,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                         className={cn(
                             "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
                             isPreview
-                                ? "bg-primary text-black hover:bg-primary-hover"
+                                ? "bg-primary text-primary-foreground hover:bg-primary-hover"
                                 : isDark
                                     ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]"
                                     : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"

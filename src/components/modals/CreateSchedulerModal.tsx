@@ -175,7 +175,7 @@ export function CreateSchedulerModal({ open, onClose }: Props) {
                                         className={cn(
                                             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold border transition-all",
                                             on
-                                                ? "text-black border-transparent bg-primary"
+                                                ? "text-primary-foreground border-transparent bg-primary"
                                                 : (isDark
                                                     ? "border-[#2e2e2e] text-[#555] hover:text-[#aaa] hover:border-[#333]"
                                                     : "border-[#e5e5e5] text-[#aaa] hover:text-[#555] hover:border-[#ccc]")
@@ -207,7 +207,7 @@ export function CreateSchedulerModal({ open, onClose }: Props) {
                     <button
                         onClick={handleCreate}
                         disabled={loading || !title.trim()}
-                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-black transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-colors disabled:opacity-50"
                     >
                         {loading ? 'Creating…' : 'Create scheduler'}
                         {!loading && <ChevronRight size={14} />}

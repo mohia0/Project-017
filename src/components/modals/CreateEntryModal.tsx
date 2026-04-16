@@ -563,7 +563,7 @@ export default function CreateEntryModal() {
                             <button
                                 onClick={handleCreate}
                                 disabled={loading}
-                                className="flex items-center gap-2 px-6 py-2 text-[13px] font-bold rounded-xl bg-primary hover:bg-primary-hover text-black transition-all active:scale-[0.98] disabled:opacity-60 shadow-[0_4px_14px_-4px_rgba(var(--brand-primary-rgb),0.4)]"
+                                className="flex items-center gap-2 px-6 py-2 text-[13px] font-bold rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-60 shadow-[0_4px_14px_-4px_rgba(var(--brand-primary-rgb),0.4)]"
                             >
                                 {loading ? 'Creating...' : ctaLabel}
                                 {!loading && <ChevronRight size={14} strokeWidth={2.5} />}

@@ -177,7 +177,7 @@ export function CreateHookModal({ open, onClose }: Props) {
                     <button
                         onClick={handleCreate}
                         disabled={loading || !name.trim()}
-                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-black transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-colors disabled:opacity-50"
                     >
                         {loading ? 'Creating…' : 'Create hook'}
                         {!loading && <ChevronRight size={14} />}

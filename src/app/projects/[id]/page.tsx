@@ -232,7 +232,7 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
                     </div>
                     <button
                         onClick={() => setLinkOpen(v => !v)}
-                        className="flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary/90 text-white text-[12px] font-bold rounded-[8px] transition-all active:scale-95 shadow-lg shadow-primary/20"
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-[12px] font-bold rounded-[8px] transition-all active:scale-95 shadow-lg shadow-primary/20"
                     >
                         <Plus size={13} /> Link Item
                     </button>
@@ -377,7 +377,7 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
                             <p className={cn("text-[14px] font-semibold", isDark ? "text-[#505050]" : "text-[#888]")}>No linked items</p>
                             <p className={cn("text-[12px] mt-1", isDark ? "text-[#333]" : "text-[#ccc]")}>Connect invoices or proposals to track financials</p>
                         </div>
-                        <button onClick={() => setLinkOpen(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary hover:bg-primary/90 text-white text-[12px] font-semibold transition-all">
+                        <button onClick={() => setLinkOpen(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary hover:bg-primary/90 text-primary-foreground text-[12px] font-semibold transition-all">
                             <Plus size={13} /> Link First Item
                         </button>
                     </div>

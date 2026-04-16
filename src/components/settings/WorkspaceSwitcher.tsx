@@ -170,7 +170,7 @@ export default function WorkspaceSwitcher() {
                                     className="bg-black/20 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-white focus:outline-none focus:border-primary/50 w-full"
                                 />
                                 <div className="flex gap-1">
-                                    <button type="submit" disabled={!newWorkspaceName.trim()} className="flex-1 bg-primary text-black text-[11px] font-semibold py-1.5 rounded-md disabled:opacity-50">
+                                    <button type="submit" disabled={!newWorkspaceName.trim()} className="flex-1 bg-primary text-primary-foreground text-[11px] font-semibold py-1.5 rounded-md disabled:opacity-50">
                                         Create
                                     </button>
                                     <button type="button" onClick={() => setIsCreating(false)} className="flex-1 bg-white/5 text-white/70 hover:text-white text-[11px] font-semibold py-1.5 rounded-md">

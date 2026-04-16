@@ -14,6 +14,7 @@ import { gooeyToast } from 'goey-toast';
 const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
     primary_color: '#4dbf39',
     secondary_color: '',
+    apply_color_to_sidebar: false,
     font_family: 'Inter',
     border_radius: 12,
     logo_light_url: '/logo.svg',
@@ -22,7 +23,7 @@ const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
 };
 
 // Visual-only subset we expose in settings (border_radius & font_family are hidden)
-type BrandingFormData = Pick<WorkspaceBranding, 'primary_color' | 'secondary_color' | 'logo_light_url' | 'logo_dark_url' | 'favicon_url'>;
+type BrandingFormData = Pick<WorkspaceBranding, 'primary_color' | 'secondary_color' | 'apply_color_to_sidebar' | 'logo_light_url' | 'logo_dark_url' | 'favicon_url'>;
 
 function ResetButton({ onClick, isDark }: { onClick: () => void, isDark: boolean }) {
     return (
@@ -41,6 +42,22 @@ function ResetButton({ onClick, isDark }: { onClick: () => void, isDark: boolean
             <RotateCcw size={8} strokeWidth={3} />
             <span className="text-[9px] font-bold uppercase tracking-wider">Reset</span>
         </button>
+    );
+}
+
+function Toggle({ checked, onChange, isDark }: { checked: boolean; onChange: (v: boolean) => void; isDark: boolean }) {
+    return (
+        <div onClick={() => onChange(!checked)} className="flex items-center gap-2.5 cursor-pointer select-none group">
+            <div className={cn(
+                "w-9 h-[20px] rounded-full relative transition-all duration-300",
+                checked ? "bg-primary" : (isDark ? "bg-white/10" : "bg-black/10")
+            )}>
+                <div className={cn(
+                    "absolute top-[3px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-all duration-300 transform",
+                    checked ? "translate-x-[19px]" : "translate-x-[3px]"
+                )} />
+            </div>
+        </div>
     );
 }
 
@@ -117,6 +134,7 @@ export default function BrandingSettingsPage() {
     const [formData, setFormData] = useState<BrandingFormData>({
         primary_color: DEFAULT_BRANDING.primary_color,
         secondary_color: DEFAULT_BRANDING.secondary_color,
+        apply_color_to_sidebar: DEFAULT_BRANDING.apply_color_to_sidebar,
         logo_light_url: DEFAULT_BRANDING.logo_light_url,
         logo_dark_url: DEFAULT_BRANDING.logo_dark_url,
         favicon_url: DEFAULT_BRANDING.favicon_url,
@@ -143,6 +161,7 @@ export default function BrandingSettingsPage() {
             setFormData({
                 primary_color: branding.primary_color || DEFAULT_BRANDING.primary_color,
                 secondary_color: branding.secondary_color || '',
+                apply_color_to_sidebar: branding.apply_color_to_sidebar || false,
                 logo_light_url: branding.logo_light_url || '',
                 logo_dark_url: branding.logo_dark_url || '',
                 favicon_url: branding.favicon_url || '',
@@ -158,6 +177,7 @@ export default function BrandingSettingsPage() {
         setFormData({
             primary_color: DEFAULT_BRANDING.primary_color,
             secondary_color: DEFAULT_BRANDING.secondary_color,
+            apply_color_to_sidebar: DEFAULT_BRANDING.apply_color_to_sidebar,
             logo_light_url: DEFAULT_BRANDING.logo_light_url,
             logo_dark_url: DEFAULT_BRANDING.logo_dark_url,
             favicon_url: DEFAULT_BRANDING.favicon_url,
@@ -203,13 +223,30 @@ export default function BrandingSettingsPage() {
                     label="Primary Color" 
                     extra={<ResetButton onClick={() => resetField('primary_color')} isDark={isDark} />}
                 >
-                    <div className="flex gap-2 items-center">
+                    <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-2 duration-500">
                         <ColorisInput 
                             value={formData.primary_color}
                             onChange={val => setFormData({ ...formData, primary_color: val })}
                             className="w-60"
                             large
                         />
+                        
+                        <div className={cn(
+                            "flex items-center gap-2.5 px-3 py-1.5 rounded-xl border transition-all h-[52px]",
+                            isDark ? "bg-white/[0.03] border-white/10" : "bg-black/[0.02] border-black/10"
+                        )}>
+                            <div className="flex flex-col">
+                                <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "text-white/30" : "text-black/30")}>Apply to Sidebar</span>
+                                <span className={cn("text-[11px] font-bold", isDark ? "text-white/70" : "text-black/70")}>
+                                    {formData.apply_color_to_sidebar ? 'Branded' : 'Default'}
+                                </span>
+                            </div>
+                            <Toggle 
+                                checked={formData.apply_color_to_sidebar} 
+                                onChange={(v) => setFormData(prev => ({ ...prev, apply_color_to_sidebar: v }))}
+                                isDark={isDark} 
+                            />
+                        </div>
                     </div>
                 </SettingsField>
 

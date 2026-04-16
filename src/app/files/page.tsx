@@ -452,7 +452,7 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                     {item.downloadUrl && (
                         <button
                             onClick={onDownload}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all bg-primary hover:bg-primary-hover text-black shadow-lg shadow-primary/20 active:scale-95"
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-bold transition-all bg-primary hover:bg-primary-hover text-primary-foreground shadow-lg shadow-primary/20 active:scale-95"
                         >
                             <Download size={13}/> Download {ext}
                         </button>
@@ -828,7 +828,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                 {/* Footer actions */}
                 <div className={cn('flex items-center gap-2 px-5 py-4 border-t', isDark ? 'border-[#242424]' : 'border-[#f0f0f0]')}>
                     {allDone ? (
-                        <button onClick={confirmUpload.bind(null, uploads)} className="flex-1 h-10 rounded-xl text-[12px] font-bold bg-primary hover:bg-primary-hover text-black transition-all active:scale-[0.98] shadow-lg shadow-primary/20">
+                        <button onClick={confirmUpload.bind(null, uploads)} className="flex-1 h-10 rounded-xl text-[12px] font-bold bg-primary hover:bg-primary-hover text-primary-foreground transition-all active:scale-[0.98] shadow-lg shadow-primary/20">
                             Add to Library
                         </button>
                     ) : (
@@ -838,8 +838,8 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                             className={cn(
                                 'flex-1 h-10 rounded-xl text-[12px] font-bold transition-all active:scale-[0.98]',
                                 uploads.length > 0 && uploads.some(u => u.status === 'pending')
-                                    ? 'bg-primary hover:bg-primary-hover text-black shadow-lg shadow-primary/20'
-                                    : 'bg-primary/30 text-black/40 cursor-not-allowed'
+                                    ? 'bg-primary hover:bg-primary-hover text-primary-foreground shadow-lg shadow-primary/20'
+                                    : 'bg-primary/30 text-primary-foreground/40 cursor-not-allowed'
                             )}
                         >
                             {uploads.some(u => u.status === 'uploading') ? (
@@ -1104,7 +1104,7 @@ function NewItemDialog({ type, isDark, onConfirm, onCancel }: {
                 </div>
                 <div className="flex gap-2 mt-5">
                     <button onClick={() => onConfirm(name, url)}
-                        className="flex-1 h-9 rounded-xl text-[12px] font-bold bg-primary hover:bg-primary-hover text-black transition-colors active:scale-95">
+                        className="flex-1 h-9 rounded-xl text-[12px] font-bold bg-primary hover:bg-primary-hover text-primary-foreground transition-colors active:scale-95">
                         Create
                     </button>
                     <button onClick={onCancel} className={cn('w-9 h-9 rounded-xl flex items-center justify-center transition-colors border',
@@ -1716,7 +1716,7 @@ export default function FilesPage() {
                     {/* New */}
                     <div className="relative group">
                         <button onClick={() => setNewDialog('folder')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-black transition-colors">
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors">
                             <Plus size={13} strokeWidth={2.5}/> New
                         </button>
                     </div>
@@ -1933,7 +1933,7 @@ export default function FilesPage() {
                                 </div>
                                 {!search && filter === 'all' && (
                                     <div className="flex items-center gap-2 mt-1">
-                                        <button onClick={() => setNewDialog('folder')} className="text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-primary text-black hover:bg-primary-hover transition-colors">+ New Folder</button>
+                                        <button onClick={() => setNewDialog('folder')} className="text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary-hover transition-colors">+ New Folder</button>
                                         <button onClick={() => setShowUpload(true)} className={cn('text-[11px] font-semibold px-3 py-1.5 rounded-[8px] transition-colors border', isDark ? 'border-[#2e2e2e] text-[#666] hover:text-white hover:bg-white/5' : 'border-[#e5e5e5] text-[#888] hover:text-[#333] hover:bg-[#f5f5f5]')}>Upload Files</button>
                                     </div>
                                 )}

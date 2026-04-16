@@ -237,7 +237,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                                                 onClick={() => handleMonthSelect(i)}
                                                 className={cn(
                                                     "w-full text-left px-3 py-1.5 text-[12px] transition-colors",
-                                                    currentMonth.getMonth() === i ? (isDark ? "bg-primary/20 text-primary" : "bg-primary/10 text-black font-semibold") : (isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")
+                                                    currentMonth.getMonth() === i ? (isDark ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary-foreground font-semibold") : (isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")
                                                 )}
                                             >
                                                 {m}
@@ -269,7 +269,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                                                 onClick={() => handleYearSelect(y)}
                                                 className={cn(
                                                     "w-full text-left px-3 py-1.5 text-[12px] transition-colors",
-                                                    currentMonth.getFullYear() === y ? (isDark ? "bg-primary/20 text-primary" : "bg-primary/10 text-black font-semibold") : (isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")
+                                                    currentMonth.getFullYear() === y ? (isDark ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary-foreground font-semibold") : (isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")
                                                 )}
                                             >
                                                 {y}
@@ -323,7 +323,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                                     className={cn(
                                         "w-7 h-7 mx-auto flex items-center justify-center rounded-full text-[12px] font-medium transition-all duration-150",
                                         isSelected 
-                                            ? "bg-primary text-black shadow-[0_2px_8px_rgba(var(--brand-primary-rgb),0.4)]" 
+                                            ? "bg-primary text-primary-foreground shadow-[0_2px_8px_rgba(var(--brand-primary-rgb),0.4)]" 
                                             : isDark 
                                                 ? "text-white hover:bg-[#333] hover:text-white" 
                                                 : "text-black hover:bg-[#f0f0f0]",

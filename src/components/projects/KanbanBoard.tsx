@@ -563,7 +563,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                                 <button
                                     onClick={doSaveTask}
                                     disabled={saving || !titleStr.trim()}
-                                    className="px-3.5 py-1 rounded-lg bg-primary text-black text-[11px] font-bold transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                                    className="px-3.5 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
                                 >
                                     {saving ? '…' : 'Save'}
                                 </button>
@@ -654,7 +654,7 @@ function NewGroupForm({ isDark, onSave, onCancel }: {
             <div className={cn('flex items-center gap-2 px-3 pb-3')}>
                 <button
                     onClick={() => onSave(value)}
-                    className="flex-1 py-2 rounded-[12px] bg-primary text-black text-[12px] font-bold transition-all hover:bg-primary/90 active:scale-[0.98]"
+                    className="flex-1 py-2 rounded-[12px] bg-primary text-primary-foreground text-[12px] font-bold transition-all hover:bg-primary/90 active:scale-[0.98]"
                 >
                     Save
                 </button>

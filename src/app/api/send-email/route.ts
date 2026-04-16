@@ -85,12 +85,28 @@ export async function POST(req: NextRequest) {
 
         const accentColor = branding?.primary_color || '#10b981';
         const isAccentDark = getBrightness(accentColor) < 128;
-        const logoUrl = isAccentDark ? branding?.logo_light_url : (branding?.logo_dark_url || branding?.logo_light_url);
+        
+        // Priority: If background is dark, try light logo then dark. If light, try dark then light.
+        let logoUrl = isAccentDark 
+            ? (branding?.logo_light_url || branding?.logo_dark_url) 
+            : (branding?.logo_dark_url || branding?.logo_light_url);
+        
+        // Ensure logo URL is absolute
+        if (logoUrl && !logoUrl.startsWith('http')) {
+            const cleanLogoPath = logoUrl.startsWith('/') ? logoUrl : `/${logoUrl}`;
+            logoUrl = `${origin}${cleanLogoPath}`;
+        }
+
         const headerTextColor = isAccentDark ? '#ffffff' : '#000000';
 
         const fallback = DEFAULT_TEMPLATES[template_key] || DEFAULT_TEMPLATES.invoice;
         const rawSubject = subject_override ?? dbTemplate?.subject ?? fallback.subject;
         const rawBody    = body_override    ?? dbTemplate?.body    ?? fallback.body;
+
+        if (variables.document_link && !variables.document_link.startsWith('http')) {
+            const cleanLink = variables.document_link.startsWith('/') ? variables.document_link : `/${variables.document_link}`;
+            variables.document_link = `${origin}${cleanLink}`;
+        }
 
         const allVars = {
             sender_name: config.from_name || '',
@@ -122,8 +138,50 @@ export async function POST(req: NextRequest) {
         const finalSubject = renderTemplate(rawSubject, allVars);
         const textBody     = renderTemplate(rawBody, allVars);
         
-        let htmlBodyTemplate = rawBody.replace(/\n/g, '<br/>');
-        const finalHtmlBody  = renderTemplate(htmlBodyTemplate, htmlVars);
+        // 1. Initial render of the template tags if any
+        let htmlBody = renderTemplate(rawBody, htmlVars).replace(/\n/g, '<br/>');
+
+        // 2. Proactive replacement for special variables by value (What You See Is What You Get)
+        // This handles cases where the user might have edited the body and the {{tags}} are gone,
+        // but the actual values (like the link or amounts) are still there and should be styled.
+        
+        // Style amount_due/amount_paid if they appear as plain text
+        if (variables.amount_due) {
+            const escapedValue = variables.amount_due.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const styledValue = `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_due}</strong>`;
+            // Only replace if not already wrapped in the style
+            if (!htmlBody.includes(styledValue)) {
+                htmlBody = htmlBody.replace(new RegExp(escapedValue, 'g'), styledValue);
+            }
+        }
+        if (variables.amount_paid) {
+            const escapedValue = variables.amount_paid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const styledValue = `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_paid}</strong>`;
+            if (!htmlBody.includes(styledValue)) {
+                htmlBody = htmlBody.replace(new RegExp(escapedValue, 'g'), styledValue);
+            }
+        }
+
+        // Wrap document_link in a button if it appears as a plain URL
+        if (variables.document_link) {
+            const link = variables.document_link;
+            const escapedLink = link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const buttonHtml = `
+<div style="margin: 32px 0;">
+    <a href="${link}" style="display: inline-block; background-color: ${accentColor}; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);">
+        View Document
+    </a>
+    <div style="margin-top: 16px; font-size: 12px; color: #888; line-height: 1.5;">
+        If the button above doesn't work, copy and paste this link into your browser:<br/>
+        <a href="${link}" style="color: ${accentColor}; text-decoration: none; word-break: break-all;">${link}</a>
+    </div>
+</div>`.trim();
+
+            // Only wrap if it's not already wrapped (by checking if the button HTML is present)
+            if (!htmlBody.includes('background-color: ' + accentColor)) {
+                htmlBody = htmlBody.replace(new RegExp(escapedLink, 'g'), buttonHtml);
+            }
+        }
 
         const logoHtml = logoUrl ? `
             <img src="${logoUrl}" alt="${config.from_name}" style="max-height: 32px; display: block;" />
@@ -138,7 +196,7 @@ export async function POST(req: NextRequest) {
                         ${logoHtml}
                     </div>
                     <div style="padding: 40px 32px; font-size: 15px; line-height: 1.6; color: #444;">
-                        ${finalHtmlBody}
+                        ${htmlBody}
                     </div>
                     <div style="padding: 24px 32px; border-top: 1px solid #f0f0f0;">
                         <p style="margin: 0; font-size: 12px; color: #999;">Securely sent via <span style="font-weight: 500; color: #777;">${config.from_name}</span></p>
@@ -158,9 +216,12 @@ export async function POST(req: NextRequest) {
             tls: { rejectUnauthorized: false },
         });
 
+        const recipient = to.trim();
+        console.log(`[send-email] Sending email to: ${recipient}`);
+
         const info = await transporter.sendMail({
             from: `"${config.from_name}" <${config.from_address}>`,
-            to,
+            to: recipient,
             subject: finalSubject,
             text: textBody,
             html: finalHtml,

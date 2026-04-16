@@ -713,7 +713,7 @@ export default function CSVImportModal() {
                                 <button 
                                     onClick={step === 'mapping' ? proceedToPreview : handleImport}
                                     disabled={importing}
-                                    className="flex items-center justify-center gap-2 px-6 py-2 min-w-[160px] text-[13px] font-black rounded-xl bg-primary hover:bg-primary-hover text-black transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-primary/20"
+                                    className="flex items-center justify-center gap-2 px-6 py-2 min-w-[160px] text-[13px] font-black rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-primary/20"
                                 >
                                     {importing ? `Importing... ${progress}%` : 
                                      step === 'mapping' ? "Preview Data" : 

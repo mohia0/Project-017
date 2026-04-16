@@ -291,7 +291,7 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                                         <button 
                                             disabled={!url || uploading}
                                             onClick={() => { onUpload(url); onClose(); }}
-                                            className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-black hover:bg-primary-hover transition-all disabled:opacity-30"
+                                            className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground hover:bg-primary-hover transition-all disabled:opacity-30"
                                         >
                                             <Check size={16} strokeWidth={3} />
                                         </button>

@@ -62,7 +62,7 @@ export default function RightToolsMenu() {
                         <Bell size={16} strokeWidth={1.75} className="transition-transform duration-300 group-hover:scale-110 group-hover:text-current" />
                         {unreadCount > 0 && (
                             <div className={cn(
-                                "absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-bold text-white",
+                                "absolute top-[-6px] right-[-6px] min-w-[14px] h-[14px] rounded-full flex items-center justify-center text-[8px] font-bold text-white",
                                 notifications.some(n => !n.read && n.type === 'receipt_pending')
                                     ? "bg-emerald-500 animate-bell-pulse"
                                     : "bg-red-500"

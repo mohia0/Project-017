@@ -109,7 +109,7 @@ export default function TemplatesPage() {
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={() => {/* Open a "New Template" modal or redirect */}}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[10px] bg-primary hover:bg-primary-hover text-black transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[10px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
                     >
                         <Plus size={13} strokeWidth={2.5} /> New Template
                     </button>
@@ -202,7 +202,7 @@ export default function TemplatesPage() {
                                                 {template.entity_type}
                                             </span>
                                             {template.is_default && (
-                                                <span className="px-2 py-0.5 text-[9px] uppercase font-bold tracking-widest rounded-md shadow-lg bg-primary text-black border border-primary/50">
+                                                <span className="px-2 py-0.5 text-[9px] uppercase font-bold tracking-widest rounded-md shadow-lg bg-primary text-primary-foreground border border-primary/50">
                                                     Default
                                                 </span>
                                             )}
@@ -234,7 +234,7 @@ export default function TemplatesPage() {
                                                 disabled={isCreating}
                                                 className={cn(
                                                     "flex-1 h-9 rounded-xl text-[12px] font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2",
-                                                    isDark ? "bg-primary text-black hover:bg-primary-hover" : "bg-black text-white hover:bg-black/80"
+                                                    isDark ? "bg-primary text-primary-foreground hover:bg-primary-hover" : "bg-black text-white hover:bg-black/80"
                                                 )}
                                             >
                                                 {isCreating ? <RotateCcw size={13} className="animate-spin" /> : <Plus size={13} strokeWidth={2.5} />}

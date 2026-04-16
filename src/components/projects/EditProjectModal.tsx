@@ -136,7 +136,7 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
                     <button
                         onClick={handleSave}
                         disabled={saving || !name.trim()}
-                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-black transition-colors disabled:opacity-60"
+                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-colors disabled:opacity-60"
                     >
                         {saving ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
                         Save Changes

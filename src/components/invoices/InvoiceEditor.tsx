@@ -540,7 +540,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         className={cn(
                             "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
                             isPreview
-                                ? "bg-primary text-black hover:bg-primary-hover"
+                                ? "bg-primary text-primary-foreground hover:bg-primary-hover"
                                 : isDark 
                                     ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" 
                                     : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
@@ -614,7 +614,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             className={cn(
                                 "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
                                 meta.status === 'Pending'
-                                    ? "bg-primary hover:bg-primary-hover text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.35)]"
+                                    ? "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.35)]"
                                     : isDark ? "bg-[#2a2a2a] text-white/20 cursor-not-allowed" : "bg-[#f0f0f0] text-black/20 cursor-not-allowed"
                             )}
                         >
@@ -1063,7 +1063,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                     <div className={cn(
                                                         "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
                                                         meta.paymentMethods?.includes('paypal')
-                                                            ? "bg-primary border-primary text-black shadow-sm"
+                                                            ? "bg-primary border-primary text-primary-foreground shadow-sm"
                                                             : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
                                                     )}>
                                                         {meta.paymentMethods?.includes('paypal') && <Check size={10} strokeWidth={4} />}
@@ -1090,7 +1090,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                     <div className={cn(
                                                         "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
                                                         meta.paymentMethods?.includes(acc.id)
-                                                            ? "bg-primary border-primary text-black shadow-sm"
+                                                            ? "bg-primary border-primary text-primary-foreground shadow-sm"
                                                             : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
                                                     )}>
                                                         {meta.paymentMethods?.includes(acc.id) && <Check size={10} strokeWidth={4} />}

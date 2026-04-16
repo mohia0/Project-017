@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useUIStore } from '@/store/useUIStore';
 import { useMenuStore, ICON_MAP, NavItem } from '@/store/useMenuStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import WorkspaceSwitcher from '@/components/settings/WorkspaceSwitcher';
 import {
     DndContext, 
@@ -185,6 +186,7 @@ export default function LeftSystemMenu() {
     const { isLeftMenuExpanded, toggleLeftMenu, theme } = useUIStore();
     const isDark = theme === 'dark';
     const { navItems, fetchMenu, updateMenu } = useMenuStore();
+    const { branding } = useSettingsStore();
     const [isEditing, setIsEditing] = React.useState(false);
     const [tempItems, setTempItems] = React.useState<NavItem[]>([]);
 
@@ -231,10 +233,15 @@ export default function LeftSystemMenu() {
         setTempItems([...navItems]);
     };
 
+    const applyBrandColor = branding?.apply_color_to_sidebar;
+
     return (
-        <nav className={cn(
+        <nav 
+            style={applyBrandColor ? { backgroundColor: 'var(--brand-primary)' } : undefined}
+            className={cn(
             "h-full flex flex-col items-center shrink-0 transition-all duration-300 rounded-2xl z-10 overflow-hidden border border-white/5",
-            isDark ? "bg-[#141414] text-white" : "bg-[#1c1c1e] text-white",
+            !applyBrandColor && (isDark ? "bg-[#141414]" : "bg-[#1c1c1e]"),
+            "text-white",
             isLeftMenuExpanded ? (isEditing ? "w-[200px] shadow-xl shadow-black/10" : "w-[160px] shadow-xl shadow-black/10") : "w-[44px]"
         )}>
 

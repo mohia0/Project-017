@@ -260,7 +260,7 @@ export function SettingsSelect({
                                             <>
                                                 {parts.map((p, i) => 
                                                     regex.test(p) ? (
-                                                        <span key={i} className={cn("rounded-sm px-0.5", isDark ? "bg-white/20 text-white" : "bg-primary/30 text-black")}>{p}</span>
+                                                        <span key={i} className={cn("rounded-sm px-0.5", isDark ? "bg-white/20 text-white" : "bg-primary/30 text-primary-foreground")}>{p}</span>
                                                     ) : (
                                                         <span key={i}>{p}</span>
                                                     )

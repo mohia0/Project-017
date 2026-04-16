@@ -640,7 +640,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             </button>
                             <button onClick={handleSave} disabled={saving}
                                 className={cn("flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold rounded-lg transition-colors min-w-[80px] justify-center",
-                                    saved ? "bg-primary text-black" : "bg-primary hover:bg-primary-hover text-black disabled:opacity-60")}>
+                                    saved ? "bg-primary text-primary-foreground" : "bg-primary hover:bg-primary-hover text-primary-foreground disabled:opacity-60")}>
                                 {saved ? <><Check size={12} />Saved</> : <><Save size={12} />{saving ? '...' : 'Save'}</>}
                             </button>
                         </div>
@@ -870,7 +870,7 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             </button>
                             <button onClick={handleSave} disabled={saving}
                                 className={cn("flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold rounded-lg transition-colors min-w-[80px] justify-center",
-                                    saved ? "bg-primary text-black" : "bg-primary hover:bg-primary-hover text-black disabled:opacity-60")}>
+                                    saved ? "bg-primary text-primary-foreground" : "bg-primary hover:bg-primary-hover text-primary-foreground disabled:opacity-60")}>
                                 {saved ? <><Check size={12} />Saved</> : <><Save size={12} />{saving ? '...' : 'Save'}</>}
                             </button>
                         </div>
@@ -1093,7 +1093,7 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
                         onClick={handleSave} 
                         disabled={saving || !form.name.trim()}
                         className={cn("flex items-center gap-1.5 px-4 py-1.5 text-[11px] font-semibold rounded-lg transition-colors min-w-[80px] justify-center",
-                            saved ? "bg-primary text-black" : "bg-primary hover:bg-primary-hover text-black disabled:opacity-60")}>
+                            saved ? "bg-primary text-primary-foreground" : "bg-primary hover:bg-primary-hover text-primary-foreground disabled:opacity-60")}>
                         {saved ? <><Check size={12} />Saved</> : <><Save size={12} />{saving ? '...' : 'Save'}</>}
                     </button>
                 </div>

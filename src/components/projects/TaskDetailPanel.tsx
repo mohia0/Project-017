@@ -565,13 +565,13 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                 <div className="space-y-0.5">
                                     <FieldRow label="Followers" icon={<Eye size={13} />} isDark={isDark}>
                                         <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg", isDark ? "bg-white/[0.05]" : "bg-[#f5f5f5]")}>
-                                            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[8px] font-bold text-white border border-black/10">MH</div>
+                                            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[8px] font-bold text-primary-foreground border border-black/10">MH</div>
                                             <span className={cn("text-[11px] font-semibold tracking-wide uppercase", isDark ? "text-[#ccc]" : "text-[#444]")}>Mohi Hassan</span>
                                         </div>
                                     </FieldRow>
                                     <FieldRow label="Creator" icon={<User size={13} />} isDark={isDark}>
                                         <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg", isDark ? "bg-white/[0.05]" : "bg-[#f5f5f5]")}>
-                                            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[8px] font-bold text-white border border-black/10">MH</div>
+                                            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[8px] font-bold text-primary-foreground border border-black/10">MH</div>
                                             <span className={cn("text-[11px] font-semibold tracking-wide uppercase", isDark ? "text-[#ccc]" : "text-[#444]")}>Mohi Hassan</span>
                                         </div>
                                     </FieldRow>
@@ -646,7 +646,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                                     <button
                                                         disabled={!comment.trim()}
                                                         onClick={() => { gooeyToast('Comments coming soon'); setComment(''); }}
-                                                        className="px-3 py-1.5 rounded-lg bg-primary text-white text-[11px] font-bold disabled:opacity-40 transition-all hover:bg-primary/90 active:scale-95"
+                                                        className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold disabled:opacity-40 transition-all hover:bg-primary/90 active:scale-95"
                                                     >
                                                         Post
                                                     </button>

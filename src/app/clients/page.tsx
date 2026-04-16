@@ -55,7 +55,7 @@ function Chk({ checked, indeterminate, isDark }: { checked: boolean, indetermina
         <div className={cn(
             "w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all",
             checked || indeterminate
-                ? "bg-primary border-primary text-black"
+                ? "bg-primary border-primary text-primary-foreground"
                 : isDark ? "border-white/[0.1] hover:border-white/[0.2]" : "border-[#ccc] hover:border-[#aaa]"
         )}>
             {checked && <Check size={10} strokeWidth={4} />}
@@ -305,7 +305,7 @@ export default function ClientsPage() {
                 <h1 className="text-[15px] font-semibold tracking-tight">Contacts</h1>
                 <button
                     onClick={() => tab === 'companies' ? setIsCompanyModalOpen(true) : setIsContactEditorOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-black transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
                 >
                     <Plus size={13} strokeWidth={2.5} />
                     {tab === 'companies' ? 'New Company' : 'New Contact'}
@@ -483,7 +483,7 @@ export default function ClientsPage() {
                                 <Users size={32} strokeWidth={1.25} />
                                 <p className="text-[12px]">No contacts yet.</p>
                                 <button onClick={() => setIsContactEditorOpen(true)}
-                                    className="mt-1 text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-primary text-black hover:bg-primary-hover transition-colors">
+                                    className="mt-1 text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary-hover transition-colors">
                                     + New Contact
                                 </button>
                             </div>
@@ -665,7 +665,7 @@ export default function ClientsPage() {
                                 <Building2 size={32} strokeWidth={1.25} />
                                 <p className="text-[12px]">No companies yet.</p>
                                 <button onClick={() => setIsCompanyModalOpen(true)}
-                                    className="mt-1 text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-primary text-black hover:bg-primary-hover transition-colors">
+                                    className="mt-1 text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary-hover transition-colors">
                                     + New Company
                                 </button>
                             </div>

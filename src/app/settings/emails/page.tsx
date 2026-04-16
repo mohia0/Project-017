@@ -423,7 +423,7 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                         "flex items-center gap-2 px-5 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 disabled:opacity-50",
                         saved
                             ? "bg-emerald-500 text-white"
-                            : "bg-primary hover:bg-primary-hover text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.4)]"
+                            : "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.4)]"
                     )}
                 >
                     {isSaving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : <CheckCircle2 size={13} />}
@@ -748,7 +748,7 @@ export default function EmailsSettingsPage() {
                                     disabled={isSaving || !hasUnsavedSMTP}
                                     className={cn(
                                         "flex items-center gap-2 px-5 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 disabled:opacity-40",
-                                        "bg-primary hover:bg-primary-hover text-black shadow-[0_4px_12px_-4px_rgba(77,191,57,0.4)]"
+                                        "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.4)]"
                                     )}
                                 >
                                     {isSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}

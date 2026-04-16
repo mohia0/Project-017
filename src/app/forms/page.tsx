@@ -348,7 +348,7 @@ export default function FormsPage() {
                 isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Forms</h1>
                 <button onClick={handleNew}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-black transition-colors">
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors">
                     <Plus size={13} strokeWidth={2.5} /> New Form
                 </button>
             </div>
@@ -427,7 +427,7 @@ export default function FormsPage() {
 
                     {isMobile && (
                         <button onClick={handleNew}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-black">
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground">
                             <Plus size={12} strokeWidth={2.5} /> New
                         </button>
                     )}
@@ -477,7 +477,7 @@ export default function FormsPage() {
                         </div>
                         {!searchQuery && statusFilter === 'All' && (
                             <button onClick={handleNew}
-                                className="flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-black transition-colors">
+                                className="flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors">
                                 <Plus size={13} strokeWidth={2.5} /> New Form
                             </button>
                         )}
