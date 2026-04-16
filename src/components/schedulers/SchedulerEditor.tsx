@@ -954,7 +954,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                     <div>
                                                         <div className="text-[10.5px] font-bold uppercase tracking-wider mb-3 opacity-40" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#000' }}>
                                                             {previewSelDate
-                                                                ? new Date(new Date().getFullYear(), new Date().getMonth(), previewSelDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                                                                ? new Date(previewSelDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
                                                                 : 'Select a date'
                                                             }
                                                         </div>

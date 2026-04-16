@@ -16,6 +16,7 @@ export interface WorkspaceBranding {
   workspace_id: string;
   primary_color: string;
   secondary_color: string | null;
+  apply_color_to_sidebar: boolean;
   font_family: string;
   border_radius: number;
   logo_light_url: string | null;

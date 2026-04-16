@@ -64,7 +64,7 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
     },
 };
 
-function resolveVars(text: string, sample: Record<string, string>) {
+function resolveVars(text: string, sample: Record<string, any>) {
     return text.replace(/\{\{(\w+)\}\}/g, (_, k) => sample[k] ?? `{{${k}}}`);
 }
 

@@ -41,11 +41,15 @@ function hexToRgba(hex: string) {
 }
 
 function parseColor(color: string) {
+    if (!color) return { r: 0, g: 0, b: 0, a: 1 };
     if (color.startsWith('#')) return hexToRgba(color);
     if (color.startsWith('rgb')) {
         const m = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
         if (m) return { r: parseInt(m[1]), g: parseInt(m[2]), b: parseInt(m[3]), a: m[4] ? parseFloat(m[4]) : 1 };
     }
+    // Assume hex if it's alphanumeric and looks like a hex string
+    if (/^[0-9a-fA-F]+$/.test(color)) return hexToRgba('#' + color);
+    
     return { r: 0, g: 0, b: 0, a: 1 };
 }
 

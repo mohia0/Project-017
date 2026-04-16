@@ -275,7 +275,6 @@ export default function WorkspaceSettingsPage() {
                                 value={timezone}
                                 onChange={setTimezone}
                                 options={TIMEZONE_OPTIONS}
-                                allowSearch={true}
                             />
                         </div>
                     </SettingsField>

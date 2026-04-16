@@ -5,11 +5,15 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
 
 function hexToRgb(hex: string) {
-    if (!hex || hex.length < 7) return '77, 191, 57';
+    if (!hex) return '77, 191, 57';
+    let s = hex.replace('#', '');
+    if (s.length === 3) s = s.split('').map(c => c + c).join('');
+    if (s.length < 6) return '77, 191, 57';
+    
     try {
-        const r = parseInt(hex.slice(1, 3), 16);
-        const g = parseInt(hex.slice(3, 5), 16);
-        const b = parseInt(hex.slice(5, 7), 16);
+        const r = parseInt(s.slice(0, 2), 16);
+        const g = parseInt(s.slice(2, 4), 16);
+        const b = parseInt(s.slice(4, 6), 16);
         return `${r}, ${g}, ${b}`;
     } catch (e) {
         return '77, 191, 57';
@@ -17,11 +21,15 @@ function hexToRgb(hex: string) {
 }
 
 function darkenColor(hex: string, amount = 0.1) {
-    if (!hex || hex.length < 7) return '#3aaa29';
+    if (!hex) return '#3aaa29';
+    let s = hex.replace('#', '');
+    if (s.length === 3) s = s.split('').map(c => c + c).join('');
+    if (s.length < 6) return '#3aaa29';
+    
     try {
-        let r = parseInt(hex.slice(1, 3), 16);
-        let g = parseInt(hex.slice(3, 5), 16);
-        let b = parseInt(hex.slice(5, 7), 16);
+        let r = parseInt(s.slice(0, 2), 16);
+        let g = parseInt(s.slice(2, 4), 16);
+        let b = parseInt(s.slice(4, 6), 16);
         
         r = Math.min(255, Math.max(0, Math.floor(r * (1 - amount))));
         g = Math.min(255, Math.max(0, Math.floor(g * (1 - amount))));
