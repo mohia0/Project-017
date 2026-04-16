@@ -14,8 +14,6 @@ import { useCompanyStore } from '@/store/useCompanyStore';
 import { useUIStore } from '@/store/useUIStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMemo } from 'react';
-import ClientEditor from '@/components/clients/ClientEditor';
-import { CreateCompanyModal } from '@/components/modals/CreateCompanyModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { cn } from '@/lib/utils';
@@ -112,13 +110,11 @@ function DItem({ label, icon, active, onClick, isDark }: { label: string; icon?:
 export default function ClientsPage() {
     const { clients, addClient, fetchClients, isLoading: isClientsLoading } = useClientStore();
     const { companies, fetchCompanies, isLoading: isCompaniesLoading } = useCompanyStore();
-    const { theme, openRightPanel, rightPanel, setImportModalOpen } = useUIStore();
+    const { theme, openRightPanel, rightPanel, setImportModalOpen, setCreateModalOpen } = useUIStore();
     const isDark = theme === 'dark';
     const [tab, setTab] = useState<Tab>('people');
     const [view, setView] = useState<ViewMode>('grid');
     const [search, setSearch] = useState('');
-    const [isContactEditorOpen, setIsContactEditorOpen] = useState(false);
-    const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
     const [importExportOpen, setImportExportOpen] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -215,10 +211,7 @@ export default function ClientsPage() {
         if (e.target) e.target.value = '';
     };
 
-    const handleSaveClient = async (data: any) => {
-        await addClient(data);
-        setIsContactEditorOpen(false);
-    };
+
 
     const toggleRow = (id: string, e?: React.MouseEvent) => {
         e?.stopPropagation();
@@ -304,7 +297,7 @@ export default function ClientsPage() {
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Contacts</h1>
                 <button
-                    onClick={() => tab === 'companies' ? setIsCompanyModalOpen(true) : setIsContactEditorOpen(true)}
+                    onClick={() => setCreateModalOpen(true, tab === 'companies' ? 'Company' : 'Contact')}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
                 >
                     <Plus size={13} strokeWidth={2.5} />
@@ -482,7 +475,7 @@ export default function ClientsPage() {
                             <div className={cn("flex flex-col items-center justify-center h-full gap-3", muted)}>
                                 <Users size={32} strokeWidth={1.25} />
                                 <p className="text-[12px]">No contacts yet.</p>
-                                <button onClick={() => setIsContactEditorOpen(true)}
+                                <button onClick={() => setCreateModalOpen(true, 'Contact')}
                                     className="mt-1 text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary-hover transition-colors">
                                     + New Contact
                                 </button>
@@ -664,7 +657,7 @@ export default function ClientsPage() {
                             <div className={cn("flex flex-col items-center justify-center h-full gap-3", muted)}>
                                 <Building2 size={32} strokeWidth={1.25} />
                                 <p className="text-[12px]">No companies yet.</p>
-                                <button onClick={() => setIsCompanyModalOpen(true)}
+                                <button onClick={() => setCreateModalOpen(true, 'Company')}
                                     className="mt-1 text-[11px] font-semibold px-3 py-1.5 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary-hover transition-colors">
                                     + New Company
                                 </button>
@@ -752,14 +745,7 @@ export default function ClientsPage() {
             </div>
 
             {/* ── Modals ── */}
-            {isContactEditorOpen && (
-                <ClientEditor onClose={() => setIsContactEditorOpen(false)} onSave={handleSaveClient} />
-            )}
-            <CreateCompanyModal
-                open={isCompanyModalOpen}
-                onClose={() => setIsCompanyModalOpen(false)}
-                onCreated={() => fetchCompanies()}
-            />
+            {/* Creation modals removed */}
 
             <DeleteConfirmModal
                 open={!!deletingId}

@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { useRouter } from 'next/navigation';
-import { CreateProposalModal } from '@/components/modals/CreateProposalModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { appToast } from '@/lib/toast';
@@ -648,7 +647,7 @@ function MobileProposalRow({ p, onOpen, isDark, onStatusChange, onArchive, isArc
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function ProposalsPage() {
     const router = useRouter();
-    const { theme, setImportModalOpen, activeWorkspaceId } = useUIStore();
+    const { theme, setImportModalOpen, activeWorkspaceId, setCreateModalOpen } = useUIStore();
     const { proposals, fetchProposals, updateProposal, addProposal, deleteProposal, isLoading } = useProposalStore();
     const { statuses, fetchStatuses } = useSettingsStore();
 
@@ -788,7 +787,6 @@ export default function ProposalsPage() {
     const [statusFilter, setStatusFilter] = useState<string | 'All'>('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [showCreateModal, setShowCreateModal] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     /* Dropdowns */
@@ -949,7 +947,7 @@ export default function ProposalsPage() {
             {/* ── Page header — hidden on mobile (MobileTopBar handles title) ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Proposals</h1>
-                <button onClick={() => setShowCreateModal(true)}
+                <button onClick={() => setCreateModalOpen(true, 'Proposal')}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors">
                     <Plus size={13} strokeWidth={2.5} /> New Proposal
                 </button>
@@ -1006,7 +1004,7 @@ export default function ProposalsPage() {
                     </div>
                     {/* New Proposal (mobile only in toolbar) */}
                     <button
-                        onClick={() => setShowCreateModal(true)}
+                        onClick={() => setCreateModalOpen(true, 'Proposal')}
                         className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] font-bold rounded-[8px] bg-primary text-primary-foreground active:scale-95 transition-all"
                     >
                         <Plus size={13} strokeWidth={2.5} /> New
@@ -1212,7 +1210,7 @@ export default function ProposalsPage() {
                                 ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p>
                                 : <>
                                     <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
-                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Proposal</button>
+                                    <button onClick={() => setCreateModalOpen(true, 'Proposal')} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Proposal</button>
                                 </>}
                         </div>
                     ) : (
@@ -1230,7 +1228,7 @@ export default function ProposalsPage() {
                             ))}
                             {!isLoading && !showArchived && (
                                 <button
-                                    onClick={() => setShowCreateModal(true)}
+                                    onClick={() => setCreateModalOpen(true, 'Proposal')}
                                     className={cn(
                                         "flex items-center gap-2 px-4 py-3.5 w-full text-left text-[13px] font-medium border-b transition-colors",
                                         isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa]" : "text-[#bbb] border-[#f0f0f0] hover:text-[#666]"
@@ -1311,7 +1309,7 @@ export default function ProposalsPage() {
                                 ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p>
                                 : <>
                                     <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
-                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Proposal</button>
+                                    <button onClick={() => setCreateModalOpen(true, 'Proposal')} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Proposal</button>
                                 </>}
                         </div>
                     ) : (
@@ -1424,7 +1422,7 @@ export default function ProposalsPage() {
                             })}
                             
                             {!isLoading && !showArchived && (
-                                <button onClick={() => setShowCreateModal(true)}
+                                <button onClick={() => setCreateModalOpen(true, 'Proposal')}
                                     className={cn("flex items-center gap-1 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors border-b",
                                         isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
                                     <div className={cn("w-4 h-4 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
@@ -1474,7 +1472,7 @@ export default function ProposalsPage() {
                                 ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p>
                                 : <>
                                     <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
-                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Proposal</button>
+                                    <button onClick={() => setCreateModalOpen(true, 'Proposal')} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Proposal</button>
                                 </>}
                         </div>
                     ) : (
@@ -1499,7 +1497,6 @@ export default function ProposalsPage() {
                 </div>
             )}
 
-            <CreateProposalModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
             <DeleteConfirmModal
                 open={!!deletingId}
                 isDark={isDark}

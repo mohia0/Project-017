@@ -10,7 +10,6 @@ import {
     ArrowUpDown, MessageSquare, Copy, Link, ExternalLink
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
-import { CreateFormModal } from '@/components/modals/CreateFormModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
@@ -260,7 +259,7 @@ function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }:
 /* ─── Main page ─────────────────────────────────────────────── */
 export default function FormsPage() {
     const router = useRouter();
-    const { theme } = useUIStore();
+    const { theme, setCreateModalOpen } = useUIStore();
     const { forms, fetchForms, addForm, updateForm, deleteForm, isLoading } = useFormStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
@@ -271,7 +270,6 @@ export default function FormsPage() {
     const [orderBy, setOrderBy] = useState<'created_at' | 'title'>('created_at');
     const [orderOpen, setOrderOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     useEffect(() => { fetchForms(); }, [fetchForms]);
@@ -287,7 +285,7 @@ export default function FormsPage() {
         return r;
     }, [forms, statusFilter, searchQuery, orderBy]);
 
-    const handleNew = () => setShowCreateModal(true);
+    const handleNew = () => setCreateModalOpen(true, 'Form');
 
     const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(f => f.id)));
     const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
@@ -607,7 +605,7 @@ export default function FormsPage() {
                 )}
             </div>
 
-            <CreateFormModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
+            {/* CreateFormModal removed */}
             <DeleteConfirmModal
                 open={!!deletingId}
                 isDark={isDark}

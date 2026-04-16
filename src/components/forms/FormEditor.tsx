@@ -582,10 +582,9 @@ export default function FormEditor({ id }: { id?: string }) {
 
         console.log(`[FormEditor] Auto-saving form "${debouncedTitle}" with ${debouncedFields.length} fields`);
 
-        appToast.promise(
-            updateForm(id, { title: debouncedTitle, status: debouncedStatus, fields: debouncedFields, meta: debouncedMeta as any }),
-            { loading: 'Saving...', success: 'Saved', error: 'Failed to save' }
-        );
+        updateForm(id, { title: debouncedTitle, status: debouncedStatus, fields: debouncedFields, meta: debouncedMeta as any })
+            .then(() => appToast.success('Changes saved', undefined, { id: `save-form-${id}`, duration: 1500 }))
+            .catch(() => appToast.error('Save failed', undefined, { id: `save-form-${id}`, duration: 3000 }));
     }, [debouncedTitle, debouncedStatus, debouncedFields, debouncedMeta, id, isLoaded, updateForm]);
 
     const updateMeta = useCallback((patch: Partial<FormMeta>) => {

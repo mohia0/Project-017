@@ -4,7 +4,8 @@ import { useEffect } from 'react';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
-import { ToastContainer } from '@/components/ui/ToastContainer';
+import { GooeyToaster } from 'goey-toast';
+import 'goey-toast/styles.css';
 
 const theme = createTheme({});
 
@@ -18,7 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return (
         <MantineProvider theme={theme}>
             {children}
-            <ToastContainer />
+            <GooeyToaster position="top-center" theme={appTheme === 'dark' ? 'dark' : 'light'} />
         </MantineProvider>
     );
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
+import * as nodemailer from 'nodemailer';
 import { supabaseService } from '@/lib/supabase-service';
 
 function renderTemplate(template: string, variables: Record<string, string>) {
@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
             subject_override,
             body_override,
         } = body;
+
+        const origin = req.nextUrl.origin;
 
         if (!workspace_id || !to) {
             return NextResponse.json({ error: 'Missing required fields (workspace_id, to)' }, { status: 400 });
@@ -149,21 +151,21 @@ export async function POST(req: NextRequest) {
         if (variables.amount_due) {
             const escapedValue = variables.amount_due.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const styledValue = `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_due}</strong>`;
-            // Only replace if not already wrapped in the style
-            if (!htmlBody.includes(styledValue)) {
+            // Only replace if it's not already wrapped in the style or button
+            if (!htmlBody.includes('style="color: ' + accentColor)) {
                 htmlBody = htmlBody.replace(new RegExp(escapedValue, 'g'), styledValue);
             }
         }
         if (variables.amount_paid) {
             const escapedValue = variables.amount_paid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const styledValue = `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_paid}</strong>`;
-            if (!htmlBody.includes(styledValue)) {
+            if (!htmlBody.includes('style="color: ' + accentColor)) {
                 htmlBody = htmlBody.replace(new RegExp(escapedValue, 'g'), styledValue);
             }
         }
 
-        // Wrap document_link in a button if it appears as a plain URL
-        if (variables.document_link) {
+        // Wrap document_link in a button if it appears as a plain URL AND wasn't already wrapped via {{document_link}}
+        if (variables.document_link && !rawBody.includes('{{document_link}}')) {
             const link = variables.document_link;
             const escapedLink = link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const buttonHtml = `
@@ -177,10 +179,7 @@ export async function POST(req: NextRequest) {
     </div>
 </div>`.trim();
 
-            // Only wrap if it's not already wrapped (by checking if the button HTML is present)
-            if (!htmlBody.includes('background-color: ' + accentColor)) {
-                htmlBody = htmlBody.replace(new RegExp(escapedLink, 'g'), buttonHtml);
-            }
+            htmlBody = htmlBody.replace(new RegExp(escapedLink, 'g'), buttonHtml);
         }
 
         const logoHtml = logoUrl ? `

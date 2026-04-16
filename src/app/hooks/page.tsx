@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
-import { CreateHookModal } from '@/components/modals/CreateHookModal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { useRouter } from 'next/navigation';
@@ -209,7 +208,7 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
 }
 
 export default function HooksPage() {
-    const { theme, openRightPanel, closeRightPanel, rightPanel } = useUIStore();
+    const { theme, openRightPanel, closeRightPanel, rightPanel, setCreateModalOpen } = useUIStore();
     const { hooks, fetchHooks, addHook, updateHook, deleteHook, bulkDeleteHooks, isLoading } = useHookStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
@@ -219,7 +218,6 @@ export default function HooksPage() {
     const [statusFilter, setStatusFilter] = useState<HookStatus | 'All'>('All');
     const [orderBy, setOrderBy] = useState<'created_at' | 'name'>('created_at');
     const [orderOpen, setOrderOpen] = useState(false);
-    const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -243,7 +241,7 @@ export default function HooksPage() {
         return m;
     }, [hooks]);
 
-    const handleNew = () => setShowCreateModal(true);
+    const handleNew = () => setCreateModalOpen(true, 'Hook');
 
     const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(h => h.id)));
     const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
@@ -573,10 +571,7 @@ export default function HooksPage() {
                     setDeletingId(null);
                 }}
             />
-            <CreateHookModal
-                open={showCreateModal}
-                onClose={() => setShowCreateModal(false)}
-            />
+            {/* CreateHookModal removed */}
         </div>
     );
 }

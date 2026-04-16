@@ -46,7 +46,6 @@ export function SettingsCard({
         if (!onSave) return;
         await onSave();
         setJustSaved(true);
-        appToast.success('Changes saved');
         setTimeout(() => setJustSaved(false), 2000);
     };
 

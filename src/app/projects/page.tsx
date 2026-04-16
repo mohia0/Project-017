@@ -12,7 +12,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useProjectStore, Project, ProjectStatus } from '@/store/useProjectStore';
 import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
-import CreateProjectModal from '@/components/projects/CreateProjectModal';
+// CreateProjectModal removed in favor of global CreateEntryModal
 import { Avatar } from '@/components/ui/Avatar';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -409,7 +409,7 @@ function DeleteModal({ name, onConfirm, onCancel, isDark }: { name: string; onCo
 
 export default function ProjectsPage() {
     const router  = useRouter();
-    const { theme } = useUIStore();
+    const { theme, setCreateModalOpen } = useUIStore();
     const isDark  = theme === 'dark';
     const { projects, fetchProjects, updateProject, deleteProject, bulkDuplicateProjects, isLoading, tasksByProject } = useProjectStore();
     const allTasks = useMemo(() => Object.values(tasksByProject).flat(), [tasksByProject]);
@@ -420,7 +420,7 @@ export default function ProjectsPage() {
     const [showArchived, setShowArchived] = useState(false);
     const [archivedIds, setArchivedIds]   = useState<Set<string>>(new Set());
     const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
-    const [showCreate, setShowCreate]     = useState(false);
+// Removed showCreate state
     const [deletingId, setDeletingId]     = useState<string | null>(null);
     const [orderBy, setOrderBy]           = useState<'created_at' | 'name' | 'deadline'>('created_at');
 
@@ -497,7 +497,7 @@ export default function ProjectsPage() {
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Projects</h1>
                 <button
-                    onClick={() => setShowCreate(true)}
+                    onClick={() => setCreateModalOpen(true, 'Project')}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
                 >
                     <Plus size={13} strokeWidth={2.5} /> New Project
@@ -657,7 +657,7 @@ export default function ProjectsPage() {
                         <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                     </div>
                 ) : filtered.length === 0 ? (
-                    <EmptyState isDark={isDark} onNew={() => setShowCreate(true)} isArchived={showArchived} />
+                    <EmptyState isDark={isDark} onNew={() => setCreateModalOpen(true, 'Project')} isArchived={showArchived} />
                 ) : view === 'cards' ? (
                     /* ── Cards ── */
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
@@ -722,7 +722,7 @@ export default function ProjectsPage() {
             </div>
 
             {/* ── Modals ── */}
-            <CreateProjectModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={() => setShowCreate(false)} />
+            {/* CreateProjectModal removed */}
 
             {deletingId && (
                 <DeleteModal

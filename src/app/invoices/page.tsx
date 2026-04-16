@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { useRouter } from 'next/navigation';
-import { CreateInvoiceModal } from '@/components/modals/CreateInvoiceModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { appToast } from '@/lib/toast';
@@ -656,7 +655,7 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function InvoicesPage() {
     const router = useRouter();
-    const { theme, setImportModalOpen, activeWorkspaceId } = useUIStore();
+    const { theme, setImportModalOpen, activeWorkspaceId, setCreateModalOpen } = useUIStore();
     const { invoices, fetchInvoices, updateInvoice, addInvoice, deleteInvoice, isLoading } = useInvoiceStore();
     const { statuses, fetchStatuses } = useSettingsStore();
 
@@ -767,7 +766,6 @@ export default function InvoicesPage() {
     const [statusFilter, setStatusFilter] = useState<string | 'All'>('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [showCreateModal, setShowCreateModal] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -929,7 +927,7 @@ export default function InvoicesPage() {
             {/* ── Page header — hidden on mobile (MobileTopBar handles title) ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Invoices</h1>
-                <button onClick={() => setShowCreateModal(true)}
+                <button onClick={() => setCreateModalOpen(true, 'Invoice')}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors">
                     <Plus size={13} strokeWidth={2.5} /> New Invoice
                 </button>
@@ -986,7 +984,7 @@ export default function InvoicesPage() {
                     </div>
                     {/* New Invoice (mobile only in toolbar) */}
                     <button
-                        onClick={() => setShowCreateModal(true)}
+                        onClick={() => setCreateModalOpen(true, 'Invoice')}
                         className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] font-bold rounded-[8px] bg-primary text-primary-foreground active:scale-95 transition-all"
                     >
                         <Plus size={13} strokeWidth={2.5} /> New
@@ -1193,7 +1191,7 @@ export default function InvoicesPage() {
                                 : <>
                                     <Receipt size={32} strokeWidth={1} className={isDark ? "text-[#333]" : "text-[#ccc]"} />
                                     <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No invoices found.</p>
-                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Invoice</button>
+                                    <button onClick={() => setCreateModalOpen(true, 'Invoice')} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Invoice</button>
                                 </>}
                         </div>
                     ) : (
@@ -1211,7 +1209,7 @@ export default function InvoicesPage() {
                             ))}
                             {!isLoading && !showArchived && (
                                 <button
-                                    onClick={() => setShowCreateModal(true)}
+                                    onClick={() => setCreateModalOpen(true, 'Invoice')}
                                     className={cn(
                                         "flex items-center gap-2 px-4 py-3.5 w-full text-left text-[13px] font-medium border-b transition-colors",
                                         isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa]" : "text-[#bbb] border-[#f0f0f0] hover:text-[#666]"
@@ -1293,7 +1291,7 @@ export default function InvoicesPage() {
                                 : <>
                                     <Receipt size={32} strokeWidth={1} className={isDark ? "text-[#333]" : "text-[#ccc]"} />
                                     <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No invoices found.</p>
-                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Invoice</button>
+                                    <button onClick={() => setCreateModalOpen(true, 'Invoice')} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Invoice</button>
                                 </>}
                         </div>
                     ) : (
@@ -1406,7 +1404,7 @@ export default function InvoicesPage() {
                             })}
                             
                             {!isLoading && !showArchived && (
-                                <button onClick={() => setShowCreateModal(true)}
+                                <button onClick={() => setCreateModalOpen(true, 'Invoice')}
                                     className={cn("flex items-center gap-1 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors border-b",
                                         isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
                                     <div className={cn("w-4 h-4 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
@@ -1457,7 +1455,7 @@ export default function InvoicesPage() {
                                 : <>
                                     <Receipt size={32} strokeWidth={1} className={isDark ? "text-[#333]" : "text-[#ccc]"} />
                                     <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No invoices found.</p>
-                                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Invoice</button>
+                                    <button onClick={() => setCreateModalOpen(true, 'Invoice')} className="px-4 py-1.5 text-[12px] font-semibold text-primary-foreground bg-primary rounded-lg hover:bg-primary-hover transition-colors">+ New Invoice</button>
                                 </>}
                         </div>
                     ) : (
@@ -1482,7 +1480,6 @@ export default function InvoicesPage() {
                 </div>
             )}
 
-            <CreateInvoiceModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
             <DeleteConfirmModal
                 open={!!deletingId}
                 isDark={isDark}

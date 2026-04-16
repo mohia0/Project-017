@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { ReactNode } from 'react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -6,7 +7,7 @@ export interface Toast {
     id: string;
     type: ToastType;
     title: string;
-    description?: string;
+    description?: ReactNode;
     duration?: number;
 }
 

@@ -34,7 +34,8 @@ interface UIState {
     theme: 'light' | 'dark';
     toggleTheme: () => void;
     isCreateModalOpen: boolean;
-    setCreateModalOpen: (isOpen: boolean) => void;
+    createModalTab: 'Contact' | 'Company' | 'Project' | 'Proposal' | 'Invoice' | 'Scheduler' | 'Form' | 'Hook';
+    setCreateModalOpen: (isOpen: boolean, tab?: 'Contact' | 'Company' | 'Project' | 'Proposal' | 'Invoice' | 'Scheduler' | 'Form' | 'Hook') => void;
     isImportModalOpen: boolean;
     setImportModalOpen: (isOpen: boolean, type?: 'Invoice' | 'Proposal' | 'Contact' | 'Company') => void;
     importType: 'Invoice' | 'Proposal' | 'Contact' | 'Company';
@@ -84,7 +85,8 @@ export const useUIStore = create<UIState>()(
             toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
 
             isCreateModalOpen: false,
-            setCreateModalOpen: (isOpen) => set({ isCreateModalOpen: isOpen }),
+            createModalTab: 'Contact',
+            setCreateModalOpen: (isOpen, tab = 'Contact') => set({ isCreateModalOpen: isOpen, createModalTab: tab }),
 
             isImportModalOpen: false,
             importType: 'Invoice' as 'Invoice' | 'Proposal' | 'Contact' | 'Company',

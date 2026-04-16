@@ -47,9 +47,9 @@ export function ToastContainer() {
                                 {toast.title}
                             </h4>
                             {toast.description && (
-                                <p className="text-[12px] text-[#666] dark:text-[#999] leading-relaxed">
+                                <div className="text-[12px] text-[#666] dark:text-[#999] leading-relaxed">
                                     {toast.description}
-                                </p>
+                                </div>
                             )}
                         </div>
                         <button

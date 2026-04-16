@@ -7,6 +7,7 @@ import { useSettingsStore, UserProfile } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
+import { appToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 
@@ -55,10 +56,17 @@ export default function ProfileSettingsPage() {
 
     const handleSaveProfile = async () => {
         setIsSaving(true);
-        await updateProfile({
-            full_name: formData.full_name,
-            avatar_url: formData.avatar_url,
-        });
+        await appToast.promise(
+            updateProfile({
+                full_name: formData.full_name,
+                avatar_url: formData.avatar_url,
+            }),
+            {
+                loading: 'Updating profile...',
+                success: 'Profile updated',
+                error: 'Failed to update profile'
+            }
+        );
         setIsSaving(false);
     };
 

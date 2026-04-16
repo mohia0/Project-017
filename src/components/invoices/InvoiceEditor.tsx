@@ -343,23 +343,20 @@ export default function InvoiceEditor({ id }: { id?: string }) {
         }, 0);
 
         // setSaveStatus('saving');
-        appToast.promise(
-            updateInvoice(id, {
-                title: debouncedMeta.projectName || 'New Invoice',
-                client_name: debouncedMeta.clientName,
-                status: debouncedMeta.status,
-                issue_date: debouncedMeta.issueDate,
-                due_date: debouncedMeta.dueDate,
-                amount: totalAmount,
-                blocks: debouncedBlocks,
-                meta: debouncedMeta
-            }),
-            {
-                loading: 'Saving changes...',
-                success: 'Changes saved',
-                error: 'Failed to save changes'
-            }
-        );
+        updateInvoice(id, {
+            title: debouncedMeta.projectName || 'New Invoice',
+            client_name: debouncedMeta.clientName,
+            status: debouncedMeta.status,
+            issue_date: debouncedMeta.issueDate,
+            due_date: debouncedMeta.dueDate,
+            amount: totalAmount,
+            blocks: debouncedBlocks,
+            meta: debouncedMeta
+        }).then(() => {
+            appToast.success('Changes saved', undefined, { id: `save-${id}`, duration: 1500 });
+        }).catch(() => {
+            appToast.error('Save failed', undefined, { id: `save-${id}`, duration: 3000 });
+        });
     }, [debouncedMeta, debouncedBlocks, id, isLoaded, updateInvoice]);
 
     /* ── Block mutations ── */

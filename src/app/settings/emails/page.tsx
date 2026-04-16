@@ -15,11 +15,6 @@ import {
 /* ─────────────── Constants ─────────────── */
 const TEMPLATE_DEFS = [
     {
-        key: 'invitation', label: 'Invitation', icon: UserPlus, color: '#6366f1',
-        vars: ['{{workspace_name}}', '{{inviter_name}}', '{{invite_link}}'],
-        sample: { workspace_name: 'Acme Studio', inviter_name: 'Jane Doe', invite_link: 'https://app.example.com/invite/abc123' }
-    },
-    {
         key: 'invoice', label: 'Invoice', icon: FileText, color: '#f59e0b',
         vars: ['{{client_name}}', '{{invoice_number}}', '{{amount_due}}', '{{due_date}}', '{{document_link}}', '{{sender_name}}'],
         sample: { client_name: 'John Smith', invoice_number: 'INV-0042', amount_due: '$3,200', due_date: 'May 15, 2026', document_link: 'https://app.example.com/p/invoice/xxx', sender_name: 'Acme Studio' }
@@ -30,11 +25,6 @@ const TEMPLATE_DEFS = [
         sample: { client_name: 'John Smith', document_title: 'Website Redesign Proposal', document_link: 'https://app.example.com/p/proposal/xxx', sender_name: 'Acme Studio' }
     },
     {
-        key: 'contract', label: 'Contract', icon: FileSignature, color: '#8b5cf6',
-        vars: ['{{client_name}}', '{{contract_title}}', '{{document_link}}', '{{sender_name}}'],
-        sample: { client_name: 'John Smith', contract_title: 'Service Agreement 2026', document_link: 'https://app.example.com/p/contract/xxx', sender_name: 'Acme Studio' }
-    },
-    {
         key: 'receipt', label: 'Receipt', icon: Receipt, color: '#10b981',
         vars: ['{{client_name}}', '{{invoice_number}}', '{{amount_paid}}', '{{document_link}}', '{{sender_name}}'],
         sample: { client_name: 'John Smith', invoice_number: 'INV-0042', amount_paid: '$3,200', document_link: 'https://app.example.com/p/invoice/xxx', sender_name: 'Acme Studio' }
@@ -42,10 +32,6 @@ const TEMPLATE_DEFS = [
 ];
 
 const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
-    invitation: {
-        subject: "You've been invited to {{workspace_name}}",
-        body: "Hi there,\n\n{{inviter_name}} has invited you to collaborate in the {{workspace_name}} workspace.\n\nClick the link below to accept the invitation and get started:\n{{invite_link}}\n\nWelcome aboard!"
-    },
     invoice: {
         subject: "Invoice #{{invoice_number}} from {{sender_name}}",
         body: "Hi {{client_name}},\n\nYour invoice #{{invoice_number}} is now available.\n\nAmount Due: {{amount_due}}\nDue Date: {{due_date}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nThank you for your business!\n\nBest regards,\n{{sender_name}}"
@@ -53,10 +39,6 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
     proposal: {
         subject: "Proposal: {{document_title}}",
         body: "Hi {{client_name}},\n\nI've prepared a proposal for {{document_title}} as we discussed.\n\nYou can review the details and accept it via the secure link below:\n{{document_link}}\n\nPlease let me know if you have any questions.\n\nBest regards,\n{{sender_name}}"
-    },
-    contract: {
-        subject: "Contract ready for signature: {{contract_title}}",
-        body: "Hi {{client_name}},\n\nThe contract for {{contract_title}} is ready for your review and signature.\n\nYou can securely view and sign the document here:\n{{document_link}}\n\nThank you,\n{{sender_name}}"
     },
     receipt: {
         subject: "Payment Receipt — Invoice #{{invoice_number}}",
@@ -124,7 +106,7 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
     const { activeWorkspaceId } = useUIStore();
 
     const [activeKey, setActiveKey] = useState('invoice');
-    const [showPreview, setShowPreview] = useState(false);
+    const [showPreview, setShowPreview] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [templateData, setTemplateData] = useState<Record<string, { subject: string; body: string }>>({});
@@ -224,7 +206,7 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                 {TEMPLATE_DEFS.map(t => (
                     <button
                         key={t.key}
-                        onClick={() => { setActiveKey(t.key); setShowPreview(false); }}
+                        onClick={() => { setActiveKey(t.key); }}
                         style={activeKey === t.key ? { backgroundColor: `${t.color}18`, color: t.color } : {}}
                         className={cn(
                             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap",
@@ -555,7 +537,7 @@ export default function EmailsSettingsPage() {
     const smtpActive = !!emailConfig?.smtp_host;
 
     return (
-        <div className="w-full max-w-[1200px] mx-auto py-8 px-2">
+        <div className="w-full max-w-2xl mx-auto py-8 px-4">
             {/* Page header */}
             <div className="mb-8 flex items-start justify-between">
                 <div>
@@ -579,11 +561,11 @@ export default function EmailsSettingsPage() {
                 </div>
             </div>
 
-            {/* Two-column grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+            {/* Single column layout */}
+            <div className="flex flex-col gap-6">
 
-                {/* ─── LEFT COLUMN ─── */}
-                <div className="flex flex-col gap-5">
+                {/* ─── SMTP & Templates ─── */}
+                <div className="flex flex-col gap-6">
 
                     {/* SMTP Card */}
                     <div className={cn(
@@ -758,6 +740,11 @@ export default function EmailsSettingsPage() {
                         </div>
                     </div>
 
+                    {/* ─── Template Panel ─── */}
+                    <div style={{ height: 'calc(100vh - 200px)', minHeight: '600px' }}>
+                        <TemplatePanel isDark={isDark} branding={branding} />
+                    </div>
+
                     {/* Auto-Receipt Toggle Card */}
                     <div className={cn(
                         "rounded-2xl border overflow-hidden",
@@ -822,11 +809,6 @@ export default function EmailsSettingsPage() {
                             ))}
                         </ul>
                     </div>
-                </div>
-
-                {/* ─── RIGHT COLUMN — Template Panel ─── */}
-                <div className="xl:sticky xl:top-8" style={{ height: 'calc(100vh - 160px)', minHeight: '600px' }}>
-                    <TemplatePanel isDark={isDark} branding={branding} />
                 </div>
             </div>
         </div>

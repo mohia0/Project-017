@@ -465,10 +465,9 @@ export default function SchedulerEditor({ id }: { id?: string }) {
             if (isLoaded) isFirst.current = false;
             return;
         }
-        appToast.promise(
-            updateScheduler(id, { title: debouncedTitle, status: debouncedStatus, meta: debouncedMeta as any }),
-            { loading: 'Saving...', success: 'Saved', error: 'Failed to save' }
-        );
+        updateScheduler(id, { title: debouncedTitle, status: debouncedStatus, meta: debouncedMeta as any })
+            .then(() => appToast.success('Changes saved', undefined, { id: `save-scheduler-${id}`, duration: 1500 }))
+            .catch(() => appToast.error('Save failed', undefined, { id: `save-scheduler-${id}`, duration: 3000 }));
     }, [debouncedTitle, debouncedStatus, debouncedMeta, id, isLoaded, updateScheduler]);
 
     const updateMeta = useCallback((patch: Partial<SchedulerMeta>) => {

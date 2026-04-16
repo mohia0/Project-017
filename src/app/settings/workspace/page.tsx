@@ -8,6 +8,7 @@ import { useWorkspaceStore, Workspace } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
 import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, FileText, Code } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { appToast } from '@/lib/toast';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 
@@ -125,7 +126,14 @@ export default function WorkspaceSettingsPage() {
             (updates as any).metadata = metaObj;
         }
 
-        await updateWorkspace(activeWorkspaceId, updates);
+        await appToast.promise(
+            updateWorkspace(activeWorkspaceId, updates),
+            {
+                loading: 'Saving changes...',
+                success: 'Changes saved',
+                error: `Failed to save ${section}`
+            }
+        );
         setIsSaving(prev => ({ ...prev, [section]: false }));
     };
 

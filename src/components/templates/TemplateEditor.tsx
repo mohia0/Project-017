@@ -83,21 +83,18 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
         if (!template) return;
         setIsSaving(true);
         // setSaveStatus('saving');
-        appToast.promise(
-            updateTemplate(id, {
-                blocks: template.blocks,
-                design: template.design,
-                name: template.name,
-                description: template.description,
-                // @ts-ignore - meta is stored in the JSONB field in supabase
-                meta: (template as any).meta 
-            }),
-            {
-                loading: 'Saving template...',
-                success: 'Template saved',
-                error: 'Failed to save template'
-            }
-        );
+        updateTemplate(id, {
+            blocks: template.blocks,
+            design: template.design,
+            name: template.name,
+            description: template.description,
+            // @ts-ignore - meta is stored in the JSONB field in supabase
+            meta: (template as any).meta 
+        }).then(() => {
+            appToast.success('Changes saved', undefined, { id: `save-template-${id}`, duration: 1500 });
+        }).catch(() => {
+            appToast.error('Save failed', undefined, { id: `save-template-${id}`, duration: 3000 });
+        });
         setIsSaving(false);
         setIsSaving(false);
     };

@@ -11,7 +11,6 @@ import {
     SlidersHorizontal, ArrowUpDown,
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
-import { CreateSchedulerModal } from '@/components/modals/CreateSchedulerModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
@@ -296,7 +295,7 @@ function SchedulerCard({ s, onOpen, onDelete, onCopy, isDark, isSelected, onTogg
 /* ─── Main page ─────────────────────────────────────────────── */
 export default function SchedulersPage() {
     const router = useRouter();
-    const { theme } = useUIStore();
+    const { theme, setCreateModalOpen } = useUIStore();
     const { schedulers, fetchSchedulers, addScheduler, updateScheduler, deleteScheduler, isLoading } = useSchedulerStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
@@ -308,7 +307,6 @@ export default function SchedulersPage() {
     const [orderOpen, setOrderOpen] = useState(false);
     const [orderBy, setOrderBy] = useState<'created_at' | 'title'>('created_at');
     const [deletingId, setDeletingId] = useState<string | null>(null);
-    const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     useEffect(() => { fetchSchedulers(); }, [fetchSchedulers]);
@@ -327,7 +325,7 @@ export default function SchedulersPage() {
         return r;
     }, [schedulers, statusFilter, searchQuery, orderBy]);
 
-    const handleNew = () => setShowCreateModal(true);
+    const handleNew = () => setCreateModalOpen(true, 'Scheduler');
 
     const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length && filtered.length > 0 ? new Set() : new Set(filtered.map(s => s.id)));
     const toggleRow = (id: string, e: React.MouseEvent) => { e.stopPropagation(); const n = new Set(selectedIds); n.has(id) ? n.delete(id) : n.add(id); setSelectedIds(n); };
@@ -693,7 +691,7 @@ export default function SchedulersPage() {
                 )}
             </div>
 
-            <CreateSchedulerModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
+            {/* CreateSchedulerModal removed */}
             <DeleteConfirmModal
                 open={!!deletingId}
                 isDark={isDark}
