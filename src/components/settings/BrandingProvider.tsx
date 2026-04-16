@@ -95,6 +95,19 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--primary-light', darkenColor(defaultPrimary, -0.2));
         }
     }, [branding]);
+    
+    // Update favicon dynamically
+    useEffect(() => {
+        if (branding?.favicon_url) {
+            let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.getElementsByTagName('head')[0].appendChild(link);
+            }
+            link.href = branding.favicon_url;
+        }
+    }, [branding?.favicon_url]);
 
     return <>{children}</>;
 }

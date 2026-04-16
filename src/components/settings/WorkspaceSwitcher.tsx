@@ -9,7 +9,7 @@ import { Check, ChevronDown, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 
-export default function WorkspaceSwitcher() {
+export default function WorkspaceSwitcher({ isLightSidebar }: { isLightSidebar?: boolean }) {
     const { workspaces, fetchWorkspaces, createWorkspace, isLoading } = useWorkspaceStore();
     const { activeWorkspaceId, setActiveWorkspaceId, isLeftMenuExpanded, theme } = useUIStore();
     const { profile } = useSettingsStore();
@@ -79,7 +79,8 @@ export default function WorkspaceSwitcher() {
             <button
                 onClick={handleToggle}
                 className={cn(
-                    "flex items-center w-full transition-all group hover:bg-white/[0.04]",
+                    "flex items-center w-full transition-all group",
+                    isLightSidebar ? "hover:bg-black/[0.04]" : "hover:bg-white/[0.04]",
                     isLeftMenuExpanded ? "px-4 py-3 gap-2.5 rounded-none" : "justify-center py-2 h-14 rounded-none"
                 )}
             >
@@ -87,18 +88,28 @@ export default function WorkspaceSwitcher() {
                     src={activeWorkspace?.logo_url} 
                     name={activeWorkspace?.name || 'M'} 
                     className="w-7 h-7 rounded-lg" 
-                    isDark={isDark} 
+                    isDark={!isLightSidebar} 
                 />
 
                 {isLeftMenuExpanded && (
                     <>
                         <div className="flex flex-col items-start min-w-0 flex-1">
-                            <span className="text-[13px] font-medium text-white truncate w-full text-left">
+                            <span className={cn(
+                                "text-[13px] font-medium truncate w-full text-left",
+                                isLightSidebar ? "text-black" : "text-white"
+                            )}>
                                 {activeWorkspace?.name || 'My Workspace'}
                             </span>
-                            <span className="text-[10px] text-white/40 font-medium">Free Plan</span>
+                            <span className={cn(
+                                "text-[10px] font-medium",
+                                isLightSidebar ? "text-black/40" : "text-white/40"
+                            )}>Free Plan</span>
                         </div>
-                        <ChevronDown size={14} className={cn("text-white/30 transition-transform shrink-0", isOpen && "rotate-180")} />
+                        <ChevronDown size={14} className={cn(
+                            "transition-transform shrink-0",
+                            isLightSidebar ? "text-black/30" : "text-white/30",
+                            isOpen && "rotate-180"
+                        )} />
                     </>
                 )}
             </button>
@@ -141,7 +152,7 @@ export default function WorkspaceSwitcher() {
                                                 src={ws.logo_url} 
                                                 name={ws.name} 
                                                 className="w-6 h-6 rounded-md" 
-                                                isDark={isDark} 
+                                                isDark={true} 
                                             />
                                         <div className="flex flex-col min-w-0">
                                             <span className="text-[12px] font-medium text-white/90 truncate">{ws.name}</span>

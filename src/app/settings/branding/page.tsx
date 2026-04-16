@@ -10,6 +10,7 @@ import { RotateCcw, Upload, Image as ImageIcon, Check, Trash2 } from 'lucide-rea
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
 import { gooeyToast } from 'goey-toast';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
     primary_color: '#4dbf39',
@@ -17,9 +18,9 @@ const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
     apply_color_to_sidebar: false,
     font_family: 'Inter',
     border_radius: 12,
-    logo_light_url: '/logo.svg',
-    logo_dark_url: '/logo.svg',
-    favicon_url: '/favicon.svg'
+    logo_light_url: '',
+    logo_dark_url: '',
+    favicon_url: ''
 };
 
 // Visual-only subset we expose in settings (border_radius & font_family are hidden)
@@ -133,15 +134,18 @@ export default function BrandingSettingsPage() {
 
     const [formData, setFormData] = useState<BrandingFormData>({
         primary_color: DEFAULT_BRANDING.primary_color,
-        secondary_color: DEFAULT_BRANDING.secondary_color,
-        apply_color_to_sidebar: DEFAULT_BRANDING.apply_color_to_sidebar,
-        logo_light_url: DEFAULT_BRANDING.logo_light_url,
-        logo_dark_url: DEFAULT_BRANDING.logo_dark_url,
-        favicon_url: DEFAULT_BRANDING.favicon_url,
+        secondary_color: '',
+        apply_color_to_sidebar: false,
+        logo_light_url: '',
+        logo_dark_url: '',
+        favicon_url: '',
     });
+    
+    const debouncedFormData = useDebounce(formData, 1000);
+
     const [isSaving, setIsSaving] = useState(false);
 
-    const [confirmingResetAll, setConfirmingResetAll] = useState(false);
+
 
     useEffect(() => {
         if (activeWorkspaceId) {
@@ -149,15 +153,11 @@ export default function BrandingSettingsPage() {
         }
     }, [activeWorkspaceId, fetchBranding]);
 
-    useEffect(() => {
-        if (confirmingResetAll) {
-            const timer = setTimeout(() => setConfirmingResetAll(false), 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [confirmingResetAll]);
+
 
     useEffect(() => {
-        if (branding) {
+        // Only update local state if we aren't currently saving (to avoid overwriting user edits)
+        if (branding && !isSaving) {
             setFormData({
                 primary_color: branding.primary_color || DEFAULT_BRANDING.primary_color,
                 secondary_color: branding.secondary_color || '',
@@ -167,40 +167,44 @@ export default function BrandingSettingsPage() {
                 favicon_url: branding.favicon_url || '',
             });
         }
-    }, [branding]);
+    }, [branding, isSaving]);
 
     const resetField = (field: keyof BrandingFormData) => {
         setFormData(prev => ({ ...prev, [field]: DEFAULT_BRANDING[field as keyof typeof DEFAULT_BRANDING] }));
     };
 
-    const resetAll = () => {
-        setFormData({
-            primary_color: DEFAULT_BRANDING.primary_color,
-            secondary_color: DEFAULT_BRANDING.secondary_color,
-            apply_color_to_sidebar: DEFAULT_BRANDING.apply_color_to_sidebar,
-            logo_light_url: DEFAULT_BRANDING.logo_light_url,
-            logo_dark_url: DEFAULT_BRANDING.logo_dark_url,
-            favicon_url: DEFAULT_BRANDING.favicon_url,
-        });
-        gooeyToast.success('Restored all defaults');
-    };
 
-    const hasUnsavedChanges = () => {
-        const compareTo = branding || DEFAULT_BRANDING;
-        return (
-            formData.primary_color !== (compareTo.primary_color || DEFAULT_BRANDING.primary_color) ||
-            formData.logo_light_url !== (compareTo.logo_light_url || '') ||
-            formData.logo_dark_url !== (compareTo.logo_dark_url || '') ||
-            formData.favicon_url !== (compareTo.favicon_url || '')
-        );
-    };
 
-    const handleSave = async () => {
-        if (!activeWorkspaceId) return;
-        setIsSaving(true);
-        await updateBranding(activeWorkspaceId, formData);
-        setIsSaving(false);
-    };
+    useEffect(() => {
+        // Prevent auto-save on initial mount, before data is fetched, or if the store state is missing
+        if (!activeWorkspaceId || !hasFetched.branding || !branding || isSaving) return;
+
+        // Compare current debounced state with the actual data in the store
+        const hasChanges = 
+            debouncedFormData.primary_color !== (branding.primary_color || DEFAULT_BRANDING.primary_color) ||
+            debouncedFormData.secondary_color !== (branding.secondary_color || '') ||
+            debouncedFormData.apply_color_to_sidebar !== (branding.apply_color_to_sidebar || false) ||
+            debouncedFormData.logo_light_url !== (branding.logo_light_url || '') ||
+            debouncedFormData.logo_dark_url !== (branding.logo_dark_url || '') ||
+            debouncedFormData.favicon_url !== (branding.favicon_url || '');
+
+        if (!hasChanges) return;
+
+        const saveChanges = async () => {
+            setIsSaving(true);
+            try {
+                await updateBranding(activeWorkspaceId, debouncedFormData);
+                gooeyToast.success('Branding saved', { duration: 2000 });
+            } catch (err) {
+                console.error("Save failed:", err);
+                gooeyToast.error('Failed to auto-save');
+            } finally {
+                setIsSaving(false);
+            }
+        };
+
+        saveChanges();
+    }, [debouncedFormData, activeWorkspaceId, updateBranding, branding, hasFetched.branding]); // Removed isSaving from deps to avoid loop
 
     if (!hasFetched.branding) {
         return (
@@ -215,9 +219,6 @@ export default function BrandingSettingsPage() {
             <SettingsCard
                 title="White Label"
                 description="These settings apply globally to documents, portals, and PDFs."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasUnsavedChanges()}
             >
                 <SettingsField 
                     label="Primary Color" 
@@ -252,23 +253,7 @@ export default function BrandingSettingsPage() {
 
                 <div className="mt-8 border-t pt-8" style={{ borderColor: isDark ? '#252525' : '#ebebeb' }}>
                     <div className="flex items-center gap-2 mb-6">
-                        <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] opacity-20">Logos & Icons</h3>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (!confirmingResetAll) setConfirmingResetAll(true);
-                                else { resetAll(); setConfirmingResetAll(false); }
-                            }}
-                            className={cn(
-                                "flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all",
-                                confirmingResetAll
-                                    ? isDark ? "bg-red-500/20 text-red-500" : "bg-red-50 text-red-600"
-                                    : isDark ? "text-white/10 hover:text-white/40" : "text-black/10 hover:text-black/40"
-                            )}
-                        >
-                            <RotateCcw size={8} strokeWidth={3} />
-                            {confirmingResetAll ? "Confirm Reset" : "Reset All"}
-                        </button>
+                        <h3 className="font-semibold text-sm">Logos & Icons</h3>
                     </div>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

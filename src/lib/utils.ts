@@ -21,6 +21,19 @@ export function hexToRgba(hex: string, alpha: number) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+export function getPerceivedBrightness(hex: string): number {
+    if (!hex) return 0;
+    const r = parseInt(hex.length === 4 ? hex[1] + hex[1] : hex.substring(1, 3), 16);
+    const g = parseInt(hex.length === 4 ? hex[2] + hex[2] : hex.substring(3, 5), 16);
+    const b = parseInt(hex.length === 4 ? hex[3] + hex[3] : hex.substring(5, 7), 16);
+    // HSP color model for perceived brightness
+    return Math.sqrt(0.299 * r * r + 0.587 * g * g + 0.114 * b * b);
+}
+
+export function isDarkColor(hex: string): boolean {
+    return getPerceivedBrightness(hex) < 128;
+}
+
 export function getBackgroundImageWithOpacity(imageUrl?: string, bgColor?: string, opacity?: number) {
     if (!imageUrl) return 'none';
     const op = opacity ?? 1;
