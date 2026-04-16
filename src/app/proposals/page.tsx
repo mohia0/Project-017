@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation';
 import { CreateProposalModal } from '@/components/modals/CreateProposalModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import ClientEditor from '@/components/clients/ClientEditor';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -481,7 +481,7 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
             onClientChange(client.id, client.contact_person || client.company_name);
             setIsClientEditorOpen(false);
             setOpen(false);
-            gooeyToast.success('Contact created and selected');
+            appToast.success('Contact created and selected');
         }
     };
 
@@ -861,7 +861,7 @@ export default function ProposalsPage() {
         const isCurrentlyArchived = next.has(id);
         isCurrentlyArchived ? next.delete(id) : next.add(id);
         setArchivedIds(next);
-        gooeyToast(isCurrentlyArchived ? 'Restored from archive' : 'Moved to archive', { duration: 2000 });
+        appToast.success(isCurrentlyArchived ? 'Restored from archive' : 'Moved to archive');
     };
     const handleBulkArchive = () => {
         const next = new Set(archivedIds);
@@ -869,7 +869,7 @@ export default function ProposalsPage() {
         setArchivedIds(next);
         const count = selectedIds.size;
         setSelectedIds(new Set());
-        gooeyToast(`${count} proposal${count !== 1 ? 's' : ''} archived`, { duration: 2500 });
+        appToast.success(`${count} proposal${count !== 1 ? 's' : ''} archived`);
     };
     const handleBulkDelete = async () => {
         setDeletingId('bulk');
@@ -889,7 +889,7 @@ export default function ProposalsPage() {
                 }
             }
         })();
-        gooeyToast.promise(promise, {
+        appToast.promise(promise, {
             loading: `Duplicating ${ids.length} proposal${ids.length !== 1 ? 's' : ''}…`,
             success: `${ids.length} proposal${ids.length !== 1 ? 's' : ''} duplicated`,
             error: 'Duplication failed',
@@ -906,7 +906,7 @@ export default function ProposalsPage() {
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
-        gooeyToast.success('Exported successfully');
+        appToast.success('Exported successfully');
         setImportExportOpen(false);
     };
 
@@ -924,7 +924,7 @@ export default function ProposalsPage() {
                             await addProposal(payload);
                         }
                     })();
-                    gooeyToast.promise(promise, {
+                    appToast.promise(promise, {
                         loading: 'Importing proposals...',
                         success: 'Imported successfully',
                         error: 'Import failed'
@@ -932,7 +932,7 @@ export default function ProposalsPage() {
                     await promise;
                 }
             } catch (error) {
-                gooeyToast.error('Invalid JSON file');
+                appToast.error("Error", 'Invalid JSON file');
             }
         };
         reader.readAsText(file);
@@ -1399,7 +1399,7 @@ export default function ProposalsPage() {
                                                         e.stopPropagation(); 
                                                         const url = window.location.origin + '/p/proposal/' + p.id;
                                                         navigator.clipboard.writeText(url);
-                                                        gooeyToast.success('Link copied');
+                                                        appToast.success('Link copied');
                                                     }} title="Copy Link"
                                                     className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
                                                         isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
@@ -1413,7 +1413,7 @@ export default function ProposalsPage() {
                                                 <InlineDeleteButton 
                                                     onDelete={async () => {
                                                         await deleteProposal(p.id);
-                                                        gooeyToast.error('Proposal deleted');
+                                                        appToast.error("Deleted", 'Proposal deleted');
                                                     }} 
                                                     isDark={isDark} 
                                                 />
@@ -1514,10 +1514,10 @@ export default function ProposalsPage() {
                         const ids = Array.from(selectedIds);
                         await useProposalStore.getState().bulkDeleteProposals(ids);
                         setSelectedIds(new Set());
-                        gooeyToast.error(`${ids.length} proposal${ids.length !== 1 ? 's' : ''} deleted`);
+                        appToast.error("Deleted", `${ids.length} proposal${ids.length !== 1 ? 's' : ''} deleted`);
                     } else if (deletingId) {
                         await deleteProposal(deletingId);
-                        gooeyToast.error('Proposal deleted');
+                        appToast.error("Deleted", 'Proposal deleted');
                     }
                     setDeletingId(null);
                 }}

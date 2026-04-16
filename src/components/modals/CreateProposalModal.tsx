@@ -9,7 +9,9 @@ import { useClientStore } from '@/store/useClientStore';
 import { useRouter } from 'next/navigation';
 import DatePicker from '@/components/ui/DatePicker';
 import ClientEditor from '@/components/clients/ClientEditor';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
+import { useProjectStore } from '@/store/useProjectStore';
+import { useTemplateStore } from '@/store/useTemplateStore';
 
 interface Props {
     open: boolean;
@@ -23,6 +25,8 @@ export function CreateProposalModal({ open, onClose }: Props) {
     const isDark = theme === 'dark';
     const { addProposal, error: storeError } = useProposalStore();
     const { clients, fetchClients } = useClientStore();
+    const { projects, fetchProjects, addProjectItem } = useProjectStore();
+    const { templates, fetchTemplates } = useTemplateStore();
     const { generateNextId, fetchToolSettings, hasFetched } = useSettingsStore();
     const router = useRouter();
 
@@ -31,6 +35,21 @@ export function CreateProposalModal({ open, onClose }: Props) {
     const [selectedClient, setSelectedClient] = useState<string>('');
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [showClientDrop, setShowClientDrop] = useState(false);
+    
+    // Project state
+    const [projectQuery, setProjectQuery] = useState('');
+    const [selectedProject, setSelectedProject] = useState<string>('');
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const [showProjectDrop, setShowProjectDrop] = useState(false);
+    const projectRef = useRef<HTMLDivElement>(null);
+
+    // Template state
+    const [templateQuery, setTemplateQuery] = useState('');
+    const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+    const [showTemplateDrop, setShowTemplateDrop] = useState(false);
+    const templateRef = useRef<HTMLDivElement>(null);
+
     const [issueDate, setIssueDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [expiryDate, setExpiryDate] = useState(() => new Date().toISOString().split('T')[0]);
     const [loading, setLoading] = useState(false);
@@ -40,6 +59,14 @@ export function CreateProposalModal({ open, onClose }: Props) {
     useEffect(() => {
         if (open && activeWorkspaceId) {
             fetchClients();
+            fetchProjects();
+            fetchTemplates().then(() => {
+                const defaultTemplate = useTemplateStore.getState().templates.find(t => t.entity_type === 'proposal' && t.is_default);
+                if (defaultTemplate) {
+                    setSelectedTemplateId(defaultTemplate.id);
+                    setSelectedTemplateName(defaultTemplate.name);
+                }
+            });
             const initTitle = (settings: any) => {
                 const assignToDraft = settings?.assign_to_draft ?? true;
                 if (assignToDraft) {
@@ -74,9 +101,21 @@ export function CreateProposalModal({ open, onClose }: Props) {
         (c.contact_person + ' ' + c.company_name).toLowerCase().includes(clientQuery.toLowerCase())
     );
 
+    const filteredProjects = projects.filter(p =>
+        p.name.toLowerCase().includes(projectQuery.toLowerCase())
+    );
+
+    const proposalTemplates = templates.filter(t => t.entity_type === 'proposal');
+    const filteredTemplates = proposalTemplates.filter(t =>
+        t.name.toLowerCase().includes(templateQuery.toLowerCase())
+    );
+
     const handleCreate = async () => {
         setLoading(true);
         try {
+            const templateToUse = templates.find(t => t.id === selectedTemplateId);
+            const blocks = templateToUse?.blocks || [];
+
             const newProposal = await addProposal({
                 title: title || useSettingsStore.getState().generateNextId('proposals'),
                 client_id: selectedClientId,
@@ -86,14 +125,21 @@ export function CreateProposalModal({ open, onClose }: Props) {
                 issue_date: issueDate,
                 due_date: expiryDate,
                 notes: '',
-                blocks: [],
+                blocks,
             });
             if (newProposal) {
+                if (selectedProjectId) {
+                    await addProjectItem({
+                        project_id: selectedProjectId,
+                        item_type: 'proposal',
+                        item_id: newProposal.id
+                    });
+                }
+                appToast.success(`"${newProposal.title}" created`);
                 onClose();
-                gooeyToast.success('Proposal created');
                 router.push(`/proposals/${newProposal.id}`);
             } else {
-                gooeyToast.error(`Failed to create proposal — ${useProposalStore.getState().error || 'check console'}`);
+                appToast.error("Error", `Failed to create proposal — ${useProposalStore.getState().error || 'check console'}`);
             }
         } finally {
             setLoading(false);
@@ -108,7 +154,7 @@ export function CreateProposalModal({ open, onClose }: Props) {
             setIsClientEditorOpen(false);
             setClientQuery('');
             setShowClientDrop(false);
-            gooeyToast.success('Contact created and selected');
+            appToast.success('Contact Created', 'Contact created and selected');
         }
     };
 
@@ -227,9 +273,59 @@ export function CreateProposalModal({ open, onClose }: Props) {
                     </div>
 
                     {/* Project */}
-                    <div className={cn(field, "flex items-center justify-between cursor-pointer")}>
-                        <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Project</span>
-                        <CircleHelp size={14} className="text-[#3b82f6] opacity-70" />
+                    <div className="relative" ref={projectRef}>
+                        <div
+                            className={cn(field, "cursor-pointer")}
+                            onClick={() => setShowProjectDrop(v => !v)}
+                        >
+                            {selectedProject
+                                ? <span className={isDark ? "text-white" : "text-[#111]"}>{selectedProject}</span>
+                                : <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Project</span>
+                            }
+                        </div>
+                        {showProjectDrop && (
+                            <div className={cn(
+                                "absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden",
+                                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                            )}>
+                                <div className="p-2 border-b border-inherit">
+                                    <input
+                                        autoFocus
+                                        value={projectQuery}
+                                        onChange={e => { setProjectQuery(e.target.value); setSelectedProject(''); setSelectedProjectId(null); }}
+                                        placeholder="Search projects..."
+                                        className={cn(
+                                            "w-full text-[12px] px-3 py-1.5 rounded-lg outline-none",
+                                            isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]"
+                                        )}
+                                    />
+                                </div>
+                                <div className="max-h-40 overflow-auto">
+                                    {filteredProjects.length === 0 && !projectQuery ? (
+                                        <div className={cn("px-4 py-3 text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No projects found</div>
+                                    ) : (
+                                        <>
+                                            {filteredProjects.map(p => (
+                                                <button
+                                                    key={p.id}
+                                                    onClick={() => { setSelectedProject(p.name); setSelectedProjectId(p.id); setProjectQuery(''); setShowProjectDrop(false); }}
+                                                    className={cn(
+                                                        "w-full text-left px-4 py-2.5 text-[13px] transition-colors flex items-center gap-2",
+                                                        isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                                    )}
+                                                >
+                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+                                                    <span className="font-medium">{p.name}</span>
+                                                </button>
+                                            ))}
+                                            {filteredProjects.length === 0 && projectQuery && (
+                                                <div className={cn("px-4 py-3 text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No matching projects</div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Dates */}
@@ -267,8 +363,59 @@ export function CreateProposalModal({ open, onClose }: Props) {
                     </div>
 
                     {/* Select template */}
-                    <div className={cn(field, "cursor-pointer")}>
-                        <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Select template</span>
+                    <div className="relative" ref={templateRef}>
+                        <div
+                            className={cn(field, "cursor-pointer")}
+                            onClick={() => setShowTemplateDrop(v => !v)}
+                        >
+                            {selectedTemplateName
+                                ? <span className={isDark ? "text-white" : "text-[#111]"}>{selectedTemplateName}</span>
+                                : <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Select template</span>
+                            }
+                        </div>
+                        {showTemplateDrop && (
+                            <div className={cn(
+                                "absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden",
+                                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                            )}>
+                                <div className="p-2 border-b border-inherit">
+                                    <input
+                                        autoFocus
+                                        value={templateQuery}
+                                        onChange={e => { setTemplateQuery(e.target.value); setSelectedTemplateName(''); setSelectedTemplateId(null); }}
+                                        placeholder="Search templates..."
+                                        className={cn(
+                                            "w-full text-[12px] px-3 py-1.5 rounded-lg outline-none",
+                                            isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]"
+                                        )}
+                                    />
+                                </div>
+                                <div className="max-h-40 overflow-auto">
+                                    {filteredTemplates.length === 0 && !templateQuery ? (
+                                        <div className={cn("px-4 py-3 text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No templates found</div>
+                                    ) : (
+                                        <>
+                                            {filteredTemplates.map(t => (
+                                                <button
+                                                    key={t.id}
+                                                    onClick={() => { setSelectedTemplateName(t.name); setSelectedTemplateId(t.id); setTemplateQuery(''); setShowTemplateDrop(false); }}
+                                                    className={cn(
+                                                        "w-full text-left px-4 py-2.5 text-[13px] transition-colors flex items-center justify-between",
+                                                        isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                                    )}
+                                                >
+                                                    <span className="font-medium">{t.name}</span>
+                                                    {t.is_default && <span className={cn("text-[10px] px-1.5 py-0.5 rounded", isDark ? "bg-[#333] text-[#aaa]" : "bg-[#eee] text-[#666]")}>Default</span>}
+                                                </button>
+                                            ))}
+                                            {filteredTemplates.length === 0 && templateQuery && (
+                                                <div className={cn("px-4 py-3 text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No matching templates</div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Add custom field */}

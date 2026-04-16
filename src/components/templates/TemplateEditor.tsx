@@ -24,7 +24,7 @@ import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import DatePicker from '@/components/ui/DatePicker';
 import { STATUS_COLORS } from '@/lib/statusConfig';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
 
 function fmt(n: number, currency = 'USD') {
@@ -83,7 +83,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
         if (!template) return;
         setIsSaving(true);
         // setSaveStatus('saving');
-        gooeyToast.promise(
+        appToast.promise(
             updateTemplate(id, {
                 blocks: template.blocks,
                 design: template.design,

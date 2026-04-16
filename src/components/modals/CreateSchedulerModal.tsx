@@ -7,7 +7,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useSchedulerStore } from '@/store/useSchedulerStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useRouter } from 'next/navigation';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 
 interface Props {
     open: boolean;
@@ -71,11 +71,11 @@ export function CreateSchedulerModal({ open, onClose }: Props) {
                 meta: { organizer, location, durations, availability } as any,
             });
             if (s) {
+                appToast.success('Scheduler created');
                 onClose();
-                gooeyToast.success('Scheduler created');
                 router.push(`/schedulers/${s.id}`);
             } else {
-                gooeyToast.error('Failed to create scheduler');
+                appToast.error("Error", 'Failed to create scheduler');
             }
         } finally {
             setLoading(false);

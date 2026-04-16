@@ -6,7 +6,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { GripVertical, Plus, Trash2, Check, Info, Pencil, FileText, Receipt, FolderKanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ColorisInput } from '@/components/ui/ColorisInput';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -193,7 +193,7 @@ function ToolStatusList({ tool, isDark }: { tool: Tool; isDark: boolean }) {
 
     const handleDelete = async (id: string) => {
         await deleteStatus(id);
-        gooeyToast.success('Status removed');
+        appToast.success('Status Removed', 'The status has been deleted');
     };
 
     const handleAdd = async () => {
@@ -207,7 +207,7 @@ function ToolStatusList({ tool, isDark }: { tool: Tool; isDark: boolean }) {
             position: localList.length,
             is_active: true,
         });
-        gooeyToast.success('Status added');
+        appToast.success('Status Added', 'A new status has been created');
     };
 
     const handleSaveOrder = async () => {
@@ -216,7 +216,7 @@ function ToolStatusList({ tool, isDark }: { tool: Tool; isDark: boolean }) {
         if (!activeWorkspaceId) return;
         await reorderStatuses(activeWorkspaceId, tool, reordered);
         setIsSaving(false);
-        gooeyToast.success('Order saved');
+        appToast.success('Order Saved', 'Status order has been updated');
     };
 
     // Drag

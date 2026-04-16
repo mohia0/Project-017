@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useFormStore } from '@/store/useFormStore';
 import { useRouter } from 'next/navigation';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 
 interface Props {
     open: boolean;
@@ -53,11 +53,14 @@ export function CreateFormModal({ open, onClose }: Props) {
             });
             if (f) {
                 onClose();
-                gooeyToast.success('Form created');
+                appToast.success('Form Created', 'Your new form has been successfully created');
                 router.push(`/forms/${f.id}`);
             } else {
-                gooeyToast.error('Failed to create form');
+                appToast.error('Creation Failed', 'Could not create the form. Please try again.');
             }
+        } catch (error) {
+            console.error('Error creating form:', error);
+            appToast.error('Creation Failed', 'An unexpected error occurred. Please try again.');
         } finally {
             setLoading(false);
         }

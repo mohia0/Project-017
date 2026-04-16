@@ -77,8 +77,8 @@ interface ProjectState {
     error: string | null;
     fetchProjects: () => Promise<void>;
     addProject: (project: Omit<Project, 'id' | 'created_at' | 'workspace_id'>) => Promise<Project | null>;
-    updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
-    deleteProject: (id: string) => Promise<void>;
+    updateProject: (id: string, updates: Partial<Project>) => Promise<boolean>;
+    deleteProject: (id: string) => Promise<boolean>;
     bulkDeleteProjects: (ids: string[]) => Promise<void>;
     bulkDuplicateProjects: (ids: string[]) => Promise<void>;
 
@@ -158,14 +158,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         // Optimistic
         set((s) => ({ projects: s.projects.map((p) => p.id === id ? { ...p, ...updates } : p) }));
         const { data, error } = await supabase.from('projects').update(updates).eq('id', id).select().single();
-        if (error) set({ error: error.message });
-        else if (data) set((s) => ({ projects: s.projects.map((p) => p.id === id ? data as Project : p) }));
+        if (error) {
+            set({ error: error.message });
+            return false;
+        }
+        if (data) set((s) => ({ projects: s.projects.map((p) => p.id === id ? data as Project : p) }));
+        return true;
     },
 
     deleteProject: async (id) => {
         const { error } = await supabase.from('projects').delete().eq('id', id);
-        if (error) set({ error: error.message });
-        else set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }));
+        if (error) {
+            set({ error: error.message });
+            return false;
+        }
+        set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }));
+        return true;
     },
 
     bulkDeleteProjects: async (ids) => {

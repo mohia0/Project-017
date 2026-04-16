@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { useUIStore } from './useUIStore';
 
 export type FormStatus = 'Draft' | 'Active' | 'Inactive';
@@ -129,7 +129,7 @@ export const useFormStore = create<FormState>((set) => ({
 
         if (error) {
             console.error('Error fetching responses:', error);
-            gooeyToast.error('Failed to load responses');
+            appToast.error("Error", 'Failed to load responses');
             return;
         }
         if (data) set({ responses: data });

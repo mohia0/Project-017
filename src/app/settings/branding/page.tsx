@@ -9,7 +9,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { RotateCcw, Upload, Image as ImageIcon, Check, Trash2 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { useDebounce } from '@/hooks/useDebounce';
 
 const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
@@ -203,10 +203,10 @@ export default function BrandingSettingsPage() {
             try {
                 await updateBranding(activeWorkspaceId, debouncedFormData);
                 setIsDirty(false); // Reset dirty flag after successful save
-                gooeyToast.success('Branding saved', { duration: 2000 });
+                appToast.success('Branding Saved', 'Settings updated successfully');
             } catch (err) {
                 console.error("Auto-save failed:", err);
-                gooeyToast.error('Connection lost. Changes may not be saved.');
+                appToast.error('Save Failed', 'Connection lost. Changes may not be saved.');
             } finally {
                 setIsSaving(false);
             }

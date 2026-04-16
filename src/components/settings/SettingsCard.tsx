@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { Check, ChevronDown } from 'lucide-react';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 
 interface SettingsCardProps {
     title: string;
@@ -46,7 +46,7 @@ export function SettingsCard({
         if (!onSave) return;
         await onSave();
         setJustSaved(true);
-        gooeyToast.success('Changes saved', { duration: 1800 });
+        appToast.success('Changes saved');
         setTimeout(() => setJustSaved(false), 2000);
     };
 

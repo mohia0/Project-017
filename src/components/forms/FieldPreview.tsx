@@ -6,7 +6,7 @@ import { ChevronDown, Image } from 'lucide-react';
 import { CountryPicker } from '@/components/ui/CountryPicker';
 import DatePicker from '@/components/ui/DatePicker';
 import { FormField } from '@/store/useFormStore';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 
 interface FieldPreviewProps {
     field: FormField;
@@ -177,7 +177,7 @@ export default function FieldPreview({
                     <div className={cn("w-full h-20 border-2 border-dashed flex items-center justify-center transition-all cursor-crosshair hover:bg-black/5",
                         isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}
                         style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}
-                        onClick={() => gooeyToast("Signature functionality requires Canvas API (Demo)")}>
+                        onClick={() => appToast.info("Signature functionality requires Canvas API (Demo)")}>
                         <span className="text-[12px]">Sign here</span>
                     </div>
                 );
@@ -186,7 +186,7 @@ export default function FieldPreview({
                     <div className={cn("w-full py-6 border-2 border-dashed flex flex-col items-center gap-2 transition-all cursor-pointer hover:bg-black/5",
                         isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}
                         style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}
-                        onClick={() => gooeyToast("File upload triggered")}>
+                        onClick={() => appToast.info("File upload triggered")}>
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
                         <span className="text-[12px]">Click to upload or drag & drop</span>
                     </div>

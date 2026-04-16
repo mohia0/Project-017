@@ -16,7 +16,7 @@ import { CreateHookModal } from '@/components/modals/CreateHookModal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { useRouter } from 'next/navigation';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
 
@@ -182,7 +182,7 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
                     <button onClick={async () => {
                         const { duplicateHook } = useHookStore.getState();
                         await duplicateHook(h.id);
-                        gooeyToast.success('Hook duplicated');
+                        appToast.success('Duplicated', 'Hook has been duplicated successfully');
                     }}
                         className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
                             isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
@@ -366,7 +366,7 @@ export default function HooksPage() {
                             <button onClick={async () => {
                                 const ids = Array.from(selectedIds);
                                 await useHookStore.getState().bulkDuplicateHooks(ids);
-                                gooeyToast.success(`${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated`);
+                                appToast.success('Duplicated', `${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated successfully`);
                                 setSelectedIds(new Set());
                             }}
                                 className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
@@ -564,11 +564,11 @@ export default function HooksPage() {
                         const ids = Array.from(selectedIds);
                         await bulkDeleteHooks(ids);
                         setSelectedIds(new Set());
-                        gooeyToast.error(`${ids.length} hook${ids.length !== 1 ? 's' : ''} deleted`);
+                        appToast.error('Deleted', `${ids.length} hook${ids.length !== 1 ? 's' : ''} removed`);
                     } else if (deletingId) {
                         await deleteHook(deletingId);
                         if (rightPanel?.type === 'hook' && rightPanel.id === deletingId) closeRightPanel();
-                        gooeyToast.error('Hook deleted');
+                        appToast.error('Deleted', 'Hook permanently removed');
                     }
                     setDeletingId(null);
                 }}

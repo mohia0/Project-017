@@ -23,6 +23,7 @@ export interface DocumentDesign {
     blockShadow?: string;
     actionTheme?: 'light' | 'dark';
     topBlurTheme?: 'light' | 'dark';
+    signTheme?: 'light' | 'dark';
 }
 
 export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
@@ -50,4 +51,5 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     blockShadow: '0 8px 30px -6px rgba(0,0,0,0.08)',
     actionTheme: 'light',
     topBlurTheme: 'light',
+    signTheme: 'light',
 };

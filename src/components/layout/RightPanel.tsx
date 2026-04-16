@@ -22,7 +22,7 @@ import { useHookStore, Hook } from '@/store/useHookStore';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter, usePathname } from 'next/navigation';
 import { Radio, Copy } from 'lucide-react';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { SendEmailModal } from '@/components/modals/SendEmailModal';
 
 const COLORS = [
@@ -952,7 +952,7 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
         navigator.clipboard.writeText(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        gooeyToast.success('Copied to clipboard');
+        appToast.success('Copied', 'Copied to clipboard');
     };
 
     return (

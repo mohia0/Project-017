@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from './useUIStore';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 
 export interface AppNotification {
     id: string;
@@ -131,9 +131,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                     notifications: [newNotification, ...state.notifications]
                 }));
 
-                gooeyToast.success(newNotification.title, {
-                    duration: 6000,
-                });
+                appToast.success(newNotification.title, newNotification.message);
             })
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
@@ -160,9 +158,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
         if (!error) {
             set({ notifications: [] });
-            gooeyToast.success('Notifications cleared');
+            appToast.success('Notifications cleared');
         } else {
-            gooeyToast.error('Failed to clear notifications');
+            appToast.error('Failed to clear notifications');
         }
     }
 }));

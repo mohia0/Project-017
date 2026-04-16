@@ -17,7 +17,7 @@ import { useProjectStore, Project, ProjectTask, ProjectStatus, TaskStatus } from
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useRouter, useParams } from 'next/navigation';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { Avatar } from '@/components/ui/Avatar';
 import EditProjectModal from '@/components/projects/EditProjectModal';
 import dynamic from 'next/dynamic';
@@ -180,15 +180,19 @@ function CircleProgress({ pct, color, size = 36, isDark }: { pct: number; color:
 
 function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: boolean }) {
     const { itemsByProject, fetchProjectItems, addProjectItem, removeProjectItem } = useProjectStore();
-    const { invoices } = useInvoiceStore();
-    const { proposals } = useProposalStore();
+    const { invoices, fetchInvoices } = useInvoiceStore();
+    const { proposals, fetchProposals } = useProposalStore();
     const items = itemsByProject[projectId] || [];
 
     const [linkOpen, setLinkOpen] = useState(false);
     const [search, setSearch]     = useState('');
     const [linkType, setLinkType] = useState<'invoice' | 'proposal'>('invoice');
 
-    useEffect(() => { fetchProjectItems(projectId); }, [projectId, fetchProjectItems]);
+    useEffect(() => {
+        fetchProjectItems(projectId);
+        fetchInvoices();
+        fetchProposals();
+    }, [projectId, fetchProjectItems, fetchInvoices, fetchProposals]);
 
     const available = useMemo(() => {
         const linked = new Set(items.map(i => i.item_id));
@@ -198,13 +202,13 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
 
     const handleLink = async (itemId: string) => {
         await addProjectItem({ project_id: projectId, item_type: linkType, item_id: itemId });
-        gooeyToast.success('Item linked');
+        appToast.success('Linked', 'Item has been linked to this project');
         setLinkOpen(false);
         setSearch('');
     };
     const handleUnlink = async (id: string) => {
         await removeProjectItem(id, projectId);
-        gooeyToast('Unlinked', { duration: 1500 });
+        appToast.success('Unlinked', 'Item has been removed from this project');
     };
 
     const linkedInvoices  = items.filter(i => i.item_type === 'invoice');
@@ -487,7 +491,7 @@ export default function ProjectDetailPage() {
                                 const newName = e.currentTarget.textContent?.trim();
                                 if (newName && newName !== project.name) {
                                     updateProject(project.id, { name: newName });
-                                    gooeyToast.success('Project renamed');
+                                    appToast.success('Renamed', 'Project name has been updated');
                                 } else {
                                     e.currentTarget.textContent = project.name;
                                 }

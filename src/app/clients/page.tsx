@@ -8,7 +8,7 @@ import {
     Copy, Check, SquareCheck, X, MoreHorizontal,
     FileSpreadsheet, Upload, Download, ChevronDown, ArrowUpDown, ArrowRightLeft
 } from 'lucide-react';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { useClientStore } from '@/store/useClientStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -139,14 +139,14 @@ export default function ClientsPage() {
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
-        gooeyToast.success('Exported successfully');
+        appToast.success('Exported successfully');
         setImportExportOpen(false);
     };
 
     const handleExportCSV = () => {
         const data = tab === 'people' ? clients : companies;
         if (data.length === 0) {
-            gooeyToast.error('No data to export');
+            appToast.error("Error", 'No data to export');
             return;
         }
         
@@ -177,7 +177,7 @@ export default function ClientsPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        gooeyToast.success('CSV exported successfully');
+        appToast.success('CSV exported successfully');
         setImportExportOpen(false);
     };
 
@@ -200,7 +200,7 @@ export default function ClientsPage() {
                             }
                         }
                     })();
-                    gooeyToast.promise(promise, {
+                    appToast.promise(promise, {
                         loading: 'Importing...',
                         success: 'Imported successfully',
                         error: 'Import failed'
@@ -208,7 +208,7 @@ export default function ClientsPage() {
                     await promise;
                 }
             } catch (error) {
-                gooeyToast.error('Invalid JSON file');
+                appToast.error("Error", 'Invalid JSON file');
             }
         };
         reader.readAsText(file);
@@ -382,7 +382,7 @@ export default function ClientsPage() {
                                     const { bulkDuplicateCompanies } = useCompanyStore.getState();
                                     if (tab === 'people') await bulkDuplicateClients(ids);
                                     else await bulkDuplicateCompanies(ids);
-                                    gooeyToast.success(`${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated`);
+                                    appToast.success(`${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated`);
                                     setSelectedIds(new Set());
                                 }}
                                     className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
@@ -527,7 +527,7 @@ export default function ClientsPage() {
                                                             onDelete={async () => {
                                                                 const { deleteClient } = useClientStore.getState();
                                                                 await deleteClient(client.id);
-                                                                gooeyToast.error('Contact deleted');
+                                                                appToast.error("Deleted", 'Contact deleted');
                                                             }} 
                                                             isDark={isDark} 
                                                         />
@@ -617,7 +617,7 @@ export default function ClientsPage() {
                                                         onDelete={async () => {
                                                             const { deleteClient } = useClientStore.getState();
                                                             await deleteClient(client.id);
-                                                            gooeyToast.error('Contact deleted');
+                                                            appToast.error("Deleted", 'Contact deleted');
                                                         }} 
                                                         isDark={isDark} 
                                                     />
@@ -710,7 +710,7 @@ export default function ClientsPage() {
                                                             onDelete={async () => {
                                                                 const { deleteCompany } = useCompanyStore.getState();
                                                                 await deleteCompany(company.id);
-                                                                gooeyToast.error('Company deleted');
+                                                                appToast.error("Deleted", 'Company deleted');
                                                             }} 
                                                             isDark={isDark} 
                                                         />

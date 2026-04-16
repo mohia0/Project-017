@@ -3,12 +3,14 @@
 import { useEffect } from 'react';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { useAuthStore } from '@/store/useAuthStore';
-import { GooeyToaster } from 'goey-toast';
-import 'goey-toast/styles.css';
+import { useUIStore } from '@/store/useUIStore';
+import { ToastContainer } from '@/components/ui/ToastContainer';
 
 const theme = createTheme({});
 
 export function Providers({ children }: { children: React.ReactNode }) {
+    const { theme: appTheme } = useUIStore();
+    
     useEffect(() => {
         useAuthStore.getState().initialize();
     }, []);
@@ -16,16 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return (
         <MantineProvider theme={theme}>
             {children}
-            <GooeyToaster
-                position="top-center"
-                toastOptions={{
-                    duration: 3500,
-                    style: {
-                        fontFamily: 'Inter, system-ui, sans-serif',
-                        fontSize: '13px',
-                    },
-                }}
-            />
+            <ToastContainer />
         </MantineProvider>
     );
 }

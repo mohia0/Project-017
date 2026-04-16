@@ -15,7 +15,7 @@ import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { useRouter } from 'next/navigation';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
 
@@ -297,7 +297,7 @@ export default function FormsPage() {
         e.stopPropagation();
         const url = `${window.location.origin}/p/form/${id}`;
         navigator.clipboard.writeText(url);
-        gooeyToast.success('Link copied to clipboard');
+        appToast.success('Link Copied', 'URL copied to clipboard');
     };
 
     const handleDelete = async (id: string) => {
@@ -323,7 +323,7 @@ export default function FormsPage() {
                 }
             }
         })();
-        gooeyToast.promise(promise, {
+        appToast.promise(promise, {
             loading: `Duplicating ${ids.length} form${ids.length !== 1 ? 's' : ''}…`,
             success: `${ids.length} form${ids.length !== 1 ? 's' : ''} duplicated`,
             error: 'Duplication failed',
@@ -622,10 +622,10 @@ export default function FormsPage() {
                         const ids = Array.from(selectedIds);
                         await useFormStore.getState().bulkDeleteForms(ids);
                         setSelectedIds(new Set());
-                        gooeyToast.error(`${ids.length} form${ids.length !== 1 ? 's' : ''} deleted`);
+                        appToast.error('Deleted', `${ids.length} form${ids.length !== 1 ? 's' : ''} removed`);
                     } else if (deletingId) {
                         await deleteForm(deletingId);
-                        gooeyToast.error('Form deleted');
+                        appToast.error('Deleted', 'Form permanently removed');
                     }
                     setDeletingId(null);
                 }}

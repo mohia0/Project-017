@@ -8,7 +8,7 @@ import { useProjectStore, ProjectStatus } from '@/store/useProjectStore';
 import { useClientStore } from '@/store/useClientStore';
 import DatePicker from '@/components/ui/DatePicker';
 import ClientEditor from '@/components/clients/ClientEditor';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { Avatar } from '@/components/ui/Avatar';
 
 interface Props {
@@ -74,7 +74,7 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
     );
 
     const handleCreate = async () => {
-        if (!name.trim()) { gooeyToast.error('Project name is required'); return; }
+        if (!name.trim()) { appToast.error("Error", 'Project name is required'); return; }
         setLoading(true);
         try {
             const p = await addProject({
@@ -90,11 +90,11 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
                 is_archived: false,
             });
             if (p) {
-                gooeyToast.success(`"${p.name}" created`);
+                appToast.success(`"${p.name}" created`);
                 onCreated();
                 onClose();
             } else {
-                gooeyToast.error('Failed to create project — check console');
+                appToast.error('Error', 'Failed to create project — check console');
             }
         } finally {
             setLoading(false);
@@ -109,7 +109,7 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
             setIsClientEditorOpen(false);
             setClientSearch('');
             setClientOpen(false);
-            gooeyToast.success('Contact created and selected');
+            appToast.success('Contact created and selected');
         }
     };
 

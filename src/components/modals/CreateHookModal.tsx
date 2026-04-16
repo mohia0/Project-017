@@ -5,7 +5,7 @@ import { X, ChevronRight, Zap, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useHookStore } from '@/store/useHookStore';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 
 interface Props {
     open: boolean;
@@ -54,11 +54,11 @@ export function CreateHookModal({ open, onClose }: Props) {
             });
             if (h) {
                 onClose();
-                gooeyToast.success('Hook created');
+                appToast.success('Hook created');
                 // Open the config panel immediately
                 openRightPanel({ type: 'hook', id: h.id });
             } else {
-                gooeyToast.error('Failed to create hook');
+                appToast.error("Error", 'Failed to create hook');
             }
         } finally {
             setLoading(false);

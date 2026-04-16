@@ -5,7 +5,7 @@ import { X, Check, Calendar, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useProjectStore, Project } from '@/store/useProjectStore';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import DatePicker from '@/components/ui/DatePicker';
 
 interface Props {
@@ -33,16 +33,20 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
     }, [open, project]);
 
     const handleSave = async () => {
-        if (!name.trim()) { gooeyToast.error('Project name is required'); return; }
+        if (!name.trim()) { appToast.error("Error", 'Project name is required'); return; }
         setSaving(true);
         try {
-            await updateProject(project.id, { 
+            const success = await updateProject(project.id, { 
                 name: name.trim(), 
                 description: desc.trim() || null, 
                 deadline: deadline || null 
             });
-            gooeyToast.success('Project updated');
-            onClose();
+            if (success) {
+                appToast.success('Project updated successfully');
+                onClose();
+            } else {
+                appToast.error("Error", 'Failed to update project — check console');
+            }
         } finally {
             setSaving(false);
         }

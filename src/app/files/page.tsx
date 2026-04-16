@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { formatDistanceToNow } from 'date-fns';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
 import { useFileStore, ItemType, FileItem } from '@/store/useFileStore';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -674,11 +674,10 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                 }
             }, 150);
         });
-        gooeyToast.promise(addPromise, {
-            loading: 'Adding to library…',
-            success: (msg) => msg,
-            error: (err: unknown) => (err as { message?: string })?.message || String(err),
-            description: undefined
+        appToast.promise(addPromise, {
+            loading: 'Adding to library...',
+            success: 'Reference added',
+            error: 'Failed to add reference'
         });
         onClose();
     }, [currentFolderId, onUploaded, onClose]);
@@ -1326,9 +1325,9 @@ export default function FilesPage() {
             
         if (!error) {
             setItems(prev => prev.map(i => i.id === draggedId ? { ...i, parentId: targetId } : i));
-            gooeyToast.success(`Moved to "${target.name}"`);
+            appToast.success('Moved', `Item successfully moved to "${target.name}"`);
         } else {
-            gooeyToast.error('Move failed');
+            appToast.error('Move failed', 'Could not move the item');
         }
         setDraggedId(null); setDragOver(null);
     };
@@ -1366,7 +1365,7 @@ export default function FilesPage() {
         if (files.length === 0) return;
 
         // Initialize progress toast
-        const toastId = gooeyToast(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}...`, {
+        const toastId = appToast.message(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}...`, {
             description: <ProgressContent progress={0} isDark={isDark} />,
             duration: Infinity
         });
@@ -1377,12 +1376,12 @@ export default function FilesPage() {
             if (totalSize === 0) {
                 const total = progresses.reduce((a, b) => a + b, 0);
                 const average = total / files.length;
-                gooeyToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} /> });
+                appToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} /> });
                 return;
             }
             const totalLoaded = files.reduce((acc, f, i) => acc + (f.size * (progresses[i] / 100)), 0);
             const overallProgress = (totalLoaded / totalSize) * 100;
-            gooeyToast.update(toastId, {
+            appToast.update(toastId, {
                 description: <ProgressContent progress={overallProgress} isDark={isDark} />
             });
         };
@@ -1427,9 +1426,11 @@ export default function FilesPage() {
                 });
             }));
             await addFilesToDb(newItems);
-            gooeyToast.success('Upload complete', { id: toastId, description: undefined, duration: 3000 });
+            appToast.success('Upload complete', 'All files have been uploaded successfully');
+            appToast.dismiss(toastId);
         } catch (err: any) {
-            gooeyToast.error((err as { message?: string })?.message || 'Upload failed', { id: toastId, description: undefined });
+            appToast.error('Upload failed', (err as { message?: string })?.message || 'An error occurred during upload');
+            appToast.dismiss(toastId);
         }
     }, [currentFolderId, addFilesToDb, isDark]);
 
@@ -1448,7 +1449,7 @@ export default function FilesPage() {
         }]);
         if (!error) {
             setItems(prev => [...prev, newItem]);
-            gooeyToast.success(`"${name}" created`);
+            appToast.success('Folder Created', `"${name}" has been created`);
             setNewDialog(null);
         }
     };
@@ -1466,7 +1467,7 @@ export default function FilesPage() {
         }]);
         if (!error) {
             setItems(prev => [...prev, newItem]);
-            gooeyToast.success(`Link "${name}" added`);
+            appToast.success('Link Added', `Link "${name}" has been added`);
             setNewDialog(null);
         }
     };
@@ -1495,7 +1496,7 @@ export default function FilesPage() {
             setItems(prev => prev.filter(i => !toDelete.has(i.id)));
             setSelectedIds(new Set());
             setDeleteWarning(null);
-            gooeyToast.error(`${ids.length} item${ids.length !== 1 ? 's' : ''} deleted`);
+            appToast.error('Items Deleted', `${ids.length} item${ids.length !== 1 ? 's' : ''} have been removed`);
         }
     };
 
@@ -1527,7 +1528,7 @@ export default function FilesPage() {
         const { error } = await supabase.from('files').insert(dbClones);
         if (!error) {
             setItems(prev => [...prev, ...clones]);
-            gooeyToast.success(ids.length === 1 ? `Duplicated` : `${ids.length} items duplicated`, { duration: 2000 });
+            appToast.success('Duplicated', ids.length === 1 ? 'Item duplicated successfully' : `${ids.length} items duplicated successfully`);
         }
     };
     const toggleStar = async (id: string) => {
@@ -1541,8 +1542,8 @@ export default function FilesPage() {
             .eq('workspace_id', activeWorkspaceId);
         if (!error) {
             setItems(prev => prev.map(i => i.id === id ? { ...i, starred: newState } : i));
-            if (newState) gooeyToast.success('★ Starred', { duration: 1500 });
-            else gooeyToast('Unstarred', { duration: 1200 });
+            if (newState) appToast.success('Starred', 'Item added to favorites');
+            else appToast.message('Unstarred');
         }
     };
     const toggleLock = async (id: string) => {
@@ -1556,7 +1557,7 @@ export default function FilesPage() {
             .eq('workspace_id', activeWorkspaceId);
         if (!error) {
             setItems(prev => prev.map(i => i.id === id ? { ...i, locked: newState } : i));
-            gooeyToast(newState ? '🔒 Locked' : '🔓 Unlocked', { duration: 1500 });
+            appToast.message(newState ? '🔒 Locked' : '🔓 Unlocked');
         }
     };
     const copyDownloadLink = (itemId: string) => {
@@ -1575,9 +1576,9 @@ export default function FilesPage() {
         const absoluteLink = (link.startsWith('/') && baseUrl) ? `${baseUrl}${link}` : link;
 
         navigator.clipboard.writeText(absoluteLink).then(() => {
-            gooeyToast.success('Link copied', { duration: 1800 });
+            appToast.success('Link Copied', 'Download link copied to clipboard');
         }).catch(() => {
-            gooeyToast.error('Failed to copy link');
+            appToast.error('Copy Failed', 'Could not copy link to clipboard');
         });
     };
 
@@ -1589,17 +1590,17 @@ export default function FilesPage() {
             .eq('workspace_id', activeWorkspaceId);
         if (!error) {
             setItems(prev => prev.map(i => i.id === id ? { ...i, color } : i));
-            gooeyToast('Color updated', { duration: 1200 });
+            appToast.message('Color updated');
         }
     };
 
     const handleDownload = useCallback((item: FileItem) => {
         if (!item.downloadUrl) {
-            gooeyToast.error("No download URL available for this file");
+            appToast.error('Download Failed', "No download URL available for this file");
             return;
         }
         
-        gooeyToast.info(`Downloading "${item.name}"…`);
+        appToast.info('Downloading', `Started downloading "${item.name}"…`);
         
         // Trigger download via hidden link
         const link = document.createElement('a');

@@ -549,6 +549,37 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                     className="w-full"
                                 />
                             </MetaField>
+                            
+                            <MetaField 
+                                label="Theme" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ signTheme: DEFAULT_DOCUMENT_DESIGN.signTheme })}
+                            >
+                                <div className={cn("flex w-full p-0.5 rounded-lg border", isDark ? "bg-[#111] border-[#333]" : "bg-[#f5f5f5] border-[#eaeaea]")}>
+                                    <button
+                                        onClick={() => updateDesign({ signTheme: 'light' })}
+                                        className={cn(
+                                            "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
+                                            (design.signTheme || 'light') === 'light'
+                                                ? isDark ? "bg-white text-black shadow-sm" : "bg-white text-black shadow-sm"
+                                                : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                        )}
+                                    >
+                                        Light
+                                    </button>
+                                    <button
+                                        onClick={() => updateDesign({ signTheme: 'dark' })}
+                                        className={cn(
+                                            "flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all",
+                                            design.signTheme === 'dark'
+                                                ? isDark ? "bg-[#333] text-white shadow-sm" : "bg-[#333] text-white shadow-sm"
+                                                : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                        )}
+                                    >
+                                        Dark
+                                    </button>
+                                </div>
+                            </MetaField>
 
                             <MetaField 
                                 label="Line Thickness"

@@ -29,6 +29,7 @@ import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
+import { useProjectStore } from '@/store/useProjectStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ContentBlock } from '../proposals/blocks/ContentBlock';
 import { SectionBlockWrapper } from '../proposals/blocks/SectionBlockWrapper';
@@ -45,7 +46,7 @@ import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -119,6 +120,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const { clients, fetchClients } = useClientStore();
     const { updateInvoice, deleteInvoice, fetchInvoices, invoices } = useInvoiceStore();
     const { addTemplate } = useTemplateStore();
+    const { projects, fetchProjects, addProjectItem } = useProjectStore();
 
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
     const { payments, fetchPayments, emailConfig, emailTemplates, fetchEmailConfig, fetchEmailTemplates, toolSettings } = useSettingsStore();
@@ -154,6 +156,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
     const [isSendModalOpen, setIsSendModalOpen] = useState(false);
 
+    // Project selection state
+    const [projectQuery, setProjectQuery] = useState('');
+    const [selectedProject, setSelectedProject] = useState<string>('');
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const [showProjectDrop, setShowProjectDrop] = useState(false);
+    const projectRef = useRef<HTMLDivElement>(null);
+
     const [meta, setMeta] = useState<InvoiceMeta>({
         clientName: '',
         projectName: '',
@@ -188,6 +197,61 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const debouncedMeta = useDebounce(meta, 1000);
     const debouncedBlocks = useDebounce(blocks, 1000);
 
+    // Fetch projects and current link
+    React.useEffect(() => {
+        if (activeWorkspaceId && id) {
+            fetchProjects();
+            const findProject = async () => {
+                const { data, error } = await supabase
+                    .from('project_items')
+                    .select('project_id, projects(name)')
+                    .eq('item_id', id)
+                    .eq('item_type', 'invoice')
+                    .maybeSingle();
+                
+                if (data && !error) {
+                    setSelectedProjectId(data.project_id);
+                    setSelectedProject((data.projects as any)?.name || '');
+                }
+            };
+            findProject();
+        }
+    }, [activeWorkspaceId, id, fetchProjects]);
+
+    const filteredProjects = projects.filter(p =>
+        p.name.toLowerCase().includes(projectQuery.toLowerCase())
+    );
+
+    const handleProjectSelect = async (project: any | null) => {
+        if (!id) return;
+        
+        // Remove existing link if any
+        const { data: existing } = await supabase
+            .from('project_items')
+            .select('id')
+            .eq('item_id', id)
+            .eq('item_type', 'invoice')
+            .maybeSingle();
+            
+        if (existing) {
+            await supabase.from('project_items').delete().eq('id', existing.id);
+        }
+
+        if (project) {
+            await addProjectItem({
+                project_id: project.id,
+                item_type: 'invoice',
+                item_id: id
+            });
+            appToast.success('Project Linked', `Linked to ${project.name}`);
+        } else {
+            setSelectedProject('');
+            setSelectedProjectId(null);
+            appToast.success('Project Unlinked', 'Project unlinked');
+        }
+        setShowProjectDrop(false);
+    };
+
     const { statuses, fetchStatuses } = useSettingsStore();
     const customStatuses = React.useMemo(() => statuses.filter(s => s.tool === 'invoices'), [statuses]);
     const activeStatuses = React.useMemo(() => customStatuses.filter(s => s.is_active || s.name === meta.status).sort((a,b) => a.position - b.position), [customStatuses, meta.status]);
@@ -206,6 +270,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             }
             if (actionsRef.current && !actionsRef.current.contains(event.target as Node)) {
                 setShowActionsMenu(false);
+            }
+            if (projectRef.current && !projectRef.current.contains(event.target as Node)) {
+                setShowProjectDrop(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -276,7 +343,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
         }, 0);
 
         // setSaveStatus('saving');
-        gooeyToast.promise(
+        appToast.promise(
             updateInvoice(id, {
                 title: debouncedMeta.projectName || 'New Invoice',
                 client_name: debouncedMeta.clientName,
@@ -359,8 +426,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 })
                     .then(r => r.json())
                     .then(data => {
-                        if (data.success) gooeyToast.success('Receipt emailed to client ✓');
-                        else gooeyToast.error('Auto-receipt failed: ' + data.error);
+                        if (data.success) appToast.success('Email Sent', 'Receipt has been emailed to the client');
+                        else appToast.error('Email Failed', data.error || 'Auto-receipt could not be sent');
                     })
                     .catch(err => console.error('Auto-receipt failed:', err));
             } else {
@@ -378,7 +445,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         variables: receiptVars,
                     },
                 });
-                gooeyToast.info('Receipt queued — check your notifications to send manually.');
+                appToast.info('Receipt Queued', 'Check your notifications to send manually');
             }
         }
     };
@@ -401,7 +468,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             });
             setIsClientEditorOpen(false);
             setClientDropdownOpen(false);
-            gooeyToast.success('Contact created and selected');
+            appToast.success('Contact Created', 'Contact created and selected');
         }
     };
 
@@ -953,20 +1020,67 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         </div>
                                     </MetaField>
                                     <MetaField 
-                                        label="Name" 
+                                        label="Project" 
                                         isDark={isDark} 
                                         icon={<FileText size={11} className="opacity-50" />}
-                                        onReset={() => updateMeta({ projectName: '' })}
+                                        onReset={() => handleProjectSelect(null)}
                                     >
-                                        <input 
-                                            value={meta.projectName} 
-                                            onChange={e => updateMeta({ projectName: e.target.value })} 
-                                            placeholder="Set name..." 
-                                            className={cn(
-                                                "w-full bg-transparent outline-none text-[12px] font-medium",
-                                                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                        <div className="relative" ref={projectRef}>
+                                            <div 
+                                                className={cn(
+                                                    "w-full text-[12px] cursor-pointer font-medium truncate",
+                                                    isDark ? "text-[#ccc]" : "text-[#333]",
+                                                    !selectedProject && (isDark ? "text-[#444]" : "text-[#ccc]")
+                                                )}
+                                                onClick={() => setShowProjectDrop(v => !v)}
+                                            >
+                                                {selectedProject || "No project"}
+                                            </div>
+
+                                            {showProjectDrop && (
+                                                <div className={cn(
+                                                    "absolute top-full left-0 w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-b-lg border border-t-0 shadow-xl overflow-hidden z-50 max-h-[220px] overflow-y-auto",
+                                                    isDark ? "bg-[#1f1f1f] border-[#252525]" : "bg-white border-[#ebebeb]"
+                                                )}>
+                                                    <div className="p-2 border-b border-inherit">
+                                                        <input
+                                                            autoFocus
+                                                            value={projectQuery}
+                                                            onChange={e => setProjectQuery(e.target.value)}
+                                                            placeholder="Search projects..."
+                                                            className={cn(
+                                                                "w-full text-[11px] px-2.5 py-1.5 rounded-md outline-none",
+                                                                isDark ? "bg-white/5 text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]"
+                                                            )}
+                                                        />
+                                                    </div>
+                                                    <div className="py-1">
+                                                        <button
+                                                            onClick={() => handleProjectSelect(null)}
+                                                            className={cn(
+                                                                "w-full text-left px-3 py-2 text-[12px] transition-colors",
+                                                                isDark ? "hover:bg-[#2a2a2a] text-[#888]" : "hover:bg-[#f5f5f5] text-[#777]"
+                                                            )}
+                                                        >
+                                                            None
+                                                        </button>
+                                                        {filteredProjects.map(p => (
+                                                            <button
+                                                                key={p.id}
+                                                                onClick={() => handleProjectSelect(p)}
+                                                                className={cn(
+                                                                    "w-full text-left px-3 py-2 text-[12px] transition-colors flex items-center gap-2",
+                                                                    isDark ? "hover:bg-[#2a2a2a] text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]"
+                                                                )}
+                                                            >
+                                                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }} />
+                                                                <span className="truncate">{p.name}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             )}
-                                        />
+                                        </div>
                                     </MetaField>
                                     <MetaField 
                                         label="Issue Date" 
@@ -1288,8 +1402,6 @@ export function InvoiceDocument({
         color: '#555555',
         backgroundColor: 'var(--document-bg)',
         '--document-bg': design.blockBackgroundColor || '#ffffff',
-        paddingTop: 'var(--block-margin-top)',
-        paddingBottom: 'var(--block-margin-bottom)',
         '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
         '--block-margin-top': `${design.marginTop ?? 24}px`,
         '--block-border-radius': `${design.borderRadius ?? 16}px`,

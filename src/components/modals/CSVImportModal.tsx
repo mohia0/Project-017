@@ -11,7 +11,7 @@ import {
     Calendar, User, DollarSign, Tag, Info, AlertTriangle, Building2, Mail, Phone, MapPin, Globe, Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import Papa from 'papaparse';
 import { useCompanyStore } from '@/store/useCompanyStore';
 import { parse, isValid, format } from 'date-fns';
@@ -130,7 +130,7 @@ export default function CSVImportModal() {
 
     const processFile = (selectedFile: File) => {
         if (!selectedFile.name.endsWith('.csv')) {
-            gooeyToast.error("Please upload a CSV file");
+            appToast.error("Error", "Please upload a CSV file");
             return;
         }
 
@@ -139,7 +139,7 @@ export default function CSVImportModal() {
             skipEmptyLines: true,
             complete: (results) => {
                 if (results.data.length === 0) {
-                    gooeyToast.error("The CSV file is empty");
+                    appToast.error("Error", "The CSV file is empty");
                     return;
                 }
                 setFile(selectedFile);
@@ -188,7 +188,7 @@ export default function CSVImportModal() {
                 setStep('mapping');
             },
             error: (err) => {
-                gooeyToast.error("Failed to parse CSV: " + err.message);
+                appToast.error("Error", "Failed to parse CSV: " + err.message);
             }
         });
     };
@@ -244,12 +244,12 @@ export default function CSVImportModal() {
         if (importType === 'Contact') {
             const hasFirstOrLastName = !!mapping['first_name'] || !!mapping['last_name'];
             if (!hasFirstOrLastName) {
-                gooeyToast.error(`Please map either First Name or Last Name for contacts`);
+                appToast.error("Error", "Please map either First Name or Last Name for contacts");
                 return;
             }
         } else {
             if (missing.length > 0) {
-                gooeyToast.error(`Please map required fields: ${missing.map(f => f.label).join(', ')}`);
+                appToast.error("Error", `Please map required fields: ${missing.map(f => f.label).join(', ')}`);
                 return;
             }
         }
@@ -495,15 +495,15 @@ export default function CSVImportModal() {
             else if (importType === 'Proposal') await useProposalStore.getState().fetchProposals();
 
             if (successCount > 0) {
-                gooeyToast.success(`Successfully imported ${successCount} ${importType.toLowerCase()}s`);
-                if (errorCount > 0) gooeyToast.error(`Failed to import ${errorCount} items`);
+            appToast.success(`Successfully imported ${successCount} ${importType.toLowerCase()}s`);
+                if (errorCount > 0) appToast.error("Error", `Failed to import ${errorCount} items`);
                 setImportModalOpen(false);
             } else {
-                gooeyToast.error("Failed to import items. Check your CSV data.");
+                appToast.error("Error", "Failed to import items. Check your CSV data.");
             }
         } catch (err) {
             console.error(err);
-            gooeyToast.error("An unexpected error occurred during import");
+            appToast.error("Error", "An unexpected error occurred during import");
         } finally {
             setImporting(false);
             setProgress(0);

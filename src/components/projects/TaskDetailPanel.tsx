@@ -13,7 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useProjectStore, ProjectTask, TaskStatus, TaskPriority } from '@/store/useProjectStore';
 import { KANBAN_COLS } from './KanbanBoard';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { ContentBlock } from '../proposals/blocks/ContentBlock';
 import DatePicker from '../ui/DatePicker';
 
@@ -207,7 +207,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     const handleDelete = async () => {
         setDeleting(true);
         await deleteTask(task.id, projectId);
-        gooeyToast.success('Task deleted');
+        appToast.success('Task deleted');
         onClose();
     };
 
@@ -645,7 +645,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                                     </div>
                                                     <button
                                                         disabled={!comment.trim()}
-                                                        onClick={() => { gooeyToast('Comments coming soon'); setComment(''); }}
+                                                        onClick={() => { appToast.info('Comments coming soon'); setComment(''); }}
                                                         className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold disabled:opacity-40 transition-all hover:bg-primary/90 active:scale-95"
                                                     >
                                                         Post

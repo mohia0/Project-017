@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from './useUIStore';
+import { appToast } from '@/lib/toast';
 
 export type HookStatus = 'Active' | 'Inactive';
 
@@ -91,14 +92,14 @@ export const useHookStore = create<HookState>((set) => ({
         if (error) {
             console.error('updateHook error:', error);
             set({ error: error.message });
-            import('goey-toast').then(m => m.gooeyToast.error(`Update failed: ${error.message}`));
+            appToast.error("Error", `Update failed: ${error.message}`);
         } else if (data) {
             set((state) => ({
                 hooks: state.hooks.map((h) =>
                     h.id === id ? { ...h, ...(data as Hook) } : h
                 ),
             }));
-            import('goey-toast').then(m => m.gooeyToast.success('Hook updated'));
+            appToast.success('Hook updated');
         }
     },
 

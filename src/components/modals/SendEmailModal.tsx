@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 
 interface SendEmailModalProps {
     isOpen: boolean;
@@ -107,11 +107,11 @@ export function SendEmailModal({
             const data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send email');
             setSent(true);
-            gooeyToast.success('Email sent successfully!');
+            appToast.success('Email Sent', 'Email sent successfully!');
             setTimeout(() => { onClose(); setSent(false); }, 1800);
         } catch (err: any) {
             setError(err.message);
-            gooeyToast.error(err.message || 'Failed to send email');
+            appToast.error('Send Failed', err.message || 'Failed to send email');
         } finally {
             setIsSending(false);
         }

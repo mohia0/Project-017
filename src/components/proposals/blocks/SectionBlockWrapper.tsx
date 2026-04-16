@@ -271,13 +271,19 @@ export function SectionBlockWrapper({
                 {/* Content — dashed border on hover */}
                 <div
                     className={cn(
-                        'transition-all duration-300 p-3 -m-3',
+                        'transition-all duration-300 py-3 -my-3 px-12 -mx-12',
                         hovered && !isPreview
                             ? isDark
-                                ? 'border border-white/[0.15] border-dashed rounded-[var(--block-border-radius)]'
-                                : 'border border-black/[0.1] border-dashed rounded-[var(--block-border-radius)]'
+                                ? 'border border-white/40 border-dashed'
+                                : 'border border-black/30 border-dashed'
                             : 'border border-transparent',
                     )}
+                    style={{
+                        borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+                        borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : undefined,
+                        borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : undefined,
+                        borderBottomRightRadius: isLast ? 'var(--block-border-radius)' : undefined,
+                    }}
                 >
                     {children}
                 </div>

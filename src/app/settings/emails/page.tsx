@@ -5,7 +5,7 @@ import { useSettingsStore, WorkspaceEmailConfig } from '@/store/useSettingsStore
 import { useUIStore } from '@/store/useUIStore';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import {
     Mail, Send, Activity, ShieldCheck, Globe, RotateCcw, CheckCircle2,
     Lightbulb, Receipt, FileText, FileSignature, UserPlus, Eye, EyeOff,
@@ -195,9 +195,9 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
             await updateEmailTemplate(activeWorkspaceId, activeKey, current);
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
-            gooeyToast.success('Template saved');
+            appToast.success('Template Saved', 'Your changes have been saved');
         } catch {
-            gooeyToast.error('Failed to save template');
+            appToast.error('Save Failed', 'Failed to save template');
         } finally {
             setIsSaving(false);
         }
@@ -500,7 +500,7 @@ export default function EmailsSettingsPage() {
             if (!res.ok) throw new Error(data.error || 'Failed to save configuration');
         });
 
-        gooeyToast.promise(promise, {
+        appToast.promise(promise, {
             loading: 'Saving SMTP configuration…',
             success: 'SMTP configuration saved',
             error: 'Failed to save configuration',
@@ -534,7 +534,7 @@ export default function EmailsSettingsPage() {
             if (!res.ok) throw new Error(data.error || 'Failed to send test email');
         });
 
-        gooeyToast.promise(promise, {
+        appToast.promise(promise, {
             loading: 'Sending test email…',
             success: 'Test email sent — check your inbox!',
             error: 'Failed to send test email',
@@ -547,7 +547,7 @@ export default function EmailsSettingsPage() {
         if (!activeWorkspaceId) return;
         const existing = toolSettings['invoices'] || {};
         await updateToolSettings(activeWorkspaceId, 'invoices', { ...existing, auto_receipt: v });
-        gooeyToast.success(v ? 'Auto-receipt enabled' : 'Auto-receipt disabled');
+        appToast.success('Setting Updated', v ? 'Auto-receipt enabled' : 'Auto-receipt disabled');
     };
 
     if (!activeWorkspaceId) return null;

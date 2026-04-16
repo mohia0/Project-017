@@ -18,7 +18,7 @@ import { DesignSettingsPanel, MetaField } from '@/components/ui/DesignSettingsPa
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import DatePicker from '@/components/ui/DatePicker';
 import { SchedulerFormBuilder } from './SchedulerFormBuilder';
 import { SettingsSelect, SettingsToggle } from '@/components/settings/SettingsField';
@@ -444,7 +444,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                     // Set highlight after state update
                     setTimeout(() => {
                         setActiveHighlightId(String(newBooking.id));
-                        gooeyToast.success(`New booking: ${newBooking.booker_name}`);
+                        appToast.success(`New booking: ${newBooking.booker_name}`);
                     }, 100);
                 }
             )
@@ -465,7 +465,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
             if (isLoaded) isFirst.current = false;
             return;
         }
-        gooeyToast.promise(
+        appToast.promise(
             updateScheduler(id, { title: debouncedTitle, status: debouncedStatus, meta: debouncedMeta as any }),
             { loading: 'Saving...', success: 'Saved', error: 'Failed to save' }
         );
@@ -495,7 +495,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     const handleDelete = async () => {
         if (!id) return;
         await deleteScheduler(id);
-        gooeyToast.success('Scheduler deleted');
+        appToast.success('Scheduler deleted');
         router.push('/schedulers');
     };
 
@@ -640,7 +640,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                 {[
                                     { icon: ExternalLink, label: 'Open Link', action: () => window.open(window.location.origin + '/p/scheduler/' + id, '_blank') },
                                     { icon: Link2, label: 'Copy Link', action: copyLink },
-                                    { icon: Copy, label: 'Duplicate', action: () => gooeyToast('Coming soon') },
+                                    { icon: Copy, label: 'Duplicate', action: () => appToast.info('Coming soon') },
                                     { icon: Trash2, label: 'Delete', action: () => setIsDeleteOpen(true) },
                                 ].map(({ icon: Icon, label, action }) => (
                                     <button key={label} onClick={() => { action(); setShowActions(false); }}

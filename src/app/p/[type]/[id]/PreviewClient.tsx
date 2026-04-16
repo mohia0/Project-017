@@ -12,7 +12,7 @@ import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import FieldPreview from '@/components/forms/FieldPreview';
 import { Check, Clock, Calendar as CalendarIcon, MapPin, ChevronRight, User, Mail, Phone, ExternalLink } from 'lucide-react';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { CalendarPreview, getAvailableSlots, timeToMinutes } from '@/components/schedulers/CalendarPreview';
 import { AnimatePresence } from 'framer-motion';
 import { DateTime } from 'luxon';
@@ -89,7 +89,7 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                 const err = await res.json();
                 const msg = err.error || 'Failed to submit';
                 setSubmitError(msg);
-                gooeyToast.error(msg);
+                appToast.error('Submission Failed', msg);
                 return;
             }
             
@@ -97,7 +97,7 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
             if (!result.success) {
                 const msg = result.error || 'Failed to submit';
                 setSubmitError(msg);
-                gooeyToast.error(msg);
+                appToast.error('Submission Failed', msg);
                 return;
             }
 
@@ -458,7 +458,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
             if (!res.ok) {
                 const err = await res.json();
                 const msg = err.error || 'Failed to book';
-                gooeyToast.error(msg);
+                appToast.error('Booking Failed', msg);
                 if (res.status >= 400 && res.status < 500) {
                     console.warn('Booking prevented:', msg);
                     return;

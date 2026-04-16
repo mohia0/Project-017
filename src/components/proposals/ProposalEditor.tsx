@@ -32,6 +32,7 @@ import { useClientStore } from '@/store/useClientStore';
 import DatePicker from '@/components/ui/DatePicker';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useProjectStore } from '@/store/useProjectStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { ContentBlock } from './blocks/ContentBlock';
 import { SectionBlockWrapper } from './blocks/SectionBlockWrapper';
@@ -44,7 +45,8 @@ import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import ClientEditor from '@/components/clients/ClientEditor';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
+import { supabase } from '@/lib/supabase';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -129,6 +131,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const { clients, fetchClients } = useClientStore();
     const { updateProposal, deleteProposal, fetchProposals, proposals } = useProposalStore();
     const { addTemplate } = useTemplateStore();
+    const { projects, fetchProjects, addProjectItem, itemsByProject, fetchProjectItems, removeProjectItem } = useProjectStore();
     const { emailConfig, emailTemplates, fetchEmailConfig, fetchEmailTemplates } = useSettingsStore();
 
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
@@ -168,6 +171,13 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const [isSendModalOpen, setIsSendModalOpen] = useState(false);
     const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
 
+    // Project selection state
+    const [projectQuery, setProjectQuery] = useState('');
+    const [selectedProject, setSelectedProject] = useState<string>('');
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const [showProjectDrop, setShowProjectDrop] = useState(false);
+    const projectRef = useRef<HTMLDivElement>(null);
+
     const statusRef = useRef<HTMLDivElement>(null);
     const actionsRef = useRef<HTMLDivElement>(null);
 
@@ -178,6 +188,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
             }
             if (actionsRef.current && !actionsRef.current.contains(event.target as Node)) {
                 setShowActionsMenu(false);
+            }
+            if (projectRef.current && !projectRef.current.contains(event.target as Node)) {
+                setShowProjectDrop(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -221,6 +234,65 @@ export default function ProposalEditor({ id }: { id?: string }) {
             signerName: '', signerRole: 'Client', signed: false
         }
     ]);
+
+    // Fetch projects and current link
+    React.useEffect(() => {
+        if (activeWorkspaceId && id) {
+            fetchProjects();
+            // Find which project this proposal belongs to
+            // This is a bit inefficient if we have many projects, but let's see
+            const findProject = async () => {
+                const { data } = await supabase
+                    .from('project_items')
+                    .select('project_id, projects(name)')
+                    .eq('item_id', id)
+                    .eq('item_type', 'proposal')
+                    .maybeSingle();
+                
+                if (data) {
+                    setSelectedProjectId(data.project_id);
+                    setSelectedProject((data.projects as any)?.name || '');
+                }
+            };
+            findProject();
+        }
+    }, [activeWorkspaceId, id, fetchProjects]);
+
+    const filteredProjects = projects.filter(p =>
+        p.name.toLowerCase().includes(projectQuery.toLowerCase())
+    );
+
+    const handleProjectSelect = async (project: any | null) => {
+        if (!id) return;
+        
+        // Remove existing link if any
+        const { data: existing } = await supabase
+            .from('project_items')
+            .select('id')
+            .eq('item_id', id)
+            .eq('item_type', 'proposal')
+            .maybeSingle();
+            
+        if (existing) {
+            await supabase.from('project_items').delete().eq('id', existing.id);
+        }
+
+        if (project) {
+            await addProjectItem({
+                project_id: project.id,
+                item_type: 'proposal',
+                item_id: id
+            });
+            setSelectedProject(project.name);
+            setSelectedProjectId(project.id);
+            appToast.success(`Linked to ${project.name}`);
+        } else {
+            setSelectedProject('');
+            setSelectedProjectId(null);
+            appToast.success('Project unlinked');
+        }
+        setShowProjectDrop(false);
+    };
     
     const [isLoaded, setIsLoaded] = useState(false);
     const debouncedMeta = useDebounce(meta, 1000);
@@ -305,7 +377,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
         }, 0);
 
         // setSaveStatus('saving');
-        gooeyToast.promise(
+        appToast.promise(
             updateProposal(id, {
                 title: debouncedMeta.projectName || 'New Proposal',
                 client_name: debouncedMeta.clientName,
@@ -399,7 +471,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
             });
             setIsClientEditorOpen(false);
             setClientDropdownOpen(false);
-            gooeyToast.success('Contact created and selected');
+            appToast.success('Contact created and selected');
         }
     };
 
@@ -943,17 +1015,63 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         isDark={isDark}
                                         icon={<FileText size={11} className="opacity-50" />}
                                         hasInfo
-                                        onReset={() => updateMeta({ projectName: '' })}
+                                        onReset={() => handleProjectSelect(null)}
                                     >
-                                        <input
-                                            value={meta.projectName}
-                                            onChange={e => updateMeta({ projectName: e.target.value })}
-                                            placeholder="Set project name..."
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium",
-                                                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                        <div className="relative" ref={projectRef}>
+                                            <div 
+                                                className={cn(
+                                                    "w-full text-[12px] cursor-pointer font-medium truncate",
+                                                    isDark ? "text-[#ccc]" : "text-[#333]",
+                                                    !selectedProject && (isDark ? "text-[#444]" : "text-[#ccc]")
+                                                )}
+                                                onClick={() => setShowProjectDrop(v => !v)}
+                                            >
+                                                {selectedProject || "No project"}
+                                            </div>
+                                            {showProjectDrop && (
+                                                <div className={cn(
+                                                    "absolute top-full left-0 w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-b-lg border border-t-0 shadow-xl overflow-hidden z-50 max-h-[220px] overflow-y-auto",
+                                                    isDark ? "bg-[#1f1f1f] border-[#252525]" : "bg-white border-[#ebebeb]"
+                                                )}>
+                                                    <div className="p-2 border-b border-inherit">
+                                                        <input
+                                                            autoFocus
+                                                            value={projectQuery}
+                                                            onChange={e => setProjectQuery(e.target.value)}
+                                                            placeholder="Search projects..."
+                                                            className={cn(
+                                                                "w-full text-[11px] px-2.5 py-1.5 rounded-md outline-none",
+                                                                isDark ? "bg-white/5 text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]"
+                                                            )}
+                                                        />
+                                                    </div>
+                                                    <div className="py-1">
+                                                        <button
+                                                            onClick={() => handleProjectSelect(null)}
+                                                            className={cn(
+                                                                "w-full text-left px-3 py-2 text-[12px] transition-colors",
+                                                                isDark ? "hover:bg-[#2a2a2a] text-[#888]" : "hover:bg-[#f5f5f5] text-[#777]"
+                                                            )}
+                                                        >
+                                                            None
+                                                        </button>
+                                                        {filteredProjects.map(p => (
+                                                            <button
+                                                                key={p.id}
+                                                                onClick={() => handleProjectSelect(p)}
+                                                                className={cn(
+                                                                    "w-full text-left px-3 py-2 text-[12px] transition-colors flex items-center gap-2",
+                                                                    isDark ? "hover:bg-[#2a2a2a] text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]"
+                                                                )}
+                                                            >
+                                                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color }} />
+                                                                <span className="truncate">{p.name}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             )}
-                                        />
+                                        </div>
                                     </MetaField>
 
                                     <MetaField
@@ -1318,8 +1436,6 @@ export function ProposalDocument({
         fontFamily: design.fontFamily || 'Inter',
         color: '#555555',
         backgroundColor: 'var(--document-bg)',
-        paddingTop: 'var(--block-margin-top)',
-        paddingBottom: 'var(--block-margin-bottom)',
         '--document-bg': design.blockBackgroundColor || '#ffffff',
         '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
         '--block-margin-top': `${design.marginTop ?? 24}px`,
@@ -1512,7 +1628,7 @@ function BlockRenderer({
         case 'breakdown':
             return <BreakdownBlock block={block} blocks={blocks} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} />;
         case 'signature':
-            return <SignatureBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} />;
+            return <SignatureBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} design={meta.design} />;
         case 'divider':
             return <div className={cn("my-4 border-t", isDark ? "border-[#2a2a2a]" : "border-[#f0f0f0]")} />;
         case 'image':
@@ -2352,15 +2468,20 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
 }
 
 /* ─── Signature Block ─── */
-function SignatureBlock({ block, isDark, isPreview, updateBlock }: any) {
+function SignatureBlock({ block, isDark, isPreview, updateBlock, design }: any) {
+    const sigTheme = design?.signTheme || 'light';
+    const isSigDark = sigTheme === 'dark';
+
     return (
         <div className={cn(
             "my-4 border p-5 transition-all w-full max-w-[320px]",
-            isDark ? "border-white/5 bg-white/[0.02]" : "border-black/5 bg-black/[0.01]"
+            isSigDark 
+                ? "border-white/10 bg-[#0c0c0c] text-white shadow-2xl" 
+                : "border-black/5 bg-white text-black shadow-sm"
         )}
         style={{ borderRadius: 'var(--block-border-radius)' }}
         >
-            <div className={cn("text-[9px] font-bold uppercase tracking-[0.2em] mb-4 opacity-40", isDark ? "text-white" : "text-black")}>
+            <div className={cn("text-[8px] font-black uppercase tracking-[0.25em] mb-4 opacity-40", isSigDark ? "text-white" : "text-black")}>
                 Authorized Signature
             </div>
             <div className="flex flex-col gap-4">
@@ -2379,46 +2500,46 @@ function SignatureBlock({ block, isDark, isPreview, updateBlock }: any) {
                                     />
                                 ) : (
                                     <span 
-                                        className={cn("text-4xl w-full truncate leading-none pb-2", isDark ? "text-white" : "text-black")}
+                                        className={cn("text-4xl w-full truncate leading-none pb-2", isSigDark ? "text-white" : "text-black")}
                                         style={{ fontFamily: 'var(--font-mr-dafoe), cursive' }}
                                     >
                                         {block.signerName || 'Signature'}
                                     </span>
                                 )}
-                                <span className={cn("absolute -bottom-[22px] right-0 text-[8px] opacity-30 uppercase tracking-tighter italic shrink-0", isDark ? "text-white" : "text-black")}>
-                                    Electronically Signed
-                                </span>
-                            </div>
-                        ) : (
-                            <span className="text-[11px] opacity-20 italic pb-1">Awaiting signature...</span>
-                        )}
-                    </div>
-                    
-                    {!isPreview && (
-                        <div className="space-y-3 mt-4">
-                            <input
-                                value={block.signerName || ''}
-                                onChange={e => updateBlock(block.id, { signerName: e.target.value })}
-                                placeholder="Full Name"
-                                className={cn("w-full bg-transparent outline-none text-[13px] font-semibold border-b pb-1 transition-colors", 
-                                    isDark ? "border-white/10 text-white placeholder:text-white/20 focus:border-[#4dbf39]" : "border-black/10 text-black placeholder:text-black/20 focus:border-[#4dbf39]")}
-                            />
-                            <input
-                                value={block.signerRole || ''}
-                                onChange={e => updateBlock(block.id, { signerRole: e.target.value })}
-                                placeholder="Role / Title"
-                                className={cn("w-full bg-transparent outline-none text-[11px] opacity-40 border-b pb-1 transition-colors", 
-                                    isDark ? "border-white/10 text-white focus:border-[#4dbf39]" : "border-black/10 text-black focus:border-[#4dbf39]")}
-                            />
+                                    <span className={cn("absolute -bottom-[22px] right-0 text-[8px] opacity-30 uppercase tracking-tighter italic shrink-0", isSigDark ? "text-white" : "text-black")}>
+                                        Electronically Signed
+                                    </span>
+                                </div>
+                            ) : (
+                                <span className={cn("text-[11px] opacity-20 italic pb-1", isSigDark ? "text-white" : "text-black")}>Awaiting signature...</span>
+                            )}
                         </div>
-                    )}
+                        
+                        {!isPreview && (
+                            <div className="space-y-3 mt-4">
+                                <input
+                                    value={block.signerName || ''}
+                                    onChange={e => updateBlock(block.id, { signerName: e.target.value })}
+                                    placeholder="Full Name"
+                                    className={cn("w-full bg-transparent outline-none text-[13px] font-semibold border-b pb-1 transition-colors", 
+                                        isSigDark ? "border-white/10 text-white placeholder:text-white/20 focus:border-[#4dbf39]" : "border-black/10 text-black placeholder:text-black/20 focus:border-[#4dbf39]")}
+                                />
+                                <input
+                                    value={block.signerRole || ''}
+                                    onChange={e => updateBlock(block.id, { signerRole: e.target.value })}
+                                    placeholder="Role / Title"
+                                    className={cn("w-full bg-transparent outline-none text-[11px] opacity-40 border-b pb-1 transition-colors", 
+                                        isSigDark ? "border-white/10 text-white focus:border-[#4dbf39]" : "border-black/10 text-black focus:border-[#4dbf39]")}
+                                />
+                            </div>
+                        )}
                     
                     {isPreview && (
                         <div className="flex flex-col mt-3">
-                            <span className={cn("text-[13px] font-bold", isDark ? "text-white" : "text-black")}>
+                            <span className={cn("text-[13px] font-bold", isSigDark ? "text-white" : "text-black")}>
                                 {block.signerName || 'Pending'}
                             </span>
-                            <span className={cn("text-[11px] opacity-40 mt-0.5", isDark ? "text-white" : "text-black")}>
+                            <span className={cn("text-[11px] opacity-40 mt-0.5", isSigDark ? "text-white" : "text-black")}>
                                 {block.signerRole || 'Client'}
                             </span>
                         </div>
@@ -2432,7 +2553,7 @@ function SignatureBlock({ block, isDark, isPreview, updateBlock }: any) {
                             "px-4 py-2 w-full text-[12px] font-bold transition-all active:scale-95 shadow-sm border",
                             block.signed
                                 ? "bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600"
-                                : isDark ? "bg-white/5 text-white/60 border-white/5 hover:bg-white/10" : "bg-white text-black/60 border-black/5 hover:bg-black/5"
+                                : isSigDark ? "bg-white/5 text-white/60 border-white/5 hover:bg-white/10" : "bg-white text-black/60 border-black/5 hover:bg-black/5"
                         )}
                         style={{ borderRadius: 'var(--block-button-radius)' }}
                     >

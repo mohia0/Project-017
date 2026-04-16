@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useProjectStore, Project, ProjectStatus } from '@/store/useProjectStore';
 import { useRouter } from 'next/navigation';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import CreateProjectModal from '@/components/projects/CreateProjectModal';
 import { Avatar } from '@/components/ui/Avatar';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -474,7 +474,7 @@ export default function ProjectsPage() {
         wasArch ? next.delete(id) : next.add(id);
         setArchivedIds(next);
         updateProject(id, { is_archived: !wasArch });
-        gooeyToast(wasArch ? 'Restored from archive' : 'Moved to archive', { duration: 2000 });
+        appToast.success(wasArch ? 'Restored' : 'Archived', wasArch ? 'Project restored from archive' : 'Project moved to archive');
     };
 
     const toggleRow = (id: string) => {
@@ -588,7 +588,7 @@ export default function ProjectsPage() {
                                         onClick={async () => {
                                             const ids = Array.from(selectedIds);
                                             await bulkDuplicateProjects(ids);
-                                            gooeyToast.success(`${totalSelected} project${totalSelected > 1 ? 's' : ''} duplicated`);
+                                            appToast.success('Duplicated', `${totalSelected} project${totalSelected > 1 ? 's' : ''} duplicated successfully`);
                                             setSelectedIds(new Set());
                                         }}
                                         className={cn("flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded transition-colors", isDark ? "text-[#777] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-[#333] hover:bg-[#ececec]")}
@@ -736,7 +736,7 @@ export default function ProjectsPage() {
                             await deleteProject(deletingId);
                         }
                         setDeletingId(null);
-                        gooeyToast.success('Deleted');
+                        appToast.success('Deleted', 'Project permanently removed');
                     }}
                     onCancel={() => setDeletingId(null)}
                 />

@@ -7,7 +7,7 @@ import { useSettingsStore, WorkspacePayments } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
 import { Plus, Trash2, Check, Star, AlertCircle, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { v4 as uuidv4 } from 'uuid';
 
 const DEFAULT_PAYMENTS: Omit<WorkspacePayments, 'workspace_id'> = {
@@ -75,12 +75,12 @@ export default function PaymentsSettingsPage() {
         if (!activeWorkspaceId) return;
         setIsSaving(true);
         try {
-            await gooeyToast.promise(
+            await appToast.promise(
                 updatePayments(activeWorkspaceId, formData),
                 {
                     loading: 'Saving payment settings...',
                     success: 'Settings saved successfully',
-                    error: (err: any) => `Failed to save: ${err.message || err}`
+                    error: 'Failed to save payment settings'
                 }
             );
         } catch (error: any) {

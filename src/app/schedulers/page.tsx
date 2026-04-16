@@ -16,7 +16,7 @@ import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { useRouter } from 'next/navigation';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
 
@@ -337,7 +337,7 @@ export default function SchedulersPage() {
         e.stopPropagation();
         const url = `${window.location.origin}/p/scheduler/${id}`;
         navigator.clipboard.writeText(url);
-        gooeyToast.success('Link copied to clipboard');
+        appToast.success('Link Copied', 'URL copied to clipboard');
     };
 
     const handleDelete = async (id: string) => {
@@ -363,7 +363,7 @@ export default function SchedulersPage() {
                 }
             }
         })();
-        gooeyToast.promise(promise, {
+        appToast.promise(promise, {
             loading: `Duplicating ${ids.length} scheduler${ids.length !== 1 ? 's' : ''}…`,
             success: `${ids.length} scheduler${ids.length !== 1 ? 's' : ''} duplicated`,
             error: 'Duplication failed',
@@ -548,7 +548,7 @@ export default function SchedulersPage() {
                                 onCopy={() => {
                                     const url = `${window.location.origin}/p/scheduler/${s.id}`;
                                     navigator.clipboard.writeText(url);
-                                    gooeyToast.success('Link copied to clipboard');
+                                    appToast.success('Link Copied', 'URL copied to clipboard');
                                 }}
                             />
                         ))}
@@ -708,10 +708,10 @@ export default function SchedulersPage() {
                         const ids = Array.from(selectedIds);
                         await useSchedulerStore.getState().bulkDeleteSchedulers(ids);
                         setSelectedIds(new Set());
-                        gooeyToast.error(`${ids.length} scheduler${ids.length !== 1 ? 's' : ''} deleted`);
+                        appToast.error('Deleted', `${ids.length} scheduler${ids.length !== 1 ? 's' : ''} removed`);
                     } else if (deletingId) {
                         await deleteScheduler(deletingId);
-                        gooeyToast.error('Scheduler deleted');
+                        appToast.error('Deleted', 'Scheduler permanently removed');
                     }
                     setDeletingId(null);
                 }}

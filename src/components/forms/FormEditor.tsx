@@ -32,7 +32,7 @@ import { CountryPicker } from '@/components/ui/CountryPicker';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { v4 as uuidv4 } from 'uuid';
 import DatePicker from '@/components/ui/DatePicker';
 
@@ -582,7 +582,7 @@ export default function FormEditor({ id }: { id?: string }) {
 
         console.log(`[FormEditor] Auto-saving form "${debouncedTitle}" with ${debouncedFields.length} fields`);
 
-        gooeyToast.promise(
+        appToast.promise(
             updateForm(id, { title: debouncedTitle, status: debouncedStatus, fields: debouncedFields, meta: debouncedMeta as any }),
             { loading: 'Saving...', success: 'Saved', error: 'Failed to save' }
         );
@@ -638,7 +638,7 @@ export default function FormEditor({ id }: { id?: string }) {
     const handleDelete = async () => {
         if (!id) return;
         await deleteForm(id);
-        gooeyToast.success('Form deleted');
+        appToast.success('Form Deleted', 'Your form has been permanently removed');
         router.push('/forms');
     };
 
@@ -750,7 +750,7 @@ export default function FormEditor({ id }: { id?: string }) {
 
     const handleCopyValue = (val: string) => {
         navigator.clipboard.writeText(val);
-        gooeyToast.success("Copied to clipboard");
+        appToast.success('Copied', 'Response data copied to clipboard');
     };
 
     const handleCopyAll = (data: Record<string, any>) => {
@@ -760,7 +760,7 @@ export default function FormEditor({ id }: { id?: string }) {
             return `${f?.label || qid}: ${str}`;
         }).join('\n');
         navigator.clipboard.writeText(text);
-        gooeyToast.success("All response data copied");
+        appToast.success('Copied', 'All response data copied');
     };
 
     const toggleResponseSelection = (rid: string) => {
@@ -780,7 +780,7 @@ export default function FormEditor({ id }: { id?: string }) {
         await bulkDeleteResponses(ids);
         setSelectedResponseIds(new Set());
         setIsResponsesDeleteOpen(false);
-        gooeyToast.success(`Deleted ${ids.length} selected responses`);
+        appToast.success('Deleted', `${ids.length} selected responses removed`);
     };
 
     const handleBulkExportResponses = () => {
@@ -803,7 +803,7 @@ export default function FormEditor({ id }: { id?: string }) {
         a.href = url;
         a.download = `responses-selected-${id}.csv`;
         a.click();
-        gooeyToast.success(`Exported ${selected.length} response${selected.length !== 1 ? 's' : ''}`);
+        appToast.success(`Exported ${selected.length} response${selected.length !== 1 ? 's' : ''}`);
     };
 
     const STEPS: { id: CanvasStep; label: string; disabled?: boolean }[] = [
@@ -929,8 +929,8 @@ export default function FormEditor({ id }: { id?: string }) {
                                 {[
                                     { icon: ExternalLink, label: 'Open Link', action: () => window.open(window.location.origin + '/p/form/' + id, '_blank') },
                                     { icon: Link2, label: 'Copy Link', action: copyLink },
-                                    { icon: Download, label: 'Export CSV', action: () => gooeyToast('No responses yet') },
-                                    { icon: Copy, label: 'Duplicate', action: () => gooeyToast('Coming soon') },
+                                    { icon: Download, label: 'Export CSV', action: () => appToast.info('No responses yet') },
+                                    { icon: Copy, label: 'Duplicate', action: () => appToast.info('Coming soon') },
                                     { icon: Trash2, label: 'Delete', action: () => setIsDeleteOpen(true) },
                                 ].map(({ icon: Icon, label, action }) => (
                                     <button key={label} onClick={() => { action(); setShowActions(false); }}
@@ -1052,7 +1052,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                                         ))}
                                                                     </div>
                                                                     {fields.length > 0 && <button 
-                                                                        onClick={() => gooeyToast.info("Please use the public link to test submissions")}
+                                                                        onClick={() => appToast.info("Please use the public link to test submissions")}
                                                                         className="mt-6 w-full py-3 font-bold text-[14px] text-black transition-all" 
                                                                         style={{ background: primaryColor, borderRadius: `${design.borderRadius ?? 16}px` }}>Submit</button>}
                                                                 </div>
@@ -1173,7 +1173,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                     {/* Submit button */}
                                                     {fields.length > 0 && (
                                                         <button
-                                                            onClick={() => gooeyToast.info("Please use the public link to test submissions")}
+                                                            onClick={() => appToast.info("Please use the public link to test submissions")}
                                                             className="mt-6 w-full py-3 font-bold text-[14px] text-black transition-all"
                                                             style={{ background: primaryColor, borderRadius: `${design.borderRadius ?? 16}px` }}>
                                                             Submit
@@ -1643,7 +1643,7 @@ export default function FormEditor({ id }: { id?: string }) {
                                                             <InlineDeleteButton 
                                                                 onDelete={async () => {
                                                                     await bulkDeleteResponses([r.id]);
-                                                                    gooeyToast.error("Response deleted");
+                                                                    appToast.success("Response deleted");
                                                                 }}
                                                                 isDark={isDark}
                                                             />

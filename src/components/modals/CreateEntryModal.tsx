@@ -7,7 +7,7 @@ import {
     Mail, Phone, Building2, Calendar, Plus, Search, Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { gooeyToast } from 'goey-toast';
+import { appToast } from '@/lib/toast';
 import { useClientStore } from '@/store/useClientStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
@@ -107,7 +107,7 @@ function ClientPicker({ isDark, selectedClient, selectedClientId, onSelect }: {
             setIsClientEditorOpen(false);
             setQuery('');
             setOpen(false);
-            gooeyToast.success('Contact created and selected');
+            appToast.success('Contact created and selected');
         }
     };
 
@@ -262,7 +262,7 @@ export default function CreateEntryModal() {
                     address: '', tax_number: '', notes: ''
                 });
                 if (!client) {
-                    gooeyToast.error("Failed to create contact.");
+                    appToast.error("Error", "Failed to create contact.");
                     return;
                 }
                 setCreateModalOpen(false);
@@ -279,7 +279,7 @@ export default function CreateEntryModal() {
                     blocks: []
                 });
                 if (!p) {
-                    gooeyToast.error("Failed to create proposal.");
+                    appToast.error("Error", "Failed to create proposal.");
                     return;
                 }
                 setCreateModalOpen(false);
@@ -297,7 +297,7 @@ export default function CreateEntryModal() {
                     blocks: []
                 });
                 if (!inv) {
-                    gooeyToast.error("Failed to create invoice.");
+                    appToast.error("Error", "Failed to create invoice.");
                     return;
                 }
                 setCreateModalOpen(false);
@@ -316,7 +316,7 @@ export default function CreateEntryModal() {
                     is_archived: false
                 });
                 if (!p) {
-                    gooeyToast.error("Failed to create project.");
+                    appToast.error("Error", "Failed to create project.");
                     return;
                 }
                 setCreateModalOpen(false);
@@ -329,7 +329,7 @@ export default function CreateEntryModal() {
                     color: hColor
                 });
                 if (!h) {
-                    gooeyToast.error("Failed to create hook.");
+                    appToast.error("Error", "Failed to create hook.");
                     return;
                 }
                 setCreateModalOpen(false);
@@ -337,7 +337,7 @@ export default function CreateEntryModal() {
             }
         } catch (err: any) {
             console.error(err);
-            gooeyToast.error(err?.message || "An unexpected error occurred");
+            appToast.error("Error", err?.message || "An unexpected error occurred");
         } finally {
             setLoading(false);
         }
