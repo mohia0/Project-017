@@ -41,3 +41,17 @@ export function getBackgroundImageWithOpacity(imageUrl?: string, bgColor?: strin
     const bgRgba = hexToRgba(bgColor || '#ffffff', 1 - op);
     return `linear-gradient(${bgRgba}, ${bgRgba}), url(${imageUrl})`;
 }
+
+export type CreateModalTab = 'Contact' | 'Company' | 'Project' | 'Proposal' | 'Invoice' | 'Scheduler' | 'Form' | 'Hook';
+
+export function detectCreateModalTab(pathname: string): CreateModalTab {
+    if (!pathname) return 'Contact';
+    if (pathname.startsWith('/clients')) return 'Contact';
+    if (pathname.startsWith('/projects')) return 'Project';
+    if (pathname.startsWith('/proposals')) return 'Proposal';
+    if (pathname.startsWith('/invoices')) return 'Invoice';
+    if (pathname.startsWith('/schedulers')) return 'Scheduler';
+    if (pathname.startsWith('/forms')) return 'Form';
+    if (pathname.startsWith('/hooks')) return 'Hook';
+    return 'Contact';
+}

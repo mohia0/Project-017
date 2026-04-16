@@ -387,10 +387,6 @@ export default function SchedulersPage() {
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0",
                 isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Schedulers</h1>
-                <button onClick={handleNew}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors">
-                    <Plus size={13} strokeWidth={2.5} /> New Scheduler
-                </button>
             </div>
 
             {/* Toolbar */}

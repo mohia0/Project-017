@@ -21,6 +21,8 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
     const [url, setUrl] = useState('');
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [isFinished, setIsFinished] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -36,8 +38,9 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
         setUploading(true);
         setError(null);
         setTab('upload');
-
         setUploadProgress(0);
+        setIsFinished(false);
+        setIsProcessing(false);
 
         try {
             const formData = new FormData();
@@ -49,7 +52,12 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                 xhr.upload.addEventListener('progress', (event) => {
                     if (event.lengthComputable) {
                         const percentComplete = Math.round((event.loaded / event.total) * 100);
-                        setUploadProgress(percentComplete);
+                        if (percentComplete >= 100) {
+                            setUploadProgress(100);
+                            setIsProcessing(true);
+                        } else {
+                            setUploadProgress(percentComplete);
+                        }
                     }
                 });
                 
@@ -74,16 +82,27 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                 xhr.send(formData);
             });
             
-            // The API returns { success: true, url: "/api/files/..." }
-            onUpload(data.url);
-            setUploading(false);
-            setUploadProgress(0);
-            onClose();
+            // All good!
+            setUploadProgress(100);
+            setIsProcessing(false);
+            setIsFinished(true);
+            
+            // Wait 800ms so they see the 100% and success state
+            setTimeout(() => {
+                onUpload(data.url);
+                setUploading(false);
+                setUploadProgress(0);
+                setIsFinished(false);
+                onClose();
+            }, 800);
+
         } catch (err: any) {
             console.error("Upload error:", err);
             setError(err.message || "Failed to upload image");
             setUploading(false);
             setUploadProgress(0);
+            setIsFinished(false);
+            setIsProcessing(false);
         }
     }, [onUpload, onClose]);
 
@@ -197,7 +216,7 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                                     dragActive 
                                         ? isDark ? "bg-primary/10" : "bg-primary/5"
                                         : isDark ? "bg-white/[0.01]" : "bg-gray-50",
-                                    uploading && "opacity-20 blur-sm pointer-events-none"
+                                    uploading && "opacity-10 pointer-events-none"
                                 )}
                             >
                                 {/* High-fidelity SVG Dashed Border */}
@@ -251,19 +270,35 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-transparent z-20 animate-in fade-in duration-300">
                                     <div className="flex flex-col items-center gap-4 w-full px-8">
                                         <div className={cn(
-                                            "w-full rounded-full h-2 overflow-hidden shadow-inner",
+                                            "w-full rounded-full h-2.5 overflow-hidden shadow-inner",
                                             isDark ? "bg-white/10" : "bg-black/5"
                                         )}>
                                             <div 
-                                                className="bg-primary h-2 rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(var(--brand-primary-rgb),0.3)]" 
-                                                style={{ width: `${Math.max(uploadProgress, 5)}%` }} 
+                                                className={cn(
+                                                    "h-2.5 rounded-full transition-all duration-300 ease-out",
+                                                    isFinished ? "bg-green-500" : "bg-primary shadow-[0_0_10px_rgba(var(--brand-primary-rgb),0.3)]"
+                                                )}
+                                                style={{ width: `${uploadProgress}%` }} 
                                             />
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Loader2 size={14} className="text-primary animate-spin" />
-                                            <span className={cn("text-[12px] font-bold", isDark ? "text-white/90" : "text-black/90")}>
-                                                Uploading {uploadProgress}%
-                                            </span>
+                                            {isFinished ? (
+                                                <>
+                                                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white scale-110 animate-in zoom-in duration-300">
+                                                        <Check size={12} strokeWidth={4} />
+                                                    </div>
+                                                    <span className={cn("text-[13px] font-bold text-green-500")}>
+                                                        Upload Complete!
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Loader2 size={14} className="text-primary animate-spin" />
+                                                    <span className={cn("text-[12px] font-bold", isDark ? "text-white/90" : "text-black/90")}>
+                                                        {isProcessing ? "Processing..." : `Uploading ${uploadProgress}%`}
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

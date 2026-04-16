@@ -5,7 +5,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { Plus, Moon, Sun, Bell, LayoutTemplate, Settings, ChevronLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, detectCreateModalTab } from '@/lib/utils';
 import { useRouter, usePathname } from 'next/navigation';
 import { Tooltip } from '@/components/ui/Tooltip';
 
@@ -32,6 +32,11 @@ export default function RightToolsMenu() {
     const { branding } = useSettingsStore();
     const unreadCount = notifications.filter(n => !n.read).length;
 
+    const handleCreateClick = () => {
+        const tab = detectCreateModalTab(pathname);
+        setCreateModalOpen(true, tab);
+    };
+
     return (
         <nav className={cn(
             "h-full w-[44px] flex flex-col items-center shrink-0 transition-colors duration-300 z-10",
@@ -40,7 +45,7 @@ export default function RightToolsMenu() {
             {/* Top: Create button or Expand toggle */}
             <div className="flex flex-col items-center pt-1.5 pb-3 w-full px-1 gap-2">
                 <button
-                    onClick={() => setCreateModalOpen(true)}
+                    onClick={handleCreateClick}
                     className="w-9 h-9 rounded-[12px] flex items-center justify-center transition-all bg-primary hover:bg-primary-hover text-[var(--brand-primary-foreground)] group"
                 >
                     <Plus size={16} strokeWidth={2.5} className="transition-transform duration-300 group-hover:scale-125" />

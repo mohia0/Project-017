@@ -76,7 +76,7 @@ export function CountryPicker({
     };
 
     const field = cn(
-        "w-full border px-4 py-3 text-[13px] transition-all cursor-pointer",
+        "w-full border rounded-xl px-4 py-3 text-[13px] transition-all cursor-pointer",
         isDark
             ? "bg-[#1c1c1c] border-[#2e2e2e] hover:border-[#444]"
             : "bg-white border-[#e0e0e0] hover:border-[#ccc]",

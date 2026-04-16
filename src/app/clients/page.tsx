@@ -296,13 +296,6 @@ export default function ClientsPage() {
             {/* ── Page header — hidden on mobile (MobileTopBar handles it) ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Contacts</h1>
-                <button
-                    onClick={() => setCreateModalOpen(true, tab === 'companies' ? 'Company' : 'Contact')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
-                >
-                    <Plus size={13} strokeWidth={2.5} />
-                    {tab === 'companies' ? 'New Company' : 'New Contact'}
-                </button>
             </div>
 
             {/* ── Toolbar ── */}

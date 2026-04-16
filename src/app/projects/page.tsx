@@ -12,7 +12,6 @@ import { useUIStore } from '@/store/useUIStore';
 import { useProjectStore, Project, ProjectStatus } from '@/store/useProjectStore';
 import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
-// CreateProjectModal removed in favor of global CreateEntryModal
 import { Avatar } from '@/components/ui/Avatar';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -375,12 +374,10 @@ function EmptyState({ isDark, onNew, isArchived }: { isDark: boolean; onNew: () 
                     {isArchived ? 'Archived items will appear here' : 'Create your first project to get started'}
                 </p>
             </div>
-            {!isArchived && (
                 <button onClick={onNew}
                     className="mt-1 flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground text-[12px] font-semibold transition-colors">
                     <Plus size={13} strokeWidth={2.5} /> New Project
                 </button>
-            )}
         </div>
     );
 }
@@ -496,12 +493,6 @@ export default function ProjectsPage() {
             {/* ── Page header — hidden on mobile (MobileTopBar handles title) ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">Projects</h1>
-                <button
-                    onClick={() => setCreateModalOpen(true, 'Project')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
-                >
-                    <Plus size={13} strokeWidth={2.5} /> New Project
-                </button>
             </div>
 
             {/* ── Toolbar ── */}
@@ -721,8 +712,7 @@ export default function ProjectsPage() {
                 )}
             </div>
 
-            {/* ── Modals ── */}
-            {/* CreateProjectModal removed */}
+            {/* Creation Modals governed by layout */}
 
             {deletingId && (
                 <DeleteModal

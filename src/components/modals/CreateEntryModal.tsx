@@ -24,6 +24,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useRouter } from 'next/navigation';
 import DatePicker from '@/components/ui/DatePicker';
 import ClientEditor from '@/components/clients/ClientEditor';
+import CompanyEditor from '@/components/companies/CompanyEditor';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { Avatar } from '@/components/ui/Avatar';
 import { CountryPicker } from '@/components/ui/CountryPicker';
@@ -100,12 +101,18 @@ export default function CreateEntryModal() {
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [showProjectDrop, setShowProjectDrop] = useState(false);
 
+    const [companyQuery, setCompanyQuery] = useState('');
+    const [selectedCompany, setSelectedCompany] = useState<string>('');
+    const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+    const [showCompanyDrop, setShowCompanyDrop] = useState(false);
+
     const [templateQuery, setTemplateQuery] = useState('');
     const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
     const [showTemplateDrop, setShowTemplateDrop] = useState(false);
 
     const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
+    const [isCompanyEditorOpen, setIsCompanyEditorOpen] = useState(false);
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
     // Contact state
@@ -167,7 +174,7 @@ export default function CreateEntryModal() {
     const [hColor, setHColor] = useState(COLORS[6]);
 
     const { clients, fetchClients, addClient } = useClientStore();
-    const { addCompany } = useCompanyStore();
+    const { companies, fetchCompanies, addCompany } = useCompanyStore();
     const { addProposal } = useProposalStore();
     const { addInvoice } = useInvoiceStore();
     const { projects, fetchProjects, addProject, addProjectItem } = useProjectStore();
@@ -181,6 +188,7 @@ export default function CreateEntryModal() {
     // Refs
     const clientRef = useRef<HTMLDivElement>(null);
     const projectRef = useRef<HTMLDivElement>(null);
+    const companyRef = useRef<HTMLDivElement>(null);
     const templateRef = useRef<HTMLDivElement>(null);
     const industryRef = useRef<HTMLDivElement>(null);
     const prStatusRef = useRef<HTMLDivElement>(null);
@@ -191,6 +199,7 @@ export default function CreateEntryModal() {
             fetchClients();
             fetchProjects();
             fetchTemplates();
+            fetchCompanies();
 
             const initTitle = (tool: 'proposals' | 'invoices', setTitleFn: (v: string) => void) => {
                 const settings = useSettingsStore.getState().toolSettings[tool];
@@ -214,6 +223,7 @@ export default function CreateEntryModal() {
         const handler = (e: MouseEvent) => {
             if (clientRef.current && !clientRef.current.contains(e.target as Node)) setShowClientDrop(false);
             if (projectRef.current && !projectRef.current.contains(e.target as Node)) setShowProjectDrop(false);
+            if (companyRef.current && !companyRef.current.contains(e.target as Node)) setShowCompanyDrop(false);
             if (templateRef.current && !templateRef.current.contains(e.target as Node)) setShowTemplateDrop(false);
             if (industryRef.current && !industryRef.current.contains(e.target as Node)) setShowIndustryDrop(false);
             if (prStatusRef.current && !prStatusRef.current.contains(e.target as Node)) setShowPrStatusDrop(false);
@@ -227,6 +237,7 @@ export default function CreateEntryModal() {
     useEffect(() => {
         setClientQuery('');
         setProjectQuery('');
+        setCompanyQuery('');
         setTemplateQuery('');
     }, [tab]);
 
@@ -252,6 +263,10 @@ export default function CreateEntryModal() {
         p.name.toLowerCase().includes(projectQuery.toLowerCase())
     );
 
+    const filteredCompanies = companies.filter(c =>
+        c.name.toLowerCase().includes(companyQuery.toLowerCase())
+    );
+
     const activeTemplates = templates.filter(t => t.entity_type === tab.toLowerCase());
     const filteredTemplates = activeTemplates.filter(t =>
         t.name.toLowerCase().includes(templateQuery.toLowerCase())
@@ -271,12 +286,24 @@ export default function CreateEntryModal() {
         }
     };
 
+    const handleCreateCompanyInline = async () => {
+        const nameToUse = companyQuery.trim() || 'New Company';
+        const company = await addCompany({ name: nameToUse });
+        if (company) {
+            setSelectedCompany(company.name);
+            setSelectedCompanyId(company.id);
+            setCompanyQuery('');
+            setShowCompanyDrop(false);
+            appToast.success('Company created and selected');
+        }
+    };
+
     const handleCreate = async () => {
         setLoading(true);
         try {
             if (tab === 'Contact') {
                 if (!cName.trim()) return;
-                const client = await addClient({ contact_person: cName, email: cEmail, company_name: clientQuery, address: cAddress, tax_number: cTax, phone: cPhone, country: cCountry, notes: cNotes, avatar_url: cAvatarUrl });
+                const client = await addClient({ contact_person: cName, email: cEmail, company_name: selectedCompany || companyQuery, company_id: selectedCompanyId, address: cAddress, tax_number: cTax, phone: cPhone, country: cCountry, notes: cNotes, avatar_url: cAvatarUrl });
                 if (client) { setCreateModalOpen(false); appToast.success('Contact created'); }
             } else if (tab === 'Company') {
                 if (!cmpName.trim()) return;
@@ -430,6 +457,44 @@ export default function CreateEntryModal() {
         </div>
     );
 
+    const renderCompanyPicker = () => (
+        <div className="relative" ref={companyRef}>
+            <div className={cn(fieldStyle, "cursor-pointer justify-center")} onClick={() => setShowCompanyDrop(v => !v)}>
+                <span className={labelStyle}>Company (optional)</span>
+                {selectedCompany
+                    ? <span className={isDark ? "text-white" : "text-[#111]"}>{selectedCompany}</span>
+                    : <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Select company</span>
+                }
+            </div>
+            {showCompanyDrop && (
+                <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                    <div className="p-2 border-b border-inherit">
+                        <input autoFocus value={companyQuery} onChange={e => { setCompanyQuery(e.target.value); setSelectedCompany(''); setSelectedCompanyId(null); }} placeholder="Search companies..." className={cn("w-full text-[12px] px-3 py-1.5 rounded-lg outline-none", isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]")} />
+                    </div>
+                    <div className="max-h-40 overflow-auto">
+                        {filteredCompanies.length === 0 && !companyQuery ? (
+                            <div className={cn("px-4 py-3 text-[12px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No companies found</div>
+                        ) : (
+                            <>
+                                {filteredCompanies.map(c => (
+                                    <button key={c.id} onClick={() => { setSelectedCompany(c.name); setSelectedCompanyId(c.id); setCompanyQuery(''); setShowCompanyDrop(false); }} className={cn("w-full text-left px-4 py-2.5 text-[13px] transition-colors", isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")}>
+                                        <span className="font-medium">{c.name}</span>
+                                    </button>
+                                ))}
+                                <div className={cn("border-t", isDark ? "border-white/5" : "border-black/5")} />
+                                <button onClick={() => setIsCompanyEditorOpen(true)} className={cn("w-full text-left px-4 py-2.5 text-[13px] font-bold transition-colors flex items-center gap-2", isDark ? "text-primary hover:bg-white/5" : "text-primary hover:bg-black/5")}>
+                                    <Plus size={14} strokeWidth={3} />
+                                    {companyQuery ? `Create "${companyQuery}"` : 'Create new company'}
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+
     const renderTemplatePicker = () => (
         <div className="relative" ref={templateRef}>
             <div className={cn(fieldStyle, "cursor-pointer justify-center")} onClick={() => setShowTemplateDrop(v => !v)}>
@@ -555,7 +620,7 @@ export default function CreateEntryModal() {
                                             <span className={labelStyle}>Email address *</span>
                                             <input value={cEmail} onChange={e => setCEmail(e.target.value)} placeholder="john@example.com" type="email" className="bg-transparent outline-none text-[13px] w-full mt-0.5" />
                                         </div>
-                                        {renderClientPicker()}
+                                        {renderCompanyPicker()}
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className={fieldStyle}>
                                                 <span className={labelStyle}>Phone</span>
@@ -698,6 +763,19 @@ export default function CreateEntryModal() {
                                         <div className={fieldStyle}>
                                             <span className={labelStyle}>Deadline</span>
                                             <DatePicker value={prDeadline} onChange={setPrDeadline} isDark={isDark} placeholder="Set project deadline" />
+                                        </div>
+
+                                        {/* Members & Team */}
+                                        <div className="relative py-1 flex items-center">
+                                            <div className={cn("absolute inset-x-0 top-1/2 border-t", isDark ? "border-[#252525]" : "border-[#e0e0e0]")} />
+                                            <span className={cn("relative z-10 px-2 text-[11px] font-semibold uppercase tracking-widest", isDark ? "bg-[#161616] text-[#444]" : "bg-[#f7f7f7] text-[#bbb]")}>Members & Team</span>
+                                        </div>
+                                        <div className={cn(fieldStyle, "flex-row items-center justify-between cursor-not-allowed opacity-60 px-4 py-3")}>
+                                            <div className="flex items-center gap-2">
+                                                <Plus size={13} className={isDark ? "text-[#555]" : "text-[#bbb]"} />
+                                                <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Add team member</span>
+                                            </div>
+                                            <div className="w-3.5 h-3.5 rounded-full border border-blue-500/50 flex items-center justify-center text-[8px] text-blue-500 font-bold">?</div>
                                         </div>
                                     </div>
                                 )}
@@ -852,6 +930,35 @@ export default function CreateEntryModal() {
                         contact_person: clientQuery,
                         company_name: '',
                         email: ''
+                    }}
+                />
+            )}
+
+            {isCompanyEditorOpen && (
+                <CompanyEditor
+                    onClose={() => setIsCompanyEditorOpen(false)}
+                    onSave={async (data) => {
+                        const company = await addCompany(data);
+                        if (company) {
+                            setSelectedCompany(company.name);
+                            setSelectedCompanyId(company.id);
+                            setIsCompanyEditorOpen(false);
+                            setCompanyQuery('');
+                            setShowCompanyDrop(false);
+                            appToast.success('Company created and selected');
+                        }
+                    }}
+                    initialData={{
+                        name: companyQuery,
+                        industry: '',
+                        website: '',
+                        email: '',
+                        phone: '',
+                        address: '',
+                        country: '',
+                        tax_number: '',
+                        notes: '',
+                        avatar_url: ''
                     }}
                 />
             )}

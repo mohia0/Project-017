@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn, detectCreateModalTab } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useMenuStore, ICON_MAP } from '@/store/useMenuStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -101,7 +101,10 @@ export function MobileTopBar() {
 
                     {/* New item */}
                     <button
-                        onClick={() => setCreateModalOpen(true)}
+                        onClick={() => {
+                            const tab = detectCreateModalTab(pathname);
+                            setCreateModalOpen(true, tab);
+                        }}
                         className="w-[36px] h-[36px] rounded-[10px] flex items-center justify-center bg-[#4dbf39] hover:bg-[#59d044] text-black active:scale-90 transition-all shadow-sm shadow-[#4dbf39]/30"
                     >
                         <Plus size={18} strokeWidth={2.5} />

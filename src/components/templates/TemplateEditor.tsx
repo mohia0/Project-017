@@ -74,7 +74,18 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     useEffect(() => {
         const found = templates.find(t => t.id === id);
         if (found && !isLoaded) {
-            setTemplate(found);
+            const initialTemplate = { ...found };
+            
+            // If no documentTitle exists in design yet, initialize it from name 
+            // to decouple them from the start.
+            if (!(initialTemplate.design as any).documentTitle) {
+                initialTemplate.design = { 
+                    ...initialTemplate.design, 
+                    documentTitle: initialTemplate.name || 'PROPOSAL &\nAGREEMENT' 
+                } as any;
+            }
+            
+            setTemplate(initialTemplate);
             setIsLoaded(true);
         }
     }, [id, templates, isLoaded]);
@@ -87,9 +98,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
             blocks: template.blocks,
             design: template.design,
             name: template.name,
-            description: template.description,
-            // @ts-ignore - meta is stored in the JSONB field in supabase
-            meta: (template as any).meta 
+            description: template.description
         }).then(() => {
             appToast.success('Changes saved', undefined, { id: `save-template-${id}`, duration: 1500 });
         }).catch(() => {
@@ -154,10 +163,17 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
         setTemplate(prev => {
             if (!prev) return prev;
             const next = { ...prev };
+            
+            // Sync specific fields to design or top level
             if (patch.design) next.design = { ...(prev.design || {}), ...patch.design };
             if (patch.logoUrl !== undefined) (next as any).logo_url = patch.logoUrl;
-            if (patch.documentTitle !== undefined) next.name = patch.documentTitle;
             
+            // Store documentTitle in the design object to persist in DB
+            if (patch.documentTitle !== undefined) {
+                next.design = { ...(next.design || {}), documentTitle: patch.documentTitle } as any;
+            }
+            
+            // maintain a local meta object for sub-component compatibility
             const currentMeta = (prev as any).meta || {};
             (next as any).meta = { ...currentMeta, ...patch };
             
@@ -406,7 +422,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                         </div>
                                         {template.entity_type === 'proposal' ? (
                                             <ProposalDocument
-                                                meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
+                                                meta={{ ...template, documentTitle: (template.design as any).documentTitle, logoUrl: (template as any).logo_url, design: template.design } as any}
                                                 blocks={template.blocks}
                                                 totals={totals}
                                                 isDark={false}
@@ -428,7 +444,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                             />
                                         ) : (
                                             <InvoiceDocument
-                                                meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
+                                                meta={{ ...template, documentTitle: (template.design as any).documentTitle, logoUrl: (template as any).logo_url, design: template.design } as any}
                                                 blocks={template.blocks}
                                                 totals={totals}
                                                 isDark={false}
@@ -465,7 +481,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                 {/* ClientActionBar is moved to the sticky header above */}
                                 {template.entity_type === 'proposal' ? (
                                     <ProposalDocument
-                                        meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
+                                        meta={{ ...template, documentTitle: (template.design as any).documentTitle, logoUrl: (template as any).logo_url, design: template.design } as any}
                                         blocks={template.blocks}
                                         totals={totals}
                                         isDark={false}
@@ -487,7 +503,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                     />
                                 ) : (
                                     <InvoiceDocument
-                                        meta={{ ...template, documentTitle: template.name, logoUrl: (template as any).logo_url, design: template.design } as any}
+                                        meta={{ ...template, documentTitle: (template.design as any).documentTitle, logoUrl: (template as any).logo_url, design: template.design } as any}
                                         blocks={template.blocks}
                                         totals={totals}
                                         isDark={false}

@@ -3,8 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Building2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useCompanyStore } from '@/store/useCompanyStore';
-import { CreateCompanyModal } from '@/components/modals/CreateCompanyModal';
+import { useCompanyStore, Company } from '@/store/useCompanyStore';
+import { useUIStore } from '@/store/useUIStore';
 import { Avatar } from '@/components/ui/Avatar';
 
 interface CompanyPickerProps {
@@ -26,8 +26,8 @@ export function CompanyPicker({
 }: CompanyPickerProps) {
     const { companies, fetchCompanies } = useCompanyStore();
     const [query, setQuery] = useState(value);
+    const { setCreateModalOpen } = useUIStore();
     const [open, setOpen] = useState(false);
-    const [showCreateModal, setShowCreateModal] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
@@ -43,7 +43,7 @@ export function CompanyPicker({
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    const filtered = companies.filter(c =>
+    const filtered = companies.filter((c: Company) =>
         c.name.toLowerCase().includes(query.toLowerCase())
     );
 
@@ -114,7 +114,7 @@ export function CompanyPicker({
                         {/* Matching companies */}
                         {filtered.length > 0 && (
                             <div className="max-h-40 overflow-auto">
-                                {filtered.map(c => (
+                                {filtered.map((c: Company) => (
                                     <button
                                         key={c.id}
                                         type="button"
@@ -148,12 +148,12 @@ export function CompanyPicker({
                         )}
 
                         {/* Divider + Create new */}
-                        {(!query || !companies.some(c => c.name.toLowerCase() === query.toLowerCase())) && (
+                        {(!query || !companies.some((c: Company) => c.name.toLowerCase() === query.toLowerCase())) && (
                             <>
                                 {filtered.length > 0 && <div className={cn("border-t", isDark ? "border-[#252525]" : "border-[#f0f0f0]")} />}
                                 <button
                                     type="button"
-                                    onMouseDown={e => { e.preventDefault(); setOpen(false); setShowCreateModal(true); }}
+                                    onMouseDown={e => { e.preventDefault(); setOpen(false); setCreateModalOpen(true, 'Company'); }}
                                     className={cn(
                                         "w-full flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium transition-colors",
                                         "text-primary hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
@@ -167,13 +167,6 @@ export function CompanyPicker({
                     </div>
                 )}
             </div>
-
-            {/* Create Company Modal */}
-            <CreateCompanyModal
-                open={showCreateModal}
-                onClose={() => setShowCreateModal(false)}
-                onCreated={handleCompanyCreated}
-            />
         </>
     );
 }
