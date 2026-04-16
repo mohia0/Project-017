@@ -914,9 +914,9 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         >
                             <div className={cn(
                                 "absolute inset-0 pointer-events-none",
-                                isDark 
-                                    ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
-                                    : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                meta.design?.topBlurTheme === 'dark'
+                                    ? "bg-gradient-to-b from-black/80 to-transparent" 
+                                    : "bg-gradient-to-b from-white/80 to-transparent"
                             )} />
                         </div>
                         <div className="relative z-10 w-full pointer-events-auto">
@@ -960,7 +960,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                     <div className={cn(
                                         "absolute inset-0 pointer-events-none",
                                         meta.design?.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-[#000]/80 to-transparent" 
+                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
                                             : "bg-gradient-to-b from-white/80 to-transparent"
                                     )} />
                                 </div>
@@ -1066,16 +1066,16 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                         >
                             <div className={cn(
                                 "absolute inset-0 pointer-events-none",
-                                isDark 
-                                    ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
-                                    : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                invoiceMeta.design?.topBlurTheme === 'dark'
+                                    ? "bg-gradient-to-b from-black/80 to-transparent" 
+                                    : "bg-gradient-to-b from-white/80 to-transparent"
                             )} />
                         </div>
                         <div className="relative z-10 w-full pointer-events-auto">
                             <ClientActionBar
                                 type="invoice"
                                 status={invoiceMeta.status as any}
-                                amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 2 }).format(totals.total)}
+                                amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(totals.total)}
                                 paidAt={paidAt}
                                 paidBy={paidBy}
                                 design={invoiceMeta.design}
@@ -1112,7 +1112,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                     <div className={cn(
                                         "absolute inset-0 pointer-events-none",
                                         invoiceMeta.design?.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-[#000]/80 to-transparent" 
+                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
                                             : "bg-gradient-to-b from-white/80 to-transparent"
                                     )} />
                                 </div>
@@ -1120,7 +1120,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                     <ClientActionBar
                                         type="invoice"
                                         status={invoiceMeta.status as any}
-                                        amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 2 }).format(totals.total)}
+                                        amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(totals.total)}
                                         isMobile={true}
                                         inline={true}
                                         design={invoiceMeta.design}

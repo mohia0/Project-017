@@ -179,7 +179,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                 }}
                 className={cn(
                     "w-full flex items-center justify-between text-left text-[11.5px] outline-none h-[22px]",
-                    !value ? "text-[#bbb]" : "text-[#111]",
+                    !value ? "text-[#bbb]" : (isDark ? "text-[#ccc]" : "text-[#111]"),
                     disabled && "opacity-50 cursor-not-allowed"
                 )}
             >

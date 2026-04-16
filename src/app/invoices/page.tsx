@@ -46,7 +46,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 
 function fmt$(val: number, currency: string = 'USD') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD', maximumFractionDigits: 2 }).format(val);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
 }
 function fmtDate(d: string | null | undefined) {
     if (!d) return '—';

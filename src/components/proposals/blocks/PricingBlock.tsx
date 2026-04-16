@@ -65,7 +65,7 @@ export function PricingBlock({
     const calcTotal = () => calcSubtotal() + calcTaxTotal();
 
     const formatCurrency = (val: number) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(val);
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
     };
 
     const handleSaveSettings = (newSettings: typeof settings) => {

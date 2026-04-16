@@ -30,6 +30,25 @@ const schema = withMultiColumn(
     })
 );
 
+// Block types that exist in our current schema — used to filter out
+// stale / incompatible blocks from older saved data.
+const VALID_BLOCK_TYPES = new Set([
+    'paragraph', 'heading', 'bulletListItem', 'numberedListItem',
+    'checkListItem', 'table', 'image', 'video', 'audio', 'file',
+    'quote', 'codeBlock', 'column', 'columnList',
+]);
+
+function sanitizeBlocks(blocks: any[]): any[] | undefined {
+    try {
+        const filtered = blocks.filter(
+            (b) => b && typeof b === 'object' && typeof b.type === 'string' && VALID_BLOCK_TYPES.has(b.type)
+        );
+        return filtered.length > 0 ? filtered : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }: ContentBlockProps) {
     // Determine if the background is dark to switch editor theme
     const isDarkBg = backgroundColor ? (
@@ -38,12 +57,22 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
         (backgroundColor.startsWith('#') && parseInt(backgroundColor.replace('#', ''), 16) < 0x888888)
     ) : false;
 
+    // Sanitize saved blocks before passing as initialContent.
+    // If the saved data contains unknown/incompatible block types (e.g. from
+    // an older schema version) BlockNote throws "Error creating document from
+    // blocks passed as initialContent". We filter those out and fall back to
+    // an empty paragraph so the editor always mounts cleanly.
+    const safeInitialContent: any = React.useMemo(() => {
+        if (!data.blocks?.length) return [{ type: 'paragraph', content: '' }];
+        const sanitized = sanitizeBlocks(data.blocks);
+        return sanitized ?? [{ type: 'paragraph', content: '' }];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // intentionally empty — initialContent is only read once by BlockNote
+
     // Initialize BlockNote editor with multi-column support
     const editor = useCreateBlockNote({
         schema,
-        initialContent: data.blocks?.length
-            ? data.blocks
-            : [{ type: "paragraph", content: "" }],
+        initialContent: safeInitialContent,
         dropCursor: multiColumnDropCursor,
         dictionary: {
             ...locales.en,
@@ -129,19 +158,6 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                     getItems={getSlashMenuItems}
                 />
             </BlockNoteView>
-            <style jsx global>{`
-                .bn-container {
-                    background: transparent !important;
-                }
-                .bn-editor {
-                    padding-inline: 0 !important;
-                    background: transparent !important;
-                }
-                /* Ensure columns have some spacing and look good */
-                .bn-column-list {
-                    gap: 24px !important;
-                }
-            `}</style>
         </div>
     );
 }

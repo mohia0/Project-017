@@ -98,7 +98,7 @@ type RightPanelTab = 'details' | 'appearance' | 'automation';
 
 
 function fmt(n: number, currency = 'USD') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
 }
 
 const BLOCK_MENU = [
@@ -640,8 +640,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     <div className={cn(
                                         "absolute inset-0 pointer-events-none",
                                         meta.design?.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
-                                            : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
+                                            : "bg-gradient-to-b from-white/80 to-transparent"
                                     )} />
                                 </div>
                                 <div className="relative z-10 w-full pointer-events-auto">
@@ -708,7 +708,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                     <div className={cn(
                                                         "absolute inset-0 pointer-events-none",
                                                         meta.design?.topBlurTheme === 'dark'
-                                                            ? "bg-gradient-to-b from-[#000]/80 to-transparent" 
+                                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
                                                             : "bg-gradient-to-b from-white/80 to-transparent"
                                                     )} />
                                                 </div>
@@ -868,11 +868,11 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                                         )}
                                                                     >
                                                                         <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")}>
-                                                                            {c.company_name}
+                                                                            {c.contact_person || c.company_name}
                                                                         </div>
-                                                                        {c.contact_person && (
+                                                                        {(c.contact_person && c.company_name) && (
                                                                             <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")}>
-                                                                                {c.contact_person}
+                                                                                {c.company_name}
                                                                             </div>
                                                                         )}
                                                                     </button>
@@ -1424,6 +1424,21 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
             const rows = block.rows || [];
             const hideQty = block.hideQty || false;
             
+            const sensors = useSensors(
+                useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+                useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+            );
+
+            const handleDragEnd = (event: DragEndEvent) => {
+                const { active, over } = event;
+                if (active.id !== over?.id) {
+                    const oldIndex = rows.findIndex((r: any) => r.id === active.id);
+                    const newIndex = rows.findIndex((r: any) => r.id === over?.id);
+                    const newRows = arrayMove(rows, oldIndex, newIndex);
+                    updateBlock(block.id, { rows: newRows });
+                }
+            };
+
             const updateRow = (rowId: string, updates: Partial<PricingRow>) => {
                 const newRows = rows.map((r: PricingRow) => r.id === rowId ? { ...r, ...updates } : r);
                 updateBlock(block.id, { rows: newRows });
@@ -1431,6 +1446,14 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
 
             const addRow = () => {
                 const newRows = [...rows, { id: uuidv4(), title: '', description: '', qty: 1, rate: 0 }];
+                updateBlock(block.id, { rows: newRows });
+            };
+
+            const duplicateRow = (row: PricingRow) => {
+                const newRow = { ...row, id: uuidv4() };
+                const idx = rows.findIndex((r: any) => r.id === row.id);
+                const newRows = [...rows];
+                newRows.splice(idx + 1, 0, newRow);
                 updateBlock(block.id, { rows: newRows });
             };
 
@@ -1447,121 +1470,64 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
             const td = cn("border-none", isDark ? "text-white" : "text-black");
 
             return (
-                <React.Fragment>
-                <div 
-                    className="w-full transition-all duration-300 border-collapse"
-                    style={{ 
-                        borderRadius: 'var(--table-border-radius)',
-                        borderColor: 'var(--table-border-color)',
-                        borderWidth: 'var(--table-stroke-width)',
-                        borderStyle: 'solid',
-                        overflow: 'hidden',
-                        backgroundColor: isDark ? '#1a1a1a' : '#ffffff'
-                    }}
-                >
-                    <table className="w-full">
-                        <thead style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderBottomWidth: 'var(--table-stroke-width)', borderBottomStyle: 'solid' }}>
-                            <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                <th className={cn(th, "px-4 py-2 w-full text-left font-bold opacity-60 uppercase tracking-wider")}>Item</th>
-                                {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16 font-bold opacity-60 uppercase tracking-wider")}>Qty</th>}
-                                <th className={cn(th, "px-3 py-2 text-right w-24 font-bold opacity-60 uppercase tracking-wider")}>Amount</th>
-                                {!hideQty && <th className={cn(th, "px-4 py-2 text-right w-24 font-bold opacity-60 uppercase tracking-wider")}>Total</th>}
-                                {!isPreview && <th className="w-8" />}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y" style={{ borderColor: 'var(--table-border-color)' }}>
-                            <style dangerouslySetInnerHTML={{ __html: `
-                                .divide-y > * + * {
-                                    border-top-width: var(--table-stroke-width) !important;
-                                    border-color: var(--table-border-color) !important;
-                                }
-                            ` }} />
-                            {rows.map((row: PricingRow) => (
-                                <tr key={row.id} className="group/row transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.01]">
-                                    <td className={cn(td, "px-4")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
-                                        {isPreview
-                                            ? (
-                                                <div className="flex flex-col">
-                                                    <div className={cn("font-bold", isDark ? "text-white" : "text-black")} style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || row.description || 'Item'}</div>
-                                                    {(row.title && row.description) && <div className={cn("mt-0.5 opacity-60")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>{row.description}</div>}
-                                                </div>
-                                            )
-                                            : (
-                                                <div className="flex flex-col gap-1">
-                                                    <input
-                                                        value={row.title || ''}
-                                                        onChange={e => updateRow(row.id, { title: e.target.value })}
-                                                        placeholder={row.description ? "Item title..." : "Item Name..."}
-                                                        className={cn("w-full bg-transparent outline-none font-bold", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
-                                                        style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}
-                                                    />
-                                                    <input
-                                                        value={row.description}
-                                                        onChange={e => updateRow(row.id, { description: e.target.value })}
-                                                        placeholder="Description (optional)..."
-                                                        className={cn("w-full bg-transparent outline-none opacity-60", isDark ? "text-white placeholder:text-white/10" : "text-black placeholder:text-black/10")}
-                                                        style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
-                                                    />
-                                                </div>
-                                            )
+                <div className="flex flex-col gap-2">
+                    <div 
+                        className={cn("overflow-visible transition-all duration-300")}
+                        style={{ 
+                            borderRadius: 'var(--table-border-radius)', 
+                            borderWidth: 'var(--table-stroke-width)', 
+                            borderStyle: 'solid', 
+                            borderColor: 'var(--table-border-color)',
+                            backgroundColor: isDark ? '#1a1a1a' : '#ffffff'
+                        }}
+                    >
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                            <table className="w-full relative" style={{ borderRadius: 'var(--table-border-radius)', borderCollapse: 'separate', borderSpacing: 0 }}>
+                                <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
+                                    <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
+                                        <th className="w-0 relative" />
+                                        <th className={cn(th, "pl-5 pr-2 py-2 w-full text-left")} style={{ borderTopLeftRadius: 'var(--table-border-radius)' }}>Item</th>
+                                        {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
+                                        <th className={cn(th, "px-3 py-2 text-right w-24", hideQty ? "pr-5 rounded-tr-[var(--table-border-radius)]" : "")}>Amount</th>
+                                        {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
+                                        {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                                    <style dangerouslySetInnerHTML={{ __html: `
+                                        .divide-y > * + * {
+                                            border-top-width: var(--table-stroke-width) !important;
+                                            border-color: var(--table-border-color) !important;
                                         }
-                                    </td>
-                            {!hideQty && (
-                                <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
-                                    {isPreview
-                                        ? row.qty
-                                        : <input
-                                            type="number"
-                                            value={row.qty}
-                                            onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
-                                            className={cn("w-12 text-right bg-transparent outline-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
-                                            style={{ fontSize: 'var(--table-font-size)' }}
-                                        />
-                                    }
-                                </td>
-                            )}
-                            <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
-                                {isPreview
-                                    ? fmt(row.rate, currency)
-                                    : <input
-                                        type="number"
-                                        value={row.rate}
-                                        onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
-                                        className={cn("w-20 text-right bg-transparent outline-none font-medium", isDark ? "text-white/80" : "text-black/80")}
-                                        style={{ fontSize: 'var(--table-font-size)' }}
-                                    />
-                                }
-                            </td>
-                            {!hideQty && <td className={cn(td, "px-4 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}>{fmt(row.qty * row.rate, currency)}</td>}
-                                    {!isPreview && (
-                                        <td className="w-0 relative p-0 border-0">
-                                            <button
-                                                onClick={() => removeRow(row.id)}
-                                                className={cn(
-                                                    "absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 p-2 rounded-full transition-all hover:bg-red-500/10 hover:text-red-500 animate-in fade-in duration-200",
-                                                    isDark ? "text-[#aaa] hover:text-red-500 bg-[#333] shadow-sm border border-white/5" : "text-[#ccc] hover:text-red-500 bg-white shadow-sm border border-black/5"
-                                                )}
-                                                title="Delete row"
-                                            >
-                                                <Trash2 size={13} />
-                                            </button>
-                                        </td>
-                                    )}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    ` }} />
+                                    <SortableContext items={rows.map((r: any) => r.id)} strategy={verticalListSortingStrategy}>
+                                        {rows.map((row: PricingRow) => (
+                                            <SortableRow 
+                                                key={row.id} 
+                                                row={row} 
+                                                isDark={isDark} 
+                                                isPreview={isPreview} 
+                                                hideQty={hideQty} 
+                                                currency={currency} 
+                                                updateRow={updateRow} 
+                                                removeRow={removeRow} 
+                                                duplicateRow={duplicateRow}
+                                                td={td}
+                                            />
+                                        ))}
+                                    </SortableContext>
+                                </tbody>
+                            </table>
+                        </DndContext>
+                    </div>
 
-                </div>
-                
-                {/* Summary Card under the table */}
-                <div className="flex justify-end mt-6">
-                    <div className={cn("w-full p-5 rounded-xl border transition-all", isPreview ? "max-w-none" : "max-w-[280px]")} style={{ backgroundColor: 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)' }}>
+                    {/* Summary Card */}
+                    <div className="px-5 py-3" style={{ backgroundColor: isPreview ? 'transparent' : 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)', borderWidth: 'var(--table-stroke-width)', borderStyle: 'solid' }}>
                         {!isPreview && (
                             <div className="flex justify-between items-center mb-4">
                                 <button
                                     onClick={addRow}
-                                    className={cn("flex items-center gap-1.5 text-[10px] font-bold px-2 py-1 border border-dashed transition-all hover:bg-black/5 dark:hover:bg-white/5", isDark ? "border-white/10 text-white/40" : "border-black/10 text-black/40")}
+                                    className={cn("flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 border border-dashed transition-all hover:bg-black/5 dark:hover:bg-white/5", isDark ? "border-white/10 text-white/40" : "border-black/10 text-black/40")}
                                     style={{ borderRadius: 'var(--block-button-radius)' }}
                                 >
                                     <Plus size={10} /> ADD ITEM
@@ -1578,58 +1544,56 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             </div>
                         )}
                         
-                        <div className="space-y-2.5">
-                            <div className={cn("flex justify-between text-[12px] font-medium opacity-50")}>
-                                <span>Subtotal</span>
-                                <span>{fmt(subtotal, currency)}</span>
-                            </div>
-                            
-                            {(!isPreview || (block.discountRate || 0) > 0) && (
-                                <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-50")}>
-                                    <div className="flex items-center gap-2">
-                                        <span>Discount</span>
-                                        {!isPreview && (
-                                            <input
-                                                type="number"
-                                                value={block.discountRate || 0}
-                                                onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
-                                                className={cn("w-10 bg-transparent outline-none border-b text-center font-bold", isDark ? "border-white/10" : "border-black/10")}
-                                            />
-                                        )}
-                                        {(!isPreview || (block.discountRate || 0) > 0) && <span>%</span>}
-                                    </div>
-                                    <span>−{fmt(discAmt, currency)}</span>
+                        <div className="flex flex-col items-end">
+                            <div className="w-full max-w-[180px] space-y-1.5">
+                                <div className={cn("flex justify-between text-[12px] font-medium opacity-50")}>
+                                    <span>Subtotal</span>
+                                    <span>{fmt(subtotal, currency)}</span>
                                 </div>
-                            )}
-                            
-                            {(!isPreview || (block.taxRate || 0) > 0) && (
-                                <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-50")}>
-                                    <div className="flex items-center gap-2">
-                                        <span>Tax</span>
-                                        {!isPreview && (
-                                            <input
-                                                type="number"
-                                                value={block.taxRate || 0}
-                                                onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
-                                                className={cn("w-10 bg-transparent outline-none border-b text-center font-bold", isDark ? "border-white/10" : "border-black/10")}
-                                            />
-                                        )}
-                                        {(!isPreview || (block.taxRate || 0) > 0) && <span>%</span>}
+                                {(!isPreview || (block.discountRate || 0) > 0) && (
+                                    <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-50")}>
+                                        <div className="flex items-center gap-2">
+                                            <span>Discount{isPreview && <span className="ml-1 opacity-70">({block.discountRate}%)</span>}</span>
+                                            {!isPreview && (
+                                                <input
+                                                    type="number"
+                                                    value={block.discountRate || 0}
+                                                    onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
+                                                    className={cn("w-10 bg-transparent outline-none border-b text-center font-bold", isDark ? "border-white/10" : "border-black/10")}
+                                                />
+                                            )}
+                                            {!isPreview && <span>%</span>}
+                                        </div>
+                                        <span>−{fmt(discAmt, currency)}</span>
                                     </div>
-                                    <span>{fmt(taxAmt, currency)}</span>
+                                )}
+                                {(!isPreview || (block.taxRate || 0) > 0) && (
+                                    <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-50")}>
+                                        <div className="flex items-center gap-2">
+                                            <span>Tax{isPreview && <span className="ml-1 opacity-70">({block.taxRate}%)</span>}</span>
+                                            {!isPreview && (
+                                                <input
+                                                    type="number"
+                                                    value={block.taxRate || 0}
+                                                    onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
+                                                    className={cn("w-10 bg-transparent outline-none border-b text-center font-bold", isDark ? "border-white/10" : "border-black/10")}
+                                                />
+                                            )}
+                                            {!isPreview && <span>%</span>}
+                                        </div>
+                                        <span>{fmt(taxAmt, currency)}</span>
+                                    </div>
+                                )}
+                                <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
+                                    <span>Total</span>
+                                    <span>{fmt(total, currency)}</span>
                                 </div>
-                            )}
-                            
-                            <div className={cn("flex justify-between font-black pt-4 mt-2 border-t")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: '16px' }}>
-                                <span>Total</span>
-                                <span style={{ color: 'var(--primary-color)' }}>{fmt(total, currency)}</span>
                             </div>
                         </div>
                     </div>
                 </div>
-            </React.Fragment>
-        );
-    }
+            );
+        }
         case 'heading': {
             const sizes: Record<number, string> = { 1: 'text-[22px] font-black', 2: 'text-[17px] font-bold', 3: 'text-[14px] font-semibold' };
             const cls = sizes[block.level || 1] || sizes[1];
@@ -1814,5 +1778,131 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
             )}
             </div>
         </div>
+    );
+}
+
+function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td }: any) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
+    const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 0 };
+
+    return (
+        <tr 
+            ref={setNodeRef} 
+            style={style} 
+            className={cn(
+                "group/row transition-colors relative", 
+                isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.01]" : "hover:bg-black/[0.01]")
+            )}
+        >
+            <td className="w-0 relative">
+                {!isPreview && (
+                    <div className={cn(
+                        "absolute right-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pr-3",
+                        "opacity-0 invisible pointer-events-none group-hover/row:opacity-100 group-hover/row:visible group-hover/row:pointer-events-auto"
+                    )}>
+                        <button 
+                            {...attributes} 
+                            {...listeners} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 cursor-grab active:cursor-grabbing",
+                                isDark ? "text-white/30 hover:text-white hover:bg-white/10" : "text-black/30 hover:text-black hover:bg-black/5"
+                            )}
+                            title="Drag to reorder"
+                        >
+                            <GripVertical size={14} />
+                        </button>
+                    </div>
+                )}
+            </td>
+            <td className={cn(td, "pl-5 pr-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
+                {isPreview ? (
+                    <div className="flex flex-col">
+                        <div className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || row.description || 'Item'}</div>
+                        {(row.title && row.description) && (
+                            <div 
+                                className={cn("mt-0.5 opacity-60")} 
+                                style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
+                                dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                            />
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex flex-col">
+                        <input
+                            value={row.title || ''}
+                            onChange={e => updateRow(row.id, { title: e.target.value })}
+                            placeholder={row.description ? "Item title..." : "Item Name..."}
+                            className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
+                            style={{ fontSize: 'calc(var(--table-font-size) + 2px)', fontWeight: 700 }}
+                        />
+                        <div
+                            contentEditable={!isPreview}
+                            suppressContentEditableWarning
+                            onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
+                            dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                            className={cn(
+                                "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-10", 
+                                isDark ? "text-white" : "text-black"
+                            )}
+                            data-placeholder="Description (optional)..."
+                            style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
+                        />
+                    </div>
+                )}
+            </td>
+            {!hideQty && (
+                <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
+                    {isPreview ? row.qty : (
+                        <input
+                            type="number"
+                            value={row.qty}
+                            onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
+                            className={cn("w-12 text-right bg-transparent outline-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
+                        />
+                    )}
+                </td>
+            )}
+            <td className={cn(td, "px-3 text-right align-top", hideQty ? "pr-5" : "")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
+                {isPreview ? <span className={cn(hideQty && "font-bold")}>{fmt(row.rate, currency)}</span> : (
+                    <input
+                        type="number"
+                        value={row.rate}
+                        onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
+                        className={cn("w-20 text-right bg-transparent outline-none p-0 border-none font-inherit leading-tight", hideQty ? "font-bold" : "font-medium")}
+                        style={{ fontWeight: hideQty ? 700 : 500 }}
+                    />
+                )}
+            </td>
+            {!hideQty && <td className={cn(td, "pl-3 pr-5 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}>{fmt(row.qty * row.rate, currency)}</td>}
+            {!isPreview && (
+                <td className="w-0 relative">
+                    <div className={cn(
+                        "absolute left-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pl-3",
+                        "opacity-0 invisible pointer-events-none group-hover/row:opacity-100 group-hover/row:visible group-hover/row:pointer-events-auto"
+                    )}>
+                        <button 
+                            onClick={() => duplicateRow(row)} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95", 
+                                isDark ? "text-white/30 hover:text-white hover:bg-white/10" : "text-black/30 hover:text-black hover:bg-black/5"
+                            )} 
+                            title="Duplicate row"
+                        >
+                            <Copy size={13} />
+                        </button>
+                        <button 
+                            onClick={() => removeRow(row.id)} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95", 
+                                isDark ? "text-red-400/50 hover:text-red-400 hover:bg-red-500/20" : "text-red-500/50 hover:text-red-500 hover:bg-red-50"
+                            )} 
+                            title="Delete row"
+                        >
+                            <Trash2 size={13} />
+                        </button>
+                    </div>
+                </td>
+            )}
+        </tr>
     );
 }

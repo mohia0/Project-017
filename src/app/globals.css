@@ -90,15 +90,15 @@
     font-size: 1.5rem !important; /* text-2xl */
     font-weight: 700 !important; /* font-bold */
     line-height: 1.3 !important;
-    margin-top: 0.75rem !important;
-    margin-bottom: 0.5rem !important;
+    margin-top: 0 !important;
+    margin-bottom: 0.25rem !important;
   }
   .prose h3, .blocknote-editor h3, [data-content-type="heading"][data-level="3"] {
     font-size: 1.25rem !important; /* text-xl */
     font-weight: 600 !important; /* font-semibold */
     line-height: 1.4 !important;
-    margin-top: 0.5rem !important;
-    margin-bottom: 0.25rem !important;
+    margin-top: 0 !important;
+    margin-bottom: 0.2rem !important;
   }
   .prose ul, .blocknote-editor ul:not(.bn-root) {
     list-style-type: disc;
@@ -112,6 +112,36 @@
   }
   .prose strong, .blocknote-editor strong {
     font-weight: bold;
+  }
+
+  /* Prevent empty paragraphs from collapsing (so "Enter" for whitespace works) */
+  .prose p:empty::before,
+  .blocknote-editor p:empty::after,
+  .blocknote-editor .bn-block-content p:empty::after {
+    content: "\00a0";
+  }
+
+  /* BlockNote Editor Specific Overrides */
+  .blocknote-editor .bn-container {
+    background: transparent !important;
+  }
+  .blocknote-editor .bn-editor {
+    padding-inline: 0 !important;
+    background: transparent !important;
+  }
+  .blocknote-editor .bn-block-content {
+    font-size: 0.8rem !important;
+  }
+  
+  /* Heading hierarchy overrides for scaled content */
+  .blocknote-editor .bn-block-content[data-content-type="heading"][data-level="1"] {
+    font-size: 1.6rem !important;
+  }
+  .blocknote-editor .bn-block-content[data-content-type="heading"][data-level="2"] {
+    font-size: 1.25rem !important;
+  }
+  .blocknote-editor .bn-block-content[data-content-type="heading"][data-level="3"] {
+    font-size: 1.0rem !important;
   }
 
   /* BlockNote Multi-Column Styles */

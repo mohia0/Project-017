@@ -105,7 +105,7 @@ type RightPanelTab = 'details' | 'appearance' | 'automation';
 
 
 function fmt(n: number, currency = 'USD') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2 }).format(n);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
 }
 
 const BLOCK_MENU = [
@@ -660,8 +660,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     <div className={cn(
                                         "absolute inset-0 pointer-events-none",
                                         meta.design?.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-[#080808]/80 to-transparent" 
-                                            : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
+                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
+                                            : "bg-gradient-to-b from-white/80 to-transparent"
                                     )} />
                                 </div>
                                 <div className="relative z-10 w-full pointer-events-auto">
@@ -712,22 +712,37 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                              backgroundPosition: 'center',
                                          }}
                                     >
-                                        <div className={cn(
-                                            "sticky top-0 z-30 backdrop-blur-lg border-b transition-all",
-                                            meta.design?.topBlurTheme === 'dark' ? "bg-black/40 border-white/5" : "bg-white/40 border-black/5"
-                                        )}>
-                                            <ClientActionBar
-                                                type="proposal"
-                                                status={meta.status as any}
-                                                isMobile={true}
-                                                inline={true}
-                                                design={meta.design}
-                                                onAccept={() => setIsSignModalOpen(true)}
-                                                onDecline={() => updateMeta({ status: 'Declined' as any })}
-                                                onDownloadPDF={() => console.log('Download PDF pressed')}
-                                                onPrint={() => window.print()}
-                                                className="!py-3"
-                                            />
+                                        <div className="sticky top-0 z-30 transition-all w-full pt-1 pb-0 pointer-events-none">
+                                            <div 
+                                                className="absolute inset-0 pointer-events-none"
+                                                style={{
+                                                    backdropFilter: 'blur(12px)',
+                                                    WebkitBackdropFilter: 'blur(12px)',
+                                                    maskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                                    WebkitMaskImage: 'linear-gradient(to bottom, black 40%, transparent 100%)',
+                                                }}
+                                            >
+                                                <div className={cn(
+                                                    "absolute inset-0 pointer-events-none",
+                                                    meta.design?.topBlurTheme === 'dark'
+                                                        ? "bg-gradient-to-b from-black/80 to-transparent" 
+                                                        : "bg-gradient-to-b from-white/80 to-transparent"
+                                                )} />
+                                            </div>
+                                            <div className="relative z-10 w-full pointer-events-auto">
+                                                <ClientActionBar
+                                                    type="proposal"
+                                                    status={meta.status as any}
+                                                    isMobile={true}
+                                                    inline={true}
+                                                    design={meta.design}
+                                                    onAccept={() => setIsSignModalOpen(true)}
+                                                    onDecline={() => updateMeta({ status: 'Declined' as any })}
+                                                    onDownloadPDF={() => console.log('Download PDF pressed')}
+                                                    onPrint={() => window.print()}
+                                                    className="!py-3"
+                                                />
+                                            </div>
                                         </div>
                                         <ProposalDocument
                                             meta={meta}
@@ -880,11 +895,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                                         )}
                                                                     >
                                                                         <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")}>
-                                                                            {c.company_name}
+                                                                            {c.contact_person || c.company_name}
                                                                         </div>
-                                                                        {c.contact_person && (
+                                                                        {(c.contact_person && c.company_name) && (
                                                                             <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")}>
-                                                                                {c.contact_person}
+                                                                                {c.company_name}
                                                                             </div>
                                                                         )}
                                                                     </button>
@@ -1772,11 +1787,11 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                     <table className="w-full relative" style={{ borderRadius: 'var(--table-border-radius)', borderCollapse: 'separate', borderSpacing: 0 }}>
                         <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
                             <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                <th className="w-8" style={{ borderTopLeftRadius: 'var(--table-border-radius)' }} />
-                                <th className={cn(th, "px-2 py-2 w-full")}>Item</th>
+                                <th className="w-0 relative" />
+                                <th className={cn(th, "pl-5 pr-2 py-2 w-full")} style={{ borderTopLeftRadius: 'var(--table-border-radius)' }}>Item</th>
                                 {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
-                                <th className={cn(th, "px-3 py-2 text-right w-24", hideQty && "rounded-tr-[var(--table-border-radius)]")}>Amount</th>
-                                {!hideQty && <th className={cn(th, "px-4 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
+                                <th className={cn(th, "px-3 py-2 text-right w-24", hideQty ? "pr-5 rounded-tr-[var(--table-border-radius)]" : "")}>Amount</th>
+                                {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
                                 {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
                             </tr>
                         </thead>
@@ -1809,7 +1824,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
             </div>
 
             {/* Totals Section */}
-            <div className="px-4 py-3" style={{ backgroundColor: isPreview ? 'transparent' : 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)' }}>
+            <div className="px-5 py-3" style={{ backgroundColor: isPreview ? 'transparent' : 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)' }}>
                 {!isPreview && (
                     <div className="flex justify-between items-center mb-4">
                         <button
@@ -1843,7 +1858,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                         {(!isPreview || (block.discountRate || 0) > 0) && (
                             <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
                                 <div className="flex items-center gap-2">
-                                    <span>Discount</span>
+                                    <span>Discount{isPreview && <span className="ml-1 opacity-70">({block.discountRate}%)</span>}</span>
                                     {!isPreview && (
                                         <input
                                             type="number"
@@ -1852,7 +1867,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                                             className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
                                         />
                                     )}
-                                    {(!isPreview || (block.discountRate || 0) > 0) && <span>%</span>}
+                                    {!isPreview && <span>%</span>}
                                 </div>
                                 <span>−{fmt(discAmt, currency)}</span>
                             </div>
@@ -1862,7 +1877,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                         {(!isPreview || (block.taxRate || 0) > 0) && (
                             <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
                                 <div className="flex items-center gap-2">
-                                    <span>Tax</span>
+                                    <span>Tax{isPreview && <span className="ml-1 opacity-70">({block.taxRate}%)</span>}</span>
                                     {!isPreview && (
                                         <input
                                             type="number"
@@ -1871,7 +1886,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                                             className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
                                         />
                                     )}
-                                    {(!isPreview || (block.taxRate || 0) > 0) && <span>%</span>}
+                                    {!isPreview && <span>%</span>}
                                 </div>
                                 <span>{fmt(taxAmt, currency)}</span>
                             </div>
@@ -1901,14 +1916,27 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                 isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.01]" : "hover:bg-black/[0.01]")
             )}
         >
-            <td className="w-8 pl-4">
+            <td className="w-0 relative">
                 {!isPreview && (
-                    <button {...attributes} {...listeners} className="opacity-0 group-hover/row:opacity-50 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1">
-                        <GripVertical size={14} />
-                    </button>
+                    <div className={cn(
+                        "absolute right-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pr-3",
+                        "opacity-0 invisible pointer-events-none group-hover/row:opacity-100 group-hover/row:visible group-hover/row:pointer-events-auto"
+                    )}>
+                        <button 
+                            {...attributes} 
+                            {...listeners} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 cursor-grab active:cursor-grabbing",
+                                isDark ? "text-white/30 hover:text-white hover:bg-white/10" : "text-black/30 hover:text-black hover:bg-black/5"
+                            )}
+                            title="Drag to reorder"
+                        >
+                            <GripVertical size={14} />
+                        </button>
+                    </div>
                 )}
             </td>
-            <td className={cn(td, "px-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
+            <td className={cn(td, "pl-5 pr-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
                 {isPreview ? (
                     <div className="flex flex-col">
                         <div className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || row.description || 'Item'}</div>
@@ -1956,7 +1984,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     )}
                 </td>
             )}
-            <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
+            <td className={cn(td, "px-3 text-right align-top", hideQty ? "pr-5" : "")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
                 {isPreview ? <span className={cn(hideQty && "font-bold")}>{fmt(row.rate, currency)}</span> : (
                     <input
                         type="number"
@@ -1967,7 +1995,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     />
                 )}
             </td>
-            {!hideQty && <td className={cn(td, "px-4 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}>{fmt(row.qty * row.rate, currency)}</td>}
+            {!hideQty && <td className={cn(td, "pl-3 pr-5 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}>{fmt(row.qty * row.rate, currency)}</td>}
             {!isPreview && (
                 <td className="w-0 relative">
                     <div className={cn(
@@ -2014,14 +2042,27 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                 isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.01]" : "hover:bg-black/[0.01]")
             )}
         >
-            <td className="w-8 pl-4">
+            <td className="w-0 relative">
                 {!isPreview && (
-                    <button {...attributes} {...listeners} className="opacity-0 group-hover/row:opacity-50 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1">
-                        <GripVertical size={14} />
-                    </button>
+                    <div className={cn(
+                        "absolute right-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pr-3",
+                        "opacity-0 invisible pointer-events-none group-hover/row:opacity-100 group-hover/row:visible group-hover/row:pointer-events-auto"
+                    )}>
+                        <button 
+                            {...attributes} 
+                            {...listeners} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all hover:scale-110 active:scale-95 cursor-grab active:cursor-grabbing",
+                                isDark ? "text-white/30 hover:text-white hover:bg-white/10" : "text-black/30 hover:text-black hover:bg-black/5"
+                            )}
+                            title="Drag to reorder"
+                        >
+                            <GripVertical size={14} />
+                        </button>
+                    </div>
                 )}
             </td>
-            <td className={cn(td, "px-2")}>
+            <td className={cn(td, "pl-5 pr-2")}>
                 {isPreview ? (
                     <div className="flex flex-col">
                         <div className="font-bold">{row.label || 'Item'}</div>
@@ -2063,7 +2104,7 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                     </div>
                 )}
             </td>
-            <td className={cn(td, "px-4 text-right font-bold")}>{fmt(totalAbove * (row.percentage / 100), currency)}</td>
+            <td className={cn(td, "pl-3 pr-5 text-right font-bold")}>{fmt(totalAbove * (row.percentage / 100), currency)}</td>
             {!isPreview && (
                 <td className="w-0 relative">
                     <div className={cn(
@@ -2193,7 +2234,7 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                     borderSpacing: 0
                 }}
             >
-                <div className="px-4 py-3 border-b flex items-center justify-between gap-4" style={{ backgroundColor: 'var(--table-header-bg)', borderTopLeftRadius: 'var(--table-border-radius)', borderTopRightRadius: 'var(--table-border-radius)', borderColor: 'var(--table-border-color)', borderBottomWidth: 'var(--table-stroke-width)' }}>
+                <div className="pl-5 pr-4 py-3 border-b flex items-center justify-between gap-4" style={{ backgroundColor: 'var(--table-header-bg)', borderTopLeftRadius: 'var(--table-border-radius)', borderTopRightRadius: 'var(--table-border-radius)', borderColor: 'var(--table-border-color)', borderBottomWidth: 'var(--table-stroke-width)' }}>
                     <div 
                         contentEditable={!isPreview}
                         suppressContentEditableWarning
@@ -2229,10 +2270,10 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                     <table className="w-full relative" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                         <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
                             <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                <th className="w-8" />
-                                <th className={cn(th, "px-2 py-2 w-full")}>Description</th>
+                                <th className="w-0 relative" />
+                                <th className={cn(th, "pl-5 pr-2 py-2 w-full")}>Description</th>
                                 <th className={cn(th, "px-3 py-2 text-right w-24")}>Percentage</th>
-                                <th className={cn(th, "px-4 py-2 text-right w-32")}>Amount</th>
+                                <th className={cn(th, "pl-3 pr-5 py-2 text-right w-32")}>Amount</th>
                                 {!isPreview && <th className="w-0" />}
                             </tr>
                         </thead>
