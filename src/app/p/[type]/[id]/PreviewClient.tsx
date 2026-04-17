@@ -235,24 +235,16 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                         // ── FORM ────────────────────────────────────────────
                         <div className="p-8 md:p-12">
                             {/* Header */}
-                            <div className="mb-8">
-                                {meta.logoUrl && (
-                                    <img
-                                        src={meta.logoUrl}
-                                        alt="Logo"
-                                        className="mb-4 object-contain"
-                                        style={{ height: `${design.logoSize || 40}px` }}
-                                    />
-                                )}
+                            <div className="mb-10 text-center flex flex-col items-center">
                                 <h1
-                                    className="text-[28px] font-bold leading-tight tracking-tight mb-2"
+                                    className="text-[32px] font-black leading-tight tracking-tight mb-2"
                                     style={{ color: isFormDark ? '#fff' : '#111' }}
                                 >
                                     {liveData.title}
                                 </h1>
                                 {meta.description && (
                                     <p
-                                        className="text-[14px] opacity-60 max-w-[90%]"
+                                        className="text-[15px] opacity-60 max-w-[90%] leading-relaxed"
                                         style={{ color: isFormDark ? '#aaa' : '#555' }}
                                     >
                                         {meta.description}
@@ -434,8 +426,28 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
 
 
 
-    const handleConfirmBooking = async () => {
-        if (!info.name || !info.email || !selDate || !selTime) return;
+    const isFormValid = () => {
+        if (!meta.fields || meta.fields.length === 0) return true;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        for (const field of meta.fields) {
+            const val = formValues[field.id];
+            
+            // Check required
+            if (field.required) {
+                if (!val || (typeof val === 'string' && val.trim() === '')) return false;
+            }
+
+            // Check email format if it's an email field and has value
+            if (field.type === 'email' && val && typeof val === 'string') {
+                if (!emailRegex.test(val)) return false;
+            }
+        }
+        return true;
+    };
+
+    const handleConfirmBooking = async (directInfo?: { name: string, email: string, phone?: string }) => {
+        const finalInfo = directInfo || info;
+        if (!selDate || !selTime) return;
 
         setIsSubmitting(true);
         try {
@@ -445,9 +457,9 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                 body: JSON.stringify({
                     scheduler_id: data.id,
                     workspace_id: data.workspace_id,
-                    booker_name: info.name,
-                    booker_email: info.email,
-                    booker_phone: info.phone,
+                    booker_name: finalInfo.name || 'Guest',
+                    booker_email: finalInfo.email || 'no-email@provided.com',
+                    booker_phone: finalInfo.phone || '',
                     booked_date: selDate,
                     booked_time: selTime,
                     timezone: clientTimezone,
@@ -509,56 +521,50 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                     {step !== 'confirmation' && (
                         <div className="px-5 md:px-8 pt-8 pb-5 border-b"
                             style={{ borderColor: isBlockDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                {meta.logoUrl ? (
-                                    <img src={meta.logoUrl} alt="Logo"
-                                        className="object-contain"
+                        <div className={cn(
+                            "mb-4",
+                            (step === 'scheduler' && meta.logoUrl) ? "flex items-center justify-between" : "flex flex-col items-center text-center"
+                        )}>
+                            {step === 'scheduler' && meta.logoUrl ? (
+                                <>
+                                    <img src={meta.logoUrl} alt="Logo" 
+                                        className="object-contain" 
                                         style={{ height: `${design.logoSize || 40}px` }} />
-                                ) : (
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
-                                        style={{ 
-                                            background: design.primaryColor || '#4dbf39',
-                                            color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
-                                        }}>
-                                        {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
-                                    </div>
-                                )}
-                                {(!meta.logoUrl || meta.logoUrl.trim() === '') && (
-                                    <div>
-                                        <div className="font-bold text-[15px]" style={{ color: isBlockDark ? '#fff' : '#111' }}>
+                                    <div className="text-right">
+                                        <div className="font-bold text-[14px] opacity-60" style={{ color: isBlockDark ? '#aaa' : '#666' }}>
                                             {meta.organizer || liveData.title || 'Scheduler Name'}
                                         </div>
-                                        <div className="text-[26px] font-black tracking-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>Book a time</div>
+                                        <h1 className="text-[28px] font-black tracking-tight leading-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>
+                                            Book a time
+                                        </h1>
                                     </div>
-                                )}
-                            </div>
-
-                            <div className="text-right">
-                                {step === 'scheduler' ? (
-                                    meta.logoUrl && (
-                                        <div className="text-[26px] font-black tracking-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>Book a time</div>
-                                    )
-                                ) : step === 'form' ? (
-                                    <div className="space-y-0.5">
-                                        <div className="font-black text-[26px] tracking-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>Confirm Details</div>
-                                        <div className="text-[11px] opacity-50 truncate max-w-[200px] md:max-w-none" style={{ color: isBlockDark ? '#aaa' : '#777' }}>
-                                            {selDate && DateTime.fromISO(selDate, { zone: clientTimezone }).toFormat('cccc, MMMM d')} at {selTime} ({duration}m)
+                                </>
+                            ) : (
+                                <div className="space-y-1">
+                                    <div className="font-bold text-[14px] opacity-60" style={{ color: isBlockDark ? '#aaa' : '#666' }}>
+                                        {meta.organizer || liveData.title || 'Scheduler Name'}
+                                    </div>
+                                    <h1 className="text-[32px] font-black tracking-tight leading-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>
+                                        {step === 'scheduler' ? 'Book a time' : step === 'form' ? 'Confirm Details' : 'Confirmed'}
+                                    </h1>
+                                    {step === 'form' && selDate && (
+                                        <div className="text-[12px] opacity-50 font-medium" style={{ color: isBlockDark ? '#aaa' : '#777' }}>
+                                            {DateTime.fromISO(selDate, { zone: clientTimezone }).toFormat('cccc, MMMM d')} at {selTime} ({duration}m)
                                         </div>
-                                    </div>
-                                ) : null}
-                            </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Duration selector — only on scheduler step */}
                         {step === 'scheduler' && (
-                        <div className="flex flex-wrap gap-2 mt-8">
+                        <div className="flex flex-wrap justify-center gap-2 mt-8">
                             {(meta.durations && meta.durations.length > 0 ? meta.durations : [30, 60]).map((d: number) => (
                                 <button key={d}
                                     onClick={() => setDuration(d)}
                                     className={cn(
-                                        "flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-semibold transition-all",
-                                        duration === d ? "scale-105" : "opacity-60 grayscale"
+                                        "flex items-center gap-1 px-3 py-1 rounded-lg text-[11px] font-bold transition-all shadow-sm",
+                                        duration === d ? "scale-105" : "opacity-40 grayscale hover:opacity-100 hover:grayscale-0"
                                     )}
                                     style={{
                                         background: design.primaryColor || '#4dbf39',
@@ -623,14 +629,20 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                             {selDate && selTime && (
                                 <div className="mt-8 flex justify-center animate-in fade-in slide-in-from-top-2">
                                     <button
-                                        onClick={() => setStep('form')}
+                                        onClick={async () => {
+                                            if (!meta.fields || meta.fields.length === 0) {
+                                                await handleConfirmBooking({ name: 'Guest', email: 'no-email@provided.com' });
+                                            } else {
+                                                setStep('form');
+                                            }
+                                        }}
                                         className="px-10 py-3 rounded-xl font-bold text-[15px] transition-all hover:brightness-110 active:scale-[0.98] shadow-lg"
                                         style={{
                                             background: design.primaryColor || '#4dbf39',
                                             color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
                                         }}
                                     >
-                                        Next Step
+                                        {(!meta.fields || meta.fields.length === 0) ? 'Schedule Meeting' : 'Next Step'}
                                     </button>
                                 </div>
                             )}
@@ -642,39 +654,6 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
 
                                 
                                 <div className="space-y-2">
-                                    {!hasCustomName && (
-                                        <div className="space-y-0.5">
-                                            <label className={cn("text-[13px] font-bold mb-0.5 block", isBlockDark ? "text-[#eee]" : "text-[#111]")}>Full name</label>
-                                            <input 
-                                                type="text" 
-                                                value={info.name}
-                                                onChange={e => setInfo({ ...info, name: e.target.value })}
-                                                className={cn(
-                                                    "w-full px-4 py-2 rounded-xl border outline-none transition-all text-[14px]",
-                                                    isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
-                                                )}
-                                                placeholder="Enter your name"
-                                                style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
-                                            />
-                                        </div>
-                                    )}
-
-                                    {!hasCustomEmail && (
-                                        <div className="space-y-0.5">
-                                            <label className={cn("text-[13px] font-bold mb-0.5 block", isBlockDark ? "text-[#eee]" : "text-[#111]")}>Email address</label>
-                                            <input 
-                                                type="email" 
-                                                value={info.email}
-                                                onChange={e => setInfo({ ...info, email: e.target.value })}
-                                                className={cn(
-                                                    "w-full px-4 py-2 rounded-xl border outline-none transition-all text-[14px]",
-                                                    isBlockDark ? "bg-white/[0.03] border-white/10 text-white focus:border-white/20" : "bg-black/[0.02] border-black/10 text-black focus:border-black/20"
-                                                )}
-                                                placeholder="Enter your email"
-                                                style={{ borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 6)}px` }}
-                                            />
-                                        </div>
-                                    )}
 
 
                                     {/* Render custom fields if any */}
@@ -713,8 +692,8 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                         Back
                                     </button>
                                     <button 
-                                        onClick={handleConfirmBooking}
-                                        disabled={isSubmitting || !info.name || !info.email}
+                                        onClick={() => handleConfirmBooking()}
+                                        disabled={isSubmitting || !isFormValid()}
                                         className="flex-[2] py-3.5 rounded-xl font-bold text-[14px] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                                         style={{ background: primaryColor, color: isColorDark(primaryColor) ? '#fff' : '#000', borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 4)}px` }}
                                     >

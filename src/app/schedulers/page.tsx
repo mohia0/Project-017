@@ -525,31 +525,31 @@ export default function SchedulersPage() {
                             ]}
                         />
                     </div>
-                </div>
-            )}
 
-                {/* ── Bulk banner (Desktop only) ── */}
-                {!isMobile && selectedIds.size > 0 && (
-                    <div className="absolute top-full left-0 right-0 z-10 p-2 pointer-events-none">
-                        <div className={cn("inline-flex items-center gap-4 px-3 py-1.5 rounded-lg text-[11px] font-medium border shadow-lg pointer-events-auto",
+                    {/* ── Bulk banner ── */}
+                    {!isMobile && selectedIds.size > 0 && (
+                        <div className={cn("flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border animate-in fade-in zoom-in-95 duration-200",
                             isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-white border-[#e8e8e8] text-[#666]")}>
-                            <span className="opacity-50">{selectedIds.size} selected</span>
+                            <span className="opacity-50 tracking-tight">{selectedIds.size} selected</span>
                             <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
-                            <div className="flex items-center gap-3">
-                                <Tooltip content="Duplicate" side="bottom">
-                                    <button onClick={handleBulkDuplicate} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors">
+                            <div className="flex items-center gap-4">
+                                <Tooltip content="Duplicate selected" side="bottom">
+                                    <button onClick={handleBulkDuplicate} className="hover:text-blue-500 flex items-center gap-1.5 transition-colors font-bold">
                                         <Copy size={11} className="opacity-70" />Duplicate
                                     </button>
                                 </Tooltip>
-                                <Tooltip content="Delete" side="bottom">
-                                    <button onClick={handleBulkDelete} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
+                                <Tooltip content="Delete selected" side="bottom">
+                                    <button onClick={handleBulkDelete} className="hover:text-red-500 flex items-center gap-1.5 transition-colors font-bold text-red-500/80">
                                         <Trash2 size={11} className="opacity-70" />Delete
                                     </button>
                                 </Tooltip>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
+            )}
+
+
 
             {/* ── Content ── */}
             <div className="flex-1 overflow-auto pb-44">

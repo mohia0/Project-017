@@ -870,45 +870,39 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                     {canvasStep !== 'confirmation' && (
                                                         <div className="px-5 pt-7 pb-5 border-b"
                                                             style={{ borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
-                                                            <div className="flex items-center justify-between mb-4">
-                                                                <div className="flex items-center gap-3">
-                                                                    {meta.logoUrl ? (
-                                                                        <img src={meta.logoUrl} alt="Logo"
-                                                                            className="object-contain"
+                                                            <div className={cn(
+                                                                "mb-4",
+                                                                (canvasStep === 'scheduler' && meta.logoUrl) ? "flex items-center justify-between" : "flex flex-col items-center text-center"
+                                                            )}>
+                                                                {canvasStep === 'scheduler' && meta.logoUrl ? (
+                                                                    <>
+                                                                        <img src={meta.logoUrl} alt="Logo" 
+                                                                            className="object-contain" 
                                                                             style={{ height: `${design.logoSize || 40}px` }} />
-                                                                    ) : (
-                                                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
-                                                                            style={{ 
-                                                                                background: design.primaryColor || '#4dbf39',
-                                                                                color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
-                                                                            }}>
-                                                                            {(meta.organizer || title || 'S')[0].toUpperCase()}
-                                                                        </div>
-                                                                    )}
-                                                                    {(!meta.logoUrl || meta.logoUrl.trim() === '') && (
-                                                                        <div>
-                                                                            <div className="font-bold text-[15px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
+                                                                        <div className="text-right">
+                                                                            <div className="font-bold text-[13px] opacity-60" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#666' }}>
                                                                                 {meta.organizer || title || 'Scheduler Name'}
                                                                             </div>
-                                                                            <div className="text-[26px] font-black tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Book a time</div>
+                                                                            <h1 className="text-[24px] font-black tracking-tight leading-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
+                                                                                Book a time
+                                                                            </h1>
                                                                         </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="text-right">
-                                                                    {canvasStep === 'scheduler' ? (
-                                                                        meta.logoUrl && (
-                                                                            <div className="text-[26px] font-black tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Book a time</div>
-                                                                        )
-                                                                    ) : canvasStep === 'form' ? (
-                                                                        <div className="space-y-0.5">
-                                                                            <div className="font-black text-[26px] tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Confirm Details</div>
-                                                                            <div className="text-[11px] opacity-50 truncate max-w-[200px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#777' }}>
-                                                                                {previewSelDate ? DateTime.fromISO(previewSelDate).toFormat('cccc, MMMM d') : 'Date'} at {previewSelTime || 'Time'} ({(meta.durations && meta.durations.length > 0 ? meta.durations[0] : 30)}m)
+                                                                    </>
+                                                                ) : (
+                                                                    <div className="space-y-1">
+                                                                        <div className="font-bold text-[13px] opacity-60" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#666' }}>
+                                                                            {meta.organizer || title || 'Scheduler Name'}
+                                                                        </div>
+                                                                        <h1 className="text-[28px] font-black tracking-tight leading-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
+                                                                            {canvasStep === 'scheduler' ? 'Book a time' : canvasStep === 'form' ? 'Confirm Details' : 'Confirmed'}
+                                                                        </h1>
+                                                                        {canvasStep === 'form' && previewSelDate && (
+                                                                            <div className="text-[11px] opacity-50 font-medium" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#777' }}>
+                                                                                {DateTime.fromISO(previewSelDate).toFormat('cccc, MMMM d')} at {previewSelTime || 'Time'} ({(meta.durations && meta.durations.length > 0 ? meta.durations[0] : 30)}m)
                                                                             </div>
-                                                                        </div>
-                                                                    ) : null}
-                                                                </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
 
                                                             {/* Duration selector — only on scheduler step */}
@@ -1041,45 +1035,39 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                         {canvasStep !== 'confirmation' && (
                                             <div className="px-5 md:px-8 pt-8 pb-5 border-b"
                                                 style={{ borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    {meta.logoUrl ? (
-                                                        <img src={meta.logoUrl} alt="Logo"
-                                                            className="object-contain"
+                                            <div className={cn(
+                                                "mb-4",
+                                                (canvasStep === 'scheduler' && meta.logoUrl) ? "flex items-center justify-between" : "flex flex-col items-center text-center"
+                                            )}>
+                                                {canvasStep === 'scheduler' && meta.logoUrl ? (
+                                                    <>
+                                                        <img src={meta.logoUrl} alt="Logo" 
+                                                            className="object-contain" 
                                                             style={{ height: `${design.logoSize || 40}px` }} />
-                                                    ) : (
-                                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
-                                                            style={{ 
-                                                                background: design.primaryColor || '#4dbf39',
-                                                                color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000' 
-                                                            }}>
-                                                            {(meta.organizer || title || 'S')[0].toUpperCase()}
-                                                        </div>
-                                                    )}
-                                                    {(!meta.logoUrl || meta.logoUrl.trim() === '') && (
-                                                        <div>
-                                                            <div className="font-bold text-[15px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
+                                                        <div className="text-right">
+                                                            <div className="font-bold text-[14px] opacity-60" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#666' }}>
                                                                 {meta.organizer || title || 'Scheduler Name'}
                                                             </div>
-                                                            <div className="text-[26px] font-black tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Book a time</div>
+                                                            <h1 className="text-[28px] font-black tracking-tight leading-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
+                                                                Book a time
+                                                            </h1>
                                                         </div>
-                                                    )}
-                                                </div>
-
-                                                <div className="text-right">
-                                                    {canvasStep === 'scheduler' ? (
-                                                        meta.logoUrl && (
-                                                            <div className="text-[26px] font-black tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Book a time</div>
-                                                        )
-                                                    ) : canvasStep === 'form' ? (
-                                                        <div className="space-y-0.5">
-                                                            <div className="font-black text-[26px] tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Confirm Details</div>
-                                                            <div className="text-[11px] opacity-50 truncate max-w-[200px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#777' }}>
-                                                                {previewSelDate ? DateTime.fromISO(previewSelDate).toFormat('cccc, MMMM d') : 'Date'} at {previewSelTime || 'Time'} ({(meta.durations && meta.durations.length > 0 ? meta.durations[0] : 30)}m)
+                                                    </>
+                                                ) : (
+                                                    <div className="space-y-1">
+                                                        <div className="font-bold text-[14px] opacity-60" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#666' }}>
+                                                            {meta.organizer || title || 'Scheduler Name'}
+                                                        </div>
+                                                        <h1 className="text-[32px] font-black tracking-tight leading-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
+                                                            {canvasStep === 'scheduler' ? 'Book a time' : canvasStep === 'form' ? 'Confirm Details' : 'Confirmed'}
+                                                        </h1>
+                                                        {canvasStep === 'form' && previewSelDate && (
+                                                            <div className="text-[12px] opacity-50 font-medium" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#777' }}>
+                                                                {DateTime.fromISO(previewSelDate).toFormat('cccc, MMMM d')} at {previewSelTime || 'Time'} ({(meta.durations && meta.durations.length > 0 ? meta.durations[0] : 30)}m)
                                                             </div>
-                                                        </div>
-                                                    ) : null}
-                                                </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Duration selector — only on scheduler step */}
@@ -1543,11 +1531,13 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                                 <span className="truncate">{booking.booker_name}</span>
                                                                 <TinyCopy text={booking.booker_name} isDark={isDark} />
                                                             </div>
-                                                            <div className={cn("group/line text-[11.5px] mt-1 flex items-center gap-1.5", isDark ? "text-[#888]" : "text-[#888]")}>
-                                                                <Mail size={11} className="opacity-40" />
-                                                                <span className="truncate">{booking.booker_email}</span>
-                                                                <TinyCopy text={booking.booker_email} isDark={isDark} />
-                                                            </div>
+                                                             {booking.booker_email && booking.booker_email !== 'no-email@provided.com' && (
+                                                                <div className={cn("group/line text-[11.5px] mt-1 flex items-center gap-1.5", isDark ? "text-[#888]" : "text-[#888]")}>
+                                                                    <Mail size={11} className="opacity-40" />
+                                                                    <span className="truncate">{booking.booker_email}</span>
+                                                                    <TinyCopy text={booking.booker_email} isDark={isDark} />
+                                                                </div>
+                                                             )}
                                                             {booking.booker_phone && (
                                                                 <div className={cn("group/line text-[11.5px] mt-1 flex items-center gap-1.5", isDark ? "text-[#888]" : "text-[#888]")}>
                                                                     <Phone size={11} className="opacity-40" />

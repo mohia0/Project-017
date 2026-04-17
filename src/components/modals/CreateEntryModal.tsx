@@ -581,7 +581,8 @@ export default function CreateEntryModal() {
             onClick={e => { if (e.target === e.currentTarget) setCreateModalOpen(false); }}
         >
             <div className={cn(
-                "w-full max-w-[540px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200",
+                "w-full rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200",
+                isMobile ? "max-w-[480px]" : "max-w-[740px]",
                 isDark ? "bg-[#161616] border border-[#252525]" : "bg-[#f7f7f7] border border-[#e0e0e0]"
             )}>
                 {/* Header */}
@@ -597,28 +598,55 @@ export default function CreateEntryModal() {
                     </button>
                 </div>
 
-                {/* ── Horizontal Tab Pills ── */}
-                <div className={cn("flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar border-b", isDark ? "border-[#252525] bg-[#111]" : "border-[#eaeaef] bg-[#f9f9fb]")}>
-                    {TABS.map(t => (
-                        <button
-                            key={t.id}
-                            onClick={() => setTab(t.id)}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-semibold transition-all shrink-0 border",
-                                tab === t.id
-                                    ? (isDark ? "bg-[#2a2a2a] text-white border-white/10 shadow-sm" : "bg-white text-primary border-[#e0e0eb] shadow-sm")
-                                    : (isDark ? "text-[#555] border-transparent hover:text-[#999] hover:bg-white/[0.04]" : "text-[#999] border-transparent hover:text-[#444] hover:bg-black/[0.04]")
-                            )}
-                        >
-                            <span className={cn("transition-colors", tab === t.id ? "text-primary" : "opacity-50")}>{t.icon}</span>
-                            {t.label}
-                        </button>
-                    ))}
-                </div>
+                <div className={cn("flex flex-1 overflow-hidden", isMobile ? "flex-col" : "flex-row")}>
+                    {/* ── Navigation (Sidebar on PC / Horizontal on Mobile) ── */}
+                    {isMobile ? (
+                        <div className={cn(
+                            "flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar border-b shrink-0",
+                            isDark ? "border-[#252525] bg-[#111]" : "border-[#eaeaef] bg-[#f9f9fb]"
+                        )}>
+                            {TABS.map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => setTab(t.id)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-semibold transition-all shrink-0 border",
+                                        tab === t.id
+                                            ? (isDark ? "bg-[#2a2a2a] text-white border-white/10 shadow-sm" : "bg-white text-primary border-[#e0e0eb] shadow-sm")
+                                            : (isDark ? "text-[#555] border-transparent hover:text-[#999] hover:bg-white/[0.04]" : "text-[#999] border-transparent hover:text-[#444] hover:bg-black/[0.04]")
+                                    )}
+                                >
+                                    <span className={cn("transition-colors", tab === t.id ? "text-primary" : "opacity-30")}>{t.icon}</span>
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className={cn(
+                            "w-[160px] shrink-0 flex flex-col gap-1 p-3 border-r overflow-y-auto no-scrollbar",
+                            isDark ? "border-[#252525] bg-[#111]" : "border-[#eaeaef] bg-[#f9f9fb]"
+                        )}>
+                            {TABS.map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => setTab(t.id)}
+                                    className={cn(
+                                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12.5px] font-semibold transition-all border",
+                                        tab === t.id
+                                            ? (isDark ? "bg-[#252525] text-white border-white/10 shadow-sm" : "bg-white text-primary border-[#e0e0eb] shadow-sm")
+                                            : (isDark ? "text-[#555] border-transparent hover:text-[#999] hover:bg-white/[0.02]" : "text-[#999] border-transparent hover:text-[#444] hover:bg-black/[0.02]")
+                                    )}
+                                >
+                                    <span className={cn("transition-colors", tab === t.id ? "text-primary" : "opacity-40")}>{t.icon}</span>
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
-                {/* ── Content Area (full width) ── */}
-                <div className="relative overflow-hidden" style={{ height: 'min(520px, calc(85vh - 130px))' }} key={tab}>
-                    <div className="absolute inset-0 overflow-y-auto w-full no-scrollbar pb-[76px]">
+                    {/* ── Content Area ── */}
+                    <div className="flex-1 relative overflow-hidden" style={{ height: isMobile ? 'min(520px, calc(85vh - 150px))' : 'min(640px, calc(90vh - 100px))' }} key={tab}>
+                        <div className="absolute inset-0 overflow-y-auto no-scrollbar pb-[76px]">
                         <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
                                 {/* ── Contact Form ── */}
                                 {tab === 'Contact' && (
@@ -929,6 +957,7 @@ export default function CreateEntryModal() {
                             {loading ? 'Creating...' : `Create ${tab.toLowerCase()}`}
                             {!loading && <ChevronRight size={14} strokeWidth={2.5} />}
                         </button>
+                    </div>
                     </div>
                 </div>
             </div>
