@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, ChevronRight, ClipboardList, Tag } from 'lucide-react';
+import { X, ChevronRight, ClipboardList, Tag, Check } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useFormStore } from '@/store/useFormStore';
 import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
+import { useTemplateStore } from '@/store/useTemplateStore';
+import { useEffect } from 'react';
 
 interface Props {
     open: boolean;
@@ -27,29 +29,47 @@ export function CreateFormModal({ open, onClose }: Props) {
     const { addForm } = useFormStore();
     const router = useRouter();
 
+    const { templates, fetchTemplates } = useTemplateStore();
+    const formTemplates = templates.filter(t => t.entity_type === 'form');
+
     const [title, setTitle]         = useState('New Form');
     const [project, setProject]     = useState('');
     const [template, setTemplate]   = useState<string>('blank');
     const [loading, setLoading]     = useState(false);
 
+    useEffect(() => {
+        if (open) fetchTemplates();
+    }, [open, fetchTemplates]);
+
     const handleCreate = async () => {
         if (!title.trim()) return;
         setLoading(true);
         try {
-            const tpl = STARTER_TEMPLATES.find(t => t.id === template);
-            const fields = (tpl?.fields || []).map((type, i) => ({
-                id: uuidv4(),
-                type,
-                label: type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-                required: false,
-                placeholder: '',
-            }));
+            let fields: any[] = [];
+            let design: any = {};
+
+            if (template.startsWith('tpl_')) {
+                const tpl = formTemplates.find(t => t.id === template.replace('tpl_', ''));
+                if (tpl) {
+                    fields = Array.isArray(tpl.blocks) ? tpl.blocks : [];
+                    design = tpl.design || {};
+                }
+            } else {
+                const tpl = STARTER_TEMPLATES.find(t => t.id === template);
+                fields = (tpl?.fields || []).map((type, i) => ({
+                    id: uuidv4(),
+                    type,
+                    label: type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                    required: false,
+                    placeholder: '',
+                }));
+            }
 
             const f = await addForm({
                 title: title.trim(),
                 status: 'Draft',
-                fields: fields as any,
-                meta: { project } as any,
+                fields,
+                meta: { project, design } as any,
             });
             if (f) {
                 onClose();
@@ -138,7 +158,7 @@ export function CreateFormModal({ open, onClose }: Props) {
                     </div>
 
                     {/* Templates */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-[300px] pr-1">
                         {STARTER_TEMPLATES.map(t => (
                             <button
                                 key={t.id}
@@ -159,17 +179,45 @@ export function CreateFormModal({ open, onClose }: Props) {
                                     <div className={cn("text-[12px] font-semibold truncate", isDark ? "text-[#ddd]" : "text-[#222]")}>
                                         {t.label}
                                     </div>
-                                    {t.fields.length > 0 && (
-                                        <div className={cn("text-[10.5px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                            {t.fields.length} fields
-                                        </div>
-                                    )}
+                                    <div className={cn("text-[10.5px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                                        {t.fields.length > 0 ? `${t.fields.length} fields` : 'Blank'}
+                                    </div>
                                 </div>
                                 {template === t.id && (
-                                    <div className="ml-auto shrink-0 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                                            <path d="M1 4l2 2 4-4" stroke="var(--brand-primary-foreground)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
+                                    <div className="ml-auto shrink-0 w-4 h-4 rounded-full bg-primary flex items-center justify-center border-2 border-primary-foreground/20">
+                                        <Check size={8} className="text-primary-foreground" strokeWidth={4} />
+                                    </div>
+                                )}
+                            </button>
+                        ))}
+
+                        {formTemplates.map(t => (
+                            <button
+                                key={t.id}
+                                onClick={() => setTemplate(`tpl_${t.id}`)}
+                                className={cn(
+                                    "flex items-center gap-3 px-3.5 py-3 rounded-xl border text-left transition-all",
+                                    template === `tpl_${t.id}`
+                                        ? (isDark
+                                            ? "border-primary/50 bg-primary/8 ring-1 ring-primary/20"
+                                            : "border-primary/40 bg-primary/5 ring-1 ring-primary/15")
+                                        : (isDark
+                                            ? "border-[#252525] bg-[#1c1c1c] hover:border-[#333]"
+                                            : "border-[#e0e0e0] bg-white hover:border-[#bbb]")
+                                )}
+                            >
+                                <span className="text-[18px] leading-none shrink-0 opacity-60">📑</span>
+                                <div className="min-w-0 flex-1">
+                                    <div className={cn("text-[12px] font-semibold truncate", isDark ? "text-[#ddd]" : "text-[#222]")}>
+                                        {t.name}
+                                    </div>
+                                    <div className={cn("text-[10.5px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                                        {t.blocks.length} fields
+                                    </div>
+                                </div>
+                                {template === `tpl_${t.id}` && (
+                                    <div className="ml-auto shrink-0 w-4 h-4 rounded-full bg-primary flex items-center justify-center border-2 border-primary-foreground/20">
+                                        <Check size={8} className="text-primary-foreground" strokeWidth={4} />
                                     </div>
                                 )}
                             </button>

@@ -7,9 +7,10 @@ export interface Template {
     id: string;
     name: string;
     description?: string;
-    entity_type: 'proposal' | 'invoice';
+    entity_type: 'proposal' | 'invoice' | 'form' | 'scheduler';
     blocks: any[]; // The structured content blocks
     design: DocumentDesign; 
+    meta?: any;
     is_default: boolean;
     created_at: string;
 }
@@ -22,7 +23,7 @@ interface TemplateState {
     addTemplate: (template: Omit<Template, 'id' | 'created_at'>) => Promise<boolean>;
     deleteTemplate: (id: string) => Promise<boolean>;
     updateTemplate: (id: string, patch: Partial<Omit<Template, 'id' | 'created_at'>>) => Promise<boolean>;
-    setDefaultTemplate: (id: string, entity_type: 'proposal' | 'invoice') => Promise<void>;
+    setDefaultTemplate: (id: string, entity_type: 'proposal' | 'invoice' | 'form' | 'scheduler') => Promise<void>;
 }
 
 export const useTemplateStore = create<TemplateState>((set) => ({
@@ -47,7 +48,14 @@ export const useTemplateStore = create<TemplateState>((set) => ({
         if (error) {
             set({ error: error.message, isLoading: false });
         } else {
-            set({ templates: data || [], isLoading: false });
+            const parsedTemplates = (data || []).map((t: any) => {
+                if (t.design && typeof t.design === 'object' && t.design._meta) {
+                    t.meta = t.design._meta;
+                    delete t.design._meta;
+                }
+                return t;
+            });
+            set({ templates: parsedTemplates, isLoading: false });
         }
     },
 
@@ -65,12 +73,23 @@ export const useTemplateStore = create<TemplateState>((set) => ({
                     .eq('workspace_id', workspaceId);
             }
 
-            const payload = { ...template, workspace_id: workspaceId };
+            const payload: any = { ...template, workspace_id: workspaceId };
+            if (payload.meta) {
+                payload.design = { ...(payload.design || {}), _meta: payload.meta };
+                delete payload.meta;
+            }
             const { data, error } = await supabase.from('templates').insert([payload]).select().single();
             if (error) throw error;
             
+            // Map it back for the local store so it has `meta`
+            const mappedData = { ...data };
+            if (mappedData.design && mappedData.design._meta) {
+                mappedData.meta = mappedData.design._meta;
+                delete mappedData.design._meta;
+            }
+
             set((state) => ({ 
-                templates: [data, ...state.templates.map(t => t.entity_type === template.entity_type && template.is_default ? {...t, is_default: false} : t)],
+                templates: [mappedData, ...state.templates.map(t => (t.entity_type as string) === (template.entity_type as string) && template.is_default ? {...t, is_default: false} : t)],
                 isLoading: false,
                 error: null
             }));
@@ -99,17 +118,35 @@ export const useTemplateStore = create<TemplateState>((set) => ({
 
     updateTemplate: async (id, patch) => {
         try {
+            const currentTemplate = useTemplateStore.getState().templates.find(t => t.id === id);
+            const dbPatch: any = { ...patch };
+            
+            if ('meta' in dbPatch) {
+                dbPatch.design = { 
+                    ...(dbPatch.design || currentTemplate?.design || {}), 
+                    _meta: dbPatch.meta 
+                };
+                delete dbPatch.meta;
+            }
+
             const { data, error } = await supabase
                 .from('templates')
-                .update(patch)
+                .update(dbPatch)
                 .eq('id', id)
                 .select()
                 .single();
 
             if (error) throw error;
 
+            // Map it back for the local store
+            const mappedData = { ...data };
+            if (mappedData.design && mappedData.design._meta) {
+                mappedData.meta = mappedData.design._meta;
+                delete mappedData.design._meta;
+            }
+
             set((state) => ({
-                templates: state.templates.map((t) => (t.id === id ? data : t)),
+                templates: state.templates.map((t) => (t.id === id ? mappedData : t)),
             }));
             return true;
         } catch (err: any) {
@@ -119,7 +156,7 @@ export const useTemplateStore = create<TemplateState>((set) => ({
         }
     },
 
-    setDefaultTemplate: async (id: string, entity_type: 'proposal' | 'invoice') => {
+    setDefaultTemplate: async (id: string, entity_type: 'proposal' | 'invoice' | 'form' | 'scheduler') => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) return;
 

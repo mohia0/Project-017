@@ -38,6 +38,10 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
         subject: 'Booking Confirmed: {{scheduler_title}}',
         body: `Hi {{client_name}},\n\nYour booking for "{{scheduler_title}}" has been confirmed.\n\nDate: {{booked_date}}\nTime: {{booked_time}}\nTimezone: {{timezone}}\n\nWe look forward to meeting with you!\n\nBest regards,\n{{sender_name}}`,
     },
+    booking_alert: {
+        subject: 'New Booking: {{scheduler_title}} — {{client_name}}',
+        body: `Hi,\n\nYou have a new booking for "{{scheduler_title}}".\n\nClient: {{client_name}}\nEmail: {{client_email}}\nDate: {{booked_date}}\nTime: {{booked_time}}\nTimezone: {{timezone}}\n\nBest regards,\n{{sender_name}}`,
+    },
 };
 
 export async function POST(req: NextRequest) {

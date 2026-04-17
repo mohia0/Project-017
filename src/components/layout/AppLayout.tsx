@@ -112,8 +112,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
     }, [user, isLoading, wsFetched, workspaces, isAuthRoute, isPublicPreview, isOnboarding, router]);
 
-    // Don't render until we know auth state, unless we are already on auth route
-    if (isLoading && !isAuthRoute) {
+    // Don't render until we know auth state, or if we are about to redirect
+    const isRedirectingToLogin = !isLoading && !user && !isAuthRoute && !isPublicPreview && !isOnboarding;
+    const isRedirectingToOnboarding = user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview;
+
+    if ((isLoading && !isAuthRoute) || isRedirectingToLogin || isRedirectingToOnboarding) {
         return (
             <div className={cn(
                 "flex h-screen w-full items-center justify-center",

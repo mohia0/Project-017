@@ -100,9 +100,11 @@ export async function POST(req: Request) {
                 read: false
             });
 
-        // 3. Send confirmation email via /api/send-email
+        // 3. Send confirmation email to booker and alert to organizer via /api/send-email
         try {
             const origin = new URL(req.url).origin;
+            
+            // Booker confirmation
             await fetch(`${origin}/api/send-email`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -119,8 +121,36 @@ export async function POST(req: Request) {
                     }
                 })
             });
+
+            // Organizer alert
+            // Fetch config to get the from_address (organizer)
+            const { data: config } = await supabaseService
+                .from('workspace_email_config')
+                .select('from_address')
+                .eq('workspace_id', workspace_id)
+                .single();
+
+            if (config?.from_address) {
+                await fetch(`${origin}/api/send-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        workspace_id,
+                        template_key: 'booking_alert',
+                        to: config.from_address,
+                        variables: {
+                            client_name: booker_name,
+                            client_email: booker_email,
+                            scheduler_title: scheduler_title || 'Untitled Scheduler',
+                            booked_date,
+                            booked_time,
+                            timezone,
+                        }
+                    })
+                });
+            }
         } catch (emailErr) {
-            console.error('Failed to send booking confirmation email:', emailErr);
+            console.error('Failed to send booking emails:', emailErr);
             // We do not fail the booking if email fails
         }
 

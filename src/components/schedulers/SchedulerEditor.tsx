@@ -6,17 +6,22 @@ import {
     ArrowLeft, ChevronDown, Link2, MoreHorizontal, Trash2, Copy,
     Check, Settings, Palette, ChevronRight, Clock, Calendar,
     MapPin, User, Mail, Phone, Globe, Bell, Tag, Sliders,
-    Monitor, Smartphone, PenLine, Eye, ExternalLink
+    Monitor, Smartphone, PenLine, Eye, ExternalLink, LayoutTemplate,
+    X, Upload, SquareCheck
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useSchedulerStore, SchedulerStatus } from '@/store/useSchedulerStore';
+import { useTemplateStore, Template } from '@/store/useTemplateStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { supabase } from '@/lib/supabase';
 import { DesignSettingsPanel, MetaField } from '@/components/ui/DesignSettingsPanel';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { DateTime } from 'luxon';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
 import { appToast } from '@/lib/toast';
 import DatePicker from '@/components/ui/DatePicker';
@@ -37,8 +42,6 @@ interface SchedulerMeta {
     bufferBefore: number;  // minutes
     bufferAfter: number;   // minutes
     maxPerDay: number;
-    advanceNotice: number; // hours
-    futureLimit: number;   // days
     confirmationMessage: string;
     activationDate: string;
     expirationDate: string;
@@ -56,8 +59,6 @@ const DEFAULT_META: SchedulerMeta = {
     bufferBefore: 0,
     bufferAfter: 0,
     maxPerDay: 8,
-    advanceNotice: 24,
-    futureLimit: 60,
     confirmationMessage: "Your booking is confirmed! We'll send a calendar invite shortly.",
     activationDate: '',
     expirationDate: '',
@@ -298,7 +299,7 @@ function TinyCopy({ text, isDark }: { text: string; isDark: boolean }) {
 /* ══════════════════════════════════════════════════════════
    MAIN EDITOR
 ══════════════════════════════════════════════════════════ */
-export default function SchedulerEditor({ id }: { id?: string }) {
+export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTemplate?: boolean }) {
     const router = useRouter();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
@@ -311,6 +312,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     const activeWorkspace = workspaces.find((w: any) => w.id === activeWorkspaceId);
     const workspaceTimezone = activeWorkspace?.timezone || 'UTC';
     const { schedulers, updateScheduler, deleteScheduler, fetchSchedulers, bookings, fetchBookings } = useSchedulerStore();
+    const { templates, updateTemplate: updateTemplateInStore, addTemplate, fetchTemplates } = useTemplateStore();
 
     const [title, setTitle] = useState('New Scheduler');
     const [status, setStatus] = useState<SchedulerStatus>('Draft');
@@ -328,6 +330,65 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<'logo' | 'background'>('logo');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+    const [selectedBookingIds, setSelectedBookingIds] = useState<Set<string>>(new Set());
+
+    const toggleBookingSelection = (bookingId: string) => {
+        setSelectedBookingIds(prev => {
+            const next = new Set(prev);
+            if (next.has(bookingId)) next.delete(bookingId);
+            else next.add(bookingId);
+            return next;
+        });
+    };
+
+    const handleBulkDeleteBookings = () => {
+        if (selectedBookingIds.size === 0) return;
+        setIsBulkDeleteOpen(true);
+    };
+
+    const confirmBulkDeleteBookings = async () => {
+        try {
+            const ids = Array.from(selectedBookingIds);
+            const { error } = await supabase
+                .from('scheduler_bookings')
+                .delete()
+                .in('id', ids);
+
+            if (error) throw error;
+            appToast.success(`${selectedBookingIds.size} bookings deleted`);
+            setSelectedBookingIds(new Set());
+            if (id) fetchBookings(id); // Refresh
+            setIsBulkDeleteOpen(false);
+        } catch (error: any) {
+            appToast.error('Error', error.message || 'Failed to delete bookings');
+        }
+    };
+
+    const handleBulkExportBookings = () => {
+        if (selectedBookingIds.size === 0) return;
+        const selectedBookings = (bookings || []).filter(b => selectedBookingIds.has(String(b.id)));
+        const header = ["Booker", "Email", "Phone", "Date", "Time", "Duration", "Status", "Location"].join(",");
+        const rows = selectedBookings.map(b => {
+            return [
+                `"${b.booker_name.replace(/"/g, '""')}"`,
+                `"${b.booker_email.replace(/"/g, '""')}"`,
+                `"${(b.booker_phone || '').replace(/"/g, '""')}"`,
+                `"${b.booked_date}"`,
+                `"${b.booked_time}"`,
+                `"${b.duration_minutes}"`,
+                `"${b.status}"`,
+                `"${(b.location || '').replace(/"/g, '""')}"`
+            ].join(",");
+        });
+        const csv = [header, ...rows].join("\n");
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bookings-export-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+    };
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     // Preview calendar state (editor preview only)
@@ -390,7 +451,23 @@ export default function SchedulerEditor({ id }: { id?: string }) {
     };
 
     useEffect(() => {
-        if (!id || isLoaded || schedulers.length === 0) return;
+        if (!id || isLoaded) return;
+
+        if (isTemplate) {
+            if (templates.length === 0) return;
+            const t = templates.find(t => t.id === id);
+            if (!t) return;
+            setTitle(t.name);
+            setStatus('Draft');
+            if (t.meta && typeof t.meta === 'object') {
+                const m = { ...DEFAULT_META, ...(t.meta as any) };
+                setMeta(m);
+            }
+            setIsLoaded(true);
+            return;
+        }
+
+        if (schedulers.length === 0) return;
         const s = schedulers.find(s => s.id === id);
         if (!s) return;
         setTitle(s.title);
@@ -410,9 +487,12 @@ export default function SchedulerEditor({ id }: { id?: string }) {
             setMeta(m);
         }
         setIsLoaded(true);
-    }, [id, schedulers, isLoaded]);
+    }, [id, schedulers, templates, isLoaded, isTemplate]);
 
-    useEffect(() => { fetchSchedulers(); }, [fetchSchedulers]);
+    useEffect(() => { 
+        if (isTemplate) fetchTemplates();
+        else fetchSchedulers(); 
+    }, [fetchSchedulers, fetchTemplates, isTemplate]);
     useEffect(() => { if (id) fetchBookings(id); }, [id, fetchBookings]);
 
     // Realtime subscription for new bookings
@@ -465,10 +545,21 @@ export default function SchedulerEditor({ id }: { id?: string }) {
             if (isLoaded) isFirst.current = false;
             return;
         }
-        updateScheduler(id, { title: debouncedTitle, status: debouncedStatus, meta: debouncedMeta as any })
-            .then(() => appToast.success('Changes saved', undefined, { id: `save-scheduler-${id}`, duration: 1500 }))
-            .catch(() => appToast.error('Save failed', undefined, { id: `save-scheduler-${id}`, duration: 3000 }));
-    }, [debouncedTitle, debouncedStatus, debouncedMeta, id, isLoaded, updateScheduler]);
+        console.log(`[SchedulerEditor] Auto-saving ${isTemplate ? 'template' : 'scheduler'} "${debouncedTitle}"`);
+
+        if (isTemplate) {
+            updateTemplateInStore(id, {
+                name: debouncedTitle,
+                meta: debouncedMeta
+            })
+            .then(() => appToast.success('Template saved', undefined, { id: `save-template-${id}`, duration: 1500 }))
+            .catch(() => appToast.error('Save failed', undefined, { id: `save-template-${id}`, duration: 3000 }));
+        } else {
+            updateScheduler(id, { title: debouncedTitle, status: debouncedStatus, meta: debouncedMeta as any })
+                .then(() => appToast.success('Changes saved', undefined, { id: `save-scheduler-${id}`, duration: 1500 }))
+                .catch(() => appToast.error('Save failed', undefined, { id: `save-scheduler-${id}`, duration: 3000 }));
+        }
+    }, [debouncedTitle, debouncedStatus, debouncedMeta, id, isLoaded, updateScheduler, isTemplate, updateTemplateInStore]);
 
     const updateMeta = useCallback((patch: Partial<SchedulerMeta>) => {
         setMeta(prev => ({ ...prev, ...patch }));
@@ -493,9 +584,29 @@ export default function SchedulerEditor({ id }: { id?: string }) {
 
     const handleDelete = async () => {
         if (!id) return;
-        await deleteScheduler(id);
-        appToast.success('Scheduler deleted');
-        router.push('/schedulers');
+        if (isTemplate) {
+            await useTemplateStore.getState().deleteTemplate(id);
+            appToast.success('Template deleted');
+            router.push('/templates');
+        } else {
+            await deleteScheduler(id);
+            appToast.success('Scheduler deleted');
+            router.push('/schedulers');
+        }
+    };
+
+    const handleSaveAsTemplate = async () => {
+        const success = await addTemplate({
+            name: `${title} (Copy)`,
+            entity_type: 'scheduler',
+            blocks: [], 
+            meta: meta,
+            design: meta.design,
+            is_default: false
+        });
+        if (success) {
+            appToast.success('Saved as Template', 'You can find it in the Templates vault');
+        }
     };
 
     const sc = STATUS_COLORS[status];
@@ -529,7 +640,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                     <div className="flex items-center gap-1.5 min-w-0">
                         <div className={cn("hidden md:flex items-center gap-2 text-[13px] font-medium shrink-0",
                             isDark ? "text-white/40" : "text-gray-400")}>
-                            <span>Schedulers</span>
+                            <span>{isTemplate ? 'Templates' : 'Schedulers'}</span>
                             <span className="opacity-30">/</span>
                         </div>
                         <input
@@ -546,35 +657,38 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                 {/* Right */}
                 <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
                     {/* Status */}
-                    <div className="relative hidden md:flex" ref={statusRef}>
-                        <button
-                            onClick={() => setShowStatus(v => !v)}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all border",
-                                isDark ? "bg-white/[0.06] text-[#aaa] border-white/10 hover:bg-white/10" : "bg-[#f5f5f5] text-[#555] border-[#e5e5e5] hover:bg-[#eaeaea]"
-                            )}>
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: sc }} />
-                            {status}
-                            <ChevronDown size={12} className="ml-1 opacity-50" />
-                        </button>
-                        {showStatus && (
-                            <div className={cn("absolute right-0 top-full mt-1.5 w-36 rounded-[10px] shadow-xl py-1 z-50 border",
-                                isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]")}>
-                                {STATUS_OPTS.map(s => (
-                                    <button key={s} onClick={() => { setStatus(s); setShowStatus(false); }}
-                                        className={cn("w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
-                                            isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
-                                            status === s ? "font-semibold" : ""
-                                        )}>
-                                        {status === s ? <Check size={12} className="text-emerald-500" /> : <div className="w-3" />}
-                                        <span>{s}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    {!isTemplate && (
+                        <div className="relative hidden md:flex" ref={statusRef}>
+                            <button
+                                onClick={() => setShowStatus(v => !v)}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium transition-all border",
+                                    isDark ? "bg-white/[0.06] text-[#aaa] border-white/10 hover:bg-white/10" : "bg-[#f5f5f5] text-[#555] border-[#e5e5e5] hover:bg-[#eaeaea]"
+                                )}>
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ background: sc }} />
+                                {status}
+                                <ChevronDown size={12} className="ml-1 opacity-50" />
+                            </button>
+                            {showStatus && (
+                                <div className={cn("absolute right-0 top-full mt-1.5 w-36 rounded-[10px] shadow-xl py-1 z-50 border",
+                                    isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]")}>
+                                    {STATUS_OPTS.map(s => (
+                                        <button key={s} onClick={() => { setStatus(s); setShowStatus(false); }}
+                                            className={cn("w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
+                                                isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
+                                                status === s ? "font-semibold" : ""
+                                            )}>
+                                            {status === s ? <Check size={12} className="text-emerald-500" /> : <div className="w-3" />}
+                                            <span>{s}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />
+                    {!isTemplate && <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />}
+
 
                     <button
                         onClick={() => {
@@ -637,11 +751,11 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                             <div className={cn("absolute right-0 top-full mt-1.5 w-44 rounded-[10px] shadow-xl py-1 z-50 border",
                                 isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#d2d2eb]")}>
                                 {[
-                                    { icon: ExternalLink, label: 'Open Link', action: () => window.open(window.location.origin + '/p/scheduler/' + id, '_blank') },
-                                    { icon: Link2, label: 'Copy Link', action: copyLink },
-                                    { icon: Copy, label: 'Duplicate', action: () => appToast.info('Coming soon') },
-                                    { icon: Trash2, label: 'Delete', action: () => setIsDeleteOpen(true) },
-                                ].map(({ icon: Icon, label, action }) => (
+                                    { icon: ExternalLink, label: 'Open Link', action: () => !isTemplate && window.open(window.location.origin + '/p/scheduler/' + id, '_blank'), hide: isTemplate },
+                                    { icon: Link2, label: 'Copy Link', action: copyLink, hide: isTemplate },
+                                    { icon: LayoutTemplate, label: 'Save as Template', action: handleSaveAsTemplate, hide: isTemplate },
+                                    { icon: Trash2, label: 'Delete', action: handleDelete },
+                                ].filter(i => !i.hide).map(({ icon: Icon, label, action }) => (
                                     <button key={label} onClick={() => { action(); setShowActions(false); }}
                                         className={cn("w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors",
                                             label === 'Delete'
@@ -697,11 +811,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                 <div className="absolute inset-0 pointer-events-none"
                                     style={{
                                     }}>
-                                    <div className={cn("absolute inset-0",
-                                        design.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-[#080808]/80 to-transparent"
-                                            : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
-                                    )} />
+                                    <div className={cn("absolute inset-0")} />
                                 </div>
                                 {/* Step breadcrumb */}
                                 <div className="relative z-10 flex items-center gap-1.5 pointer-events-auto">
@@ -746,47 +856,68 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                     }}>
 
                                                     {/* Card header */}
-                                                    <div className="px-5 pt-7 pb-5 border-b"
-                                                        style={{ borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
-                                                        <div className="flex items-center gap-3 mb-4">
-                                                            {meta.logoUrl ? (
-                                                                <img src={meta.logoUrl} alt="Logo"
-                                                                    className="object-contain"
-                                                                    style={{ height: `${design.logoSize || 40}px` }} />
-                                                            ) : (
-                                                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
-                                                                    style={{ 
-                                                                        background: design.primaryColor || '#4dbf39',
-                                                                        color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
-                                                                    }}>
-                                                                    {(meta.organizer || title || 'S')[0].toUpperCase()}
+                                                    {canvasStep !== 'confirmation' && (
+                                                        <div className="px-5 pt-7 pb-5 border-b"
+                                                            style={{ borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    {meta.logoUrl && canvasStep !== 'confirmation' ? (
+                                                                        <img src={meta.logoUrl} alt="Logo"
+                                                                            className="object-contain"
+                                                                            style={{ height: `${design.logoSize || 40}px` }} />
+                                                                    ) : canvasStep !== 'confirmation' ? (
+                                                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
+                                                                            style={{ 
+                                                                                background: design.primaryColor || '#4dbf39',
+                                                                                color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
+                                                                            }}>
+                                                                            {(meta.organizer || title || 'S')[0].toUpperCase()}
+                                                                        </div>
+                                                                    ) : null}
+                                                                    {(!meta.logoUrl || meta.logoUrl.trim() === '') && (
+                                                                        <div>
+                                                                            <div className="font-bold text-[15px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
+                                                                                {meta.organizer || title || 'Scheduler Name'}
+                                                                            </div>
+                                                                            <div className="text-[26px] font-black tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Book a time</div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
-                                                            <div>
-                                                                <div className="font-bold text-[15px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
-                                                                    {meta.organizer || title || 'Scheduler Name'}
-                                                                </div>
-                                                                <div className="text-[12px] opacity-50" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#777' }}>Book a time</div>
-                                                            </div>
-                                                        </div>
 
-                                                        {/* Duration selector — only on scheduler step */}
-                                                        {canvasStep === 'scheduler' && (
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {(meta.durations && meta.durations.length > 0 ? meta.durations : [30, 60]).map((d: number) => (
-                                                                <button key={d}
-                                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all"
-                                                                    style={{
-                                                                        background: design.primaryColor || '#4dbf39',
-                                                                        color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
-                                                                    }}>
-                                                                    <Clock size={11} />
-                                                                    {d >= 60 ? `${d / 60} hr` : `${d} min`}
-                                                                </button>
-                                                            ))}
+                                                                <div className="text-right">
+                                                                    {canvasStep === 'scheduler' ? (
+                                                                        meta.logoUrl && (
+                                                                            <div className="text-[26px] font-black tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Book a time</div>
+                                                                        )
+                                                                    ) : canvasStep === 'form' ? (
+                                                                        <div className="space-y-0.5">
+                                                                            <div className="font-black text-[26px] tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Confirm Details</div>
+                                                                            <div className="text-[11px] opacity-50 truncate max-w-[200px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#777' }}>
+                                                                                {previewSelDate ? DateTime.fromISO(previewSelDate).toFormat('cccc, MMMM d') : 'Date'} at {previewSelTime || 'Time'} ({(meta.durations && meta.durations.length > 0 ? meta.durations[0] : 30)}m)
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : null}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Duration selector — only on scheduler step */}
+                                                            {canvasStep === 'scheduler' && (
+                                                            <div className="flex flex-wrap gap-2 mt-8">
+                                                                {(meta.durations && meta.durations.length > 0 ? meta.durations : [30, 60]).map((d: number) => (
+                                                                    <button key={d}
+                                                                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-semibold transition-all"
+                                                                        style={{
+                                                                            background: design.primaryColor || '#4dbf39',
+                                                                            color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
+                                                                        }}>
+                                                                        <Clock size={10} />
+                                                                        {d >= 60 ? `${d / 60} hr` : `${d} min`}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                            )}
                                                         </div>
-                                                        )}
-                                                    </div>
+                                                    )}
 
                                                     {/* Canvas step content */}
                                                     <div className="p-5">
@@ -880,7 +1011,6 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                             </div>
                                                         )}
                                                     </div>
-
                                                 </div>
                                             </div>
                                             <div className="absolute bottom-[8px] left-1/2 -translate-x-1/2 w-[100px] h-[4px] rounded-full z-10 bg-white/[0.05]" />
@@ -897,47 +1027,68 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                             borderRadius: `${design.borderRadius ?? 16}px`,
                                         }}>
                                         {/* Card header */}
-                                        <div className="px-5 md:px-8 pt-8 pb-5 border-b"
-                                            style={{ borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
-                                            <div className="flex items-center gap-3 mb-4">
-                                                {meta.logoUrl ? (
-                                                    <img src={meta.logoUrl} alt="Logo"
-                                                        className="object-contain"
-                                                        style={{ height: `${design.logoSize || 40}px` }} />
-                                                ) : (
-                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
-                                                        style={{ 
-                                                            background: design.primaryColor || '#4dbf39',
-                                                            color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000' 
-                                                        }}>
-                                                        {(meta.organizer || title || 'S')[0].toUpperCase()}
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <div className="font-bold text-[15px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
-                                                        {meta.organizer || title || 'Scheduler Name'}
-                                                    </div>
-                                                    <div className="text-[12px] opacity-50" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#777' }}>Book a time</div>
+                                        {canvasStep !== 'confirmation' && (
+                                            <div className="px-5 md:px-8 pt-8 pb-5 border-b"
+                                                style={{ borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    {meta.logoUrl && canvasStep !== 'confirmation' ? (
+                                                        <img src={meta.logoUrl} alt="Logo"
+                                                            className="object-contain"
+                                                            style={{ height: `${design.logoSize || 40}px` }} />
+                                                    ) : canvasStep !== 'confirmation' ? (
+                                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
+                                                            style={{ 
+                                                                background: design.primaryColor || '#4dbf39',
+                                                                color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000' 
+                                                            }}>
+                                                            {(meta.organizer || title || 'S')[0].toUpperCase()}
+                                                        </div>
+                                                    ) : null}
+                                                    {(!meta.logoUrl || meta.logoUrl.trim() === '') && (
+                                                        <div>
+                                                            <div className="font-bold text-[15px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
+                                                                {meta.organizer || title || 'Scheduler Name'}
+                                                            </div>
+                                                            <div className="text-[26px] font-black tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Book a time</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="text-right">
+                                                    {canvasStep === 'scheduler' ? (
+                                                        meta.logoUrl && (
+                                                            <div className="text-[26px] font-black tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Book a time</div>
+                                                        )
+                                                    ) : canvasStep === 'form' ? (
+                                                        <div className="space-y-0.5">
+                                                            <div className="font-black text-[26px] tracking-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>Confirm Details</div>
+                                                            <div className="text-[11px] opacity-50 truncate max-w-[200px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#777' }}>
+                                                                {previewSelDate ? DateTime.fromISO(previewSelDate).toFormat('cccc, MMMM d') : 'Date'} at {previewSelTime || 'Time'} ({(meta.durations && meta.durations.length > 0 ? meta.durations[0] : 30)}m)
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
                                                 </div>
                                             </div>
 
                                             {/* Duration selector — only on scheduler step */}
                                             {canvasStep === 'scheduler' && (
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="flex flex-wrap gap-2 mt-8">
                                                 {(meta.durations && meta.durations.length > 0 ? meta.durations : [30, 60]).map((d: number) => (
                                                     <button key={d}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all"
+                                                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-semibold transition-all"
                                                         style={{
                                                             background: design.primaryColor || '#4dbf39',
                                                             color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000',
                                                         }}>
-                                                        <Clock size={11} />
+                                                        <Clock size={10} />
                                                         {d >= 60 ? `${d / 60} hr` : `${d} min`}
                                                     </button>
                                                 ))}
                                             </div>
                                             )}
                                         </div>
+                                        )}
 
                                         {/* Canvas step content */}
                                         <div className="p-5 md:p-8">
@@ -1109,40 +1260,12 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                     </div>
                                                 </SectionAccordion>
 
-                                                <SectionAccordion label="Buffers" icon={<Sliders size={11} />} isDark={isDark}>
-                                                    <div className="space-y-2">
-                                                        {[['Before', 'bufferBefore'], ['After', 'bufferAfter']].map(([label, key]) => (
-                                                            <MetaField key={key} label={label as string} isDark={isDark}>
-                                                                <SettingsSelect
-                                                                    isDark={isDark}
-                                                                    value={String((meta as any)[key])}
-                                                                    onChange={val => updateMeta({ [key]: Number(val) } as any)}
-                                                                    options={[0, 5, 10, 15, 30, 60].map(v => ({ 
-                                                                        label: v === 0 ? 'None' : `${v} min`, 
-                                                                        value: String(v) 
-                                                                    }))}
-                                                                    className="!h-7 !text-[11px] !border-none !bg-transparent !px-0"
-                                                                />
-                                                            </MetaField>
-                                                        ))}
-                                                    </div>
-                                                </SectionAccordion>
 
                                                 <SectionAccordion label="Limits" icon={<Tag size={11} />} isDark={isDark}>
                                                     <div className="space-y-2">
                                                         <MetaField label="Max per day" isDark={isDark}>
                                                             <PanelInput type="number" min={1} max={50} value={meta.maxPerDay}
                                                                     onChange={v => updateMeta({ maxPerDay: Number(v) })}
-                                                                    isDark={isDark} />
-                                                        </MetaField>
-                                                        <MetaField label="Advance notice (hrs)" isDark={isDark}>
-                                                            <PanelInput type="number" min={0} value={meta.advanceNotice}
-                                                                    onChange={v => updateMeta({ advanceNotice: Number(v) })}
-                                                                    isDark={isDark} />
-                                                        </MetaField>
-                                                        <MetaField label="Future limit (days)" isDark={isDark}>
-                                                            <PanelInput type="number" min={1} value={meta.futureLimit}
-                                                                    onChange={v => updateMeta({ futureLimit: Number(v) })}
                                                                     isDark={isDark} />
                                                         </MetaField>
                                                         <MetaField label="Submission limit" isDark={isDark}>
@@ -1299,13 +1422,77 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                         <div className="max-w-[1000px] mx-auto w-full">
                             {bookings && bookings.length > 0 ? (
                                 <div className="w-full">
-                                    <div className={cn("text-[14px] font-semibold mb-4", isDark ? "text-white" : "text-black")}>
-                                        Recent Bookings ({bookings.length})
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className={cn("text-[14px] font-semibold", isDark ? "text-white" : "text-black")}>
+                                            Recent Bookings ({bookings.length})
+                                        </div>
+
+                                        <AnimatePresence>
+                                            {selectedBookingIds.size > 0 && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, x: 10 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: 10 }}
+                                                    className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border ml-2', isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}
+                                                >
+                                                    <span className={cn('text-[11px] font-semibold mr-1', isDark ? 'text-[#aaa]' : 'text-[#666]')}>{selectedBookingIds.size} selected</span>
+                                                    <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                                    
+                                                    <Tooltip content="Export" side="bottom">
+                                                        <button onClick={handleBulkExportBookings}
+                                                            className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                                            <Upload size={11}/>
+                                                        </button>
+                                                    </Tooltip>
+                                                    
+                                                    <Tooltip content="Delete" side="bottom">
+                                                        <button onClick={handleBulkDeleteBookings}
+                                                            className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
+                                                            <Trash2 size={11}/>
+                                                        </button>
+                                                    </Tooltip>
+
+                                                    {selectedBookingIds.size >= 2 && (
+                                                        <Tooltip content={selectedBookingIds.size === bookings.length ? "Deselect All" : "Select All"} side="bottom">
+                                                            <button onClick={() => {
+                                                                if (selectedBookingIds.size === bookings.length) setSelectedBookingIds(new Set());
+                                                                else setSelectedBookingIds(new Set(bookings.map(b => String(b.id))));
+                                                            }}
+                                                                className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                                                <SquareCheck size={11}/>
+                                                            </button>
+                                                        </Tooltip>
+                                                    )}
+
+                                                    <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                                    
+                                                    <Tooltip content="Clear selection" side="bottom">
+                                                        <button onClick={() => setSelectedBookingIds(new Set())}
+                                                            className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
+                                                            <X size={11}/>
+                                                        </button>
+                                                    </Tooltip>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </div>
                                     <div className={cn("overflow-hidden rounded-xl border", isDark ? "border-[#252525] bg-[#1a1a1a]" : "border-[#ebebeb] bg-white")}>
                                         <table className="w-full text-left border-collapse text-[12.5px]">
                                             <thead>
                                                 <tr className={cn("border-b text-[10.5px] uppercase tracking-wider", isDark ? "border-[#252525] text-[#888] bg-[#111]" : "border-[#ebebeb] text-[#888] bg-[#f8f8f8]")}>
+                                                    <th className="w-10 px-5 py-3.5">
+                                                        <div 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (selectedBookingIds.size === bookings.length) setSelectedBookingIds(new Set());
+                                                                else setSelectedBookingIds(new Set(bookings.map(b => String(b.id))));
+                                                            }}
+                                                            className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center cursor-pointer transition-all",
+                                                                selectedBookingIds.size === bookings.length && bookings.length > 0 ? "bg-primary border-primary" : isDark ? "border-white/20" : "border-[#ccc]")}
+                                                        >
+                                                            {selectedBookingIds.size === bookings.length && bookings.length > 0 && <Check size={10} strokeWidth={4} className="text-black" />}
+                                                        </div>
+                                                    </th>
                                                     <th className="px-5 py-3.5 font-semibold">Booker</th>
                                                     <th className="px-5 py-3.5 font-semibold">Location</th>
                                                     <th className="px-5 py-3.5 font-semibold">Date & Time</th>
@@ -1314,23 +1501,31 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                 </tr>
                                             </thead>
                                             <tbody className={cn("divide-y", isDark ? "divide-[#252525]" : "divide-[#ebebeb]")}>
-                                                {bookings.map((booking) => (
-                                                    <tr key={booking.id} 
-                                                        id={`booking-${booking.id}`}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            stopHighlight();
-                                                        }}
-                                                        className={cn(
-                                                            "group transition-all duration-500", 
-                                                            isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#fafafa]",
-                                                            activeHighlightId === String(booking.id) && "animate-highlight-row"
-                                                        )}
-                                                        style={activeHighlightId === String(booking.id) ? {
-                                                            backgroundColor: isDark ? `${design.primaryColor || '#4dbf39'}33` : `${design.primaryColor || '#4dbf39'}1a`,
-                                                            boxShadow: `inset 3px 0 0 ${design.primaryColor || '#4dbf39'}`,
-                                                        } : undefined}>
-                                                        <td className="px-5 py-4">
+                                                {bookings.map((booking) => {
+                                                    const isSelected = selectedBookingIds.has(String(booking.id));
+                                                    return (
+                                                        <tr key={booking.id} 
+                                                            id={`booking-${booking.id}`}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                toggleBookingSelection(String(booking.id));
+                                                            }}
+                                                            className={cn(
+                                                                "group transition-all duration-500 cursor-pointer", 
+                                                                isSelected ? "bg-primary/5" : isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#fafafa]",
+                                                                activeHighlightId === String(booking.id) && "animate-highlight-row"
+                                                            )}
+                                                            style={activeHighlightId === String(booking.id) ? {
+                                                                backgroundColor: isDark ? `${meta.design?.primaryColor || '#4dbf39'}33` : `${meta.design?.primaryColor || '#4dbf39'}1a`,
+                                                                boxShadow: `inset 3px 0 0 ${meta.design?.primaryColor || '#4dbf39'}`,
+                                                            } : undefined}>
+                                                            <td className="px-5 py-4">
+                                                                <div className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all",
+                                                                    isSelected ? "bg-primary border-primary" : isDark ? "border-white/10 opacity-0 group-hover:opacity-100" : "border-[#ccc] opacity-0 group-hover:opacity-100")}>
+                                                                    {isSelected && <Check size={9} strokeWidth={4} className="text-black" />}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-4">
                                                             <div className={cn("group/line font-semibold text-[13px] flex items-center gap-1.5", isDark ? "text-white" : "text-black")}>
                                                                 <User size={12} className="opacity-40" />
                                                                 <span className="truncate">{booking.booker_name}</span>
@@ -1411,7 +1606,7 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                                                             </span>
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                )})}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1461,6 +1656,18 @@ export default function SchedulerEditor({ id }: { id?: string }) {
                     description="This will permanently delete this scheduler and all its bookings."
                     onConfirm={handleDelete}
                     onClose={() => setIsDeleteOpen(false)}
+                    isDark={isDark}
+                />
+            )}
+
+            {isBulkDeleteOpen && (
+                <DeleteConfirmModal
+                    open={isBulkDeleteOpen}
+                    title={`Delete ${selectedBookingIds.size} Bookings`}
+                    description={`Are you sure you want to permanently delete these ${selectedBookingIds.size} bookings? This action cannot be undone.`}
+                    onConfirm={confirmBulkDeleteBookings}
+                    onClose={() => setIsBulkDeleteOpen(false)}
+                    isDark={isDark}
                 />
             )}
         </div>

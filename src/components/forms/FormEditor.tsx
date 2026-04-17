@@ -26,6 +26,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useFormStore, FormStatus, FormField, FormFieldType } from '@/store/useFormStore';
+import { useTemplateStore, Template } from '@/store/useTemplateStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import { CountryPicker } from '@/components/ui/CountryPicker';
@@ -35,6 +36,7 @@ import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
 import { appToast } from '@/lib/toast';
 import { v4 as uuidv4 } from 'uuid';
 import DatePicker from '@/components/ui/DatePicker';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 /* ══════════════════════════════════════════════════════════
    FIELD TYPE CONFIG
@@ -461,7 +463,7 @@ function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, i
 /* ══════════════════════════════════════════════════════════
    MAIN EDITOR
 ══════════════════════════════════════════════════════════ */
-export default function FormEditor({ id }: { id?: string }) {
+export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate?: boolean }) {
     const router = useRouter();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
@@ -469,6 +471,7 @@ export default function FormEditor({ id }: { id?: string }) {
         forms, updateForm, deleteForm, fetchForms, 
         responses, fetchResponses, bulkDeleteResponses 
     } = useFormStore();
+    const { templates, updateTemplate: updateTemplateInStore, addTemplate, fetchTemplates } = useTemplateStore();
 
     const [title, setTitle] = useState('New Form');
     const [status, setStatus] = useState<FormStatus>('Draft');
@@ -539,10 +542,38 @@ export default function FormEditor({ id }: { id?: string }) {
         return () => document.removeEventListener('mousedown', h);
     }, []);
 
-    useEffect(() => { fetchForms(); }, [fetchForms]);
+    useEffect(() => { 
+        if (isTemplate) fetchTemplates();
+        else fetchForms(); 
+    }, [fetchForms, fetchTemplates, isTemplate]);
 
     useEffect(() => {
-        if (!id || isLoaded || forms.length === 0) return;
+        if (!id || isLoaded) return;
+        
+        if (isTemplate) {
+            if (templates.length === 0) return;
+            const t = templates.find((t: Template) => t.id === id);
+            if (!t) return;
+            setTitle(t.name);
+            setStatus('Draft'); 
+            if (t.meta && typeof t.meta === 'object') {
+                const m = { ...DEFAULT_META, ...(t.meta as any) };
+                if (!m.confirmationBlocks || m.confirmationBlocks.length === 0) {
+                    m.confirmationBlocks = [
+                        { id: 'b1', type: 'success' },
+                        { id: 'b2', type: 'heading', content: 'Thanks!', level: 2 },
+                        { id: 'b3', type: 'text', content: m.confirmationMessage || "Thank you for your submission! We'll be in touch soon." }
+                    ];
+                }
+                setMeta(m);
+            } else if (t.design) {
+                setMeta(prev => ({ ...prev, design: t.design }));
+            }
+            setIsLoaded(true);
+            return;
+        }
+
+        if (forms.length === 0) return;
         const f = forms.find(f => f.id === id);
         if (!f) return;
         
@@ -565,7 +596,7 @@ export default function FormEditor({ id }: { id?: string }) {
         }
         setIsLoaded(true);
         if (id) fetchResponses(id);
-    }, [id, forms, isLoaded, fetchResponses]);
+    }, [id, forms, templates, isLoaded, fetchResponses, isTemplate]);
 
     const debouncedTitle   = useDebounce(title, 1000);
     const debouncedStatus  = useDebounce(status, 500);
@@ -580,12 +611,23 @@ export default function FormEditor({ id }: { id?: string }) {
         // Safety: Don't save if we are in an inconsistent state
         if (!id || !isLoaded) return;
 
-        console.log(`[FormEditor] Auto-saving form "${debouncedTitle}" with ${debouncedFields.length} fields`);
+        console.log(`[FormEditor] Auto-saving ${isTemplate ? 'template' : 'form'} "${debouncedTitle}" with ${debouncedFields.length} fields`);
 
-        updateForm(id, { title: debouncedTitle, status: debouncedStatus, fields: debouncedFields, meta: debouncedMeta as any })
-            .then(() => appToast.success('Changes saved', undefined, { id: `save-form-${id}`, duration: 1500 }))
-            .catch(() => appToast.error('Save failed', undefined, { id: `save-form-${id}`, duration: 3000 }));
-    }, [debouncedTitle, debouncedStatus, debouncedFields, debouncedMeta, id, isLoaded, updateForm]);
+        if (isTemplate) {
+            updateTemplateInStore(id, {
+                name: debouncedTitle,
+                blocks: debouncedFields,
+                design: debouncedMeta.design,
+                meta: debouncedMeta as any
+            })
+            .then(() => appToast.success('Template saved', undefined, { id: `save-template-${id}`, duration: 1500 }))
+            .catch(() => appToast.error('Save failed', undefined, { id: `save-template-${id}`, duration: 3000 }));
+        } else {
+            updateForm(id, { title: debouncedTitle, status: debouncedStatus, fields: debouncedFields, meta: debouncedMeta as any })
+                .then(() => appToast.success('Changes saved', undefined, { id: `save-form-${id}`, duration: 1500 }))
+                .catch(() => appToast.error('Save failed', undefined, { id: `save-form-${id}`, duration: 3000 }));
+        }
+    }, [debouncedTitle, debouncedStatus, debouncedFields, debouncedMeta, id, isLoaded, updateForm, isTemplate, updateTemplateInStore]);
 
     const updateMeta = useCallback((patch: Partial<FormMeta>) => {
         setMeta(prev => ({ ...prev, ...patch }));
@@ -636,9 +678,29 @@ export default function FormEditor({ id }: { id?: string }) {
 
     const handleDelete = async () => {
         if (!id) return;
-        await deleteForm(id);
-        appToast.success('Form Deleted', 'Your form has been permanently removed');
-        router.push('/forms');
+        if (isTemplate) {
+            await useTemplateStore.getState().deleteTemplate(id);
+            appToast.success('Template Deleted');
+            router.push('/templates');
+        } else {
+            await deleteForm(id);
+            appToast.success('Form Deleted', 'Your form has been permanently removed');
+            router.push('/forms');
+        }
+    };
+
+    const handleSaveAsTemplate = async () => {
+        const success = await addTemplate({
+            name: `${title} (Copy)`,
+            entity_type: 'form',
+            blocks: fields,
+            design: meta.design,
+            meta: meta as any,
+            is_default: false
+        });
+        if (success) {
+            appToast.success('Saved as Template', 'You can find it in the Templates vault');
+        }
     };
 
     const selectedField = fields.find(f => f.id === selectedFieldId);
@@ -828,7 +890,7 @@ export default function FormEditor({ id }: { id?: string }) {
                     <div className="flex items-center gap-1.5 min-w-0">
                         <div className={cn("hidden md:flex items-center gap-2 text-[13px] font-medium shrink-0",
                             isDark ? "text-white/40" : "text-gray-400")}>
-                            <span>Forms</span>
+                            <span>{isTemplate ? 'Templates' : 'Forms'}</span>
                             <span className="opacity-30">/</span>
                         </div>
                         <input type="text" value={title} onChange={e => setTitle(e.target.value)}
@@ -840,32 +902,35 @@ export default function FormEditor({ id }: { id?: string }) {
 
                 <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
                     {/* Status */}
-                    <div className="relative hidden md:flex" ref={statusRef}>
-                        <button onClick={() => setShowStatus(v => !v)}
-                            className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium border",
-                                isDark ? "bg-white/[0.06] text-[#aaa] border-white/10" : "bg-[#f5f5f5] text-[#555] border-[#e5e5e5]")}>
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_COLORS[status] }} />
-                            {status}
-                            <ChevronDown size={12} className="ml-1 opacity-50" />
-                        </button>
-                        {showStatus && (
-                            <div className={cn("absolute right-0 top-full mt-1.5 w-36 rounded-[10px] shadow-xl py-1 z-50 border",
-                                isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]")}>
-                                {STATUS_OPTS.map(s => (
-                                    <button key={s} onClick={() => { setStatus(s); setShowStatus(false); }}
-                                        className={cn("w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
-                                            isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
-                                            status === s ? "font-semibold" : ""
-                                        )}>
-                                        {status === s ? <Check size={12} className="text-emerald-500" /> : <div className="w-3" />}
-                                        {s}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    {!isTemplate && (
+                        <div className="relative hidden md:flex" ref={statusRef}>
+                            <button onClick={() => setShowStatus(v => !v)}
+                                className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-medium border",
+                                    isDark ? "bg-white/[0.06] text-[#aaa] border-white/10" : "bg-[#f5f5f5] text-[#555] border-[#e5e5e5]")}>
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_COLORS[status] }} />
+                                {status}
+                                <ChevronDown size={12} className="ml-1 opacity-50" />
+                            </button>
+                            {showStatus && (
+                                <div className={cn("absolute right-0 top-full mt-1.5 w-36 rounded-[10px] shadow-xl py-1 z-50 border",
+                                    isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#e4e4e4]")}>
+                                    {STATUS_OPTS.map(s => (
+                                        <button key={s} onClick={() => { setStatus(s); setShowStatus(false); }}
+                                            className={cn("w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
+                                                isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
+                                                status === s ? "font-semibold" : ""
+                                            )}>
+                                            {status === s ? <Check size={12} className="text-emerald-500" /> : <div className="w-3" />}
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />
+                    {!isTemplate && <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />}
+
 
                     <button
                         onClick={() => {
@@ -926,12 +991,11 @@ export default function FormEditor({ id }: { id?: string }) {
                             <div className={cn("absolute right-0 top-full mt-1.5 w-44 rounded-[10px] shadow-xl py-1 z-50 border",
                                 isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#d2d2eb]")}>
                                 {[
-                                    { icon: ExternalLink, label: 'Open Link', action: () => window.open(window.location.origin + '/p/form/' + id, '_blank') },
-                                    { icon: Link2, label: 'Copy Link', action: copyLink },
-                                    { icon: Download, label: 'Export CSV', action: () => appToast.info('No responses yet') },
-                                    { icon: Copy, label: 'Duplicate', action: () => appToast.info('Coming soon') },
-                                    { icon: Trash2, label: 'Delete', action: () => setIsDeleteOpen(true) },
-                                ].map(({ icon: Icon, label, action }) => (
+                                    { icon: ExternalLink, label: 'Open Link', action: () => !isTemplate && window.open(window.location.origin + '/p/form/' + id, '_blank'), hide: isTemplate },
+                                    { icon: Link2, label: 'Copy Link', action: copyLink, hide: isTemplate },
+                                    { icon: LayoutTemplate, label: 'Save as Template', action: handleSaveAsTemplate, hide: isTemplate },
+                                    { icon: Trash2, label: 'Delete', action: handleDelete },
+                                ].filter(i => !i.hide).map(({ icon: Icon, label, action }) => (
                                     <button key={label} onClick={() => { action(); setShowActions(false); }}
                                         className={cn("w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors",
                                             label === 'Delete'
@@ -951,7 +1015,10 @@ export default function FormEditor({ id }: { id?: string }) {
             {/* ── SECONDARY TABS ── */}
             <div className={cn("flex items-center gap-0 px-4 md:px-6 border-b shrink-0",
                 isDark ? "bg-[#111] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]")}>
-                {([['editor', 'Editor'], ['responses', `Responses`]] as const).map(([tab, label]) => (
+                {([
+                    ['editor', 'Editor'],
+                    !isTemplate && ['responses', 'Responses'],
+                ].filter(Boolean) as [EditorTab, string][]).map(([tab, label]) => (
                     <button key={tab} onClick={() => setEditorTab(tab)}
                         className={cn("px-4 py-2.5 text-[12px] font-semibold border-b-2 transition-all",
                             editorTab === tab
@@ -980,17 +1047,8 @@ export default function FormEditor({ id }: { id?: string }) {
                                         backgroundSize: 'cover',
                                         backgroundAttachment: 'fixed',
                                     }}>
-                                    {/* Top blur + step breadcrumb */}
+                                    {/* Step breadcrumb */}
                                     <div className="z-30 flex justify-center sticky top-0 w-full pt-4 pb-6 pointer-events-none">
-                                        <div className="absolute inset-0 pointer-events-none"
-                                            style={{
-                                            }}>
-                                            <div className={cn("absolute inset-0",
-                                                design.topBlurTheme === 'dark'
-                                                    ? "bg-gradient-to-b from-[#080808]/80 to-transparent"
-                                                    : "bg-gradient-to-b from-[#f7f7f7]/80 to-transparent"
-                                            )} />
-                                        </div>
                                         <div className="relative z-10 flex items-center gap-1.5 pointer-events-auto">
                                             {STEPS.map((s, i) => (
                                                 <React.Fragment key={s.id}>
@@ -1505,22 +1563,45 @@ export default function FormEditor({ id }: { id?: string }) {
                                                 initial={{ opacity: 0, x: 10 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 exit={{ opacity: 0, x: 10 }}
-                                                className={cn("flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border ml-2",
-                                                    isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-white border-[#e8e8e8] text-[#666]")}
+                                                className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border ml-2', isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}
                                             >
-                                                <span className="opacity-50">{selectedResponseIds.size} selected</span>
-                                                <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
-                                                <div className="flex items-center gap-3">
-                                                    <button onClick={handleBulkExportResponses} className="hover:text-primary flex items-center gap-1.5 transition-colors">
-                                                        <Upload size={11} className="opacity-70" />Export
+                                                <span className={cn('text-[11px] font-semibold mr-1', isDark ? 'text-[#aaa]' : 'text-[#666]')}>{selectedResponseIds.size} selected</span>
+                                                <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                                
+                                                <Tooltip content="Export" side="bottom">
+                                                    <button onClick={handleBulkExportResponses}
+                                                        className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                                        <Upload size={11}/>
                                                     </button>
-                                                    <button onClick={handleBulkDeleteResponses} className="hover:text-red-500 flex items-center gap-1.5 transition-colors text-red-500/80">
-                                                        <Trash2 size={11} className="opacity-70" />Delete
+                                                </Tooltip>
+                                                
+                                                <Tooltip content="Delete" side="bottom">
+                                                    <button onClick={handleBulkDeleteResponses}
+                                                        className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
+                                                        <Trash2 size={11}/>
                                                     </button>
-                                                    <button onClick={() => setSelectedResponseIds(new Set())} className={cn("border-l pl-2 transition-colors", isDark ? "text-white/40 hover:text-white" : "text-black/40 hover:text-black")}>
-                                                        <X size={11} />
+                                                </Tooltip>
+
+                                                {selectedResponseIds.size >= 2 && (
+                                                    <Tooltip content={selectedResponseIds.size === filteredResponses.length ? "Deselect All" : "Select All"} side="bottom">
+                                                        <button onClick={() => {
+                                                            if (selectedResponseIds.size === filteredResponses.length) setSelectedResponseIds(new Set());
+                                                            else setSelectedResponseIds(new Set(filteredResponses.map(r => r.id)));
+                                                        }}
+                                                            className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                                            <SquareCheck size={11}/>
+                                                        </button>
+                                                    </Tooltip>
+                                                )}
+
+                                                <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                                
+                                                <Tooltip content="Clear selection" side="bottom">
+                                                    <button onClick={() => setSelectedResponseIds(new Set())}
+                                                        className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
+                                                        <X size={11}/>
                                                     </button>
-                                                </div>
+                                                </Tooltip>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -1614,6 +1695,19 @@ export default function FormEditor({ id }: { id?: string }) {
                                                             : isDark ? "bg-[#1a1a1a] border-[#252525] hover:border-[#333]" : "bg-white border-[#ebebeb] hover:border-black/10 hover:shadow-sm"
                                                     )}
                                                 >
+                                                    {/* Checkbox Overlay */}
+                                                    <div className="absolute top-2 right-2 flex items-center gap-0.5 z-20">
+                                                        <div className={cn('transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
+                                                            onClick={e => { e.stopPropagation(); toggleResponseSelection(r.id); }}>
+                                                            <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                                                                <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
+                                                                    isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
+                                                                    {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
                                                     {/* Card Header (Contact Style) */}
                                                     <div className="flex items-center gap-3 px-4 py-3.5 relative">
                                                         <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold uppercase",

@@ -18,6 +18,8 @@ import { useUIStore } from '@/store/useUIStore';
 import { useTemplateStore, Template } from '@/store/useTemplateStore';
 import { ProposalDocument } from '@/components/proposals/ProposalEditor';
 import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
+import FormEditor from '@/components/forms/FormEditor';
+import SchedulerEditor from '@/components/schedulers/SchedulerEditor';
 import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import { DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -190,6 +192,14 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                 Loading template editor...
             </div>
         );
+    }
+
+    if (template.entity_type === 'form') {
+        return <FormEditor id={id} isTemplate={true} />;
+    }
+
+    if (template.entity_type === 'scheduler') {
+        return <SchedulerEditor id={id} isTemplate={true} />;
     }
 
     return (

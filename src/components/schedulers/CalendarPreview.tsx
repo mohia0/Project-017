@@ -67,7 +67,9 @@ export const getAvailableSlots = (
         const startMins = timeToMinutes(config.start);
         const endMins = timeToMinutes(config.end);
 
-        for (let m = startMins; m + duration <= endMins; m += duration) {
+        const stepInterval = Math.min(30, duration);
+
+        for (let m = startMins; m + duration <= endMins; m += stepInterval) {
             const h = Math.floor(m / 60);
             const mn = m % 60;
             const slotTime = d.set({ hour: h, minute: mn, second: 0, millisecond: 0 });
@@ -161,6 +163,26 @@ export function CalendarPreview({
 
     const todayStr = DateTime.now().setZone(clientTimezone).toISODate();
 
+    const activeDaysMap = React.useMemo(() => {
+        const map: Record<string, boolean> = {};
+        const todayStart = DateTime.now().setZone(clientTimezone).startOf('day');
+        
+        for (const d of cells) {
+            if (!d) continue;
+            const cellDateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const luxonCell = DateTime.fromISO(cellDateStr, { zone: clientTimezone });
+            
+            if (luxonCell.startOf('day') < todayStart) {
+                map[cellDateStr] = false;
+                continue;
+            }
+            
+            const daySlots = getAvailableSlots(cellDateStr, meta?.durations || [30], meta?.availability || {}, [], workspaceTimezone, clientTimezone);
+            map[cellDateStr] = daySlots.length > 0;
+        }
+        return map;
+    }, [month, year, clientTimezone, workspaceTimezone, JSON.stringify(meta?.durations), JSON.stringify(meta?.availability), cells.join(',')]);
+
     return (
         <div className={cn("rounded-xl overflow-hidden", isDark ? "bg-[#111]" : "bg-white")}>
             <div className="flex items-center justify-between px-4 pt-4 pb-2">
@@ -192,9 +214,8 @@ export function CalendarPreview({
                     
                     const isPast = luxonCell.startOf('day') < DateTime.now().setZone(clientTimezone).startOf('day');
                     
-                    // Simple active check: are any slots available on this day?
-                    const daySlots = getAvailableSlots(cellDateStr, meta?.durations || [30], meta?.availability || {}, [], workspaceTimezone, clientTimezone);
-                    const isActive = daySlots.length > 0;
+                    // Use the memoized check
+                    const isActive = activeDaysMap[cellDateStr] || false;
                     
                     const isDisabled = isPast || !isActive;
                     const isSel = cellDateStr === activeDateStr;

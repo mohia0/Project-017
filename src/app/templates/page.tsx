@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LayoutTemplate, Plus, FileText, Trash2, Calendar, FileType2, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, Pencil, BookmarkCheck } from 'lucide-react';
+import { LayoutTemplate, Plus, FileText, Trash2, Calendar, FileType2, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, Pencil, BookmarkCheck, ClipboardList, Clock } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { appToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,8 @@ import { useUIStore } from '@/store/useUIStore';
 import { useTemplateStore, Template } from '@/store/useTemplateStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
+import { useFormStore } from '@/store/useFormStore';
+import { useSchedulerStore } from '@/store/useSchedulerStore';
 
 export default function TemplatesPage() {
     const router = useRouter();
@@ -19,9 +21,11 @@ export default function TemplatesPage() {
     const { templates, fetchTemplates, deleteTemplate, isLoading, setDefaultTemplate } = useTemplateStore();
     const { addProposal } = useProposalStore();
     const { addInvoice } = useInvoiceStore();
+    const { addForm } = useFormStore();
+    const { addScheduler } = useSchedulerStore();
     
     const [isCreating, setIsCreating] = useState(false);
-    const [activeTool, setActiveTool] = useState<'all' | 'proposal' | 'invoice'>('all');
+    const [activeTool, setActiveTool] = useState<'all' | 'proposal' | 'invoice' | 'form' | 'scheduler'>('all');
     const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
     useEffect(() => {
@@ -44,7 +48,7 @@ export default function TemplatesPage() {
                     meta: { design: template.design } // Inject the template design
                 });
                 if (newProps) router.push(`/proposals/${newProps.id}`);
-            } else {
+            } else if (template.entity_type === 'invoice') {
                 const newInv = await addInvoice({
                     title: `Copy of ${template.name}`,
                     client_name: '',
@@ -57,6 +61,21 @@ export default function TemplatesPage() {
                     meta: { design: template.design, currency: 'USD', discountCalc: 'before_tax' } // Inject template design
                 });
                 if (newInv) router.push(`/invoices/${newInv.id}`);
+            } else if (template.entity_type === 'form') {
+                const f = await addForm({
+                    title: `Copy of ${template.name}`,
+                    status: 'Draft',
+                    fields: template.blocks,
+                    meta: { design: template.design } as any,
+                });
+                if (f) router.push(`/forms/${f.id}`);
+            } else if (template.entity_type === 'scheduler') {
+                const s = await addScheduler({
+                    title: `Copy of ${template.name}`,
+                    status: 'Draft',
+                    meta: { ...template.meta, title: `Copy of ${template.name}` } as any,
+                });
+                if (s) router.push(`/schedulers/${s.id}`);
             }
         } catch (error) {
             console.error("Error creating from template:", error);
@@ -73,7 +92,9 @@ export default function TemplatesPage() {
     const counts = {
         all: templates.length,
         proposal: templates.filter(t => t.entity_type === 'proposal').length,
-        invoice: templates.filter(t => t.entity_type === 'invoice').length
+        invoice: templates.filter(t => t.entity_type === 'invoice').length,
+        form: templates.filter(t => t.entity_type === 'form').length,
+        scheduler: templates.filter(t => t.entity_type === 'scheduler').length,
     };
 
     return (
@@ -102,7 +123,10 @@ export default function TemplatesPage() {
                         <>
                             <ChevronRight size={12} className="opacity-20" />
                             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/5 dark:bg-white/5">
-                                {activeTool === 'proposal' ? <ProposalIcon size={14} className="opacity-40" /> : <InvoiceIcon size={14} className="opacity-40" />}
+                                {activeTool === 'proposal' ? <ProposalIcon size={14} className="opacity-40" /> 
+                                : activeTool === 'invoice' ? <InvoiceIcon size={14} className="opacity-40" /> 
+                                : activeTool === 'form' ? <ClipboardList size={14} className="opacity-40" /> 
+                                : <Clock size={14} className="opacity-40" />}
                                 <span className="text-[13px] font-semibold capitalize">{activeTool}s</span>
                             </div>
                         </>
@@ -130,7 +154,9 @@ export default function TemplatesPage() {
                     {[
                         { id: 'all', label: 'All Templates', icon: LayoutTemplate },
                         { id: 'proposal', label: 'Proposals', icon: ProposalIcon },
-                        { id: 'invoice', label: 'Invoices', icon: InvoiceIcon }
+                        { id: 'invoice', label: 'Invoices', icon: InvoiceIcon },
+                        { id: 'form', label: 'Forms', icon: ClipboardList },
+                        { id: 'scheduler', label: 'Schedulers', icon: Clock }
                     ].map((tool) => (
                         <button
                             key={tool.id}
@@ -208,7 +234,12 @@ export default function TemplatesPage() {
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div className="space-y-1">
                                                         <div className="text-[10px] font-black leading-tight tracking-tight max-w-[120px]" style={{ color: template.design?.primaryColor || (isDark ? '#fff' : '#000') }}>
-                                                            {template.design?.documentTitle || (template.entity_type === 'invoice' ? 'INVOICE' : 'PROPOSAL')}
+                                                            {template.design?.documentTitle || (
+                                                                template.entity_type === 'invoice' ? 'INVOICE' : 
+                                                                template.entity_type === 'form' ? 'FORM' :
+                                                                template.entity_type === 'scheduler' ? 'BOOKING' :
+                                                                'PROPOSAL'
+                                                            )}
                                                         </div>
                                                         <div className="h-1 w-12 bg-current opacity-10 rounded-full" />
                                                     </div>
@@ -216,9 +247,31 @@ export default function TemplatesPage() {
                                                 </div>
 
                                                 {/* Mini Content Blocks */}
-                                                {(template.blocks || []).slice(0, 8).map((block: any, i: number) => (
+                                                {template.entity_type === 'scheduler' ? (
+                                                    <div className="space-y-3 mt-2">
+                                                        <div className="flex gap-1.5 overflow-hidden">
+                                                            {[1, 2, 3, 4].map(i => (
+                                                                <div key={i} className="w-8 h-8 rounded-md bg-current opacity-5 shrink-0" />
+                                                            ))}
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {[1, 2, 3].map(i => (
+                                                                <div key={i} className="flex items-center gap-2 p-1.5 rounded-lg border border-current opacity-10">
+                                                                    <div className="w-2 h-2 rounded-full bg-current opacity-40" />
+                                                                    <div className="h-1.5 w-16 bg-current opacity-20 rounded-full" />
+                                                                    <div className="ml-auto w-4 h-2 rounded-sm bg-current opacity-10" />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ) : (template.blocks || []).slice(0, 8).map((block: any, i: number) => (
                                                     <div key={i} className="w-full shrink-0">
-                                                        {block.type === 'header' || block.type === 'heading' ? (
+                                                        {template.entity_type === 'form' ? (
+                                                            <div className="space-y-1 mt-1">
+                                                                <div className="h-1 w-1/3 rounded-sm bg-current opacity-20" />
+                                                                <div className="h-3 w-full rounded-md border border-current opacity-10" />
+                                                            </div>
+                                                        ) : (block.type === 'header' || block.type === 'heading') ? (
                                                             <div className="space-y-1 mt-1">
                                                                 <div className="h-2 w-3/4 rounded-sm bg-current opacity-20" />
                                                                 <div className="h-1 w-1/4 rounded-sm bg-current opacity-10" />
@@ -260,11 +313,12 @@ export default function TemplatesPage() {
                                         <div className="absolute top-3 left-3 flex items-center gap-2 z-20">
                                             <span className={cn(
                                                 "px-2 py-0.5 text-[9px] uppercase font-bold tracking-widest rounded-md shadow-sm",
-                                                template.entity_type === 'proposal' 
-                                                    ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
-                                                    : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                                                template.entity_type === 'proposal' ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
+                                                : template.entity_type === 'invoice' ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                                                : template.entity_type === 'form' ? "bg-orange-500/10 text-orange-500 border border-orange-500/20"
+                                                : "bg-green-500/10 text-green-500 border border-green-500/20"
                                             )}>
-                                                {template.entity_type}
+                                                {template.entity_type === 'scheduler' ? 'booking' : template.entity_type}
                                             </span>
                                         </div>
                                         

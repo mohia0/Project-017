@@ -136,8 +136,7 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
             }}
         >
             <div className={cn(
-                "flex flex-col items-center min-h-screen py-12 px-6",
-                (isSubmitted || isRestricted) && "justify-center"
+                "flex flex-col items-center justify-center min-h-screen py-12 px-6"
             )}>
                 <div
                     className="w-full max-w-[620px] overflow-hidden shadow-2xl transition-all duration-300"
@@ -495,8 +494,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
             }}
         >
             <div className={cn(
-                "flex flex-col items-center min-h-screen py-12 px-4",
-                (step === 'confirmation') && "justify-center"
+                "flex flex-col items-center justify-center min-h-screen py-12 px-4"
             )}>
                 <div
                     className="w-full max-w-[680px] overflow-hidden shadow-2xl transition-all duration-300"
@@ -508,51 +506,72 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                     }}
                 >
                     {/* Card header */}
-                    <div className="px-5 md:px-8 pt-8 pb-5 border-b"
-                        style={{ borderColor: isBlockDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
-                        <div className="flex items-center gap-3 mb-4">
-                            {meta.logoUrl ? (
-                                <img src={meta.logoUrl} alt="Logo"
-                                    className="object-contain"
-                                    style={{ height: `${design.logoSize || 40}px` }} />
-                            ) : (
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
-                                    style={{ 
-                                        background: design.primaryColor || '#4dbf39',
-                                        color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
-                                    }}>
-                                    {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
-                                </div>
-                            )}
-                            <div>
-                                <div className="font-bold text-[15px]" style={{ color: isBlockDark ? '#fff' : '#111' }}>
-                                    {meta.organizer || liveData.title || 'Scheduler Name'}
-                                </div>
-                                <div className="text-[12px] opacity-50" style={{ color: isBlockDark ? '#aaa' : '#777' }}>Book a time</div>
+                    {step !== 'confirmation' && (
+                        <div className="px-5 md:px-8 pt-8 pb-5 border-b"
+                            style={{ borderColor: isBlockDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                {meta.logoUrl && step !== 'confirmation' ? (
+                                    <img src={meta.logoUrl} alt="Logo"
+                                        className="object-contain"
+                                        style={{ height: `${design.logoSize || 40}px` }} />
+                                ) : step !== 'confirmation' ? (
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
+                                        style={{ 
+                                            background: design.primaryColor || '#4dbf39',
+                                            color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
+                                        }}>
+                                        {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
+                                    </div>
+                                ) : null}
+                                {(!meta.logoUrl || meta.logoUrl.trim() === '') && (
+                                    <div>
+                                        <div className="font-bold text-[15px]" style={{ color: isBlockDark ? '#fff' : '#111' }}>
+                                            {meta.organizer || liveData.title || 'Scheduler Name'}
+                                        </div>
+                                        <div className="text-[26px] font-black tracking-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>Book a time</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="text-right">
+                                {step === 'scheduler' ? (
+                                    meta.logoUrl && (
+                                        <div className="text-[26px] font-black tracking-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>Book a time</div>
+                                    )
+                                ) : step === 'form' ? (
+                                    <div className="space-y-0.5">
+                                        <div className="font-black text-[26px] tracking-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>Confirm Details</div>
+                                        <div className="text-[11px] opacity-50 truncate max-w-[200px] md:max-w-none" style={{ color: isBlockDark ? '#aaa' : '#777' }}>
+                                            {selDate && DateTime.fromISO(selDate, { zone: clientTimezone }).toFormat('cccc, MMMM d')} at {selTime} ({duration}m)
+                                        </div>
+                                    </div>
+                                ) : null}
                             </div>
                         </div>
 
                         {/* Duration selector — only on scheduler step */}
                         {step === 'scheduler' && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 mt-8">
                             {(meta.durations && meta.durations.length > 0 ? meta.durations : [30, 60]).map((d: number) => (
                                 <button key={d}
                                     onClick={() => setDuration(d)}
                                     className={cn(
-                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all",
+                                        "flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-semibold transition-all",
                                         duration === d ? "scale-105" : "opacity-60 grayscale"
                                     )}
                                     style={{
                                         background: design.primaryColor || '#4dbf39',
                                         color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
                                     }}>
-                                    <Clock size={11} />
+                                    <Clock size={10} />
                                     {d >= 60 ? `${d / 60} hr` : `${d} min`}
                                 </button>
                             ))}
                         </div>
                         )}
                     </div>
+                    )}
 
                     {/* Canvas step content */}
                     <div className="p-5 md:p-8">
@@ -619,12 +638,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
 
                         {step === 'form' && (
                             <div className="max-w-[460px] mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4">
-                                <div className="text-center space-y-1">
-                                    <h3 className="text-[18px] font-bold" style={{ color: isBlockDark ? '#fff' : '#111' }}>Confirm Details</h3>
-                                    <p className="text-[13px] opacity-50" style={{ color: isBlockDark ? '#ccc' : '#777' }}>
-                                        {selDate && DateTime.fromISO(selDate, { zone: clientTimezone }).toFormat('cccc, MMMM d')} at {selTime} ({duration}m)
-                                    </p>
-                                </div>
+
                                 
                                 <div className="space-y-2">
                                     {!hasCustomName && (
