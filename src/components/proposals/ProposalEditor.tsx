@@ -1422,14 +1422,21 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 defaultName={meta.projectName || 'My Proposal Template'}
                 entityType="proposal"
                 onSave={async (name, description, isDefault) => {
-                    await addTemplate({
-                        name,
-                        description,
-                        is_default: isDefault,
-                        entity_type: 'proposal',
-                        blocks,
-                        design: meta.design || DEFAULT_DOCUMENT_DESIGN
-                    });
+                    await appToast.promise(
+                        addTemplate({
+                            name,
+                            description,
+                            is_default: isDefault,
+                            entity_type: 'proposal',
+                            blocks,
+                            design: { ...(meta.design || DEFAULT_DOCUMENT_DESIGN), documentTitle: meta.documentTitle || meta.projectName || 'PROPOSAL &\nAGREEMENT' } as any
+                        }),
+                        {
+                            loading: 'Saving template...',
+                            success: 'Template saved successfully',
+                            error: 'Failed to save template'
+                        }
+                    );
                 }}
             />
 

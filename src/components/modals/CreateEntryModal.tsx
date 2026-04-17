@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useUIStore } from '@/store/useUIStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import {
     X, ChevronRight, User, PenTool, FileText,
     Building2, Calendar, Plus, Search, Zap,
@@ -79,6 +80,7 @@ const STARTER_TEMPLATES = [
 export default function CreateEntryModal() {
     const { isCreateModalOpen, setCreateModalOpen, theme, activeWorkspaceId, openRightPanel, createModalTab } = useUIStore();
     const isDark = theme === 'dark';
+    const isMobile = useIsMobile();
     const router = useRouter();
 
     const [tab, setTab] = useState<EntityType>(createModalTab || 'Contact');
@@ -314,7 +316,9 @@ export default function CreateEntryModal() {
                 const p = await addProposal({
                     title: pTitle || generateNextId('proposals'),
                     client_id: selectedClientId, client_name: selectedClient || clientQuery,
-                    status: 'Draft', amount: 0, issue_date: pIssueDate, due_date: pExpiry, notes: '', blocks: templateToUse?.blocks || []
+                    status: 'Draft', amount: 0, issue_date: pIssueDate, due_date: pExpiry, notes: '', 
+                    blocks: templateToUse?.blocks || [],
+                    meta: templateToUse?.design ? { design: templateToUse.design } : undefined
                 });
                 if (p) {
                     if (selectedProjectId) await addProjectItem({ project_id: selectedProjectId, item_type: 'proposal', item_id: p.id });
@@ -325,7 +329,9 @@ export default function CreateEntryModal() {
                 const inv = await addInvoice({
                     title: iTitle || generateNextId('invoices'),
                     client_id: selectedClientId, client_name: selectedClient || clientQuery,
-                    status: 'Draft', amount: 0, issue_date: iIssueDate, due_date: iDueDate, notes: '', blocks: templateToUse?.blocks || []
+                    status: 'Draft', amount: 0, issue_date: iIssueDate, due_date: iDueDate, notes: '', 
+                    blocks: templateToUse?.blocks || [],
+                    meta: templateToUse?.design ? { design: templateToUse.design, currency: 'USD', discountCalc: 'before_tax' } : undefined
                 });
                 if (inv) {
                     if (selectedProjectId) await addProjectItem({ project_id: selectedProjectId, item_type: 'invoice', item_id: inv.id });
@@ -575,11 +581,11 @@ export default function CreateEntryModal() {
             onClick={e => { if (e.target === e.currentTarget) setCreateModalOpen(false); }}
         >
             <div className={cn(
-                "w-full max-w-[660px] min-h-[700px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200",
+                "w-full max-w-[540px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200",
                 isDark ? "bg-[#161616] border border-[#252525]" : "bg-[#f7f7f7] border border-[#e0e0e0]"
             )}>
                 {/* Header */}
-                <div className={cn("flex items-center justify-between px-5 pt-5 pb-4 border-b", isDark ? "border-[#252525]" : "border-[#eaeaef]")}>
+                <div className={cn("flex items-center justify-between px-5 pt-4 pb-3 border-b", isDark ? "border-[#252525]" : "border-[#eaeaef]")}>
                     <div className="flex items-center gap-2.5">
                         <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
                             <Plus size={14} className="text-primary" strokeWidth={3} />
@@ -591,23 +597,29 @@ export default function CreateEntryModal() {
                     </button>
                 </div>
 
-                <div className="flex flex-1 overflow-hidden h-[620px] max-h-[85vh]">
-                    {/* Sidebar Tabs */}
-                    <div className={cn("w-[200px] flex flex-col p-2 border-r", isDark ? "bg-[#111] border-[#252525]" : "bg-[#f9f9fb] border-[#eaeaef]")}>
-                        <div className="flex-1 flex flex-col gap-1 overflow-y-auto no-scrollbar">
-                            {TABS.map(t => (
-                                <button key={t.id} onClick={() => setTab(t.id)} className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[12px] font-bold transition-all group shrink-0", tab === t.id ? (isDark ? "bg-[#2a2a2a] text-white shadow-sm border border-white/5" : "bg-white text-primary shadow-sm border border-[#e0e0eb]") : (isDark ? "text-[#555] hover:text-[#888] hover:bg-white/[0.02]" : "text-[#888] hover:text-[#333] hover:bg-[#efeff5]"))}>
-                                    <span className={cn("transition-colors", tab === t.id ? "text-primary" : "opacity-40 group-hover:opacity-60")}>{t.icon}</span>
-                                    {t.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                {/* ── Horizontal Tab Pills ── */}
+                <div className={cn("flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar border-b", isDark ? "border-[#252525] bg-[#111]" : "border-[#eaeaef] bg-[#f9f9fb]")}>
+                    {TABS.map(t => (
+                        <button
+                            key={t.id}
+                            onClick={() => setTab(t.id)}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-semibold transition-all shrink-0 border",
+                                tab === t.id
+                                    ? (isDark ? "bg-[#2a2a2a] text-white border-white/10 shadow-sm" : "bg-white text-primary border-[#e0e0eb] shadow-sm")
+                                    : (isDark ? "text-[#555] border-transparent hover:text-[#999] hover:bg-white/[0.04]" : "text-[#999] border-transparent hover:text-[#444] hover:bg-black/[0.04]")
+                            )}
+                        >
+                            <span className={cn("transition-colors", tab === t.id ? "text-primary" : "opacity-50")}>{t.icon}</span>
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
 
-                    {/* Content Area */}
-                    <div className="flex-1 relative overflow-hidden" key={tab}>
-                        <div className="absolute inset-0 overflow-y-auto w-full no-scrollbar pb-[120px]">                            
-                            <div className="flex flex-col gap-3 px-8 pt-7 pb-8">
+                {/* ── Content Area (full width) ── */}
+                <div className="relative overflow-hidden" style={{ height: 'min(520px, calc(85vh - 130px))' }} key={tab}>
+                    <div className="absolute inset-0 overflow-y-auto w-full no-scrollbar pb-[76px]">
+                        <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
                                 {/* ── Contact Form ── */}
                                 {tab === 'Contact' && (
                                     <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-right-2 duration-300">
@@ -907,17 +919,16 @@ export default function CreateEntryModal() {
                                         </div>
                                     </div>
                                 )}
-                            </div>
                         </div>
+                    </div>
 
-                        {/* Footer */}
-                        <div className={cn("absolute bottom-0 w-full flex items-center justify-between px-6 py-4 border-t z-[40]", isDark ? "border-[#252525] bg-[#111]" : "border-[#e8e8e8] bg-white")}>
-                            <button onClick={() => setCreateModalOpen(false)} className={cn("px-4 py-2 text-[13px] font-medium rounded-xl transition-colors", isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f5f5f5]")}>Cancel</button>
-                            <button onClick={handleCreate} disabled={loading} className="flex items-center gap-2 px-6 py-2 text-[13px] font-bold rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-60 shadow-[0_4px_14px_-4px_rgba(var(--brand-primary-rgb),0.5)]">
-                                {loading ? 'Creating...' : `Create ${tab.toLowerCase()}`}
-                                {!loading && <ChevronRight size={14} strokeWidth={2.5} />}
-                            </button>
-                        </div>
+                    {/* Footer */}
+                    <div className={cn("absolute bottom-0 w-full flex items-center justify-between px-5 py-3.5 border-t z-[40]", isDark ? "border-[#252525] bg-[#111]" : "border-[#e8e8e8] bg-white")}>
+                        <button onClick={() => setCreateModalOpen(false)} className={cn("px-4 py-2 text-[13px] font-medium rounded-xl transition-colors", isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f5f5f5]")}>Cancel</button>
+                        <button onClick={handleCreate} disabled={loading} className="flex items-center gap-2 px-5 py-2 text-[13px] font-bold rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-all active:scale-[0.98] disabled:opacity-60 shadow-[0_4px_14px_-4px_rgba(var(--brand-primary-rgb),0.5)]">
+                            {loading ? 'Creating...' : `Create ${tab.toLowerCase()}`}
+                            {!loading && <ChevronRight size={14} strokeWidth={2.5} />}
+                        </button>
                     </div>
                 </div>
             </div>

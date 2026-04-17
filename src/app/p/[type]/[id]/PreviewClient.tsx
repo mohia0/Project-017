@@ -16,6 +16,7 @@ import { appToast } from '@/lib/toast';
 import { CalendarPreview, getAvailableSlots, timeToMinutes } from '@/components/schedulers/CalendarPreview';
 import { AnimatePresence } from 'framer-motion';
 import { DateTime } from 'luxon';
+import { useSearchParams } from 'next/navigation';
 
 const KanbanBoard = dynamic(() => import('@/components/projects/KanbanBoard'), { ssr: false });
 const TaskDetailPanel = dynamic(() => import('@/components/projects/TaskDetailPanel'), { ssr: false });
@@ -769,6 +770,9 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PreviewClient({ type, data }: { type: 'proposal' | 'invoice' | 'project' | 'form' | 'scheduler' | 'forms' | 'schedulers', data: any }) {
     const [liveData, setLiveData] = useState(data);
+    const searchParams = useSearchParams();
+    const isPrinting = searchParams.get('print') === '1';
+
     // useRef persists across React Strict Mode double-mounts (unlike useState)
     const viewHasBeenTracked = useRef(false);
 
@@ -794,7 +798,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
 
     // Track view ONCE per page load
     useEffect(() => {
-        if (viewHasBeenTracked.current) return;
+        if (viewHasBeenTracked.current || isPrinting) return;
         viewHasBeenTracked.current = true;
 
         fetch('/api/track-view', {

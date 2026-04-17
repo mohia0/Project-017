@@ -19,7 +19,7 @@ import { useProjectStore } from '@/store/useProjectStore';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { MobileTopBar, MobileBottomNav, MobileRightPanelDrawer } from './MobileNav';
+import { MobileNavBar, MobileRightPanelDrawer } from './MobileNav';
 
 function DocumentTitleSetter() {
     const pathname = usePathname();
@@ -143,27 +143,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 "flex flex-col h-screen w-full overflow-hidden",
                 isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f0f0f0] text-[#111]"
             )}>
-                {/* Top bar */}
-                <MobileTopBar />
-
-                {/* Main content — scrollable, padded bottom for bottom nav */}
+                {/* Main content — full height, bottom padding reserved for the floating nav bar */}
                 <main className={cn(
                     "flex-1 flex flex-col overflow-hidden",
                     isDark ? "bg-[#141414]" : "bg-white"
                 )}>
                     <WorkspaceDataSync />
                     <DocumentTitleSetter />
-                    {/* Inner scroll area with bottom padding for nav bar */}
-                    <div className="flex-1 overflow-hidden flex flex-col pb-[68px]">
+                    {/* Inner scroll area — padded so content isn't hidden behind floating nav */}
+                    <div className="flex-1 overflow-hidden flex flex-col" style={{ paddingBottom: 'max(92px, calc(env(safe-area-inset-bottom) + 80px))' }}>
                         {children}
                     </div>
                 </main>
 
-                {/* Right panel as bottom drawer on mobile */}
+                {/* Right panel as bottom sheet on mobile */}
                 <MobileRightPanelDrawer />
 
-                {/* Bottom navigation */}
-                <MobileBottomNav />
+                {/* Floating bottom nav bar (hamburger + create + bell) */}
+                <MobileNavBar />
 
                 {/* Global Modals */}
                 <CreateEntryModal />

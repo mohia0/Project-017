@@ -337,12 +337,7 @@ export default function HooksPage() {
                         ]}
                     />
 
-                    {isMobile && (
-                        <button onClick={handleNew}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground">
-                            <Plus size={12} strokeWidth={2.5} /> New
-                        </button>
-                    )}
+
                 </div>
 
                 {/* Bulk action bar */}

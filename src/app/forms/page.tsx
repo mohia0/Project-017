@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils';
 import {
     Search, Table2, LayoutGrid, Plus, ChevronDown,
     ClipboardList, Check, Trash2,
-    ArrowUpDown, MessageSquare, Copy, Link, ExternalLink
+    ArrowUpDown, MessageSquare, Copy, Link, ExternalLink,
+    SlidersHorizontal
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -269,6 +270,7 @@ export default function FormsPage() {
     const [statusFilter, setStatusFilter] = useState<FormStatus | 'All'>('All');
     const [orderBy, setOrderBy] = useState<'created_at' | 'title'>('created_at');
     const [orderOpen, setOrderOpen] = useState(false);
+    const [filterOpen, setFilterOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -348,59 +350,59 @@ export default function FormsPage() {
             </div>
 
             {/* Toolbar */}
-            <div className={cn("flex items-center gap-2 px-4 py-2 shrink-0 border-b",
-                isDark ? "border-[#252525] bg-[#141414]" : "border-[#ebebeb] bg-[#f7f7f7]")}>
-                
-                {/* Status tabs merged into toolbar */}
-                <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none py-0.5">
-                    {STATUSES.map(s => {
-                        const active = statusFilter === s;
-                        const count = statusCounts[s] || 0;
-                        const cfg = s !== 'All' ? STATUS_CFG[s] : null;
-                        return (
-                            <button key={s} onClick={() => setStatusFilter(s)}
-                                className={cn(
-                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-medium transition-all shrink-0",
-                                    active
-                                        ? isDark ? "bg-white/10 text-white" : "bg-white text-[#111] shadow-sm border border-[#e8e8e8]"
-                                        : isDark ? "text-[#666] hover:text-[#aaa] hover:bg-white/5" : "text-[#999] hover:text-[#555] hover:bg-black/5"
-                                )}>
-                                {s !== 'All' && cfg && (
-                                    <span className="w-1.5 h-1.5 rounded-full"
-                                        style={{ background: isDark ? STATUS_DARK[s as FormStatus].dot : cfg.dot }} />
-                                )}
-                                {s}
-                                <span className={cn("text-[10px] font-bold tabular-nums",
-                                    active ? (isDark ? "text-white/60" : "text-[#555]") : (isDark ? "text-[#555]" : "text-[#ccc]"))}>
-                                    {count}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-
-                <div className="flex-1" />
-
-                <SearchInput 
-                    value={searchQuery} 
-                    onChange={setSearchQuery} 
-                    placeholder="Search forms..." 
-                    isDark={isDark} 
-                />
-                <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
-
-                <div className="flex items-center gap-1">
-                    <div className="relative">
-                        <TbBtn label={orderBy === 'title' ? 'Name' : 'Date'} icon={<ArrowUpDown size={11} />}
-                            hasArrow isDark={isDark} onClick={() => setOrderOpen(v => !v)} />
-                        <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
+            {isMobile ? (
+                /* ── Mobile toolbar: compact row with search + filter sheet ── */
+                <div className={cn("flex items-center gap-2 px-3 py-2 shrink-0 border-b relative z-10",
+                    isDark ? "border-[#252525] bg-[#141414]" : "border-[#f0f0f0] bg-white")}>
+                    {/* Search */}
+                    <div className={cn("relative flex-1")}>
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-40" size={12} />
+                        <input
+                            type="text"
+                            placeholder="Search forms..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className={cn(
+                                "w-full pl-7 pr-3 py-1.5 text-[12px] rounded-[8px] border focus:outline-none transition-all",
+                                isDark
+                                    ? "bg-white/[0.05] border-white/10 text-white placeholder:text-white/25"
+                                    : "bg-[#f5f5f5] border-transparent text-[#111] placeholder:text-[#aaa]"
+                            )}
+                        />
+                    </div>
+                    {/* Filter button */}
+                    <div className="relative shrink-0">
+                        <button
+                            onClick={() => setFilterOpen(v => !v)}
+                            className={cn(
+                                "w-[34px] h-[34px] rounded-[8px] flex items-center justify-center border transition-all",
+                                filterOpen || statusFilter !== 'All'
+                                    ? "bg-primary/15 border-primary/40 text-primary"
+                                    : isDark ? "bg-white/[0.05] border-white/10 text-[#888]" : "bg-[#f5f5f5] border-transparent text-[#888]"
+                            )}
+                        >
+                            <SlidersHorizontal size={14} />
+                        </button>
+                        <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
+                            <div className={cn("px-3.5 py-2.5 border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>STATUS</div>
+                            <div className="py-1">
+                                {STATUSES.map(s => (
+                                    <button key={s} onClick={() => { setStatusFilter(s); setFilterOpen(false); }}
+                                        className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
+                                            statusFilter === s ? (isDark ? "bg-white/8" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]"),
+                                            isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                        {s}
+                                        {statusFilter === s && <Check size={11} className="text-primary" />}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className={cn("px-3.5 py-2.5 border-t border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>SORT BY</div>
                             <div className="py-1">
                                 {[['created_at', 'Date Created'], ['title', 'Name']].map(([val, label]) => (
-                                    <button key={val} onClick={() => { setOrderBy(val as any); setOrderOpen(false); }}
+                                    <button key={val} onClick={() => { setOrderBy(val as any); setFilterOpen(false); }}
                                         className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
                                             orderBy === val ? (isDark ? "bg-white/8" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]"),
-                                            isDark ? "text-[#ccc]" : "text-[#333]"
-                                        )}>
+                                            isDark ? "text-[#ccc]" : "text-[#333]")}>
                                         {label}
                                         {orderBy === val && <Check size={11} className="text-primary" />}
                                     </button>
@@ -408,28 +410,87 @@ export default function FormsPage() {
                             </div>
                         </Dropdown>
                     </div>
-
-                    <ViewToggle 
-                        view={view} 
-                        onViewChange={setView} 
-                        isDark={isDark} 
-                        options={[
-                            { id: 'cards', icon: <LayoutGrid size={12}/> },
-                            { id: 'table', icon: <Table2 size={12}/> }
-                        ]}
-                    />
-
-                    {isMobile && (
-                        <button onClick={handleNew}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground">
-                            <Plus size={12} strokeWidth={2.5} /> New
-                        </button>
-                    )}
                 </div>
+            ) : (
+                /* ── Desktop toolbar ── */
+                <div className={cn("flex items-center gap-2 px-4 py-2 shrink-0 border-b",
+                    isDark ? "border-[#252525] bg-[#141414]" : "border-[#ebebeb] bg-[#f7f7f7]")}>
+                    
+                    {/* Status tabs merged into toolbar */}
+                    <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none py-0.5">
+                        {STATUSES.map(s => {
+                            const active = statusFilter === s;
+                            const count = statusCounts[s] || 0;
+                            const cfg = s !== 'All' ? STATUS_CFG[s] : null;
+                            return (
+                                <button key={s} onClick={() => setStatusFilter(s)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-medium transition-all shrink-0",
+                                        active
+                                            ? isDark ? "bg-white/10 text-white" : "bg-white text-[#111] shadow-sm border border-[#e8e8e8]"
+                                            : isDark ? "text-[#666] hover:text-[#aaa] hover:bg-white/5" : "text-[#999] hover:text-[#555] hover:bg-black/5"
+                                    )}>
+                                    {s !== 'All' && cfg && (
+                                        <span className="w-1.5 h-1.5 rounded-full"
+                                            style={{ background: isDark ? STATUS_DARK[s as FormStatus].dot : cfg.dot }} />
+                                    )}
+                                    {s}
+                                    <span className={cn("text-[10px] font-bold tabular-nums",
+                                        active ? (isDark ? "text-white/60" : "text-[#555]") : (isDark ? "text-[#555]" : "text-[#ccc]"))}>
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
 
-                {/* Bulk banner */}
-                {!isMobile && selectedIds.size > 0 && (
-                    <div className={cn("flex items-center gap-4 px-3 py-1 rounded-lg text-[11px] font-medium border ml-2",
+                    <div className="flex-1" />
+
+                    <SearchInput 
+                        value={searchQuery} 
+                        onChange={setSearchQuery} 
+                        placeholder="Search forms..." 
+                        isDark={isDark} 
+                    />
+                    <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+
+                    <div className="flex items-center gap-1">
+                        <div className="relative">
+                            <TbBtn label={orderBy === 'title' ? 'Name' : 'Date'} icon={<ArrowUpDown size={11} />}
+                                hasArrow isDark={isDark} onClick={() => setOrderOpen(v => !v)} />
+                            <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
+                                <div className="py-1">
+                                    {[['created_at', 'Date Created'], ['title', 'Name']].map(([val, label]) => (
+                                        <button key={val} onClick={() => { setOrderBy(val as any); setOrderOpen(false); }}
+                                            className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
+                                                orderBy === val ? (isDark ? "bg-white/8" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]"),
+                                                isDark ? "text-[#ccc]" : "text-[#333]"
+                                            )}>
+                                            {label}
+                                            {orderBy === val && <Check size={11} className="text-primary" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </Dropdown>
+                        </div>
+
+                        <ViewToggle 
+                            view={view} 
+                            onViewChange={setView} 
+                            isDark={isDark} 
+                            options={[
+                                { id: 'cards', icon: <LayoutGrid size={12}/> },
+                                { id: 'table', icon: <Table2 size={12}/> }
+                            ]}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* ── Bulk banner (Desktop only) ── */}
+            {!isMobile && selectedIds.size > 0 && (
+                <div className="absolute top-full left-0 right-0 z-10 p-2 pointer-events-none">
+                    <div className={cn("inline-flex items-center gap-4 px-3 py-1.5 rounded-lg text-[11px] font-medium border shadow-lg pointer-events-auto",
                         isDark ? "bg-[#1c1c1c] border-[#2e2e2e] text-[#aaa]" : "bg-white border-[#e8e8e8] text-[#666]")}>
                         <span className="opacity-50">{selectedIds.size} selected</span>
                         <div className={cn("w-[1px] h-3", isDark ? "bg-[#333]" : "bg-[#ddd]")} />
@@ -446,8 +507,8 @@ export default function FormsPage() {
                             </Tooltip>
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Content */}
             <div className="flex-1 overflow-auto pb-44">
@@ -495,89 +556,86 @@ export default function FormsPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className="w-full overflow-x-auto">
-                        <table className="w-full border-collapse text-[12.5px]">
-                            <thead>
-                                <tr className={cn("border-b text-[10.5px] uppercase tracking-wider",
-                                    isDark ? "border-[#252525] text-[#444]" : "border-[#ebebeb] text-[#bbb]")}>
-                                    <th className="px-4 py-2.5 w-[44px] text-center">
-                                        <div className="cursor-pointer flex justify-center" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
-                                            <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
-                                        </div>
-                                    </th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[260px]">Name</th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[120px]">Status</th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[120px]">Fields</th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[120px]">Responses</th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[140px]">Created</th>
-                                    <th className="text-left font-semibold px-4 py-2.5">Expires</th>
-                                    <th className="w-[80px]" />
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <div className="flex-1 overflow-x-auto w-full">
+                        <div className="min-w-[1000px] flex flex-col">
+                            {/* Header */}
+                            <div className={cn("grid px-0 py-2.5 text-[11px] font-semibold tracking-wider uppercase border-b sticky top-0 z-30 shadow-sm",
+                                isDark ? "bg-[#141414] border-[#252525] text-[#555]" : "bg-[#f7f7f7] border-[#ebebeb] text-[#bbb]")}
+                                style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 120px' }}>
+                                <div className="flex justify-center" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
+                                    <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                                </div>
+                                <div className="px-4">Name</div>
+                                <div className="px-4">Status</div>
+                                <div className="px-4">Fields</div>
+                                <div className="px-4">Responses</div>
+                                <div className="px-4">Created</div>
+                                <div className="px-4">Expires</div>
+                                <div className="px-4"></div>
+                            </div>
+
+                            {/* Rows */}
+                            <div className="flex flex-col">
                                 {filtered.map(f => {
                                     const fields = Array.isArray(f.fields) ? f.fields : [];
                                     const isSelected = selectedIds.has(f.id);
+
                                     return (
-                                        <tr key={f.id}
+                                        <div
+                                            key={f.id}
                                             onClick={() => router.push(`/forms/${f.id}`)}
-                                            className={cn("border-b cursor-pointer transition-colors group",
-                                                isDark
-                                                    ? "border-[#1e1e1e] hover:bg-white/[0.025]"
-                                                    : "border-[#f0f0f0] hover:bg-[#fafafa]",
-                                                isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}>
-                                            <td className="px-4 py-3 text-center" onClick={e => toggleRow(f.id, e)}>
-                                                <div className="flex justify-center">
-                                                    <Chk checked={isSelected} isDark={isDark} />
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className={cn("font-semibold truncate", isDark ? "text-[#e0e0e0]" : "text-[#111]")}>
-                                                    {f.title}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
+                                            className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
+                                                isDark ? "border-[#1e1e1e] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
+                                                isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
+                                            style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 120px' }}>
+
+                                            <div className="flex items-center justify-center px-0 py-3 self-stretch" onClick={e => toggleRow(f.id, e)}>
+                                                <Chk checked={isSelected} isDark={isDark} />
+                                            </div>
+
+                                            <div className="flex flex-col justify-center px-4 py-3 min-w-0">
+                                                <div className={cn("font-semibold truncate", isDark ? "text-[#e0e0e0]" : "text-[#111]")}>{f.title}</div>
+                                            </div>
+
+                                            <div className="flex flex-col justify-center px-4 py-3">
                                                 <StatusCell
                                                     status={f.status}
                                                     onStatusChange={(s) => updateForm(f.id, { status: s })}
                                                     isDark={isDark}
                                                 />
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#666]" : "text-[#888]")}>
-                                                    {fields.length}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
+                                            </div>
+
+                                            <div className="flex flex-col justify-center px-4 py-3">
+                                                <span className={cn(isDark ? "text-[#666]" : "text-[#888]")}>{fields.length}</span>
+                                            </div>
+
+                                            <div className="flex flex-col justify-center px-4 py-3">
                                                 <span className={cn(isDark ? "text-[#666]" : "text-[#aaa]")}>0</span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>
-                                                    {fmtDate(f.created_at)}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
+                                            </div>
+
+                                            <div className="flex flex-col justify-center px-4 py-3">
+                                                <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>{fmtDate(f.created_at)}</span>
+                                            </div>
+
+                                            <div className="flex flex-col justify-center px-4 py-3">
                                                 {f.meta?.expirationDate ? (
-                                                    <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>
-                                                        {fmtDate(f.meta.expirationDate)}
-                                                    </span>
-                                                ) : (
-                                                    <span className={cn("opacity-20", isDark ? "text-white" : "text-black")}>—</span>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                                                    <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>{fmtDate(f.meta.expirationDate)}</span>
+                                                ) : <span className={cn("opacity-20", isDark ? "text-white" : "text-black")}>—</span>}
+                                            </div>
+
+                                            <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors",
+                                                isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"))} 
+                                                onClick={e => e.stopPropagation()}>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
                                                     <Tooltip content="Open Link" side="top">
                                                         <button onClick={(e) => { e.stopPropagation(); window.open(window.location.origin + '/p/form/' + f.id, '_blank'); }}
-                                                            className={cn("p-1.5 rounded-lg transition-colors",
-                                                                isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                                                            className={cn("p-1.5 rounded-lg transition-colors", isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
                                                             <ExternalLink size={12} />
                                                         </button>
                                                     </Tooltip>
                                                     <Tooltip content="Copy preview link" side="top">
                                                         <button onClick={(e) => copyLink(f.id, e)}
-                                                            className={cn("p-1.5 rounded-lg transition-colors",
-                                                                isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
+                                                            className={cn("p-1.5 rounded-lg transition-colors", isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
                                                             <Link size={12} />
                                                         </button>
                                                     </Tooltip>
@@ -585,18 +643,17 @@ export default function FormsPage() {
                                                         <InlineDeleteButton onDelete={() => handleDelete(f.id)} isDark={isDark} />
                                                     ) : (
                                                         <button onClick={() => setDeletingId(f.id)}
-                                                            className={cn("p-1.5 rounded-lg transition-colors text-red-400",
-                                                                isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
+                                                            className={cn("p-1.5 rounded-lg transition-colors text-red-400", isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
                                                             <Trash2 size={12} />
                                                         </button>
                                                     )}
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </div>
+                                        </div>
                                     );
                                 })}
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

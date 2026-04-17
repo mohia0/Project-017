@@ -1151,11 +1151,15 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
     };
 
     // Close any active right panel when navigating to a new page
+    const prevPathname = React.useRef(pathname);
     useEffect(() => {
-        if (rightPanel) {
-            closeRightPanel();
+        if (prevPathname.current !== pathname) {
+            if (rightPanel) {
+                closeRightPanel();
+            }
+            prevPathname.current = pathname;
         }
-    }, [pathname]);
+    }, [pathname, rightPanel, closeRightPanel]);
 
     const titles: Record<string, string> = {
         notifications: 'Notifications',

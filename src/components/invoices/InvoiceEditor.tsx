@@ -1354,14 +1354,21 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 defaultName={meta.projectName || 'My Invoice Template'}
                 entityType="invoice"
                 onSave={async (name, description, isDefault) => {
-                    await addTemplate({
-                        name,
-                        description,
-                        is_default: isDefault,
-                        entity_type: 'invoice',
-                        blocks,
-                        design: meta.design || DEFAULT_DOCUMENT_DESIGN
-                    });
+                    await appToast.promise(
+                        addTemplate({
+                            name,
+                            description,
+                            is_default: isDefault,
+                            entity_type: 'invoice',
+                            blocks,
+                            design: { ...(meta.design || DEFAULT_DOCUMENT_DESIGN), documentTitle: meta.documentTitle || meta.projectName || 'INVOICE' } as any
+                        }),
+                        {
+                            loading: 'Saving template...',
+                            success: 'Template saved successfully',
+                            error: 'Failed to save template'
+                        }
+                    );
                 }}
             />
 

@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutTemplate, Plus, FileText, Trash2, Calendar, FileType2, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, Pencil, BookmarkCheck } from 'lucide-react';
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { appToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useTemplateStore, Template } from '@/store/useTemplateStore';
@@ -20,6 +22,7 @@ export default function TemplatesPage() {
     
     const [isCreating, setIsCreating] = useState(false);
     const [activeTool, setActiveTool] = useState<'all' | 'proposal' | 'invoice'>('all');
+    const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
     useEffect(() => {
         fetchTemplates();
@@ -116,13 +119,13 @@ export default function TemplatesPage() {
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                 {/* ── Sidebar ── */}
                 <div className={cn(
-                    "w-56 border-r shrink-0 flex flex-col p-3 gap-1",
+                    "w-full md:w-56 border-b md:border-b-0 md:border-r shrink-0 flex flex-row md:flex-col p-2 md:p-3 gap-2 overflow-x-auto no-scrollbar",
                     isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#ebebeb]"
                 )}>
-                    <p className={cn("px-3 py-2 text-[10px] font-bold uppercase tracking-widest opacity-30")}>Tools</p>
+                    <p className={cn("hidden md:block px-3 py-2 text-[10px] font-bold uppercase tracking-widest opacity-30")}>Tools</p>
                     
                     {[
                         { id: 'all', label: 'All Templates', icon: LayoutTemplate },
@@ -133,7 +136,7 @@ export default function TemplatesPage() {
                             key={tool.id}
                             onClick={() => setActiveTool(tool.id as any)}
                             className={cn(
-                                "flex items-center justify-between px-3 py-2 rounded-xl text-[12px] font-medium transition-all group",
+                                "flex items-center justify-center md:justify-between px-3 md:px-3 py-2 rounded-xl text-[12px] font-medium transition-all group shrink-0",
                                 activeTool === tool.id 
                                     ? isDark ? "bg-white/10 text-white shadow-sm" : "bg-[#f5f5f5] text-black shadow-sm"
                                     : isDark ? "text-[#6b6b6b] hover:text-white hover:bg-white/5" : "text-[#888] hover:text-black hover:bg-[#fafafa]"
@@ -144,7 +147,7 @@ export default function TemplatesPage() {
                                 <span>{tool.label}</span>
                             </div>
                             <span className={cn(
-                                "text-[10px] tabular-nums px-1.5 py-0.5 rounded-md",
+                                "hidden md:flex text-[10px] tabular-nums px-1.5 py-0.5 rounded-md",
                                 activeTool === tool.id 
                                     ? isDark ? "bg-white/10 text-white/60" : "bg-black/5 text-[#666]"
                                     : "opacity-40 group-hover:opacity-100 transition-opacity"
@@ -176,8 +179,10 @@ export default function TemplatesPage() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                             {filteredTemplates.map(template => (
-                                <div key={template.id} className={cn(
-                                    "flex flex-col rounded-2xl border transition-all duration-300 relative group overflow-hidden cursor-default",
+                                <div key={template.id} 
+                                    onClick={() => router.push(`/templates/edit/${template.id}`)}
+                                    className={cn(
+                                    "flex flex-col rounded-2xl border transition-all duration-300 relative group overflow-hidden cursor-pointer",
                                     isDark ? "bg-[#1a1a1a] border-white/5 hover:border-primary/40" : "bg-white border-black/5 hover:border-primary/40 hover:shadow-xl hover:shadow-black/5"
                                 )}>
                                     {/* Template Preview Header/Placeholder */}
@@ -185,11 +190,71 @@ export default function TemplatesPage() {
                                         "h-32 w-full flex items-center justify-center shrink-0 border-b relative transition-transform duration-500 group-hover:scale-[1.02]",
                                         isDark ? "bg-[#1f1f1f] border-white/5" : "bg-[#f5f5f5] border-black/5"
                                     )} style={{
-                                        background: template.design?.backgroundColor || (isDark ? '#1a1a1a' : '#ffffff')
+                                        backgroundColor: template.design?.backgroundColor || (isDark ? '#1a1a1a' : '#ffffff'),
+                                        backgroundImage: template.design?.backgroundImage ? `url(${template.design.backgroundImage})` : 'none',
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center'
                                     }}>
-                                        <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black/5 dark:to-white/5" />
-                                        <div className="z-10 flex flex-col items-center gap-2 opacity-20 group-hover:opacity-40 transition-opacity">
-                                            {template.entity_type === 'proposal' ? <ProposalIcon size={32} /> : <InvoiceIcon size={32} />}
+                                        <div className="absolute inset-0 flex items-start justify-center pt-3 overflow-hidden pointer-events-none">
+                                            <div className={cn(
+                                                "w-[200px] min-h-[300px] mb-[-100px] rounded-md shadow-2xl flex flex-col p-4 gap-2.5 transition-all duration-500 group-hover:scale-[1.05] group-hover:translate-y-1",
+                                                isDark ? "bg-[#111] ring-1 ring-white/10" : "bg-white ring-1 ring-black/5"
+                                            )} style={{ 
+                                                backgroundColor: template.design?.blockBackgroundColor || (isDark ? '#111' : '#fff'),
+                                                transform: 'scale(0.55)',
+                                                transformOrigin: 'top center'
+                                            }}>
+                                                {/* Mini Paper Header */}
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div className="space-y-1">
+                                                        <div className="text-[10px] font-black leading-tight tracking-tight max-w-[120px]" style={{ color: template.design?.primaryColor || (isDark ? '#fff' : '#000') }}>
+                                                            {template.design?.documentTitle || (template.entity_type === 'invoice' ? 'INVOICE' : 'PROPOSAL')}
+                                                        </div>
+                                                        <div className="h-1 w-12 bg-current opacity-10 rounded-full" />
+                                                    </div>
+                                                    <div className="w-6 h-6 rounded-md bg-current opacity-5" />
+                                                </div>
+
+                                                {/* Mini Content Blocks */}
+                                                {(template.blocks || []).slice(0, 8).map((block: any, i: number) => (
+                                                    <div key={i} className="w-full shrink-0">
+                                                        {block.type === 'header' || block.type === 'heading' ? (
+                                                            <div className="space-y-1 mt-1">
+                                                                <div className="h-2 w-3/4 rounded-sm bg-current opacity-20" />
+                                                                <div className="h-1 w-1/4 rounded-sm bg-current opacity-10" />
+                                                            </div>
+                                                        ) : block.type === 'pricing' ? (
+                                                            <div className="mt-1 space-y-1.5 p-2 rounded-lg border border-current opacity-10">
+                                                                <div className="flex justify-between">
+                                                                    <div className="h-1.5 w-1/2 bg-current opacity-20 rounded-full" />
+                                                                    <div className="h-1.5 w-6 bg-current opacity-20 rounded-full" />
+                                                                </div>
+                                                                <div className="h-1 w-full bg-current opacity-10 rounded-full" />
+                                                                <div className="h-1 w-full bg-current opacity-10 rounded-full" />
+                                                            </div>
+                                                        ) : block.type === 'image' ? (
+                                                            <div className="h-12 w-full rounded-lg bg-current opacity-5 flex items-center justify-center">
+                                                                <LayoutTemplate size={12} className="opacity-10" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-1.5">
+                                                                <div className="h-1 w-full rounded-full bg-current opacity-10" />
+                                                                <div className="h-1 w-full rounded-full bg-current opacity-10" />
+                                                                <div className="h-1 w-5/6 rounded-full bg-current opacity-5" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                
+                                                {/* Mini Footer / Sign Area */}
+                                                <div className="mt-4 pt-4 border-t border-current opacity-10 flex justify-between items-end">
+                                                    <div className="space-y-1">
+                                                        <div className="h-1 w-16 bg-current opacity-20 rounded-full" />
+                                                        <div className="h-1 w-10 bg-current opacity-10 rounded-full" />
+                                                    </div>
+                                                    <div className="w-8 h-4 rounded-sm bg-current opacity-5" />
+                                                </div>
+                                            </div>
                                         </div>
                                         
                                         <div className="absolute top-3 left-3 flex items-center gap-2 z-20">
@@ -201,12 +266,15 @@ export default function TemplatesPage() {
                                             )}>
                                                 {template.entity_type}
                                             </span>
-                                            {template.is_default && (
+                                        </div>
+                                        
+                                        {template.is_default && (
+                                            <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
                                                 <span className="px-2 py-0.5 text-[9px] uppercase font-bold tracking-widest rounded-md shadow-lg bg-primary text-primary-foreground border border-primary/50">
                                                     Default
                                                 </span>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Body */}
@@ -230,7 +298,10 @@ export default function TemplatesPage() {
 
                                         <div className="mt-5 flex gap-2">
                                             <button 
-                                                onClick={() => handleUseTemplate(template)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUseTemplate(template);
+                                                }}
                                                 disabled={isCreating}
                                                 className={cn(
                                                     "flex-1 h-9 rounded-xl text-[12px] font-bold transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2",
@@ -241,31 +312,24 @@ export default function TemplatesPage() {
                                                 Use
                                             </button>
                                             <button 
-                                                onClick={() => router.push(`/templates/edit/${template.id}`)}
-                                                className={cn(
-                                                    "w-9 h-9 rounded-xl flex items-center justify-center transition-all border shrink-0",
-                                                    isDark ? "bg-white/5 border-white/5 hover:bg-white/10 text-white" : "bg-white border-black/5 hover:bg-black/5 text-black"
-                                                )}
-                                                title="Edit template"
-                                            >
-                                                <Pencil size={14} />
-                                            </button>
-                                            <button 
-                                                onClick={() => setDefaultTemplate(template.id, template.entity_type)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDefaultTemplate(template.id, template.entity_type);
+                                                }}
                                                 className={cn(
                                                     "w-9 h-9 rounded-xl flex items-center justify-center transition-all border shrink-0",
                                                     template.is_default 
                                                         ? (isDark ? "bg-primary/20 border-primary/20 text-primary-hover shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)]" : "bg-primary/10 border-primary/20 text-primary shadow-sm")
                                                         : (isDark ? "bg-white/5 border-white/5 hover:bg-white/10 text-[#666] hover:text-white" : "bg-white border-black/5 hover:bg-black/5 text-[#888] hover:text-black")
                                                 )}
+                                                title="Set as Default"
                                             >
                                                 <BookmarkCheck size={14} fill={template.is_default ? "currentColor" : "none"} strokeWidth={template.is_default ? 2.5 : 2} />
                                             </button>
                                             <button
-                                                onClick={() => {
-                                                    if (confirm('Are you sure you want to delete this template?')) {
-                                                        deleteTemplate(template.id);
-                                                    }
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setTemplateToDelete(template.id);
                                                 }}
                                                 className={cn(
                                                     "w-9 h-9 rounded-xl flex items-center justify-center transition-all border shrink-0",
@@ -283,6 +347,27 @@ export default function TemplatesPage() {
                     )}
                 </div>
             </div>
+
+            <DeleteConfirmModal 
+                open={!!templateToDelete}
+                onClose={() => setTemplateToDelete(null)}
+                onConfirm={async () => {
+                    if (templateToDelete) {
+                        await appToast.promise(
+                            deleteTemplate(templateToDelete),
+                            {
+                                loading: 'Deleting template...',
+                                success: 'Template deleted',
+                                error: 'Failed to delete template'
+                            }
+                        );
+                        setTemplateToDelete(null);
+                    }
+                }}
+                title="Delete Template"
+                description="Are you sure you want to delete this template? This will permanently remove it from your library."
+                isDark={isDark}
+            />
         </div>
     );
 }

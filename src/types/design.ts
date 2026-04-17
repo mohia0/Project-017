@@ -24,6 +24,7 @@ export interface DocumentDesign {
     actionTheme?: 'light' | 'dark';
     topBlurTheme?: 'light' | 'dark';
     signTheme?: 'light' | 'dark';
+    documentTitle?: string;
 }
 
 export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {

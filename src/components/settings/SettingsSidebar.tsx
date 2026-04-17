@@ -7,12 +7,12 @@ import { User, UserSquare2, Building2, Palette, Globe, CreditCard, Mail, Tag, Fi
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 
-const ACCOUNT_LINKS = [
+export const ACCOUNT_LINKS = [
     { name: 'Profile', href: '/settings/profile', icon: User },
     { name: 'Contact', href: '/settings/contact', icon: UserSquare2 },
 ];
 
-const WORKSPACE_LINKS = [
+export const WORKSPACE_LINKS = [
     { name: 'Workspace', href: '/settings/workspace', icon: Building2 },
     { name: 'Branding', href: '/settings/branding', icon: Palette },
     { name: 'Domains', href: '/settings/domains', icon: Globe },
@@ -20,7 +20,7 @@ const WORKSPACE_LINKS = [
     { name: 'Emails', href: '/settings/emails', icon: Mail },
 ];
 
-const FEATURES_LINKS = [
+export const FEATURES_LINKS = [
     { name: 'Statuses', href: '/settings/features/statuses', icon: Tag },
     { name: 'Proposals', href: '/settings/features/proposals', icon: FileText },
     { name: 'Invoices', href: '/settings/features/invoices', icon: Receipt },

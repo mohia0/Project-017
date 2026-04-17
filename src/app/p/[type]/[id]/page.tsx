@@ -1,6 +1,7 @@
 import { supabaseService } from '@/lib/supabase-service';
 import PreviewClient from './PreviewClient';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 
 export default async function PublicPreviewPage({ params }: { params: Promise<{ type: string, id: string }> }) {
     const { type, id } = await params;
@@ -96,5 +97,9 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
         workspaceTimezone,
     };
 
-    return <PreviewClient type={type as any} data={safeData} />;
+    return (
+        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-white"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+            <PreviewClient type={type as any} data={safeData} />
+        </Suspense>
+    );
 }

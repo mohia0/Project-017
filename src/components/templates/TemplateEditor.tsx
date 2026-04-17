@@ -76,12 +76,11 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
         if (found && !isLoaded) {
             const initialTemplate = { ...found };
             
-            // If no documentTitle exists in design yet, initialize it from name 
-            // to decouple them from the start.
+            // If no documentTitle exists in design yet, initialize it appropriately
             if (!(initialTemplate.design as any).documentTitle) {
                 initialTemplate.design = { 
                     ...initialTemplate.design, 
-                    documentTitle: initialTemplate.name || 'PROPOSAL &\nAGREEMENT' 
+                    documentTitle: initialTemplate.entity_type === 'invoice' ? 'INVOICE' : 'PROPOSAL &\nAGREEMENT' 
                 } as any;
             }
             
@@ -93,19 +92,23 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     const handleSave = async () => {
         if (!template) return;
         setIsSaving(true);
-        // setSaveStatus('saving');
-        updateTemplate(id, {
-            blocks: template.blocks,
-            design: template.design,
-            name: template.name,
-            description: template.description
-        }).then(() => {
-            appToast.success('Changes saved', undefined, { id: `save-template-${id}`, duration: 1500 });
-        }).catch(() => {
-            appToast.error('Save failed', undefined, { id: `save-template-${id}`, duration: 3000 });
-        });
-        setIsSaving(false);
-        setIsSaving(false);
+        try {
+            await appToast.promise(
+                updateTemplate(id, {
+                    blocks: template.blocks,
+                    design: template.design,
+                    name: template.name,
+                    description: template.description
+                }),
+                {
+                    loading: 'Saving template...',
+                    success: 'Changes saved successfully',
+                    error: 'Failed to save changes'
+                }
+            );
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const updateBlock = useCallback((blockId: string, patch: any) => {

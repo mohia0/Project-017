@@ -57,10 +57,24 @@ export function SectionBlockWrapper({
     const isDark = theme === 'dark';
     const [hovered, setHovered] = useState(false);
     const [showPalette, setShowPalette] = useState(false);
+    const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
     const paletteRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+    const handleMouseEnter = () => {
+        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        setHovered(true);
+    };
+
+    const handleMouseLeave = () => {
+        hoverTimerRef.current = setTimeout(() => {
+            if (!showPalette) {
+                setHovered(false);
+            }
+        }, 150); // Small delay to allow crossing the gap
+    };
 
     // The section bg colour — all blocks use current document default (var(--document-bg)); only change when user picks a color
     const sectionBg = backgroundColor || 'var(--document-bg, #ffffff)';
@@ -85,6 +99,7 @@ export function SectionBlockWrapper({
                     return;
                 }
                 setShowPalette(false);
+                setHovered(false);
             }
         };
         document.addEventListener('mousedown', handler);
@@ -126,8 +141,8 @@ export function SectionBlockWrapper({
             ref={setNodeRef}
             style={outerStyle}
             className={cn('group overflow-visible', isDragging && 'z-50')}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => { setHovered(false); setShowPalette(false); }}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             {/* Full-bleed section background */}
             <div

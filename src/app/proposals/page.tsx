@@ -1025,13 +1025,7 @@ export default function ProposalsPage() {
                             </div>
                         </Dropdown>
                     </div>
-                    {/* New Proposal (mobile only in toolbar) */}
-                    <button
-                        onClick={() => setCreateModalOpen(true, 'Proposal')}
-                        className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-[12px] font-bold rounded-[8px] bg-primary text-primary-foreground active:scale-95 transition-all"
-                    >
-                        <Plus size={13} strokeWidth={2.5} /> New
-                    </button>
+
                 </div>
             ) : (
                 /* ── Desktop toolbar ── */

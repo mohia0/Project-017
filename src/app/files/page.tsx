@@ -1725,10 +1725,10 @@ export default function FilesPage() {
             </div>
 
             {/* ── Body ── */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex overflow-hidden relative">
 
                 {/* ── Left Sidebar ── */}
-                <div className={cn('flex flex-col border-r shrink-0 transition-all duration-300 overflow-hidden', panelBg, border, sidebarOpen ? 'w-56' : 'w-0 border-r-0')}>
+                <div className={cn('flex flex-col shrink-0 transition-all duration-300 overflow-hidden absolute md:relative z-20 h-full max-w-[80vw]', panelBg, border, sidebarOpen ? 'w-56 border-r shadow-2xl md:shadow-none' : 'w-0 border-r-0')}>
                     <div className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5 min-w-[224px]">
                         <div className="flex items-center justify-between px-2 pb-1">
                             <p className={cn('text-[9px] font-bold uppercase tracking-widest', muted)}>Folders</p>

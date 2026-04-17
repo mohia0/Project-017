@@ -447,7 +447,8 @@ export default function ClientsPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <div className={cn("rounded-xl border overflow-hidden", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
+                            <div className="overflow-x-auto no-scrollbar">
+                                <div className={cn("rounded-xl border overflow-hidden min-w-[900px]", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
                                     <div className={cn("grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider", isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]")} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
                                         <div /><div /><div>Name</div><div>Email</div><div>Phone</div><div>Country</div><div>Company</div>
                                     </div>
@@ -463,6 +464,7 @@ export default function ClientsPage() {
                                         </div>
                                     ))}
                                 </div>
+                            </div>
                             )
                         ) : filteredPeople.length === 0 ? (
                             <div className={cn("flex flex-col items-center justify-center h-full gap-3", muted)}>
@@ -549,20 +551,21 @@ export default function ClientsPage() {
                             </div>
                         ) : (
                             /* List view */
-                            <div className={cn("rounded-xl border overflow-hidden", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
-                                <div className={cn(
-                                    "grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider",
-                                    isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]"
-                                )} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
-                                    <div className="flex items-center justify-center cursor-pointer" onClick={() => toggleAll(filteredPeople)}>
-                                        <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
-                                            selectedIds.size === filteredPeople.length && filteredPeople.length > 0 ? "bg-primary border-primary" : isDark ? "border-white/10" : "border-[#ccc]")}>
-                                            {selectedIds.size === filteredPeople.length && filteredPeople.length > 0 && <Check size={9} strokeWidth={4} className="text-black" />}
-                                            {selectedIds.size > 0 && selectedIds.size < filteredPeople.length && <div className="w-2 h-0.5 bg-black rounded" />}
+                            <div className="overflow-x-auto no-scrollbar">
+                                <div className={cn("rounded-xl border overflow-hidden min-w-[900px]", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
+                                    <div className={cn(
+                                        "grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider",
+                                        isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]"
+                                    )} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
+                                        <div className="flex items-center justify-center cursor-pointer" onClick={() => toggleAll(filteredPeople)}>
+                                            <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
+                                                selectedIds.size === filteredPeople.length && filteredPeople.length > 0 ? "bg-primary border-primary" : isDark ? "border-white/10" : "border-[#ccc]")}>
+                                                {selectedIds.size === filteredPeople.length && filteredPeople.length > 0 && <Check size={9} strokeWidth={4} className="text-black" />}
+                                                {selectedIds.size > 0 && selectedIds.size < filteredPeople.length && <div className="w-2 h-0.5 bg-black rounded" />}
+                                            </div>
                                         </div>
+                                        <div /><div>Name</div><div>Email</div><div>Phone</div><div>Country</div><div>Company</div>
                                     </div>
-                                    <div /><div>Name</div><div>Email</div><div>Phone</div><div>Country</div><div>Company</div>
-                                </div>
                                 {filteredPeople.map((client, i) => {
                                     const isActive = activeContactId === client.id;
                                     return (
@@ -612,6 +615,7 @@ export default function ClientsPage() {
                                         </div>
                                     );
                                 })}
+                                </div>
                             </div>
                         )}
                     </>
