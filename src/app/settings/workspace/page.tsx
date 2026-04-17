@@ -38,6 +38,7 @@ export default function WorkspaceSettingsPage() {
     const [name, setName] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     const [timezone, setTimezone] = useState('UTC');
+    const [weekStartDay, setWeekStartDay] = useState('Saturday');
     
     // Contact State
     const [emails, setEmails] = useState<{value: string, type: string}[]>([]);
@@ -79,6 +80,7 @@ export default function WorkspaceSettingsPage() {
             setName(activeWorkspace.name || '');
             setLogoUrl(activeWorkspace.logo_url || '');
             setTimezone(activeWorkspace.timezone || 'UTC');
+            setWeekStartDay(activeWorkspace.week_start_day || 'Saturday');
             
             // Contact
             setEmails(activeWorkspace.contact_emails?.length ? activeWorkspace.contact_emails : [{ value: '', type: 'Email' }]);
@@ -143,7 +145,7 @@ export default function WorkspaceSettingsPage() {
             case 'general':
                 return name !== (activeWorkspace.name || '') || logoUrl !== (activeWorkspace.logo_url || '');
             case 'regional':
-                return timezone !== (activeWorkspace.timezone || 'UTC');
+                return timezone !== (activeWorkspace.timezone || 'UTC') || weekStartDay !== (activeWorkspace.week_start_day || 'Saturday');
             case 'contact':
                 const currentEms = JSON.stringify(emails.filter(e => e.value.trim() !== ''));
                 const savedEms = JSON.stringify(activeWorkspace.contact_emails || []);
@@ -268,24 +270,32 @@ export default function WorkspaceSettingsPage() {
             {/* Regional Settings */}
             <SettingsCard
                 title="Regional Settings"
-                description="Set the default timezone for your workspace for accurate scheduling and reporting."
-                onSave={() => handleSaveSection('regional', { timezone })}
+                description="Set the default timezone and start of the week for your workspace for accurate scheduling and reporting."
+                onSave={() => handleSaveSection('regional', { timezone, week_start_day: weekStartDay })}
                 isSaving={isSaving['regional']}
                 unsavedChanges={hasChanged('regional')}
                 collapsible
                 defaultCollapsed
             >
                 <div className="flex flex-col gap-6">
-                    <SettingsField label="Workspace Timezone" description="New schedulers will use this timezone by default.">
-                        <div className="w-full max-w-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <SettingsField label="Workspace Timezone" description="New schedulers will use this timezone by default.">
                             <SettingsSelect
                                 isDark={isDark}
                                 value={timezone}
                                 onChange={setTimezone}
                                 options={TIMEZONE_OPTIONS}
                             />
-                        </div>
-                    </SettingsField>
+                        </SettingsField>
+                        <SettingsField label="Start of the week" description="How calendars should be displayed.">
+                            <SettingsSelect
+                                isDark={isDark}
+                                value={weekStartDay}
+                                onChange={setWeekStartDay}
+                                options={DAYS.map(d => ({ label: d, value: d }))}
+                            />
+                        </SettingsField>
+                    </div>
                 </div>
             </SettingsCard>
 

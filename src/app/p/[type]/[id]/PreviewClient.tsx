@@ -341,7 +341,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
     
     const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const workspaceTimezone = data.workspaceTimezone || 'UTC';
-    
+    const workspaceWeekStartDay = data.workspaceWeekStartDay || 'Saturday';
     // Booker info
     const [info, setInfo] = useState({ name: '', email: '', phone: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -511,11 +511,11 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                             style={{ borderColor: isBlockDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
-                                {meta.logoUrl && step !== 'confirmation' ? (
+                                {meta.logoUrl ? (
                                     <img src={meta.logoUrl} alt="Logo"
                                         className="object-contain"
                                         style={{ height: `${design.logoSize || 40}px` }} />
-                                ) : step !== 'confirmation' ? (
+                                ) : (
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
                                         style={{ 
                                             background: design.primaryColor || '#4dbf39',
@@ -523,7 +523,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                         }}>
                                         {(meta.organizer || liveData.title || 'S')[0].toUpperCase()}
                                     </div>
-                                ) : null}
+                                )}
                                 {(!meta.logoUrl || meta.logoUrl.trim() === '') && (
                                     <div>
                                         <div className="font-bold text-[15px]" style={{ color: isBlockDark ? '#fff' : '#111' }}>
@@ -584,6 +584,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                         selDate={selDate}
                                         meta={meta}
                                         workspaceTimezone={workspaceTimezone}
+                                        workspaceWeekStartDay={workspaceWeekStartDay}
                                         clientTimezone={clientTimezone}
                                         onDateSelect={(d) => { setSelDate(d); setSelTime(null); }}
                                     />

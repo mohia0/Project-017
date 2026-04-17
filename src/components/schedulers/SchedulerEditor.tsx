@@ -191,11 +191,12 @@ type AvailabilityMap = Record<string, DayAvailability>;
 
 const DEFAULT_AVAILABILITY: AvailabilityMap = DEFAULT_META.availability!;
 
-function AvailabilityTab({ isDark, meta, updateMeta, primaryColor }: {
+function AvailabilityTab({ isDark, meta, updateMeta, primaryColor, weekStartDay = 'Saturday' }: {
     isDark: boolean;
     meta: SchedulerMeta;
     updateMeta: (patch: Partial<SchedulerMeta>) => void;
     primaryColor: string;
+    weekStartDay?: string;
 }) {
     const availability: AvailabilityMap = (meta as any).availability || DEFAULT_AVAILABILITY;
 
@@ -216,64 +217,74 @@ function AvailabilityTab({ isDark, meta, updateMeta, primaryColor }: {
             <div className={cn("text-[11.5px] mb-5", isDark ? "text-[#444]" : "text-[#bbb]")}>
                 Set the days and hours you are available for bookings.
             </div>
-            <div className="space-y-2 max-w-[640px]">
-                {DAYS_OF_WEEK.map((day) => {
-                    const cfg = availability[day] || DEFAULT_AVAILABILITY[day];
-                    return (
-                        <div key={day}
-                            className={cn(
-                                "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all",
-                                isDark ? "bg-[#111] border-[#252525]" : "bg-white border-[#ebebeb]",
-                                !cfg.active && "opacity-60"
-                            )}>
-                            {/* Toggle */}
-                            <SettingsToggle
-                                checked={cfg.active}
-                                onChange={checked => updateDay(day, { active: checked })}
-                            />
+            
+            {(() => {
+                const startIndex = DAYS_OF_WEEK.indexOf(weekStartDay);
+                const shiftedDays = startIndex === -1 
+                    ? DAYS_OF_WEEK 
+                    : [...DAYS_OF_WEEK.slice(startIndex), ...DAYS_OF_WEEK.slice(0, startIndex)];
+                
+                return (
+                    <div className="space-y-2 max-w-[640px]">
+                        {shiftedDays.map((day) => {
+                            const cfg = availability[day] || DEFAULT_AVAILABILITY[day];
+                            return (
+                                <div key={day}
+                                    className={cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all",
+                                        isDark ? "bg-[#111] border-[#252525]" : "bg-white border-[#ebebeb]",
+                                        !cfg.active && "opacity-60"
+                                    )}>
+                                    {/* Toggle */}
+                                    <SettingsToggle
+                                        checked={cfg.active}
+                                        onChange={checked => updateDay(day, { active: checked })}
+                                    />
 
-                            {/* Day name */}
-                            <div className={cn(
-                                "w-[80px] text-[12px] font-semibold shrink-0",
-                                cfg.active
-                                    ? (isDark ? "text-[#ccc]" : "text-[#333]")
-                                    : (isDark ? "text-[#444]" : "text-[#bbb]")
-                            )}>
-                                {day}
-                            </div>
+                                    {/* Day name */}
+                                    <div className={cn(
+                                        "w-[80px] text-[12px] font-semibold shrink-0",
+                                        cfg.active
+                                            ? (isDark ? "text-[#ccc]" : "text-[#333]")
+                                            : (isDark ? "text-[#444]" : "text-[#bbb]")
+                                    )}>
+                                        {day}
+                                    </div>
 
-                            {/* Time pickers */}
-                            {cfg.active ? (
-                                <div className="flex items-center gap-2 flex-1">
-                                    <div className="flex-1">
-                                        <SettingsSelect
-                                            isDark={isDark}
-                                            value={cfg.start}
-                                            onChange={val => updateDay(day, { start: val })}
-                                            options={START_TIMES.map(t => ({ label: t, value: t }))}
-                                            className="!h-8 !text-[11px] !rounded-lg"
-                                            allowCustom={true}
-                                        />
-                                    </div>
-                                    <span className={cn("text-[11px] shrink-0", isDark ? "text-[#444]" : "text-[#ccc]")}>–</span>
-                                    <div className="flex-1">
-                                        <SettingsSelect
-                                            isDark={isDark}
-                                            value={cfg.end}
-                                            onChange={val => updateDay(day, { end: val })}
-                                            options={END_TIMES.map(t => ({ label: t, value: t }))}
-                                            className="!h-8 !text-[11px] !rounded-lg"
-                                            allowCustom={true}
-                                        />
-                                    </div>
+                                    {/* Time pickers */}
+                                    {cfg.active ? (
+                                        <div className="flex items-center gap-2 flex-1">
+                                            <div className="flex-1">
+                                                <SettingsSelect
+                                                    isDark={isDark}
+                                                    value={cfg.start}
+                                                    onChange={val => updateDay(day, { start: val })}
+                                                    options={START_TIMES.map(t => ({ label: t, value: t }))}
+                                                    className="!h-8 !text-[11px] !rounded-lg"
+                                                    allowCustom={true}
+                                                />
+                                            </div>
+                                            <span className={cn("text-[11px] shrink-0", isDark ? "text-[#444]" : "text-[#ccc]")}>–</span>
+                                            <div className="flex-1">
+                                                <SettingsSelect
+                                                    isDark={isDark}
+                                                    value={cfg.end}
+                                                    onChange={val => updateDay(day, { end: val })}
+                                                    options={END_TIMES.map(t => ({ label: t, value: t }))}
+                                                    className="!h-8 !text-[11px] !rounded-lg"
+                                                    allowCustom={true}
+                                                />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={cn("text-[11.5px] italic", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>Unavailable</div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className={cn("text-[11.5px] italic", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>Unavailable</div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
+                            );
+                        })}
+                    </div>
+                );
+            })()}
         </div>
     );
 }
@@ -861,11 +872,11 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                             style={{ borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
                                                             <div className="flex items-center justify-between mb-4">
                                                                 <div className="flex items-center gap-3">
-                                                                    {meta.logoUrl && canvasStep !== 'confirmation' ? (
+                                                                    {meta.logoUrl ? (
                                                                         <img src={meta.logoUrl} alt="Logo"
                                                                             className="object-contain"
                                                                             style={{ height: `${design.logoSize || 40}px` }} />
-                                                                    ) : canvasStep !== 'confirmation' ? (
+                                                                    ) : (
                                                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
                                                                             style={{ 
                                                                                 background: design.primaryColor || '#4dbf39',
@@ -873,7 +884,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                                             }}>
                                                                             {(meta.organizer || title || 'S')[0].toUpperCase()}
                                                                         </div>
-                                                                    ) : null}
+                                                                    )}
                                                                     {(!meta.logoUrl || meta.logoUrl.trim() === '') && (
                                                                         <div>
                                                                             <div className="font-bold text-[15px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
@@ -1032,11 +1043,11 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                 style={{ borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)' }}>
                                             <div className="flex items-center justify-between mb-4">
                                                 <div className="flex items-center gap-3">
-                                                    {meta.logoUrl && canvasStep !== 'confirmation' ? (
+                                                    {meta.logoUrl ? (
                                                         <img src={meta.logoUrl} alt="Logo"
                                                             className="object-contain"
                                                             style={{ height: `${design.logoSize || 40}px` }} />
-                                                    ) : canvasStep !== 'confirmation' ? (
+                                                    ) : (
                                                         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-[16px]"
                                                             style={{ 
                                                                 background: design.primaryColor || '#4dbf39',
@@ -1044,7 +1055,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                             }}>
                                                             {(meta.organizer || title || 'S')[0].toUpperCase()}
                                                         </div>
-                                                    ) : null}
+                                                    )}
                                                     {(!meta.logoUrl || meta.logoUrl.trim() === '') && (
                                                         <div>
                                                             <div className="font-bold text-[15px]" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
@@ -1099,6 +1110,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                         primaryColor={design.primaryColor || '#4dbf39'}
                                                         selDate={previewSelDate}
                                                         meta={meta}
+                                                        workspaceWeekStartDay={activeWorkspace?.week_start_day || 'Saturday'}
                                                         onDateSelect={(d) => { setPreviewSelDate(d); setPreviewSelTime(null); }}
                                                     />
                                                     <div>
@@ -1630,7 +1642,13 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                 {editorTab === 'availability' && (
                     <div className={cn("flex-1 overflow-auto p-4 md:p-8", isDark ? "bg-[#141414]" : "bg-[#fafafa]")}>
                         <div className="max-w-[800px] mx-auto w-full">
-                            <AvailabilityTab isDark={isDark} meta={meta} updateMeta={updateMeta} primaryColor={design.primaryColor || '#4dbf39'} />
+                            <AvailabilityTab 
+                                isDark={isDark} 
+                                meta={meta} 
+                                updateMeta={updateMeta} 
+                                primaryColor={design.primaryColor || '#4dbf39'} 
+                                weekStartDay={activeWorkspace?.week_start_day || 'Saturday'}
+                            />
                         </div>
                     </div>
                 )}

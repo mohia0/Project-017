@@ -10,6 +10,7 @@ export interface Workspace {
     owner_id: string;
     created_at: string;
     timezone?: string;
+    week_start_day?: string;
     contact_emails?: any;
     contact_phones?: any;
     contact_address?: any;

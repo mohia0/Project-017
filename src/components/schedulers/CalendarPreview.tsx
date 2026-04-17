@@ -8,7 +8,12 @@ import { DateTime } from 'luxon';
    HELPERS
 ══════════════════════════════════════════════════════════ */
 export const timeToMinutes = (timeStr: string) => {
-    const parts = (timeStr || '').trim().split(/\s+/);
+    let s = (timeStr || '').trim();
+    // Handle missing space like "9:00AM" -> "9:00 AM"
+    if (s.match(/\d+(AM|PM)$/i)) {
+        s = s.replace(/(AM|PM)$/i, ' $1');
+    }
+    const parts = s.split(/\s+/);
     if (parts.length < 2) return 0;
     const [time, period] = parts;
     if (!time) return 0;
@@ -123,32 +128,59 @@ export interface CalendarPreviewProps {
     meta?: any;
     currentMonthDate?: Date;
     workspaceTimezone?: string;
+    workspaceWeekStartDay?: string;
     clientTimezone?: string;
 }
 
 export function CalendarPreview({ 
     isDark, primaryColor, onDateSelect, selDate: externalSelDate, meta, currentMonthDate,
     workspaceTimezone = 'UTC',
+    workspaceWeekStartDay = 'Saturday',
     clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 }: CalendarPreviewProps) {
     
     const [internalSelDate, setInternalSelDate] = useState<string | null>(null);
     const [viewDate, setViewDate] = useState(currentMonthDate || new Date());
     
-    // We render the calendar based on the client's current viewing month
-    const activeDateStr = onDateSelect !== undefined ? externalSelDate : internalSelDate;
+    // Stable Luxon DateTime in the client timezone, forced to the start of the month to avoid rolling issues
+    const viewDateTime = DateTime.fromJSDate(viewDate).setZone(clientTimezone).startOf('month');
+    const year = viewDateTime.year;
+    const month = viewDateTime.month;
+    const monthIdx = month - 1;
 
-    // We use standard JS date for the grid layout, representing the "local" month view
-    const month = viewDate.getMonth();
-    const year = viewDate.getFullYear();
+    const FULL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const startDayIndex = FULL_DAYS.indexOf(workspaceWeekStartDay);
+    const validStartDayIndex = Math.max(0, startDayIndex);
+    
+    // Grid calculations
+    const startOfMonth = viewDateTime.startOf('month');
+    const daysInMonth = viewDateTime.endOf('month').day || 30;
+    
+    const firstDay = (startOfMonth.weekday - 1 - validStartDayIndex + 7) % 7;
 
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-    const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    // Build the 42-cell grid (6 rows of 7) to ensure fixed height and all days are visible
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstDay; i++) {
+        cells.push(null);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        cells.push(d);
+    }
+    while (cells.length < 42) {
+        cells.push(null);
+    }
+
+    const shiftedDays = [
+        ...FULL_DAYS.slice(validStartDayIndex),
+        ...FULL_DAYS.slice(0, validStartDayIndex)
+    ];
+    // Special format logic for DAYS array: we will extract just the first letter (e.g. S for Sunday)
+    // For Thursday/Tuesday etc, the first letter works perfectly.
+    const DAYS = shiftedDays.map(d => d.charAt(0));
+    
     const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    while (cells.length % 7 !== 0) cells.push(null);
+    const activeDateStr = onDateSelect !== undefined ? externalSelDate : internalSelDate;
 
     const handleClick = (dStr: string, isPast: boolean, isDisabled: boolean) => {
         if (isPast || isDisabled) return;
@@ -157,7 +189,7 @@ export function CalendarPreview({
     };
 
     const changeMonth = (delta: number) => {
-        const next = new Date(year, month + delta, 1);
+        const next = startOfMonth.plus({ months: delta }).toJSDate();
         setViewDate(next);
     };
 
@@ -169,7 +201,7 @@ export function CalendarPreview({
         
         for (const d of cells) {
             if (!d) continue;
-            const cellDateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const cellDateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
             const luxonCell = DateTime.fromISO(cellDateStr, { zone: clientTimezone });
             
             if (luxonCell.startOf('day') < todayStart) {
@@ -177,17 +209,24 @@ export function CalendarPreview({
                 continue;
             }
             
-            const daySlots = getAvailableSlots(cellDateStr, meta?.durations || [30], meta?.availability || {}, [], workspaceTimezone, clientTimezone);
+            const daySlots = getAvailableSlots(
+                cellDateStr, 
+                meta?.durations || [30], 
+                meta?.availability || {}, 
+                [], 
+                workspaceTimezone, 
+                clientTimezone
+            );
             map[cellDateStr] = daySlots.length > 0;
         }
         return map;
-    }, [month, year, clientTimezone, workspaceTimezone, JSON.stringify(meta?.durations), JSON.stringify(meta?.availability), cells.join(',')]);
+    }, [year, month, clientTimezone, workspaceTimezone, JSON.stringify(meta?.durations), JSON.stringify(meta?.availability)]);
 
     return (
         <div className={cn("rounded-xl overflow-hidden", isDark ? "bg-[#111]" : "bg-white")}>
             <div className="flex items-center justify-between px-4 pt-4 pb-2">
                 <span className={cn("font-bold text-[14px]", isDark ? "text-white" : "text-[#111]")}>
-                    {MONTHS[month]} {year}
+                    {MONTHS[monthIdx]} {year}
                 </span>
                 <div className="flex gap-1">
                     <button 
@@ -209,7 +248,7 @@ export function CalendarPreview({
                 {cells.map((d, i) => {
                     if (!d) return <div key={i} />;
                     // Construct string representing this day in the currently viewed month
-                    const cellDateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    const cellDateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                     const luxonCell = DateTime.fromISO(cellDateStr, { zone: clientTimezone });
                     
                     const isPast = luxonCell.startOf('day') < DateTime.now().setZone(clientTimezone).startOf('day');

@@ -76,11 +76,13 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
         schedulerBookings = bookingsRes || [];
     }
 
-    // Fetch workspace timezone
+    // Fetch workspace timezone and week start day
     let workspaceTimezone = 'UTC';
+    let workspaceWeekStartDay = 'Saturday';
     if (document.workspace_id) {
-        const { data: wsData } = await supabaseService.from('workspaces').select('timezone').eq('id', document.workspace_id).single();
+        const { data: wsData } = await supabaseService.from('workspaces').select('timezone, week_start_day').eq('id', document.workspace_id).single();
         if (wsData?.timezone) workspaceTimezone = wsData.timezone;
+        if (wsData?.week_start_day) workspaceWeekStartDay = wsData.week_start_day;
     }
 
     // Map data to a safe format for the client
@@ -95,6 +97,7 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
         submissionCount,
         schedulerBookings,
         workspaceTimezone,
+        workspaceWeekStartDay,
     };
 
     return (
