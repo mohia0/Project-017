@@ -69,19 +69,11 @@ export function MetaField({ label, children, isDark, icon, onReset, valueLabel }
     );
 }
 
-export function ShadowPicker({ value, onChange, isDark }: any) {
+export function ShadowSelect({ options, value, onChange, isDark, fontPreview }: any) {
     const [open, setOpen] = React.useState(false);
     const ref = React.useRef<HTMLDivElement>(null);
 
-    const options = [
-        { label: 'None',           value: 'none' },
-        { label: 'Subtle',         value: '0 2px 10px -2px rgba(0,0,0,0.03)' },
-        { label: 'Soft (Default)', value: '0 4px 20px -4px rgba(0,0,0,0.05)' },
-        { label: 'Elegant',        value: '0 8px 30px -6px rgba(0,0,0,0.08)' },
-        { label: 'Intense',        value: '0 12px 40px -8px rgba(0,0,0,0.12)' },
-    ];
-
-    const current = options.find(o => o.value === (value || 'none')) || options[0];
+    const current = options.find((o: any) => o.value === (value || 'Inter')) || options[0];
 
     React.useEffect(() => {
         if (!open) return;
@@ -100,17 +92,18 @@ export function ShadowPicker({ value, onChange, isDark }: any) {
                     "flex items-center justify-between w-full px-0.5 py-0.5 text-[12px] font-medium transition-all group",
                     isDark ? "text-[#ccc] hover:text-white" : "text-[#333] hover:text-black"
                 )}
+                style={fontPreview ? { fontFamily: value || 'Inter' } : {}}
             >
-                <span>{current.label}</span>
-                <ChevronDown size={12} className={cn("transition-transform duration-200 opacity-30 group-hover:opacity-100", open && "rotate-180")} />
+                <span className="truncate pr-2">{current.label}</span>
+                <ChevronDown size={12} className={cn("shrink-0 transition-transform duration-200 opacity-30 group-hover:opacity-100", open && "rotate-180")} />
             </button>
 
             {open && (
                 <div className={cn(
-                    "absolute left-[-12px] right-[-12px] bottom-full mb-2 z-[100] p-1 shadow-2xl rounded-xl border animate-in fade-in zoom-in-95 duration-200 origin-bottom",
+                    "absolute left-[-12px] right-[-12px] bottom-full mb-2 z-[100] p-1 shadow-2xl rounded-xl border animate-in fade-in zoom-in-95 duration-200 origin-bottom max-h-[280px] overflow-y-auto scrollbar-hide",
                     isDark ? "bg-[#1a1a1a] border-white/5" : "bg-white border-black/5"
                 )}>
-                    {options.map(opt => (
+                    {options.map((opt: any) => (
                         <button
                             key={opt.value}
                             onClick={() => {
@@ -123,6 +116,7 @@ export function ShadowPicker({ value, onChange, isDark }: any) {
                                     ? (isDark ? "bg-white/10 text-white font-bold" : "bg-black/5 text-black font-bold")
                                     : (isDark ? "text-[#888] hover:bg-white/5 hover:text-[#ccc]" : "text-[#888] hover:bg-black/5 hover:text-[#333]")
                             )}
+                            style={fontPreview ? { fontFamily: opt.value } : {}}
                         >
                             {opt.label}
                         </button>
@@ -131,6 +125,18 @@ export function ShadowPicker({ value, onChange, isDark }: any) {
             )}
         </div>
     );
+}
+
+export function ShadowPicker({ value, onChange, isDark }: any) {
+    const options = [
+        { label: 'None',           value: 'none' },
+        { label: 'Subtle',         value: '0 2px 10px -2px rgba(0,0,0,0.03)' },
+        { label: 'Soft (Default)', value: '0 4px 20px -4px rgba(0,0,0,0.05)' },
+        { label: 'Elegant',        value: '0 8px 30px -6px rgba(0,0,0,0.08)' },
+        { label: 'Intense',        value: '0 12px 40px -8px rgba(0,0,0,0.12)' },
+    ];
+
+    return <ShadowSelect options={options} value={value} onChange={onChange} isDark={isDark} />;
 }
 
 export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadBackground, hideSignature, hideTable, hideActionBar }: DesignSettingsPanelProps) {
@@ -317,13 +323,12 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 updateDesign({ fontFamily: DEFAULT_DOCUMENT_DESIGN.fontFamily });
                             }}
                         >
-                            <select 
+                            <ShadowSelect 
                                 value={design.fontFamily || 'Inter'} 
-                                onChange={e => handleFontChange(e.target.value)}
-                                className={cn("w-full text-[12px] bg-transparent outline-none appearance-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
-                                style={{ fontFamily: design.fontFamily || 'Inter' }}
-                            >
-                                {[
+                                onChange={(val: string) => handleFontChange(val)}
+                                isDark={isDark}
+                                fontPreview
+                                options={[
                                     { label: 'Inter',          value: 'Inter' },
                                     { label: 'Outfit',         value: 'Outfit' },
                                     { label: 'Poppins',        value: 'Poppins' },
@@ -334,14 +339,12 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                     { label: 'Josefin Sans',   value: 'Josefin Sans' },
                                     { label: 'Raleway',        value: 'Raleway' },
                                     { label: 'DM Sans',        value: 'DM Sans' },
-                                ].map(({ label, value }) => (
-                                    <option key={value} value={value}>{label}</option>
-                                ))}
-                            </select>
+                                ]}
+                            />
                         </MetaField>
 
                         <MetaField 
-                            label="Brand / Primary Color" 
+                            label="Accent Color" 
                             isDark={isDark}
                             onReset={() => updateDesign({ primaryColor: DEFAULT_DOCUMENT_DESIGN.primaryColor })}
                         >
@@ -349,7 +352,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <ColorisInput 
                                     value={design.primaryColor || '#4dbf39'} 
                                     onChange={val => updateDesign({ primaryColor: val })}
-                                    className="w-full"
+                                    className="w-fit min-w-[120px]"
                                 />
                                 <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
                                     Affects insert buttons, active states & toggles.
@@ -366,7 +369,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <ColorisInput 
                                     value={design.backgroundColor || (isDark ? '#080808' : '#f7f7f7')} 
                                     onChange={val => updateDesign({ backgroundColor: val })}
-                                    className="w-full"
+                                    className="w-fit min-w-[120px]"
                                 />
                                 <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
                                     This affects the base background behind the document blocks.
@@ -382,7 +385,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <ColorisInput 
                                     value={design.blockBackgroundColor || '#ffffff'} 
                                     onChange={val => updateDesign({ blockBackgroundColor: val })}
-                                    className="w-full"
+                                    className="w-fit min-w-[120px]"
                                 />
                                 <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
                                     This sets the default background color for all blocks.
@@ -470,7 +473,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <ColorisInput 
                                     value={design.tableHeaderBg || (isDark ? '#1f1f1f' : '#fafafa')} 
                                     onChange={val => updateDesign({ tableHeaderBg: val })}
-                                    className="w-full"
+                                    className="w-fit min-w-[120px]"
                                 />
                             </MetaField>
 
@@ -482,7 +485,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <ColorisInput 
                                     value={design.tableBorderColor || (isDark ? '#2a2a2a' : '#ebebeb')} 
                                     onChange={val => updateDesign({ tableBorderColor: val })}
-                                    className="w-full"
+                                    className="w-fit min-w-[120px]"
                                 />
                             </MetaField>
 
@@ -546,7 +549,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <ColorisInput 
                                     value={design.signBarColor || (isDark ? '#ffffff' : '#000000')} 
                                     onChange={val => updateDesign({ signBarColor: val })}
-                                    className="w-full"
+                                    className="w-fit min-w-[120px]"
                                 />
                             </MetaField>
                             
@@ -675,7 +678,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <ColorisInput 
                                     value={design.actionButtonColor || '#111111'} 
                                     onChange={val => updateDesign({ actionButtonColor: val })}
-                                    className="w-full"
+                                    className="w-fit min-w-[120px]"
                                 />
                             </MetaField>
 

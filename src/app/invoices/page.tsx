@@ -332,7 +332,7 @@ function InvoiceCard({ i, onOpen, onArchive, onSendEmail, isDark, onStatusChange
                                     const isActive = s.name === i.status;
                                     const sDynamic = (sSc as any).dynamic;
                                     return (
-                                        <button key={s.name} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setStatusOpen(false); }}
+                                        <button key={s.id} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setStatusOpen(false); }}
                                             className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
                                                 isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                             )}
@@ -433,7 +433,7 @@ function StatusCell({ status, onStatusChange, isDark, customStatuses = [] }: {
                         const isActive = s.name === status;
                         const sDynamic = (sSc as any).dynamic;
                         return (
-                            <button key={s.name} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setOpen(false); }}
+                            <button key={s.id} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setOpen(false); }}
                                 className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
                                     isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                 )}
@@ -1125,7 +1125,7 @@ export default function InvoicesPage() {
                     <TbBtn label={`All (${stats.All.count})`} active={statusFilter === 'All'} onClick={() => setStatusFilter('All')} isDark={isDark} />
                     {activeStatues.map(s => (
                         <TbBtn 
-                            key={s.name} 
+                            key={s.id} 
                             label={`${s.name} (${stats[s.name]?.count || 0})`} 
                             active={statusFilter === s.name} 
                             onClick={() => setStatusFilter(s.name as any)} 
@@ -1156,7 +1156,7 @@ export default function InvoicesPage() {
                         const st = stats[s.name] || { count: 0, amount: 0 };
                         const isActive = statusFilter === s.name;
                         return (
-                            <button key={s.name} onClick={() => { setStatusFilter(s.name); setShowArchived(false); }}
+                            <button key={s.id} onClick={() => { setStatusFilter(s.name); setShowArchived(false); }}
                                 style={isActive ? { backgroundColor: s.color } : {}}
                                 className={cn("flex-1 flex items-center justify-start gap-1.5 px-2.5 text-[10px] font-semibold transition-all hover:brightness-110",
                                     isActive ? "text-white" : (isDark ? "bg-[#252525] text-[#666]" : "bg-[#f0f0f0] text-[#aaa]"))}>

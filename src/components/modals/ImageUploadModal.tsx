@@ -5,14 +5,21 @@ import { X, Upload, Link as LinkIcon, Image as ImageIcon, Check, Loader2 } from 
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 
-interface ImageUploadModalProps {
+interface FileUploadModalProps {
     isOpen: boolean;
     onClose: () => void;
     onUpload: (url: string) => void;
     title?: string;
+    fileType?: 'image' | 'all';
 }
 
-export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "Upload Image" }: ImageUploadModalProps) {
+export default function FileUploadModal({ 
+    isOpen, 
+    onClose, 
+    onUpload, 
+    title = "Upload File",
+    fileType = 'image'
+}: FileUploadModalProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     
@@ -30,7 +37,7 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
         const file = files[0];
         if (!file) return;
 
-        if (!file.type.startsWith('image/')) {
+        if (fileType === 'image' && !file.type.startsWith('image/')) {
             setError("Please upload an image file");
             return;
         }
@@ -242,7 +249,7 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                                     ref={fileInputRef}
                                     type="file" 
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    accept="image/*"
+                                    accept={fileType === 'image' ? "image/*" : "*"}
                                     onChange={(e) => e.target.files && handleFiles(e.target.files)}
                                 />
                                 
@@ -257,10 +264,10 @@ export default function ImageUploadModal({ isOpen, onClose, onUpload, title = "U
                                     </div>
                                     <div className="text-center">
                                         <p className={cn("text-[13px] font-bold", isDark ? "text-white/60" : "text-gray-900")}>
-                                            Drop image here or click to browse
+                                            Drop {fileType === 'image' ? 'image' : 'file'} here or click to browse
                                         </p>
                                         <p className={cn("text-[11px] mt-1", isDark ? "text-white/20" : "text-gray-400")}>
-                                            Supports PNG, JPG, GIF (Max 5MB)
+                                            {fileType === 'image' ? 'Supports PNG, JPG, GIF (Max 5MB)' : 'All file types supported (Max 50MB)'}
                                         </p>
                                     </div>
                                 </div>

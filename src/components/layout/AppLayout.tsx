@@ -204,6 +204,52 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Global Modals */}
             <CreateEntryModal />
             <CSVImportModal />
+            <PrivacyModeEffect />
         </div>
     );
+}
+
+function PrivacyModeEffect() {
+    const isPrivacyMode = useUIStore(s => s.isPrivacyMode);
+
+    useEffect(() => {
+        if (isPrivacyMode) {
+            document.body.classList.add('privacy-mode');
+            
+            // Smart blurring logic
+            const blurNumbers = () => {
+                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+                let node;
+                while(node = walker.nextNode()) {
+                    const text = node.nodeValue || '';
+                    // Match currency symbols or numbers with 3+ digits or decimals
+                    const hasCurrencyValue = /[$€£¥]\s?\d+|[\d,]{3,}(\.\d+)?/.test(text);
+                    
+                    if (hasCurrencyValue && node.parentElement) {
+                        // Avoid blurring parent if it's an input or already has a child with blur
+                        if (['INPUT', 'TEXTAREA', 'SCRIPT', 'STYLE'].includes(node.parentElement.tagName)) continue;
+                        node.parentElement.classList.add('privacy-blur');
+                    }
+                }
+            };
+
+            // Run once
+            blurNumbers();
+            
+            // Re-run on DOM changes for dynamic content
+            const observer = new MutationObserver(blurNumbers);
+            observer.observe(document.body, { childList: true, subtree: true });
+            
+            return () => {
+                observer.disconnect();
+                document.body.classList.remove('privacy-mode');
+                document.querySelectorAll('.privacy-blur').forEach(el => el.classList.remove('privacy-blur'));
+            };
+        } else {
+            document.body.classList.remove('privacy-mode');
+            document.querySelectorAll('.privacy-blur').forEach(el => el.classList.remove('privacy-blur'));
+        }
+    }, [isPrivacyMode]);
+
+    return null;
 }

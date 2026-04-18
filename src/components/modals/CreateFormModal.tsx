@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, ChevronRight, ClipboardList, Tag, Check } from 'lucide-react';
+import { X, ChevronRight, ClipboardList, Tag, Check, Search } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -9,6 +9,7 @@ import { useFormStore } from '@/store/useFormStore';
 import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { useTemplateStore } from '@/store/useTemplateStore';
+import { useProjectStore } from '@/store/useProjectStore';
 import { useEffect } from 'react';
 
 interface Props {
@@ -30,6 +31,7 @@ export function CreateFormModal({ open, onClose }: Props) {
     const router = useRouter();
 
     const { templates, fetchTemplates } = useTemplateStore();
+    const { projects, fetchProjects } = useProjectStore();
     const formTemplates = templates.filter(t => t.entity_type === 'form');
 
     const [title, setTitle]         = useState('New Form');
@@ -38,8 +40,11 @@ export function CreateFormModal({ open, onClose }: Props) {
     const [loading, setLoading]     = useState(false);
 
     useEffect(() => {
-        if (open) fetchTemplates();
-    }, [open, fetchTemplates]);
+        if (open) {
+            fetchTemplates();
+            fetchProjects();
+        }
+    }, [open, fetchTemplates, fetchProjects]);
 
     const handleCreate = async () => {
         if (!title.trim()) return;
@@ -136,16 +141,27 @@ export function CreateFormModal({ open, onClose }: Props) {
                     </div>
 
                     {/* Project */}
-                    <div className={cn(field, "flex flex-col gap-0.5")}>
+                    <div className={cn(field, "flex flex-col gap-0.5 relative group")}>
                         <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>
                             <span className="flex items-center gap-1.5"><Tag size={10} /> Project</span>
                         </span>
-                        <input
-                            value={project}
-                            onChange={e => setProject(e.target.value)}
-                            placeholder="Link to a project (optional)"
-                            className={cn("bg-transparent outline-none text-[13px] w-full", isDark ? "placeholder:text-[#444]" : "placeholder:text-[#bbb]")}
-                        />
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={project}
+                                onChange={e => setProject(e.target.value)}
+                                className={cn("bg-transparent outline-none text-[13px] w-full appearance-none cursor-pointer", isDark ? "text-white placeholder:text-[#444]" : "text-[#111] placeholder:text-[#bbb]")}
+                            >
+                                <option value="" className={isDark ? "bg-[#1c1c1c]" : "bg-white"}>No Project Link</option>
+                                {projects.map(p => (
+                                    <option key={p.id} value={p.id} className={isDark ? "bg-[#1c1c1c]" : "bg-white"}>
+                                        {p.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="pointer-events-none opacity-40 group-focus-within:opacity-100 transition-opacity">
+                                <Search size={12} />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Divider */}

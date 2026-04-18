@@ -4,7 +4,7 @@ import React from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { Plus, Moon, Sun, Bell, LayoutTemplate, Settings, ChevronLeft } from 'lucide-react';
+import { Plus, Moon, Sun, Bell, LayoutTemplate, Settings, ChevronLeft, Eye } from 'lucide-react';
 import { cn, detectCreateModalTab } from '@/lib/utils';
 import { useRouter, usePathname } from 'next/navigation';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -21,7 +21,9 @@ export default function RightToolsMenu() {
         toggleNotifications, 
         rightPanel,
         isRightPanelCollapsed,
-        toggleRightPanelCollapse
+        toggleRightPanelCollapse,
+        isPrivacyMode,
+        togglePrivacyMode
     } = useUIStore();
     const isDark = theme === 'dark';
     const notificationsOpen = rightPanel?.type === 'notifications';

@@ -12,6 +12,21 @@ import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
 import { useDebounce } from '@/hooks/useDebounce';
 
+const DEFAULT_PALETTE = [
+    '#f59e0b', // Amber (Folder)
+    '#ef4444', // Red
+    '#f97316', // Orange (Doc)
+    '#ec4899', // Pink (Image)
+    '#8b5cf6', // Violet (Audio)
+    '#3b82f6', // Blue (Video)
+    '#06b6d4', // Cyan (Link)
+    '#10b981', // Emerald (Code)
+    '#4dbf39', // App Green (Primary)
+    '#6b7280', // Gray (Archive)
+    '#FFFFFF', // White
+    '#000000'  // Black
+];
+
 const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
     primary_color: '#4dbf39',
     secondary_color: '',
@@ -20,11 +35,12 @@ const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
     border_radius: 12,
     logo_light_url: '',
     logo_dark_url: '',
-    favicon_url: ''
+    favicon_url: '',
+    branding_colors: DEFAULT_PALETTE
 };
 
 // Visual-only subset we expose in settings (border_radius & font_family are hidden)
-type BrandingFormData = Pick<WorkspaceBranding, 'primary_color' | 'secondary_color' | 'apply_color_to_sidebar' | 'logo_light_url' | 'logo_dark_url' | 'favicon_url'>;
+type BrandingFormData = Pick<WorkspaceBranding, 'primary_color' | 'secondary_color' | 'apply_color_to_sidebar' | 'logo_light_url' | 'logo_dark_url' | 'favicon_url' | 'branding_colors'>;
 
 function ResetButton({ onClick, isDark }: { onClick: () => void, isDark: boolean }) {
     return (
@@ -139,6 +155,7 @@ export default function BrandingSettingsPage() {
         logo_light_url: '',
         logo_dark_url: '',
         favicon_url: '',
+        branding_colors: DEFAULT_BRANDING.branding_colors,
     });
     
     const debouncedFormData = useDebounce(formData, 1000);
@@ -165,6 +182,9 @@ export default function BrandingSettingsPage() {
                 logo_light_url: branding.logo_light_url || '',
                 logo_dark_url: branding.logo_dark_url || '',
                 favicon_url: branding.favicon_url || '',
+                branding_colors: (branding.branding_colors && branding.branding_colors.length > 0) 
+                    ? branding.branding_colors 
+                    : DEFAULT_PALETTE
             });
         }
     }, [branding, isSaving, isDirty]);
@@ -194,7 +214,8 @@ export default function BrandingSettingsPage() {
             debouncedFormData.apply_color_to_sidebar !== (serverState.apply_color_to_sidebar || false) ||
             debouncedFormData.logo_light_url !== (serverState.logo_light_url || '') ||
             debouncedFormData.logo_dark_url !== (serverState.logo_dark_url || '') ||
-            debouncedFormData.favicon_url !== (serverState.favicon_url || '');
+            debouncedFormData.favicon_url !== (serverState.favicon_url || '') ||
+            JSON.stringify(debouncedFormData.branding_colors) !== JSON.stringify(serverState.branding_colors || DEFAULT_BRANDING.branding_colors);
 
         if (!hasChanges) return;
 
@@ -230,14 +251,14 @@ export default function BrandingSettingsPage() {
                 description="These settings apply globally to documents, portals, and PDFs."
             >
                 <SettingsField 
-                    label="Primary Color" 
+                    label="Accent Color" 
                     extra={<ResetButton onClick={() => resetField('primary_color')} isDark={isDark} />}
                 >
                     <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-2 duration-500">
                         <ColorisInput 
                             value={formData.primary_color}
                             onChange={val => updateField({ primary_color: val })}
-                            className="w-60"
+                            className="w-fit min-w-[140px]"
                             large
                         />
                         
@@ -298,6 +319,52 @@ export default function BrandingSettingsPage() {
                 </div>
 
 
+            </SettingsCard>
+
+            <SettingsCard
+                title="Branding Swatch"
+                description="Customize the default colors available in the color picker."
+                extra={<ResetButton onClick={() => resetField('branding_colors')} isDark={isDark} />}
+            >
+                <div className="flex flex-col gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
+                        {(formData.branding_colors || []).map((color, index) => (
+                            <div key={index} className="relative group">
+                                <ColorisInput 
+                                    value={color}
+                                    onChange={(newColor) => {
+                                        const newColors = [...(formData.branding_colors || [])];
+                                        newColors[index] = newColor;
+                                        updateField({ branding_colors: newColors });
+                                    }}
+                                />
+                                <button
+                                    onClick={() => {
+                                        const newColors = (formData.branding_colors || []).filter((_, i) => i !== index);
+                                        updateField({ branding_colors: newColors });
+                                    }}
+                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity flex shadow-sm z-10"
+                                >
+                                    <Trash2 size={10} />
+                                </button>
+                            </div>
+                        ))}
+                        <button
+                            onClick={() => {
+                                const newColors = [...(formData.branding_colors || []), '#000000'];
+                                updateField({ branding_colors: newColors });
+                            }}
+                            className={cn(
+                                "h-[45px] rounded-xl border border-dashed flex items-center justify-center gap-2 transition-all group",
+                                isDark 
+                                    ? "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10" 
+                                    : "bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10"
+                            )}
+                        >
+                            <span className={cn("text-[11px] font-bold uppercase tracking-wider", isDark ? "text-white/40 group-hover:text-white/60" : "text-black/40 group-hover:text-black/60")}>Add Color</span>
+                        </button>
+                    </div>
+                </div>
             </SettingsCard>
         </div>
     );

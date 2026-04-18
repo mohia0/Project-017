@@ -305,6 +305,20 @@ button {
   .animate-bell-pulse {
     animation: bell-pulse 2s ease-in-out infinite;
   }
+
+  /* Privacy Mode Blurring */
+  body.privacy-mode .privacy-blur {
+    filter: blur(5px);
+    user-select: none;
+    pointer-events: none;
+    transition: filter 0.3s ease;
+  }
+
+  /* Smart pattern matching for currency and high numbers */
+  body.privacy-mode *:not(:has(*)):not(input):not(textarea):not(script):not(style) {
+    /* This is handled via JS for better precision, but we can set a transition */
+    transition: filter 0.3s ease;
+  }
 }
 
 

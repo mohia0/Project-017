@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
+import { v4 as uuidv4 } from 'uuid';
 
 // Types
 export interface UserProfile {
@@ -22,6 +23,7 @@ export interface WorkspaceBranding {
   logo_light_url: string | null;
   logo_dark_url: string | null;
   favicon_url: string | null;
+  branding_colors: string[] | null;
 }
 
 export interface WorkspacePayments {
@@ -187,7 +189,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   statuses: (['proposals', 'invoices', 'projects'] as const).flatMap(tool =>
     DEFAULT_STATUSES_BY_TOOL[tool].map((s, i) => ({
       ...s,
-      id: `local-${tool}-${i}`,
+      id: uuidv4(),
       workspace_id: '',
       created_at: new Date().toISOString(),
     }))
@@ -427,40 +429,60 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
+
   addStatus: async (workspaceId, data) => {
-    // Optimistic local creation
-    const localStatus: WorkspaceStatus = {
-      ...data, 
-      id: `local-${Date.now()}`, 
-      workspace_id: workspaceId, 
+    // Build a single new record with a real UUID
+    const newStatus: WorkspaceStatus = {
+      ...data,
+      id: uuidv4(),
+      workspace_id: workspaceId,
+      // position = after the last existing one for this tool
+      position: get().statuses.filter(s => s.tool === data.tool).length,
       created_at: new Date().toISOString()
     };
-    
-    // Append to current tool list
-    const currentList = get().statuses.filter(s => s.tool === data.tool).sort((a,b) => a.position - b.position);
-    const updatedList = [...currentList, localStatus].map((s, i) => ({ ...s, position: i }));
-    
-    // Save everything. This converts any `local-` defaults to real DB rows seamlessly
-    await get().reorderStatuses(workspaceId, data.tool, updatedList);
-    
-    return localStatus;
+
+    // 1. Optimistic local add
+    set(s => ({ statuses: [...s.statuses, newStatus] }));
+
+    // 2. Persist only this new record
+    if (workspaceId) {
+      const { created_at, ...payload } = newStatus;
+      const { data: inserted, error } = await supabase
+        .from('workspace_statuses')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[addStatus] DB Error:', error.message);
+        // Roll back
+        set(s => ({ statuses: s.statuses.filter(st => st.id !== newStatus.id), error: error.message }));
+        return null;
+      }
+
+      // Replace temporary record with the one returned from DB
+      if (inserted) {
+        set(s => ({
+          statuses: s.statuses.map(st => st.id === newStatus.id ? inserted : st)
+        }));
+        return inserted;
+      }
+    }
+
+    return newStatus;
   },
 
   updateStatus: async (id, updates) => {
     // Optimistic
     set(s => ({ statuses: s.statuses.map(st => st.id === id ? { ...st, ...updates } : st) }));
-    if (!id.startsWith('local-')) {
-      const { error } = await supabase.from('workspace_statuses').update(updates).eq('id', id);
-      if (error) set({ error: error.message });
-    }
+    const { error } = await supabase.from('workspace_statuses').update(updates).eq('id', id);
+    if (error) set({ error: error.message });
   },
 
   deleteStatus: async (id) => {
     set(s => ({ statuses: s.statuses.filter(st => st.id !== id) }));
-    if (!id.startsWith('local-')) {
-      const { error } = await supabase.from('workspace_statuses').delete().eq('id', id);
-      if (error) set({ error: error.message });
-    }
+    const { error } = await supabase.from('workspace_statuses').delete().eq('id', id);
+    if (error) set({ error: error.message });
   },
 
   reorderStatuses: async (workspaceId, tool, ordered) => {
@@ -469,44 +491,22 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     if (!workspaceId) return;
 
-    // 2. Prepare updates
-    // If an ID is 'local-', we treat it as a new record (UPSERT will create it)
-    // but the ID must be removed or replaced with a real UUID if we want Supabase to generate it.
-    // However, for bulk reorder, it's safer to just send them all.
-    const updates = ordered.map((s, i) => {
-      const isLocal = s.id.startsWith('local-');
-      const { id, created_at, ...rest } = s;
-      
-      const item: any = { 
-        ...rest, 
-        workspace_id: workspaceId,
-        position: i 
-      };
-      
-      if (!isLocal) item.id = id;
-      return item;
-    });
+    // 2. Only update the `position` column for rows that actually exist in the DB
+    //    (workspace_id is set, so they came from the server, not seed defaults)
+    const dbRows = ordered.filter(s => s.workspace_id === workspaceId);
+    const updates = dbRows.map((s, i) => ({ id: s.id, position: i }));
 
-    if (updates.length > 0) {
-      const { data, error } = await supabase
+    for (const patch of updates) {
+      const { error } = await supabase
         .from('workspace_statuses')
-        .upsert(updates, { onConflict: 'id' })
-        .select();
-        
+        .update({ position: patch.position })
+        .eq('id', patch.id);
       if (error) {
         console.error('[reorderStatuses] DB Error:', error.message);
-        set({ error: error.message });
-      } else if (data) {
-        // Update store with the real IDs assigned by Postgres
-        set(s => ({ 
-          statuses: [
-            ...s.statuses.filter(st => st.tool !== tool),
-            ...data.sort((a,b) => a.position - b.position)
-          ] 
-        }));
       }
     }
   },
+
 
   // ── Tool Settings ────────────────────────────────────────────────────────────
 

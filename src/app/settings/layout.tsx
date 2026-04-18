@@ -18,21 +18,56 @@ export default function SettingsLayout({
   const { theme } = useUIStore();
   const isDark = theme === 'dark';
 
+  const getPageTitle = (path: string) => {
+    if (path.includes('/branding')) return 'Workspace Branding';
+    if (path.includes('/profile')) return 'Public Profile';
+    if (path.includes('/workspace')) return 'Workspace Settings';
+    if (path.includes('/domains')) return 'Custom Domains';
+    if (path.includes('/payments')) return 'Payment Methods';
+    if (path.includes('/emails')) return 'Email Configuration';
+    if (path.includes('/features/statuses')) return 'Feature Statuses';
+    if (path.includes('/features/proposals')) return 'Proposal Settings';
+    if (path.includes('/features/invoices')) return 'Invoice Settings';
+    if (path.includes('/features/projects')) return 'Project Settings';
+    return '';
+  };
+
+  const pageTitle = getPageTitle(pathname);
   const allLinks = [...ACCOUNT_LINKS, ...WORKSPACE_LINKS, ...FEATURES_LINKS];
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
       {/* Settings Header */}
-      <div className="h-[60px] border-b shrink-0 flex flex-col justify-center px-4" 
+      <div className="h-[60px] border-b shrink-0 flex items-center" 
            style={{ borderColor: isDark ? '#252525' : '#ebebeb' }}>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.push('/')}
-            className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors text-current opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
-          >
-            <ChevronLeft size={18} strokeWidth={2.5} />
-          </button>
-          <h1 className="text-xl font-bold tracking-tight">Settings</h1>
+        
+        {/* Sidebar Header Part */}
+        <div className={cn(
+          "w-[220px] shrink-0 h-full hidden md:flex items-center px-4 border-r",
+          isDark ? "border-[#252525]" : "border-[#ebebeb]"
+        )}>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/')}
+              className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors text-current opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
+            >
+              <ChevronLeft size={18} strokeWidth={2.5} />
+            </button>
+            <h1 className="text-[17px] font-bold tracking-tight">Settings</h1>
+          </div>
+        </div>
+
+        {/* Main Content Header Part (Mobile + Desktop Title) */}
+        <div className="flex-1 px-6 md:px-8 flex items-center h-full">
+          <div className="md:hidden flex items-center gap-3 mr-4">
+            <button
+              onClick={() => router.push('/')}
+              className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors text-current opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
+            >
+              <ChevronLeft size={18} strokeWidth={2.5} />
+            </button>
+          </div>
+          <h2 className="text-[17px] md:text-xl font-bold tracking-tight">{pageTitle || 'Settings'}</h2>
         </div>
       </div>
 

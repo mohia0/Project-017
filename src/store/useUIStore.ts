@@ -43,6 +43,8 @@ interface UIState {
     setRightPanelWidth: (width: number) => void;
     isRightPanelCollapsed: boolean;
     toggleRightPanelCollapse: () => void;
+    isPrivacyMode: boolean;
+    togglePrivacyMode: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -99,6 +101,8 @@ export const useUIStore = create<UIState>()(
             setRightPanelWidth: (width) => set({ rightPanelWidth: width }),
             isRightPanelCollapsed: false,
             toggleRightPanelCollapse: () => set((state) => ({ isRightPanelCollapsed: !state.isRightPanelCollapsed })),
+            isPrivacyMode: false,
+            togglePrivacyMode: () => set((state) => ({ isPrivacyMode: !state.isPrivacyMode })),
         }),
         {
             name: 'ui-storage',
@@ -108,7 +112,8 @@ export const useUIStore = create<UIState>()(
                 isLeftMenuExpanded: state.isLeftMenuExpanded,
                 isToolsMenuExpanded: state.isToolsMenuExpanded,
                 rightPanelWidth: state.rightPanelWidth,
-                isRightPanelCollapsed: state.isRightPanelCollapsed
+                isRightPanelCollapsed: state.isRightPanelCollapsed,
+                isPrivacyMode: state.isPrivacyMode
             }),
         }
     )

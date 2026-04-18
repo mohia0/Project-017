@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Hash } from 'lucide-react';
 import { useUIStore } from "@/store/useUIStore";
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 interface ColorPickerProps {
     value: string;
@@ -97,6 +98,8 @@ function rgbaToHex(r: number, g: number, b: number, a: number) {
 
 export function ColorisInput({ value, onChange, className, isDark: isDarkProp, compact, large }: ColorPickerProps) {
     const { theme } = useUIStore();
+    const { branding } = useSettingsStore();
+    const brandingColors = branding?.branding_colors || [];
 
     const isDark = isDarkProp ?? (theme === 'dark');
     const [isOpen, setIsOpen] = useState(false);
@@ -109,18 +112,22 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
     const hsv = useMemo(() => rgbToHsv(colorObj.r, colorObj.g, colorObj.b), [colorObj]);
     const [localHsv, setLocalHsv] = useState(hsv);
     const [localAlpha, setLocalAlpha] = useState(colorObj.a);
+    const [isDragging, setIsDragging] = useState<'satVal' | 'hue' | null>(null);
+
+    const satValRef = useRef<HTMLDivElement>(null);
+    const hueRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setLocalHsv(hsv);
         setLocalAlpha(colorObj.a);
     }, [hsv, colorObj.a]);
 
-    const updateColor = (newHsv: { h: number, s: number, v: number }, newAlpha: number) => {
+    const updateColor = useCallback((newHsv: { h: number, s: number, v: number }, newAlpha: number) => {
         setLocalHsv(newHsv);
         setLocalAlpha(newAlpha);
         const rgb = hsvToRgb(newHsv.h, newHsv.s, newHsv.v);
         onChange(rgbaToHex(rgb.r, rgb.g, rgb.b, newAlpha));
-    };
+    }, [onChange]);
 
     const updateCoords = useCallback(() => {
         // Centering is now handled by CSS, no need for complex calculations
@@ -148,21 +155,56 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
         }
     }, [isOpen, updateCoords]);
 
-    const handleSatValDrag = (e: React.MouseEvent | React.TouchEvent) => {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    const handleSatValDrag = useCallback((e: MouseEvent | TouchEvent) => {
+        if (!satValRef.current) return;
+        const rect = satValRef.current.getBoundingClientRect();
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
         const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
         const y = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
-        updateColor({ ...localHsv, s: x * 100, v: y * 100 }, localAlpha);
-    };
+        
+        const nextHsv = { ...localHsv, s: x * 100, v: y * 100 };
+        setLocalHsv(nextHsv);
+        const rgb = hsvToRgb(nextHsv.h, nextHsv.s, nextHsv.v);
+        onChange(rgbaToHex(rgb.r, rgb.g, rgb.b, localAlpha));
+    }, [onChange, localAlpha, localHsv]);
 
-    const handleHueDrag = (e: React.MouseEvent | React.TouchEvent) => {
-        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const handleHueDrag = useCallback((e: MouseEvent | TouchEvent) => {
+        if (!hueRef.current) return;
+        const rect = hueRef.current.getBoundingClientRect();
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
         const h = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-        updateColor({ ...localHsv, h: h * 360 }, localAlpha);
-    };
+        
+        const nextHsv = { ...localHsv, h: h * 360 };
+        setLocalHsv(nextHsv);
+        const rgb = hsvToRgb(nextHsv.h, nextHsv.s, nextHsv.v);
+        onChange(rgbaToHex(rgb.r, rgb.g, rgb.b, localAlpha));
+    }, [onChange, localAlpha, localHsv]);
+
+    useEffect(() => {
+        if (!isDragging) return;
+
+        const handleMove = (e: MouseEvent | TouchEvent) => {
+            if (isDragging === 'satVal') handleSatValDrag(e);
+            if (isDragging === 'hue') handleHueDrag(e);
+        };
+
+        const handleEnd = () => {
+            setIsDragging(null);
+        };
+
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchmove', handleMove);
+        window.addEventListener('touchend', handleEnd);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleEnd);
+            window.removeEventListener('touchmove', handleMove);
+            window.removeEventListener('touchend', handleEnd);
+        };
+    }, [isDragging, handleSatValDrag, handleHueDrag]);
 
     return (
         <div className={cn("relative", className)} ref={containerRef}>
@@ -172,7 +214,7 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
                     large ? "p-3" : "p-1 rounded-lg",
                     isDark 
                         ? (isOpen ? "border-[#4dbf39]/50 bg-[#1a1a1a]" : "border-white/5 hover:border-white/10 bg-white/5")
-                        : (isOpen ? "border-[#4dbf39]/50 bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)]" : "border-gray-100 hover:border-gray-200 bg-gray-50/50")
+                        : (isOpen ? "border-[#4dbf39]/50 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]" : "border-black/[0.08] hover:border-black/[0.15] bg-black/[0.02]")
                 )}
                 onClick={() => {
                     if (isOpen) addToHistory(value);
@@ -189,9 +231,9 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
                 {!compact && (
                     <div className="flex flex-col min-w-0 flex-1">
                         <span className={cn(
-                            "font-mono font-bold truncate tracking-tight",
+                            "font-sans font-bold truncate tracking-tight",
                             large ? "text-[13px]" : "text-[11px]",
-                            isDark ? "text-white/90" : "text-gray-700"
+                            isDark ? "text-white/90" : "text-black/70"
                         )}>
                             {value}
                         </span>
@@ -235,10 +277,17 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
                         >
                             {/* Saturation / Value */}
                             <div 
+                                ref={satValRef}
                                 className="relative w-full aspect-square rounded cursor-crosshair overflow-hidden mb-2"
                                 style={{ backgroundColor: `hsl(${localHsv.h}, 100%, 50%)` }}
-                                onMouseDownCapture={handleSatValDrag}
-                                onTouchStartCapture={handleSatValDrag}
+                                onMouseDown={(e) => {
+                                    setIsDragging('satVal');
+                                    handleSatValDrag(e.nativeEvent);
+                                }}
+                                onTouchStart={(e) => {
+                                    setIsDragging('satVal');
+                                    handleSatValDrag(e.nativeEvent);
+                                }}
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-white to-transparent" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
@@ -250,10 +299,17 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
 
                             {/* Hue Slider */}
                             <div 
+                                ref={hueRef}
                                 className="relative h-1.5 w-full rounded-full cursor-pointer mb-2"
                                 style={{ background: 'linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%)' }}
-                                onMouseDownCapture={handleHueDrag}
-                                onTouchStartCapture={handleHueDrag}
+                                onMouseDown={(e) => {
+                                    setIsDragging('hue');
+                                    handleHueDrag(e.nativeEvent);
+                                }}
+                                onTouchStart={(e) => {
+                                    setIsDragging('hue');
+                                    handleHueDrag(e.nativeEvent);
+                                }}
                             >
                                 <div 
                                     className="absolute top-1/2 -mt-1.5 w-3 h-3 -ml-1.5 bg-white rounded-full shadow-sm pointer-events-none border border-black/5" 
@@ -263,9 +319,8 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
 
                             {/* Hex Input */}
                             <div className={cn("flex items-center gap-1.5 mb-2 bg-gray-50/50 rounded px-1.5 py-1 border", isDark ? "bg-white/5 border-white/5" : "bg-gray-50 border-gray-100")}>
-                                <Hash size={10} className="opacity-40" />
                                 <input 
-                                    className={cn("bg-transparent text-[10px] font-mono font-medium outline-none w-full", isDark ? "text-white" : "text-black")}
+                                    className={cn("bg-transparent text-[10px] font-sans font-medium outline-none w-full", isDark ? "text-white" : "text-black")}
                                     value={value}
                                     onChange={(e) => onChange(e.target.value)}
                                     placeholder="#HEX"
@@ -274,6 +329,25 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
 
 
 
+
+                            {/* Branding Swatches */}
+                            {brandingColors.length > 0 && (
+                                <div className="mt-1">
+                                    <div className={cn("text-[9px] font-bold uppercase tracking-wider opacity-40 mb-1 pl-0.5", isDark ? "text-white" : "text-black")}>
+                                        Branding
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5 justify-start mb-2">
+                                        {brandingColors.map((color) => (
+                                            <button
+                                                key={color}
+                                                className="w-4 h-4 rounded border border-black/5 hover:scale-110 active:scale-95 transition-all outline-none"
+                                                style={{ backgroundColor: color }}
+                                                onClick={(e) => { e.stopPropagation(); onChange(color); addToHistory(color); }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Color History / Recent Colors */}
                             <div className="mt-1">
@@ -296,26 +370,7 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
                                 </div>
                             </div>
 
-                            {/* Standard Swatches */}
-                            <div className="mt-1">
-                                <div className={cn("text-[9px] font-bold uppercase tracking-wider opacity-40 mb-1 pl-0.5", isDark ? "text-white" : "text-black")}>
-                                    System
-                                </div>
-                                <div className="flex flex-wrap gap-1.5 justify-start">
-                                    {[
-                                        '#F5A623', '#F85359', '#E95F91', '#A85CF9', '#8289F1', // Row 1
-                                        '#5D9CEC', '#4FC1E9', '#48CFAD', '#4DBF39', '#9B9B9B', // Row 2
-                                        '#FFFFFF', '#000000'                                  // Neutrals
-                                    ].map((color) => (
-                                        <button
-                                            key={color}
-                                            className="w-4 h-4 rounded border border-black/5 hover:scale-110 active:scale-95 transition-all outline-none"
-                                            style={{ backgroundColor: color }}
-                                            onClick={(e) => { e.stopPropagation(); onChange(color); addToHistory(color); }}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
+
                         </motion.div>
                         </>
                     )}

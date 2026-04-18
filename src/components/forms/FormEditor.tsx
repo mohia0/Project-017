@@ -30,7 +30,8 @@ import { useTemplateStore, Template } from '@/store/useTemplateStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import { CountryPicker } from '@/components/ui/CountryPicker';
-import ImageUploadModal from '@/components/modals/ImageUploadModal';
+import FileUploadModal from '@/components/modals/ImageUploadModal';
+import { useProjectStore } from '@/store/useProjectStore';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
 import { appToast } from '@/lib/toast';
@@ -116,7 +117,7 @@ function SectionAccordion({ label, icon, isDark, children, defaultOpen = true }:
     return (
         <div className={cn("border-b last:border-b-0", isDark ? "border-[#252525]" : "border-[#f0f0f0]")}>
             <button onClick={() => setOpen(v => !v)}
-                className={cn("w-full flex items-center justify-between px-4 py-3 text-[11.5px] font-semibold transition-colors",
+                className={cn("w-full flex items-center justify-between px-4 py-3 text-[12px] font-medium transition-colors font-semibold transition-colors",
                     isDark ? "text-[#666] hover:text-[#aaa]" : "text-[#aaa] hover:text-[#555]")}>
                 <div className="flex items-center gap-2">{icon}{label}</div>
                 <ChevronRight size={11} className={cn("transition-transform", open && "rotate-90")} />
@@ -135,8 +136,10 @@ function PanelInput({ value, onChange, placeholder, type = 'text', isDark }: {
 }) {
     return (
         <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-            className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none transition-all bg-white text-[#111] placeholder:text-[#ccc]",
-                isDark ? "border-[#2a2a2a]" : "border-[#e5e5e5]"
+            className={cn("w-full px-4 py-3 text-[13px] rounded-xl border outline-none transition-all",
+                isDark 
+                    ? "bg-[#111] border-[#333] text-[#eee] focus:border-primary/50 placeholder:text-white/10" 
+                    : "bg-white border-[#e5e5e5] text-[#111] focus:border-primary/50 placeholder:text-[#ccc]"
             )} />
     );
 }
@@ -283,11 +286,6 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 isDragging && "opacity-50"
             )}>
             
-            {/* Required badge */}
-            {field.required && (
-                <span className="absolute top-2 right-12 text-[10px] font-bold text-red-400">Required</span>
-            )}
-
             {/* Remove button */}
             {!isPreview && (
                 <button
@@ -310,13 +308,12 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
             )}
 
             <div className={cn(isPreview ? "pl-0" : "pl-4")}>
-                <div className="mb-3">
-                    <div className={cn("text-[13px] font-bold mb-1.5 px-2 py-0.5 inline-block", isDark ? "text-[#eee]" : "text-[#111]")}
-                         style={{ borderRadius: `${Math.max(0, borderRadius - 8)}px`, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}>
-                        {field.label} {field.required && <span className="text-red-500 ml-1 mt-1">*</span>}
+                <div className="mb-2">
+                    <div className={cn("text-[13px] font-bold", isDark ? "text-white/90" : "text-black/90")}>
+                        {field.label || 'Untitled Field'} {field.required && <span className="text-red-500 ml-0.5">*</span>}
                     </div>
                     {field.description && (
-                        <div className={cn("text-[11px] opacity-60 px-2 mt-0.5", isDark ? "text-[#aaa]" : "text-[#555]")}>
+                        <div className={cn("text-[11px] font-medium opacity-50 block mt-1", isDark ? "text-white" : "text-black")}>
                             {field.description}
                         </div>
                     )}
@@ -327,7 +324,6 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
         </div>
     );
 }
-
 /* ── Field type pill in picker ── */
 function FieldTypePill({ def, onAdd, isDark, borderRadius }: { def: FieldTypeDef; onAdd: () => void; isDark: boolean; borderRadius: number }) {
     return (
@@ -472,6 +468,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
         responses, fetchResponses, bulkDeleteResponses 
     } = useFormStore();
     const { templates, updateTemplate: updateTemplateInStore, addTemplate, fetchTemplates } = useTemplateStore();
+    const { projects, fetchProjects } = useProjectStore();
 
     const [title, setTitle] = useState('New Form');
     const [status, setStatus] = useState<FormStatus>('Draft');
@@ -505,6 +502,9 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
     const [uploadTarget, setUploadTarget] = useState<'logo' | 'background'>('logo');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isResponsesDeleteOpen, setIsResponsesDeleteOpen] = useState(false);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [lastFieldForUpload, setLastFieldForUpload] = useState<string | null>(null);
+    const [lastIndexForUpload, setLastIndexForUpload] = useState<number | null>(null);
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [selectedResponseIds, setSelectedResponseIds] = useState<Set<string>>(new Set());
@@ -545,7 +545,8 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
     useEffect(() => { 
         if (isTemplate) fetchTemplates();
         else fetchForms(); 
-    }, [fetchForms, fetchTemplates, isTemplate]);
+        fetchProjects();
+    }, [fetchForms, fetchTemplates, isTemplate, fetchProjects]);
 
     useEffect(() => {
         if (!id || isLoaded) return;
@@ -1056,7 +1057,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                     <button
                                                         onClick={() => !s.disabled && setCanvasStep(s.id)}
                                                         className={cn(
-                                                            "px-3 py-1.5 rounded-full text-[11.5px] font-semibold transition-all border",
+                                                            "px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors font-semibold transition-all border",
                                                             s.disabled && "cursor-not-allowed opacity-50",
                                                             canvasStep === s.id
                                                                 ? "text-black border-transparent shadow-sm"
@@ -1171,7 +1172,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                         <div className={cn("text-[13px] font-semibold", isFormDark ? "text-[#555]" : "text-[#bbb]")}>
                                                                             No fields yet
                                                                         </div>
-                                                                        <div className="text-[11.5px] mt-0.5 opacity-60">
+                                                                        <div className="text-[12px] font-medium transition-colors mt-0.5 opacity-60">
                                                                             Add a field to get started
                                                                         </div>
                                                                         {!isPreview && (
@@ -1324,57 +1325,120 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                     </div>
                                                     <div className="px-4 space-y-3">
                                                         <div>
-                                                            <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide",
+                                                            <label className={cn("block text-[10px] font-bold mb-2 uppercase tracking-widest",
                                                                 isDark ? "text-[#555]" : "text-[#bbb]")}>Label</label>
                                                             <PanelInput value={selectedField.label}
                                                                 onChange={v => updateField(selectedField.id, { label: v })} isDark={isDark} />
                                                         </div>
                                                         <div>
-                                                            <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide",
+                                                            <label className={cn("block text-[10px] font-bold mb-2 uppercase tracking-widest",
                                                                 isDark ? "text-[#555]" : "text-[#bbb]")}>Description</label>
                                                             <PanelInput value={selectedField.description || ''}
                                                                 onChange={v => updateField(selectedField.id, { description: v })}
                                                                 placeholder="Optional" isDark={isDark} />
                                                         </div>
                                                         <div>
-                                                            <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide",
-                                                                isDark ? "text-[#555]" : "text-[#bbb]")}>Placeholder</label>
-                                                            <PanelInput value={selectedField.placeholder || ''}
-                                                                onChange={v => updateField(selectedField.id, { placeholder: v })} isDark={isDark} />
+                                                            <label className={cn("block text-[10px] font-bold mb-2 uppercase tracking-widest",
+                                                                isDark ? "text-[#555]" : "text-[#bbb]")}>Linked Project</label>
+                                                            <select
+                                                                value={meta.project || ''}
+                                                                onChange={e => updateMeta({ project: e.target.value })}
+                                                                className={cn("w-full px-4 py-3 text-[13px] rounded-xl border outline-none appearance-none cursor-pointer",
+                                                                    isDark ? "bg-[#151515] border-[#2a2a2a] text-[#aaa]" : "bg-white border-[#e5e5e5] text-[#111]")}
+                                                            >
+                                                                <option value="">No Project</option>
+                                                                {projects.map(p => (
+                                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                                ))}
+                                                            </select>
                                                         </div>
-                                                        <label className="flex items-center gap-2.5 cursor-pointer"
+                                                        <label className="flex items-center gap-3 cursor-pointer group/req py-1"
                                                             onClick={() => updateField(selectedField.id, { required: !selectedField.required })}>
-                                                            <div className={cn("w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
+                                                            <div className={cn("w-4 h-4 rounded border transition-all flex items-center justify-center",
                                                                 selectedField.required
                                                                     ? "border-primary bg-primary"
                                                                     : (isDark ? "border-[#333] bg-[#151515]" : "border-[#ddd] bg-white"))}>
-                                                                {selectedField.required && <Check size={9} className="text-black" />}
                                                             </div>
-                                                            <span className={cn("text-[11.5px]", isDark ? "text-[#666]" : "text-[#888]")}>Required field</span>
+                                                            <span className={cn("text-[12px] font-medium transition-colors", isDark ? "text-[#666]" : "text-[#888]")}>Make this field mandatory</span>
                                                         </label>
                                                         {(selectedField.type === 'dropdown' || selectedField.type === 'multi_choice') && (
                                                             <div>
-                                                                <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide",
+                                                                <label className={cn("block text-[10px] font-bold mb-2 uppercase tracking-widest",
                                                                     isDark ? "text-[#555]" : "text-[#bbb]")}>Options (one per line)</label>
                                                                 <textarea
-                                                                    rows={4}
+                                                                    rows={6}
                                                                     value={(selectedField.options || []).join('\n')}
-                                                                    onChange={e => updateField(selectedField.id, { options: e.target.value.split('\n').filter(Boolean) })}
-                                                                    className={cn("w-full px-3 py-2 text-[12px] rounded-lg border outline-none resize-none",
-                                                                        isDark ? "bg-[#151515] border-[#2a2a2a] text-[#ddd]" : "bg-white border-[#e5e5e5] text-[#111]")}
+                                                                    onChange={e => updateField(selectedField.id, { options: e.target.value.split('\n').filter(l => l.length > 0) })}
+                                                                    className={cn("w-full px-4 py-3 text-[13px] rounded-xl border outline-none resize-none",
+                                                                        isDark ? "bg-[#151515] border-[#2a2a2a] text-[#aaa]" : "bg-white border-[#e5e5e5] text-[#111]")}
                                                                 />
+                                                            </div>
+                                                        )}
+                                                        {selectedField.type === 'picture_choice' && (
+                                                            <div className="space-y-3">
+                                                                <label className={cn("block text-[10px] font-bold uppercase tracking-widest",
+                                                                    isDark ? "text-[#555]" : "text-[#bbb]")}>Picture Options</label>
+                                                                <div className="space-y-3">
+                                                                    {(selectedField.options || []).map((opt, idx) => (
+                                                                        <div key={idx} className={cn("group flex items-center gap-3 p-3 rounded-2xl border transition-all", isDark ? "bg-[#1c1c1c] border-[#2a2a2a] hover:border-[#3a3a3a]" : "bg-white border-[#e5e5e5] hover:border-[#d5d5d5]")}>
+                                                                            <div 
+                                                                                onClick={() => {
+                                                                                    setLastFieldForUpload(selectedField.id);
+                                                                                    setLastIndexForUpload(idx);
+                                                                                    setIsUploadModalOpen(true);
+                                                                                }}
+                                                                                className={cn("w-14 h-14 rounded-xl flex-shrink-0 cursor-pointer overflow-hidden border-2 border-dashed transition-all flex items-center justify-center group/img", isDark ? "border-[#444] hover:border-primary/50 bg-black/20" : "border-[#ccc] hover:border-primary/50 bg-black/5")}
+                                                                            >
+                                                                                {opt ? (
+                                                                                    <img src={opt} className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity" />
+                                                                                ) : (
+                                                                                    <Image size={18} className={isDark ? "text-[#555] group-hover/img:text-primary" : "text-[#aaa] group-hover/img:text-primary"} />
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <input 
+                                                                                    value={opt} 
+                                                                                    onChange={e => {
+                                                                                        const newOpts = [...(selectedField.options || [])];
+                                                                                        newOpts[idx] = e.target.value;
+                                                                                        updateField(selectedField.id, { options: newOpts });
+                                                                                    }}
+                                                                                    placeholder="Image URL"
+                                                                                    className={cn("w-full bg-transparent border-none text-[13px] outline-none font-medium truncate", isDark ? "text-[#eee] placeholder:text-[#555]" : "text-[#111] placeholder:text-[#aaa]")}
+                                                                                />
+                                                                            </div>
+                                                                            <button onClick={() => {
+                                                                                const newOpts = (selectedField.options || []).filter((_, i) => i !== idx);
+                                                                                updateField(selectedField.id, { options: newOpts });
+                                                                            }} className={cn("p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100", isDark ? "hover:bg-red-500/10 text-red-500/70 hover:text-red-500" : "hover:bg-red-50 text-red-500/70 hover:text-red-500")}>
+                                                                                <Trash2 size={15} />
+                                                                            </button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setLastFieldForUpload(selectedField.id);
+                                                                        setLastIndexForUpload(null);
+                                                                        setIsUploadModalOpen(true);
+                                                                    }}
+                                                                    className={cn("w-full py-3 rounded-2xl border-2 border-dashed text-[12px] font-bold flex items-center justify-center gap-2 transition-all",
+                                                                        isDark ? "border-[#333] hover:border-primary/50 hover:bg-primary/5 text-[#666] hover:text-[#eee]" : "border-[#e5e5e5] hover:border-primary/50 hover:bg-primary/5 text-[#aaa] hover:text-[#111]")}
+                                                                >
+                                                                    <Plus size={15} /> Add Picture Option
+                                                                </button>
                                                             </div>
                                                         )}
                                                         {selectedField.type === 'slider' && (
                                                             <div className="grid grid-cols-2 gap-3">
                                                                 <div>
-                                                                    <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide",
+                                                                    <label className={cn("block text-[10px] font-bold mb-2 uppercase tracking-widest",
                                                                         isDark ? "text-[#555]" : "text-[#bbb]")}>Min</label>
                                                                     <PanelInput type="number" value={selectedField.min ?? 0}
                                                                         onChange={v => updateField(selectedField.id, { min: Number(v) })} isDark={isDark} />
                                                                 </div>
                                                                 <div>
-                                                                    <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide",
+                                                                    <label className={cn("block text-[10px] font-bold mb-2 uppercase tracking-widest",
                                                                         isDark ? "text-[#555]" : "text-[#bbb]")}>Max</label>
                                                                     <PanelInput type="number" value={selectedField.max ?? 100}
                                                                         onChange={v => updateField(selectedField.id, { max: Number(v) })} isDark={isDark} />
@@ -1412,7 +1476,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                     <SectionAccordion label="General" icon={<Settings size={11} />} isDark={isDark} defaultOpen>
                                                         <div className="space-y-3">
                                                             <div>
-                                                                <label className={cn("block text-[10px] font-semibold mb-1 uppercase tracking-wide",
+                                                                <label className={cn("block text-[10px] font-bold mb-2 uppercase tracking-widest",
                                                                     isDark ? "text-[#555]" : "text-[#bbb]")}>Submission Limit</label>
                                                                 <PanelInput type="number" value={meta.submissionLimit || ''}
                                                                     onChange={v => updateMeta({ submissionLimit: v ? parseInt(v) : null })} isDark={isDark} placeholder="Unlimited" />
@@ -1858,13 +1922,34 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
 
             {/* Modals */}
             {imageUploadOpen && (
-                <ImageUploadModal
+                <FileUploadModal
                     isOpen={imageUploadOpen}
                     onClose={() => setImageUploadOpen(false)}
                     onUpload={(url: string) => {
                         if (uploadTarget === 'logo') updateMeta({ logoUrl: url });
                         else updateMeta({ design: { ...meta.design, backgroundImage: url } });
                         setImageUploadOpen(false);
+                    }}
+                />
+            )}
+            {isUploadModalOpen && (
+                <FileUploadModal
+                    isOpen={isUploadModalOpen}
+                    onClose={() => setIsUploadModalOpen(false)}
+                    onUpload={(url: string) => {
+                        if (lastFieldForUpload) {
+                            const f = fields.find(f => f.id === lastFieldForUpload);
+                            if (f) {
+                                const newOpts = [...(f.options || [])];
+                                if (lastIndexForUpload !== null) {
+                                    newOpts[lastIndexForUpload] = url;
+                                } else {
+                                    newOpts.push(url);
+                                }
+                                updateField(f.id, { options: newOpts });
+                            }
+                        }
+                        setIsUploadModalOpen(false);
                     }}
                 />
             )}
