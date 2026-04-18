@@ -449,7 +449,7 @@ export default function HooksPage() {
                                         </div>
                                     </th>
                                     <th className="text-left font-semibold px-4 py-2.5 w-[260px]">Name</th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[200px]">Notification Title</th>
+                                    <th className="text-left font-semibold px-4 py-2.5 w-[200px]">Description</th>
                                     <th className="text-left font-semibold px-4 py-2.5 w-[120px]">Triggers</th>
                                     <th className="text-left font-semibold px-4 py-2.5 w-[140px]">Created</th>
                                     <th className="text-left font-semibold px-4 py-2.5">Placement</th>

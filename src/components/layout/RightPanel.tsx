@@ -206,6 +206,11 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                 notif.title?.toLowerCase().includes('invoice') || 
                                                 notif.message?.toLowerCase().includes('invoice')
                                             );
+                                            const isHook = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isProposal && !isInvoice && !isReceiptPending && (
+                                                notif.type === 'hook' ||
+                                                notif.link?.includes('/hooks') ||
+                                                notif.title?.toLowerCase().includes('hook')
+                                            );
 
                                             const isSuccess = notif.type === 'success' || 
                                                 notif.title?.toLowerCase().includes('signed') || 
@@ -225,6 +230,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                             if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
                                             if (isProposal) return <FileText size={12} className={iconClass} />;
                                             if (isInvoice) return <Receipt size={12} className={iconClass} />;
+                                            if (isHook) return <Zap size={12} className="text-primary" fill="currentColor" />;
                                             return <Eye size={12} className={iconClass} />;
                                         })()}
                                     </div>

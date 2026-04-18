@@ -10,8 +10,11 @@ import {
     Sliders as SlidersIcon, Calendar, LinkIcon, PenLine, Filter,
     GripVertical, X, Download, Eye, Monitor, Smartphone, LayoutTemplate,
     LayoutGrid, List, ArrowUpDown, ExternalLink,
-    Image as ImageIcon, SeparatorHorizontal, FileText,
+    Image as ImageIcon, SeparatorHorizontal, FileText, FolderKanban
 } from 'lucide-react';
+import { SelectInput } from '@/components/forms/inputs/SelectInput';
+import { RadioInput } from '@/components/forms/inputs/RadioInput';
+import { PictureChoiceInput } from '@/components/forms/inputs/PictureChoiceInput';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import {
@@ -157,9 +160,9 @@ const isColorDark = (color: string) => {
 };
 
 /* ── Field preview in canvas ── */
-function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryColor, isPreview, borderRadius, marginTop, marginBottom, blockBackgroundColor }: {
+function FieldPreview({ field, isDark, isSelected, onClick, onRemove, onUpdate, onUploadClick, primaryColor, isPreview, borderRadius, marginTop, marginBottom, blockBackgroundColor }: {
     field: FormField; isDark: boolean; isSelected: boolean; onClick: (e: React.MouseEvent) => void;
-    onRemove: () => void; primaryColor: string; isPreview?: boolean; borderRadius: number;
+    onRemove: () => void; onUpdate?: (patch: Partial<FormField>) => void; onUploadClick?: (fieldId: string, idx: number | null) => void; primaryColor: string; isPreview?: boolean; borderRadius: number;
     marginTop?: number; marginBottom?: number; blockBackgroundColor?: string;
 }) {
     const {
@@ -193,22 +196,117 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 return <textarea rows={3} placeholder={field.placeholder || 'Type your answer...'}
                     {...inputProps} className={cn(inputProps.className, "resize-none")} />;
             case 'dropdown':
+                if (isPreview) {
+                    return <SelectInput value="" onChange={()=>{}} options={field.options?.filter(o => o.trim()) || []} placeholder={field.placeholder} isDark={isDark} borderRadius={borderRadius} />;
+                }
                 return (
-                    <div className={cn(inputProps.className, "flex items-center justify-between", isPreview && "cursor-pointer")}>
-                        <span className="opacity-60">{field.placeholder || 'Select an option'}</span>
-                        <ChevronDown size={12} className="opacity-40" />
+                    <div className="space-y-2 mt-2">
+                        {(field.options || ['Option 1']).map((opt, idx) => (
+                            <div key={idx} className={cn("flex items-center gap-2 p-1.5 rounded-lg border", isDark ? "border-[#333] bg-black/20" : "border-[#e5e5e5] bg-white")}>
+                                <input value={opt} onChange={e => {
+                                    if (onUpdate) {
+                                        const newOpts = [...(field.options || ['Option 1'])];
+                                        newOpts[idx] = e.target.value;
+                                        onUpdate({ options: newOpts });
+                                    }
+                                }} placeholder="Option label" className={cn("flex-1 bg-transparent border-none text-[13px] outline-none px-2 py-1", isDark ? "text-white" : "text-black")} />
+                                <button onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onUpdate) {
+                                        const newOpts = (field.options || ['Option 1']).filter((_, i) => i !== idx);
+                                        onUpdate({ options: newOpts });
+                                    }
+                                }} className="p-1.5 opacity-50 hover:opacity-100 hover:text-red-500 transition-all cursor-pointer"><Trash2 size={13} /></button>
+                            </div>
+                        ))}
+                        <button onClick={(e) => {
+                            e.stopPropagation();
+                            if (onUpdate) onUpdate({ options: [...(field.options || ['Option 1']), `Option ${(field.options?.length || 1) + 1}`] });
+                        }} className={cn("text-[11px] font-bold flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity mt-2", isDark ? "text-white" : "text-black")}>
+                            <Plus size={11} /> Add option
+                        </button>
                     </div>
                 );
             case 'multi_choice':
+                if (isPreview) {
+                    return <RadioInput value="" onChange={()=>{}} options={field.options?.filter(o => o.trim()) || []} name={field.id} isDark={isDark} primaryColor={primaryColor} borderRadius={borderRadius} />;
+                }
                 return (
-                    <div className="space-y-2">
-                        {(field.options || ['Option 1', 'Option 2', 'Option 3']).slice(0, 3).map((opt, i) => (
-                            <label key={i} className={cn("flex items-center gap-2.5", isPreview ? "cursor-pointer" : "cursor-default")}>
-                                <div className={cn("w-4 h-4 rounded border flex items-center justify-center transition-all", 
-                                    isDark ? "border-[#333]" : "border-[#ddd]")} />
-                                <span className={cn("text-[13px]", isDark ? "text-[#999]" : "text-[#555]")}>{opt}</span>
-                            </label>
+                    <div className="space-y-2 mt-2">
+                        {(field.options || ['Option 1']).map((opt, idx) => (
+                            <div key={idx} className={cn("flex items-center gap-2 p-1.5 rounded-lg border", isDark ? "border-[#333] bg-black/20" : "border-[#e5e5e5] bg-white")}>
+                                <div className={cn("w-3.5 h-3.5 rounded-sm border ml-2 flex-shrink-0 transition-opacity", isDark ? "border-[#444]" : "border-[#ccc]")} />
+                                <input value={opt} onChange={e => {
+                                    if (onUpdate) {
+                                        const newOpts = [...(field.options || ['Option 1'])];
+                                        newOpts[idx] = e.target.value;
+                                        onUpdate({ options: newOpts });
+                                    }
+                                }} placeholder="Option label" className={cn("flex-1 bg-transparent border-none text-[13px] outline-none px-1 py-1", isDark ? "text-white" : "text-black")} />
+                                <button onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onUpdate) {
+                                        const newOpts = (field.options || ['Option 1']).filter((_, i) => i !== idx);
+                                        onUpdate({ options: newOpts });
+                                    }
+                                }} className="p-1.5 opacity-50 hover:opacity-100 hover:text-red-500 transition-all cursor-pointer"><Trash2 size={13} /></button>
+                            </div>
                         ))}
+                        <button onClick={(e) => {
+                            e.stopPropagation();
+                            if (onUpdate) onUpdate({ options: [...(field.options || ['Option 1']), `Option ${(field.options?.length || 1) + 1}`] });
+                        }} className={cn("text-[11px] font-bold flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity mt-2", isDark ? "text-white" : "text-black")}>
+                            <Plus size={11} /> Add choice
+                        </button>
+                    </div>
+                );
+            case 'picture_choice':
+                if (isPreview) {
+                    return <PictureChoiceInput value="" onChange={()=>{}} options={field.options?.filter(o => o.trim()) || []} isDark={isDark} primaryColor={primaryColor} borderRadius={borderRadius} />;
+                }
+                return (
+                    <div className={cn("flex flex-wrap gap-3", !isPreview && "mt-3")}>
+                        {(field.options || []).map((opt, idx) => {
+                            const [url, label] = opt.includes('|') ? opt.split('|') : [opt, ''];
+                            return (
+                                <div key={idx} className={cn("group flex flex-col gap-2 p-2 rounded-xl border relative w-[130px]", isDark ? "bg-[#1c1c1c] border-[#2a2a2a]" : "bg-white border-[#e5e5e5]")} style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}>
+                                    <div 
+                                        onClick={(e) => { e.stopPropagation(); if (onUploadClick) onUploadClick(field.id, idx); }}
+                                        className={cn("w-full h-24 rounded-lg flex-shrink-0 cursor-pointer overflow-hidden border-2 border-dashed flex items-center justify-center transition-all group-hover:border-primary/50", isDark ? "border-[#444] bg-black/20" : "border-[#ccc] bg-black/5")}
+                                    >
+                                        {url ? <img src={url} className="w-full h-full object-cover" /> : <Image size={18} className="opacity-50" />}
+                                    </div>
+                                    <input 
+                                        value={label}
+                                        onChange={e => {
+                                            if (onUpdate) {
+                                                const newOpts = [...(field.options || [])];
+                                                newOpts[idx] = `${url}|${e.target.value}`;
+                                                onUpdate({ options: newOpts });
+                                            }
+                                        }}
+                                        placeholder="Label (opt)"
+                                        className={cn("w-full bg-transparent border-none text-[12px] font-medium outline-none text-center px-1", isDark ? "text-white" : "text-black")}
+                                    />
+                                    <button onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onUpdate) {
+                                            const newOpts = (field.options || []).filter((_, i) => i !== idx);
+                                            onUpdate({ options: newOpts });
+                                        }
+                                    }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md cursor-pointer hover:bg-red-600">
+                                        <X size={12} strokeWidth={3} />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        <button onClick={(e) => {
+                            e.stopPropagation();
+                            if (onUploadClick) onUploadClick(field.id, null);
+                        }} className={cn("w-[130px] h-[130px] rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all hover:border-primary/50 hover:bg-primary/5 cursor-pointer", isDark ? "border-[#333] text-[#666]" : "border-[#e5e5e5] text-[#aaa]")} style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}>
+                            <Plus size={16} /> 
+                            <span className="text-[11px] font-bold">Add Picture</span>
+                        </button>
                     </div>
                 );
             case 'countries':
@@ -881,7 +979,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0",
+                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0 relative z-[100]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
@@ -1213,6 +1311,12 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                                 isSelected={selectedFieldId === f.id && !isPreview}
                                                                                 onClick={(e) => { e.stopPropagation(); if (!isPreview) setSelectedFieldId(f.id === selectedFieldId ? null : f.id) }}
                                                                                 onRemove={() => removeField(f.id)}
+                                                                                onUpdate={(patch) => updateField(f.id, patch)}
+                                                                                onUploadClick={(fieldId, idx) => {
+                                                                                    setLastFieldForUpload(fieldId);
+                                                                                    setLastIndexForUpload(idx);
+                                                                                    setIsUploadModalOpen(true);
+                                                                                }}
                                                                                 primaryColor={primaryColor}
                                                                                 isPreview={isPreview}
                                                                                 borderRadius={design.borderRadius ?? 16}
@@ -1339,21 +1443,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                 onChange={v => updateField(selectedField.id, { description: v })}
                                                                 placeholder="Optional" isDark={isDark} />
                                                         </div>
-                                                        <div>
-                                                            <label className={cn("block text-[10px] font-bold mb-2 uppercase tracking-widest",
-                                                                isDark ? "text-[#555]" : "text-[#bbb]")}>Linked Project</label>
-                                                            <select
-                                                                value={meta.project || ''}
-                                                                onChange={e => updateMeta({ project: e.target.value })}
-                                                                className={cn("w-full px-4 py-3 text-[13px] rounded-xl border outline-none appearance-none cursor-pointer",
-                                                                    isDark ? "bg-[#151515] border-[#2a2a2a] text-[#aaa]" : "bg-white border-[#e5e5e5] text-[#111]")}
-                                                            >
-                                                                <option value="">No Project</option>
-                                                                {projects.map(p => (
-                                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
+
                                                         <label className="flex items-center gap-3 cursor-pointer group/req py-1"
                                                             onClick={() => updateField(selectedField.id, { required: !selectedField.required })}>
                                                             <div className={cn("w-4 h-4 rounded border transition-all flex items-center justify-center",
@@ -1363,77 +1453,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                             </div>
                                                             <span className={cn("text-[12px] font-medium transition-colors", isDark ? "text-[#666]" : "text-[#888]")}>Make this field mandatory</span>
                                                         </label>
-                                                        {(selectedField.type === 'dropdown' || selectedField.type === 'multi_choice') && (
-                                                            <div>
-                                                                <label className={cn("block text-[10px] font-bold mb-2 uppercase tracking-widest",
-                                                                    isDark ? "text-[#555]" : "text-[#bbb]")}>Options (one per line)</label>
-                                                                <textarea
-                                                                    rows={6}
-                                                                    value={(selectedField.options || []).join('\n')}
-                                                                    onChange={e => updateField(selectedField.id, { options: e.target.value.split('\n').filter(l => l.length > 0) })}
-                                                                    className={cn("w-full px-4 py-3 text-[13px] rounded-xl border outline-none resize-none",
-                                                                        isDark ? "bg-[#151515] border-[#2a2a2a] text-[#aaa]" : "bg-white border-[#e5e5e5] text-[#111]")}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                        {selectedField.type === 'picture_choice' && (
-                                                            <div className="space-y-3">
-                                                                <label className={cn("block text-[10px] font-bold uppercase tracking-widest",
-                                                                    isDark ? "text-[#555]" : "text-[#bbb]")}>Picture Options</label>
-                                                                <div className="space-y-3">
-                                                                    {(selectedField.options || []).map((opt, idx) => {
-                                                                        const [url, label] = opt.includes('|') ? opt.split('|') : [opt, ''];
-                                                                        return (
-                                                                            <div key={idx} className={cn("group flex items-center gap-3 p-3 rounded-2xl border transition-all", isDark ? "bg-[#1c1c1c] border-[#2a2a2a] hover:border-[#3a3a3a]" : "bg-white border-[#e5e5e5] hover:border-[#d5d5d5]")}>
-                                                                                <div 
-                                                                                    onClick={() => {
-                                                                                        setLastFieldForUpload(selectedField.id);
-                                                                                        setLastIndexForUpload(idx);
-                                                                                        setIsUploadModalOpen(true);
-                                                                                    }}
-                                                                                    className={cn("w-14 h-14 rounded-xl flex-shrink-0 cursor-pointer overflow-hidden border-2 border-dashed transition-all flex items-center justify-center group/img", isDark ? "border-[#444] hover:border-primary/50 bg-black/20" : "border-[#ccc] hover:border-primary/50 bg-black/5")}
-                                                                                >
-                                                                                    {url ? (
-                                                                                        <img src={url} className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity" />
-                                                                                    ) : (
-                                                                                        <Image size={18} className={isDark ? "text-[#555] group-hover/img:text-primary" : "text-[#aaa] group-hover/img:text-primary"} />
-                                                                                    )}
-                                                                                </div>
-                                                                                <div className="flex-1 min-w-0 space-y-1">
-                                                                                    <input 
-                                                                                        value={label} 
-                                                                                        onChange={e => {
-                                                                                            const newOpts = [...(selectedField.options || [])];
-                                                                                            newOpts[idx] = `${url}|${e.target.value}`;
-                                                                                            updateField(selectedField.id, { options: newOpts });
-                                                                                        }}
-                                                                                        placeholder="Label (optional)"
-                                                                                        className={cn("w-full bg-transparent border-none text-[13px] outline-none font-bold", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
-                                                                                    />
-                                                                                </div>
-                                                                                <button onClick={() => {
-                                                                                    const newOpts = (selectedField.options || []).filter((_, i) => i !== idx);
-                                                                                    updateField(selectedField.id, { options: newOpts });
-                                                                                }} className={cn("p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100", isDark ? "hover:bg-red-500/10 text-red-500/70 hover:text-red-500" : "hover:bg-red-50 text-red-500/70 hover:text-red-500")}>
-                                                                                    <Trash2 size={15} />
-                                                                                </button>
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setLastFieldForUpload(selectedField.id);
-                                                                        setLastIndexForUpload(null);
-                                                                        setIsUploadModalOpen(true);
-                                                                    }}
-                                                                    className={cn("w-full py-3 rounded-2xl border-2 border-dashed text-[12px] font-bold flex items-center justify-center gap-2 transition-all",
-                                                                        isDark ? "border-[#333] hover:border-primary/50 hover:bg-primary/5 text-[#666] hover:text-[#eee]" : "border-[#e5e5e5] hover:border-primary/50 hover:bg-primary/5 text-[#aaa] hover:text-[#111]")}
-                                                                >
-                                                                    <Plus size={15} /> Add Picture Option
-                                                                </button>
-                                                            </div>
-                                                        )}
+
                                                         {selectedField.type === 'slider' && (
                                                             <div className="grid grid-cols-2 gap-3">
                                                                 <div>
@@ -1454,6 +1474,19 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                 </div>
                                             ) : (
                                                 <div className={cn("divide-y", isDark ? "divide-[#252525]" : "divide-[#f0f0f0]")}>
+                                                    <SectionAccordion label="Linked Project" icon={<FolderKanban size={11} />} isDark={isDark}>
+                                                        <select
+                                                            value={meta.project || ''}
+                                                            onChange={e => updateMeta({ project: e.target.value })}
+                                                            className={cn("w-full px-4 py-3 text-[13px] rounded-xl border outline-none appearance-none cursor-pointer",
+                                                                isDark ? "bg-[#151515] border-[#2a2a2a] text-[#aaa]" : "bg-white border-[#e5e5e5] text-[#111]")}
+                                                        >
+                                                            <option value="">No Project</option>
+                                                            {projects.map(p => (
+                                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </SectionAccordion>
                                                     <SectionAccordion label="Activation date" icon={<Calendar size={11} />} isDark={isDark}>
                                                         <div className={cn("px-3 py-1.5 rounded-lg border transition-all",
                                                             isDark ? "bg-[#151515] border-[#2a2a2a]" : "bg-white border-[#e5e5e5] "
@@ -1488,11 +1521,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                             </div>
                                                         </div>
                                                     </SectionAccordion>
-                                                    <SectionAccordion label="Project" icon={<SlidersIcon size={11} />} isDark={isDark}>
-                                                        <PanelInput value={meta.project}
-                                                            onChange={v => updateMeta({ project: v })}
-                                                            placeholder="Link to project" isDark={isDark} />
-                                                    </SectionAccordion>
+
                                                 </div>
                                             )}
                                             {canvasStep === 'confirmation' && selectedConfirmationBlockId && (

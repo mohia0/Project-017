@@ -32,16 +32,22 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                     user_agent: ua,
                 });
 
-                const notificationTitle = hook.title || `Someone opened "${hook.name}"`;
+                const notificationTitle = `Someone viewed "${hook.name}"`;
+                const messageParts = [];
+                // Case-insensitive check for default value
+                if (hook.title && !hook.title.toLowerCase().includes('webhook endpoint')) {
+                    messageParts.push(hook.title);
+                }
+                if (hook.link) messageParts.push(`Source: ${hook.link}`);
+                if (messageParts.length === 0) messageParts.push(`Pixel tracking event recorded.`);
 
                 await supabaseService.from('notifications').insert({
                     workspace_id: hook.workspace_id,
                     title: notificationTitle,
-                    message: hook.link
-                        ? `A hook was triggered on: ${hook.link}`
-                        : 'A tracking hook was triggered.',
+                    message: messageParts.join(' • '),
                     link: `/hooks`,
                     read: false,
+                    type: 'hook',
                     metadata: visitor ? { visitor } : null
                 });
             })();

@@ -9,7 +9,7 @@ export interface Hook {
     id: string;
     workspace_id: string;
     name: string;
-    title: string;
+    title: string | null;
     link: string | null;
     color: string;
     status: HookStatus;

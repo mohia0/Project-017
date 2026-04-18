@@ -235,16 +235,24 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                         // ── FORM ────────────────────────────────────────────
                         <div className="p-8 md:p-12">
                             {/* Header */}
-                            <div className="mb-10 text-center flex flex-col items-center">
+                            <div className="mb-8">
+                                {meta.logoUrl && (
+                                    <img 
+                                        src={meta.logoUrl} 
+                                        alt="Logo"
+                                        className="mb-4 object-contain"
+                                        style={{ height: `${design.logoSize || 40}px` }} 
+                                    />
+                                )}
                                 <h1
-                                    className="text-[32px] font-black leading-tight tracking-tight mb-2"
+                                    className="text-[28px] font-bold leading-tight tracking-tight mb-2"
                                     style={{ color: isFormDark ? '#fff' : '#111' }}
                                 >
                                     {liveData.title}
                                 </h1>
                                 {meta.description && (
                                     <p
-                                        className="text-[15px] opacity-60 max-w-[90%] leading-relaxed"
+                                        className="text-[14px] opacity-60"
                                         style={{ color: isFormDark ? '#aaa' : '#555' }}
                                     >
                                         {meta.description}

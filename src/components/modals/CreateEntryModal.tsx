@@ -346,7 +346,7 @@ export default function CreateEntryModal() {
                 if (p) { setCreateModalOpen(false); router.push(`/projects/${p.id}`); }
             } else if (tab === 'Hook') {
                 if (!hName.trim()) return;
-                const h = await addHook({ name: hName.trim(), title: hTitle.trim() || 'Webhook Endpoint', link: hLink.trim() || null, color: hColor });
+                const h = await addHook({ name: hName.trim(), title: hTitle.trim() || null, link: hLink.trim() || null, color: hColor });
                 if (h) { setCreateModalOpen(false); openRightPanel({ type: 'hook', id: h.id }); appToast.success('Hook created'); }
             } else if (tab === 'Scheduler') {
                 if (!sTitle.trim()) return;

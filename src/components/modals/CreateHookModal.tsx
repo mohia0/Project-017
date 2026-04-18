@@ -48,7 +48,7 @@ export function CreateHookModal({ open, onClose }: Props) {
         try {
             const h = await addHook({
                 name: name.trim(),
-                title: title.trim() || 'Webhook Endpoint',
+                title: title.trim() || null,
                 color,
                 link: link.trim() || null
             });

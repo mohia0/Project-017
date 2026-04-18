@@ -637,7 +637,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0",
+                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0 relative z-[100]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 {/* Left */}

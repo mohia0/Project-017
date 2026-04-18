@@ -9,7 +9,7 @@ import {
     MoreHorizontal, RefreshCw, Edit3, Link2, FileText, Receipt,
     ArchiveRestore, Upload, Download, Copy, Zap,
     Target, TrendingUp, Clock, CheckCircle2, AlertCircle, Layers,
-    ArrowLeft, Eye, PenLine,
+    ArrowLeft, Eye, PenLine, ExternalLink, Monitor, Smartphone, Send,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -409,6 +409,10 @@ export default function ProjectDetailPage() {
     const [searchQuery, setSearchQuery]       = useState('');
     const [showArchived, setShowArchived]     = useState(false);
     const [showEdit, setShowEdit]             = useState(false);
+    const [copied, setCopied]                 = useState(false);
+    const [title, setTitle]                   = useState('');
+    const [isLoaded, setIsLoaded]             = useState(false);
+
     // ── Toolbar filter / order state ──────────────────────────────────────────
     const [filterPriority, setFilterPriority] = useState<string>('all');
     const [filterStatus,   setFilterStatus]   = useState<string>('all');
@@ -435,6 +439,13 @@ export default function ProjectDetailPage() {
 
     const project = projects.find(p => p.id === projectId);
 
+    useEffect(() => {
+        if (project && !isLoaded) {
+            setTitle(project.name);
+            setIsLoaded(true);
+        }
+    }, [project, isLoaded]);
+
     const tasks = tasksByProject[projectId] || [];
     const progress = useMemo(() => {
         const active = tasks.filter(t => !t.is_archived);
@@ -460,169 +471,195 @@ export default function ProjectDetailPage() {
         { id: 'linked', label: 'Linked Items', icon: <Link2 size={13} /> },
     ];
 
+    const copyLink = () => {
+        navigator.clipboard.writeText(window.location.origin + '/p/project/' + projectId);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+    };
+
+    const sc = STATUS_COLORS[project.status] || '#6b7280';
+
     return (
         <div className={cn("flex flex-col h-full overflow-hidden", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
 
-            {/* ── HEADER ── */}
-            <div className={cn('flex items-center justify-between px-5 py-3 shrink-0 border-b', isDark ? 'bg-[#141414] border-[#252525]' : 'bg-white border-[#ebebeb]')}>
-
-                {/* Left: back + separator + title */}
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-0.5">
-                        <button
-                            onClick={() => router.push('/projects')}
-                            className={cn('w-7 h-7 rounded-lg flex items-center justify-center transition-all', isDark ? 'hover:bg-white/8 text-[#888] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#888] hover:text-[#111]')}
-                        >
-                            <ArrowLeft size={13} />
-                        </button>
-                    </div>
-
-                    <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')} />
-
+            {/* ── TOP BAR ── */}
+            <div className={cn(
+                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0 relative z-[100]",
+                isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
+            )}>
+                {/* Left */}
+                <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+                    <button
+                        onClick={() => router.push('/projects')}
+                        className={cn("flex items-center justify-center w-8 h-8 shrink-0 rounded-[8px] transition-all",
+                            isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]")}>
+                        <ArrowLeft size={16} />
+                    </button>
                     <div className="flex items-center gap-1.5 min-w-0">
-                        <span className={cn('hidden md:block text-[12px] shrink-0', isDark ? 'text-[#3a3a3a]' : 'text-[#bbb]')}>Projects</span>
-                        <span className={cn('hidden md:block text-[12px]', isDark ? 'text-[#2a2a2a]' : 'text-[#ddd]')}>/</span>
-                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: project.color }} />
-                        <span
-                            contentEditable
-                            suppressContentEditableWarning
-                            spellCheck={false}
-                            onBlur={(e) => {
-                                const newName = e.currentTarget.textContent?.trim();
-                                if (newName && newName !== project.name) {
-                                    updateProject(project.id, { name: newName });
-                                    appToast.success('Renamed', 'Project name has been updated');
+                        <div className={cn("hidden md:flex items-center gap-2 text-[13px] font-medium shrink-0",
+                            isDark ? "text-white/40" : "text-gray-400")}>
+                            <span>Projects</span>
+                            <span className="opacity-30">/</span>
+                        </div>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={e => setTitle(e.target.value)}
+                            onBlur={() => {
+                                if (title.trim() && title !== project.name) {
+                                    updateProject(project.id, { name: title.trim() });
+                                    appToast.success('Renamed', 'Project name updated');
                                 } else {
-                                    e.currentTarget.textContent = project.name;
+                                    setTitle(project.name);
                                 }
                             }}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
-                                if (e.key === 'Escape') { e.currentTarget.textContent = project.name; e.currentTarget.blur(); }
+                                if (e.key === 'Enter') e.currentTarget.blur();
+                                if (e.key === 'Escape') { setTitle(project.name); e.currentTarget.blur(); }
                             }}
-                            className={cn('text-[13px] font-semibold bg-transparent outline-none min-w-0 truncate cursor-text', isDark ? 'text-[#e5e5e5]' : 'text-[#111]')}
-                            title="Click to rename"
-                        >
-                            {project.name}
-                        </span>
+                            className={cn("text-[13px] font-semibold bg-transparent outline-none transition-all w-full min-w-0",
+                                isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300")}
+                            placeholder="Project Name"
+                        />
                         {project.client_name && (
-                            <span className={cn('text-[12px] hidden lg:block shrink-0 truncate max-w-[140px]', isDark ? 'text-[#3a3a3a]' : 'text-[#bbb]')}>
+                            <span className={cn("text-[12px] hidden lg:block shrink-0 truncate max-w-[140px] opacity-40 ml-1",
+                                isDark ? "text-white" : "text-black")}>
                                 · {project.client_name}
                             </span>
                         )}
                     </div>
                 </div>
 
-                {/* Right: status + preview + icon buttons — mirrors files page structure exactly */}
-                <div className="flex items-center gap-2">
-
-                    {/* Status — styled like a ghost text button with a subtle border */}
-                    <div className="relative" ref={statusRef}>
+                {/* Right */}
+                <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+                    <div className="relative hidden md:flex items-center" ref={statusRef}>
                         <button
-                            onClick={() => setStatusOpen(v => !v)}
-                            className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg transition-colors border', isDark ? 'text-[#888] hover:text-white hover:bg-white/5 border-white/[0.06]' : 'text-[#777] hover:text-[#333] hover:bg-[#f0f0f0] border-[#e5e5e5]')}
+                            onClick={() => setStatusOpen(s => !s)}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all border",
+                                isDark
+                                    ? "bg-white/[0.05] text-[#aaa] hover:text-white border-white/[0.08]"
+                                    : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111] border-black/5"
+                            )}
                         >
-                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: statusColor }} />
+                            <div className="w-1.5 h-1.5 rounded-full opacity-70" style={{ backgroundColor: sc }} />
                             {project.status}
-                            <ChevronDown size={10} className="opacity-40" />
+                            <ChevronDown size={14} className="ml-1 opacity-50" />
                         </button>
                         {statusOpen && (
-                            <div className={cn('absolute right-0 top-full mt-1.5 w-44 rounded-[10px] shadow-xl py-1 z-50 border', isDark ? 'bg-[#0c0c0c] border-[#222]' : 'bg-white border-[#e4e4e4]')}>
-                                {STATUS_ORDER.map(s => (
-                                    <button
-                                        key={s}
-                                        onClick={() => { updateProject(project.id, { status: s }); setStatusOpen(false); }}
-                                        className={cn('w-full flex items-center gap-2 px-3 py-1.5 text-[11px] transition-colors', isDark ? 'hover:bg-white/5 text-[#ccc]' : 'hover:bg-[#f5f5f5] text-[#333]', s === project.status ? 'font-semibold' : '')}
-                                    >
-                                        {s === project.status ? <Check size={10} className="text-emerald-500" /> : <div className="w-[10px]" />}
-                                        {s}
-                                    </button>
-                                ))}
+                            <div className={cn(
+                                "absolute right-0 top-full mt-1.5 w-40 rounded-[10px] border shadow-xl py-1 z-50",
+                                isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#d2d2eb]"
+                            )}>
+                                {STATUS_ORDER.map(s => {
+                                    const isActive = s === project.status;
+                                    const sColor = STATUS_COLORS[s];
+                                    return (
+                                        <button
+                                            key={s}
+                                            onClick={() => { updateProject(project.id, { status: s }); setStatusOpen(false); }}
+                                            className={cn(
+                                                "w-full flex items-center gap-2 px-3 py-2 text-[12px] transition-colors",
+                                                isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
+                                                isActive ? "font-semibold" : ""
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-2 flex-1">
+                                                <div 
+                                                    className="w-1.5 h-1.5 rounded-full shrink-0" 
+                                                    style={{ backgroundColor: sColor }} 
+                                                />
+                                                <span>{s}</span>
+                                            </div>
+                                            {isActive && <Check size={12} className="text-primary" />}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
 
-                    <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')} />
+                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />
 
-                    {/* Preview — identical to Upload button in files page */}
                     <button
-                        onClick={() => window.open(`/p/project/${project.id}`, '_blank')}
-                        className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-lg transition-colors', isDark ? 'text-[#888] hover:text-white hover:bg-white/5' : 'text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]')}
+                        onClick={() => window.open(window.location.origin + '/p/project/' + project.id, '_blank')}
+                        className={cn(
+                            "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all border",
+                            isDark
+                                ? "bg-white/[0.05] text-[#aaa] hover:text-white border-white/[0.08]"
+                                : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111] border-black/5"
+                        )}
                     >
-                        <Eye size={12} /> Preview
+                        <Eye size={14} />
+                        Preview
                     </button>
 
-                    <div className={cn('w-[1px] h-4', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')} />
-
-                    {/* Linked items — identical to back/forward buttons in files page */}
-                    <button
-                        onClick={() => setActiveTab('linked')}
-                        title="Linked items"
-                        className={cn('w-7 h-7 rounded-lg flex items-center justify-center transition-all', isDark ? 'hover:bg-white/8 text-[#888] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#888] hover:text-[#111]')}
-                    >
-                        <Link2 size={13} />
+                    <button 
+                        onClick={copyLink}
+                        className={cn("hidden md:flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all border",
+                            isDark ? "bg-white/[0.05] text-[#aaa] hover:text-white border-white/[0.08]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111] border-black/5")}>
+                        {copied ? <Check size={14} className="text-primary" /> : <Link2 size={14} />}
                     </button>
 
-                    {/* Actions — identical to back/forward buttons in files page */}
                     <div className="relative" ref={actionsRef}>
-                        <button
-                            onClick={() => setActionsOpen(v => !v)}
-                            className={cn('w-7 h-7 rounded-lg flex items-center justify-center transition-all', isDark ? 'hover:bg-white/8 text-[#888] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#888] hover:text-[#111]')}
-                        >
-                            <MoreHorizontal size={13} />
+                        <button onClick={() => setActionsOpen(v => !v)}
+                            className={cn("flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all border",
+                                isDark ? "bg-white/[0.05] text-[#aaa] hover:text-white border-white/[0.08]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111] border-black/5")}>
+                            <MoreHorizontal size={14} />
                         </button>
                         {actionsOpen && (
-                            <div className={cn('absolute right-0 top-full mt-1.5 w-44 rounded-[10px] shadow-xl py-1 z-50 border', isDark ? 'bg-[#0c0c0c] border-[#222]' : 'bg-white border-[#e0e0e0]')}>
+                            <div className={cn("absolute right-0 top-full mt-1.5 w-48 rounded-[10px] shadow-xl py-1 z-50 border",
+                                isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#d2d2eb]")}>
                                 {[
-                                    { icon: Edit3,   label: 'Edit project',    action: () => { setShowEdit(true); setActionsOpen(false); } },
-                                    { icon: Archive, label: 'Archive project', action: () => { updateProject(project.id, { is_archived: true }); router.push('/projects'); } },
-                                    { icon: Trash2,  label: 'Delete project',  action: () => setActionsOpen(false), danger: true },
-                                ].map(({ icon: Icon, label, action, danger }) => (
-                                    <button
-                                        key={label}
-                                        onClick={() => { action(); setActionsOpen(false); }}
-                                        className={cn('w-full flex items-center gap-2.5 px-3.5 py-1.5 text-[11.5px] transition-colors', danger ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10' : isDark ? 'hover:bg-white/5 text-[#bbb]' : 'hover:bg-[#f5f5f5] text-[#333]')}
-                                    >
-                                        <Icon size={13} className={danger ? 'text-red-500' : 'opacity-50'} />
-                                        {label}
-                                    </button>
-                                ))}
+                                    { icon: Archive, label: 'Archive Project', action: () => { updateProject(project.id, { is_archived: true }); router.push('/projects'); } },
+                                    { icon: ExternalLink, label: 'Open Live View', action: () => window.open(window.location.origin + '/p/project/' + project.id, '_blank') },
+                                    { icon: Link2, label: 'Copy Project Link', action: copyLink },
+                                    { divider: true },
+                                    { icon: Trash2, label: 'Delete Project', action: () => setActionsOpen(false), danger: true },
+                                ].map((item, idx) => {
+                                    if (item.divider) return <div key={idx} className={cn("my-1 h-px", isDark ? "bg-white/5" : "bg-black/5")} />;
+                                    const Icon = item.icon!;
+                                    return (
+                                        <button key={item.label} onClick={() => { item.action?.(); setActionsOpen(false); }}
+                                            className={cn("w-full flex items-center gap-2.5 px-4 py-2 text-[13px] transition-colors",
+                                                item.danger ? "text-red-500 hover:bg-red-50" : isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]"
+                                            )}>
+                                            <Icon size={14} className={item.danger ? "text-red-500" : "opacity-60"} />
+                                            {item.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* ── TAB BAR ── */}
-            <div className={cn(
-                "flex items-center border-b shrink-0 px-5",
-                isDark ? "bg-[#141414] border-[#1e1e1e]" : "bg-white border-[#eaeaea]"
-            )}>
+            {/* ── SECONDARY TAB BAR ── */}
+            <div className={cn("flex items-center gap-0 px-4 md:px-6 border-b shrink-0",
+                isDark ? "bg-[#111] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]")}>
                 {TABS.map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                         className={cn(
-                            "flex items-center gap-1.5 px-3 py-2.5 text-[11.5px] font-medium border-b-[1.5px] transition-all whitespace-nowrap",
+                            "px-4 py-2.5 text-[12px] font-semibold border-b-2 transition-all",
                             activeTab === tab.id
                                 ? "border-primary text-primary"
-                                : `border-transparent ${isDark ? "text-[#3a3a3a] hover:text-[#777]" : "text-[#bbb] hover:text-[#555]"}`
-                        )}
-                    >
-                        <span className={cn("transition-colors", activeTab === tab.id ? "text-primary" : isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>{tab.icon}</span>
-                        {tab.label}
-                        {tab.id === 'tasks' && (
-                            <span className={cn(
-                                "ml-1 text-[8.5px] font-bold tabular-nums px-1.5 py-0.5 rounded-full",
-                                activeTab === 'tasks'
-                                    ? "bg-primary/15 text-primary"
-                                    : isDark ? "bg-white/[0.05] text-[#3a3a3a]" : "bg-[#f0f0f0] text-[#bbb]"
-                            )}>{progress.total}</span>
-                        )}
+                                : (isDark ? "border-transparent text-[#555] hover:text-[#aaa]" : "border-transparent text-[#aaa] hover:text-[#555]")
+                        )}>
+                        <div className="flex items-center gap-2">
+                            <span className="opacity-60">{tab.icon}</span>
+                            {tab.label}
+                            {tab.id === 'tasks' && (
+                                <span className={cn(
+                                    "ml-1 text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full",
+                                    activeTab === 'tasks'
+                                        ? "bg-primary/10 text-primary"
+                                        : (isDark ? "bg-white/5 text-[#444]" : "bg-black/5 text-[#bbb]")
+                                )}>{progress.total}</span>
+                            )}
+                        </div>
                     </button>
                 ))}
-
-                <div className="flex-1" />
             </div>
 
             {/* ── TASKS TOOLBAR ── */}
