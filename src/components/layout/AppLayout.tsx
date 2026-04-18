@@ -184,6 +184,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 isDark ? "bg-[#000000] text-white" : "bg-[#e2e2e2] text-[#111]"
             )}>
                 <DocumentTitleSetter />
+                <PrivacyModeEffect />
+                <ConversionRatesInitEffect />
                 {children}
             </div>
         );
@@ -196,13 +198,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 "flex flex-col h-screen w-full overflow-hidden",
                 isDark ? "bg-[#000000] text-white" : "bg-[#e2e2e2] text-[#111]"
             )}>
-                {/* Main content — full height, bottom padding reserved for the floating nav bar */}
                 <main className={cn(
                     "flex-1 flex flex-col overflow-hidden",
                     isDark ? "bg-[#141414]" : "bg-white"
                 )}>
                     <WorkspaceDataSync />
                     <DocumentTitleSetter />
+                    <PrivacyModeEffect />
+                    <ConversionRatesInitEffect />
                     {/* Inner scroll area — padded so content isn't hidden behind floating nav */}
                     <div className="flex-1 overflow-hidden flex flex-col" style={{ paddingBottom: 'max(92px, calc(env(safe-area-inset-bottom) + 80px))' }}>
                         {children}
@@ -277,14 +280,19 @@ function ConversionRatesInitEffect() {
 }
 function PrivacyModeEffect() {
     const isPrivacyMode = useUIStore(s => s.isPrivacyMode);
+    const pathname = usePathname();
+    const isPublicPreview = pathname?.startsWith('/p/');
+    const isAuthRoute = pathname === '/login';
+    const isOnboarding = pathname === '/onboarding';
 
     useEffect(() => {
-        if (isPrivacyMode) {
+        const shouldApply = isPrivacyMode && !isPublicPreview && !isAuthRoute && !isOnboarding;
+        if (shouldApply) {
             document.documentElement.classList.add('privacy-mode');
         } else {
             document.documentElement.classList.remove('privacy-mode');
         }
-    }, [isPrivacyMode]);
+    }, [isPrivacyMode, isPublicPreview, isAuthRoute, isOnboarding]);
 
     return null;
 }

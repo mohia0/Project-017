@@ -851,8 +851,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             </div>
                         )}
                         <div className={cn(
-                            "flex flex-col items-center min-h-full",
-                            isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
+                            "flex flex-col items-center min-h-full transition-colors duration-300",
+                            isMobilePreview ? (isDark ? "bg-[#111] py-8 px-4" : "bg-[#f5f5f5] py-8 px-4") : "pt-4 pb-20 px-6"
                         )}>
                         {/* Mobile phone frame wrapper */}
                         {isMobilePreview ? (
@@ -1639,6 +1639,7 @@ export function ProposalDocument({
                                     setUploadTarget={setUploadTarget}
                                     isFirst={idx === 0}
                                     isLast={idx === blocks.length - 1}
+                                    isMobile={isMobile}
                                     onDuplicate={() => {
                                         const nb = { ...block, id: uuidv4() };
                                         const nbx = [...blocks];
@@ -1707,7 +1708,7 @@ export function ProposalDocument({
 ═══════════════════════════════════════════════════════ */
 function SortableBlock({
     block, blocks, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, onMoveUp, onMoveDown, onDuplicate, onSaveAsTemplate, meta, updateMeta,
-    setImageUploadOpen, setUploadTarget, isFirst, isLast
+    setImageUploadOpen, setUploadTarget, isFirst, isLast, isMobile
 }: {
     block: BlockData;
     blocks: BlockData[];
@@ -1727,6 +1728,7 @@ function SortableBlock({
     setUploadTarget: (target: any) => void;
     isFirst?: boolean;
     isLast?: boolean;
+    isMobile?: boolean;
 }) {
     const {
         attributes, listeners, setNodeRef,
@@ -1759,6 +1761,7 @@ function SortableBlock({
                 updateMeta={updateMeta}
                 setImageUploadOpen={setImageUploadOpen}
                 setUploadTarget={setUploadTarget}
+                isMobile={isMobile}
             />
         </SectionBlockWrapper>
     );
@@ -1769,7 +1772,7 @@ function SortableBlock({
 ═══════════════════════════════════════════════════════ */
 function BlockRenderer({
     block, blocks, isDark, isPreview, updateBlock, currency, meta, updateMeta,
-    setImageUploadOpen, setUploadTarget
+    setImageUploadOpen, setUploadTarget, isMobile
 }: {
     block: BlockData;
     blocks: BlockData[]; // Added blocks array
@@ -1781,6 +1784,7 @@ function BlockRenderer({
     updateMeta?: (patch: any) => void;
     setImageUploadOpen: (open: boolean) => void;
     setUploadTarget: (target: any) => void;
+    isMobile?: boolean;
 }) {
     switch (block.type) {
         case 'header':
@@ -1790,7 +1794,7 @@ function BlockRenderer({
         case 'text':
             return <TextBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} meta={meta} />;
         case 'pricing':
-            return <PricingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} />;
+            return <PricingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} isMobile={isMobile} />;
         case 'breakdown':
             return <BreakdownBlock block={block} blocks={blocks} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} />;
         case 'signature':
@@ -2065,7 +2069,7 @@ function TextBlock({ block, isDark, isPreview, updateBlock, meta }: any) {
 }
 
 /* ─── Pricing Block ─── */
-function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }: any) {
+function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, isMobile }: any) {
     const rows: PricingRow[] = block.rows || [];
     const hideQty = block.hideQty || false;
 
@@ -2109,7 +2113,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
         }
     };
 
-    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black/40");
+    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black");
     const td = cn("py-2", isDark ? "text-white/80" : "text-black/80");
 
     return (
@@ -2123,22 +2127,13 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                     borderStyle: 'solid',
                     fontSize: 'var(--table-font-size)',
                     borderCollapse: 'separate',
-                    borderSpacing: 0
+                    borderSpacing: 0,
+                    overflow: 'hidden'
                 }}
             >
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <table className="w-full relative" style={{ borderRadius: 'var(--table-border-radius)', borderCollapse: 'separate', borderSpacing: 0 }}>
-                        <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
-                            <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                <th className="w-0 relative" />
-                                <th className={cn(th, "pl-5 pr-2 py-2 w-full")} style={{ borderTopLeftRadius: 'var(--table-border-radius)' }}>Item</th>
-                                {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
-                                <th className={cn(th, "px-3 py-2 text-right w-24", hideQty ? "pr-5 rounded-tr-[var(--table-border-radius)]" : "")}>Amount</th>
-                                {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
-                                {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                    {isMobile ? (
+                        <div className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
                             <style dangerouslySetInnerHTML={{ __html: `
                                 .divide-y > * + * {
                                     border-top-width: var(--table-stroke-width) !important;
@@ -2158,11 +2153,49 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                                         removeRow={removeRow} 
                                         duplicateRow={duplicateRow}
                                         td={td}
+                                        isMobile={true}
                                     />
                                 ))}
                             </SortableContext>
-                        </tbody>
-                    </table>
+                        </div>
+                    ) : (
+                        <table className="w-full relative" style={{ borderRadius: 'var(--table-border-radius)', borderCollapse: 'separate', borderSpacing: 0 }}>
+                            <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
+                                <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
+                                    <th className="w-0 relative" />
+                                    <th className={cn(th, "pl-5 pr-2 py-2 w-full")} style={{ borderTopLeftRadius: 'var(--table-border-radius)' }}>Item</th>
+                                    {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
+                                    <th className={cn(th, "px-3 py-2 text-right w-24", hideQty ? "pr-5 rounded-tr-[var(--table-border-radius)]" : "")}>Amount</th>
+                                    {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
+                                    {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                                <style dangerouslySetInnerHTML={{ __html: `
+                                    .divide-y > * + * {
+                                        border-top-width: var(--table-stroke-width) !important;
+                                        border-color: var(--table-border-color) !important;
+                                    }
+                                ` }} />
+                                <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                                    {rows.map((row: PricingRow) => (
+                                        <SortableRow 
+                                            key={row.id} 
+                                            row={row} 
+                                            isDark={isDark} 
+                                            isPreview={isPreview} 
+                                            hideQty={hideQty} 
+                                            currency={currency} 
+                                            updateRow={updateRow} 
+                                            removeRow={removeRow} 
+                                            duplicateRow={duplicateRow}
+                                            td={td}
+                                        />
+                                    ))}
+                                </SortableContext>
+                            </tbody>
+                        </table>
+                    )}
                 </DndContext>
             </div>
 
@@ -2192,14 +2225,14 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                 <div className="flex flex-col items-end">
                     <div className="w-full max-w-[180px] space-y-1.5">
                         {(!isPreview || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
-                            <div className={cn("flex justify-between font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                            <div className={cn("flex justify-between font-medium", isDark ? "opacity-50" : "text-black")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
                                 <span>Subtotal</span>
-                                <span><MoneyAmount amount={subtotal} currency={currency} /></span>
+                                <span><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
                             </div>
                         )}
                         {/* Discount row */}
                         {(!isPreview || (block.discountRate || 0) > 0) && (
-                            <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                            <div className={cn("flex justify-between items-center font-medium", isDark ? "opacity-50" : "text-black")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
                                 <div className="flex items-center gap-2">
                                     <span>Discount{isPreview && <span className="ml-1 opacity-70">({block.discountRate}%)</span>}</span>
                                     {!isPreview && (
@@ -2212,7 +2245,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                                     )}
                                     {!isPreview && <span>%</span>}
                                 </div>
-                                <span>−<MoneyAmount amount={discAmt} currency={currency} /></span>
+                                <span>−<MoneyAmount amount={discAmt} currency={currency} forceOriginal={isPreview} /></span>
                             </div>
                         )}
 
@@ -2231,12 +2264,12 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
                                     )}
                                     {!isPreview && <span>%</span>}
                                 </div>
-                                <span><MoneyAmount amount={taxAmt} currency={currency} /></span>
+                                <span><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
                             </div>
                         )}
                         <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
                             <span>Total</span>
-                            <span><MoneyAmount amount={total} currency={currency} /></span>
+                            <span><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
                         </div>
                     </div>
                 </div>
@@ -2246,9 +2279,116 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta }:
 }
 
 /* ─── Sortable Row Helpers ─── */
-function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td }: any) {
+function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td, isMobile }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
     const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 0 };
+
+    if (isMobile) {
+        return (
+            <div 
+                ref={setNodeRef} 
+                style={style} 
+                className={cn(
+                    "flex flex-col p-4 gap-3 relative transition-colors",
+                    isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.02]" : "hover:bg-black/[0.02]")
+                )}
+            >
+                {!isPreview && (
+                    <div className="absolute right-3 top-3 flex gap-1">
+                        <button 
+                            {...attributes} 
+                            {...listeners} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all",
+                                isDark ? "text-white/30 hover:text-white" : "text-black/30 hover:text-black"
+                            )}
+                        >
+                            <GripVertical size={14} />
+                        </button>
+                        <button 
+                            onClick={() => removeRow(row.id)} 
+                            className="p-1.5 rounded-lg text-red-500/50 hover:text-red-500"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                )}
+
+                <div className="flex flex-col pr-12">
+                    {isPreview ? (
+                        <>
+                            <div className="font-bold text-[14px] leading-tight">{row.title || row.description || 'Item'}</div>
+                            {row.description && row.title && (
+                                <div 
+                                    className="text-[12px] opacity-60 mt-1 leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: row.description }}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <input
+                                value={row.title || ''}
+                                onChange={e => updateRow(row.id, { title: e.target.value })}
+                                placeholder="Item Name..."
+                                className={cn("w-full bg-transparent outline-none font-bold text-[14px] p-0 border-none", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
+                            />
+                            <div
+                                contentEditable={!isPreview}
+                                suppressContentEditableWarning
+                                onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
+                                dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                                className={cn(
+                                    "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] empty:before:content-[attr(data-placeholder)] empty:before:opacity-30", 
+                                    isDark ? "text-white opacity-60" : "text-black"
+                                )}
+                                data-placeholder="Description (optional)..."
+                            />
+                        </>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-4">
+                        {!hideQty && (
+                            <div className="flex flex-col">
+                                <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Qty</span>
+                                {isPreview ? (
+                                    <span className="text-[13px] font-bold">{row.qty}</span>
+                                ) : (
+                                    <input
+                                        type="number"
+                                        value={row.qty}
+                                        onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
+                                        className={cn("w-10 bg-transparent outline-none font-bold text-[13px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                    />
+                                )}
+                            </div>
+                        )}
+                        <div className="flex flex-col">
+                            <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Rate</span>
+                            {isPreview ? (
+                                <span className="text-[13px] font-bold"><MoneyAmount amount={row.rate} currency={currency} forceOriginal={true} /></span>
+                            ) : (
+                                <input
+                                    type="number"
+                                    value={row.rate}
+                                    onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
+                                    className={cn("w-20 bg-transparent outline-none font-bold text-[13px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                />
+                            )}
+                        </div>
+                    </div>
+                    {!hideQty && (
+                        <div className="flex flex-col items-end">
+                            <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Total</span>
+                            <span className="text-[16.5px] font-bold text-right"><MoneyAmount amount={row.qty * row.rate} currency={currency} forceOriginal={isPreview} /></span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <tr 
@@ -2328,7 +2468,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                 </td>
             )}
             <td className={cn(td, "px-3 text-right align-top", hideQty ? "pr-5" : "")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
-                {isPreview ? <span className={cn(hideQty && "font-bold")}><MoneyAmount amount={row.rate} currency={currency} /></span> : (
+                {isPreview ? <span className={cn(hideQty && "font-bold")}><MoneyAmount amount={row.rate} currency={currency} forceOriginal={isPreview} /></span> : (
                     <input
                         type="number"
                         value={row.rate}
@@ -2338,7 +2478,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     />
                 )}
             </td>
-            {!hideQty && <td className={cn(td, "pl-3 pr-5 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}><MoneyAmount amount={row.qty * row.rate} currency={currency} /></td>}
+            {!hideQty && <td className={cn(td, "pl-3 pr-5 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}><MoneyAmount amount={row.qty * row.rate} currency={currency} forceOriginal={isPreview} /></td>}
             {!isPreview && (
                 <td className="w-0 relative">
                     <div className={cn(
@@ -2447,7 +2587,7 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                     </div>
                 )}
             </td>
-            <td className={cn(td, "pl-3 pr-5 text-right font-bold")}><MoneyAmount amount={totalAbove * (row.percentage / 100)} currency={currency} /></td>
+            <td className={cn(td, "pl-3 pr-5 text-right font-bold")}><MoneyAmount amount={totalAbove * (row.percentage / 100)} currency={currency} forceOriginal={isPreview} /></td>
             {!isPreview && (
                 <td className="w-0 relative">
                     <div className={cn(
@@ -2560,11 +2700,43 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
         }
     };
 
-    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black/40");
+    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black");
     const td = cn("py-1.5", isDark ? "text-white/80" : "text-black/80");
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-4 px-1">
+                <div 
+                    contentEditable={!isPreview}
+                    suppressContentEditableWarning
+                    onBlur={e => updateBlock(block.id, { title: e.currentTarget.textContent || '' })}
+                    className={cn(
+                        "font-bold text-[14px] outline-none",
+                        !isPreview && "hover:bg-black/5 dark:hover:bg-white/5 rounded px-1 -mx-1"
+                    )}
+                >
+                    {block.title || 'PRELIMINARY BUDGET BREAKDOWN'}
+                </div>
+                {!isPreview && hasError && (
+                    <div className="flex items-center gap-3">
+                        <span className={cn("text-[10px] font-bold whitespace-nowrap", diff > 0 ? "text-amber-500" : "text-red-500")}>
+                            {totalPercentage}% ({diff > 0 ? `+${diff.toFixed(0)}%` : `${diff.toFixed(0)}%`})
+                        </span>
+                        <button
+                            onClick={fixPercentages}
+                            className={cn(
+                                "flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 border border-dashed transition-all",
+                                isDark ? "border-white/20 text-white/50 hover:text-white/80" : "border-black/20 text-black/50 hover:text-black/80"
+                            )}
+                            style={{ borderRadius: 'var(--block-button-radius)' }}
+                            title="Click to fix and balance to 100%"
+                        >
+                            <Zap size={10} className="fill-current" />
+                            FIX
+                        </button>
+                    </div>
+                )}
+            </div>
             <div 
                 className={cn("overflow-visible transition-all duration-300", isDark ? "bg-transparent text-white/90" : "bg-white text-black")} 
                 style={{ 
@@ -2574,41 +2746,10 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                     borderStyle: 'solid',
                     fontSize: 'var(--table-font-size)',
                     borderCollapse: 'separate',
-                    borderSpacing: 0
+                    borderSpacing: 0,
+                    overflow: 'hidden'
                 }}
             >
-                <div className="pl-5 pr-4 py-3 border-b flex items-center justify-between gap-4" style={{ backgroundColor: 'var(--table-header-bg)', borderTopLeftRadius: 'var(--table-border-radius)', borderTopRightRadius: 'var(--table-border-radius)', borderColor: 'var(--table-border-color)', borderBottomWidth: 'var(--table-stroke-width)' }}>
-                    <div 
-                        contentEditable={!isPreview}
-                        suppressContentEditableWarning
-                        onBlur={e => updateBlock(block.id, { title: e.currentTarget.textContent || '' })}
-                        className={cn(
-                            "font-bold text-[14px] outline-none",
-                            !isPreview && "hover:bg-black/5 dark:hover:bg-white/5 rounded px-1 -mx-1"
-                        )}
-                    >
-                        {block.title || 'PRELIMINARY BUDGET BREAKDOWN'}
-                    </div>
-                    {!isPreview && hasError && (
-                        <div className="flex items-center gap-3">
-                            <span className={cn("text-[10px] font-bold whitespace-nowrap", diff > 0 ? "text-amber-500" : "text-red-500")}>
-                                {totalPercentage}% ({diff > 0 ? `+${diff.toFixed(0)}%` : `${diff.toFixed(0)}%`})
-                            </span>
-                            <button
-                                onClick={fixPercentages}
-                                className={cn(
-                                    "flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 border border-dashed transition-all",
-                                    isDark ? "border-white/20 text-white/50 hover:text-white/80" : "border-black/20 text-black/50 hover:text-black/80"
-                                )}
-                                style={{ borderRadius: 'var(--block-button-radius)' }}
-                                title="Click to fix and balance to 100%"
-                            >
-                                <Zap size={10} className="fill-current" />
-                                FIX
-                            </button>
-                        </div>
-                    )}
-                </div>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <table className="w-full relative" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
                         <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>

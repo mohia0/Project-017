@@ -15,6 +15,7 @@
 import React from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import { getCurrency } from '@/lib/currencies';
+import { usePathname } from 'next/navigation';
 
 interface MoneyAmountProps {
     amount: number;
@@ -24,6 +25,8 @@ interface MoneyAmountProps {
     showBadge?: boolean;
     /** If true, shortens large numbers (e.g. 1.2M, 10K) */
     abbreviate?: boolean;
+    /** If true, skips conversion and blurring (for public pages or editor previews) */
+    forceOriginal?: boolean;
 }
 
 /**
@@ -70,14 +73,19 @@ export function formatAmount(amount: number, currency: string, abbreviate: boole
     }
 }
 
-export function MoneyAmount({ amount, currency = 'USD', className, showBadge = false, abbreviate = false }: MoneyAmountProps) {
+export function MoneyAmount({ amount, currency = 'USD', className, showBadge = false, abbreviate = false, forceOriginal }: MoneyAmountProps) {
     const conversionCurrency = useUIStore(s => s.conversionCurrency);
     const conversionRates = useUIStore(s => s.conversionRates);
+    const pathname = usePathname();
+
+    // Auto-detect public pages to ensure they always show the original amount
+    const isPublic = pathname?.startsWith('/p/');
+    const shouldSkip = forceOriginal || isPublic;
 
     let displayText: string;
     let isConverted = false;
 
-    if (conversionCurrency && conversionCurrency !== currency && conversionRates[currency]) {
+    if (!shouldSkip && conversionCurrency && conversionCurrency !== currency && conversionRates[currency]) {
         const rate = conversionRates[currency];
         displayText = formatAmount(amount * rate, conversionCurrency, abbreviate);
         isConverted = true;
@@ -87,7 +95,7 @@ export function MoneyAmount({ amount, currency = 'USD', className, showBadge = f
 
     return (
         <span
-            data-financial=""
+            data-financial={shouldSkip ? undefined : ""}
             className={className}
             title={isConverted ? `Original: ${formatAmount(amount, currency)}` : undefined}
         >
@@ -108,9 +116,15 @@ export function MoneyAmount({ amount, currency = 'USD', className, showBadge = f
  * Stateless version for callback contexts where hooks can't be called.
  * Reads directly from the Zustand store snapshot.
  */
-export function convertAmount(amount: number, currency: string = 'USD'): string {
+export function convertAmount(amount: number, currency: string = 'USD', forceOriginal?: boolean): string {
+    if (forceOriginal) return formatAmount(amount, currency);
+    
     const { conversionCurrency, conversionRates } = useUIStore.getState();
-    if (conversionCurrency && conversionCurrency !== currency && conversionRates[currency]) {
+    // For URL detection in stateless mode, we'd need to check window.location.pathname if available
+    const isPublic = typeof window !== 'undefined' && window.location.pathname.startsWith('/p/');
+    const shouldSkip = forceOriginal || isPublic;
+
+    if (!shouldSkip && conversionCurrency && conversionCurrency !== currency && conversionRates[currency]) {
         return formatAmount(amount * conversionRates[currency], conversionCurrency);
     }
     return formatAmount(amount, currency);

@@ -847,7 +847,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                             </div>
 
                             {/* Booking card */}
-                            <div className={cn("flex flex-col items-center min-h-full", isPreview && previewMode === 'mobile' ? "py-8 px-4" : "pb-20 px-4 pt-2")}>
+                            <div className={cn("flex flex-col items-center min-h-full transition-colors duration-300", isPreview && previewMode === 'mobile' ? (isDark ? "bg-[#111] py-8 px-4" : "bg-[#f5f5f5] py-8 px-4") : "pb-20 px-4 pt-2")}>
                                 {isPreview && previewMode === 'mobile' ? (
                                     <div className="flex flex-col items-center">
                                         <div className={cn("relative rounded-[44px] border-[4px] overflow-visible shrink-0 transition-all duration-300 bg-[#000] w-[390px] h-[844px]", isDark ? "border-[#1a1a1a] shadow-2xl" : "border-[#000] shadow-2xl")}>
@@ -859,7 +859,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                 </div>
                                             </div>
                                             <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-visible scrollbar-none z-0"
-                                                style={{ backgroundColor: design.backgroundColor || (isDark ? '#080808' : '#f7f7f7') }}>
+                                                style={{ backgroundColor: design.backgroundColor || (isDark ? '#0b0b0b' : '#f0f0f0') }}>
                                                 <div className="pb-8 overflow-visible min-h-full"
                                                     style={{
                                                         backgroundColor: design.blockBackgroundColor || '#fff',

@@ -1174,7 +1174,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                     </div>
 
                                     <div 
-                                        className={cn("flex flex-col items-center min-h-full", isPreview && previewMode === 'mobile' ? "py-8 px-4" : "pb-4 px-4 pt-2")}
+                                        className={cn("flex flex-col items-center min-h-full transition-colors duration-300", isPreview && previewMode === 'mobile' ? (isDark ? "bg-[#111] py-8 px-4" : "bg-[#f5f5f5] py-8 px-4") : "pb-4 px-4 pt-2")}
                                         onClick={() => setSelectedFieldId(null)}
                                     >
                                         {isPreview && previewMode === 'mobile' ? (
@@ -1188,7 +1188,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                         </div>
                                                     </div>
                                                     <div className="absolute inset-0 top-[52px] pb-[34px] overflow-y-auto overflow-x-hidden scrollbar-none z-0"
-                                                        style={{ backgroundColor: design.backgroundColor || (isDark ? '#080808' : '#f7f7f7') }}>
+                                                        style={{ backgroundColor: design.backgroundColor || (isDark ? '#0b0b0b' : '#f0f0f0') }}>
                                                         
                                                         {/* The main form content in mobile shell */}
                                                         <div className="pb-8 overflow-hidden"

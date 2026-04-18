@@ -46,9 +46,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 
 
-function fmt$(val: number, currency: string = 'USD') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
-}
+// Removed local fmt$ to use global MoneyAmount component
 function fmtDate(d: string | null | undefined) {
     if (!d) return '—';
     const date = new Date(d);
@@ -1151,7 +1149,7 @@ export default function InvoicesPage() {
                             statusFilter === 'All' ? (isDark ? "bg-[#333] text-white" : "bg-[#e0e0e0] text-black") : (isDark ? "bg-[#252525] text-[#666]" : "bg-[#f0f0f0] text-[#aaa]"))}>
                         <span className="font-bold tabular-nums">{stats.All.count}</span>
                         <span className="opacity-80 font-medium">Invoices</span>
-                        {stats.All.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">{fmt$(stats.All.amount, displayCurrency)}</span>}
+                        {stats.All.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]"><MoneyAmount amount={stats.All.amount} currency={displayCurrency} /></span>}
                     </button>
                     {activeStatues.map(s => {
                         const st = stats[s.name] || { count: 0, amount: 0 };

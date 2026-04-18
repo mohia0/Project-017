@@ -853,8 +853,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             </div>
                         )}
                         <div className={cn(
-                            "flex flex-col items-center min-h-full",
-                            isMobilePreview ? "py-8 px-4" : "pt-4 pb-20 px-6"
+                            "flex flex-col items-center min-h-full transition-colors duration-300",
+                            isMobilePreview ? (isDark ? "bg-[#111] py-8 px-4" : "bg-[#f5f5f5] py-8 px-4") : "pt-4 pb-20 px-6"
                         )}>
                             {/* Mobile phone frame wrapper */}
                             {isMobilePreview ? (
@@ -1562,6 +1562,7 @@ export function InvoiceDocument({
                                     updateMeta={updateMeta}
                                     isFirst={idx === 0}
                                     isLast={idx === blocks.length - 1}
+                                    isMobile={isMobile}
                                     onSaveAsTemplate={(blockId) => setSavingSectionId(blockId)}
                                 />
                                 {!isPreview && <InsertZone idx={idx} isDark={false} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} isLast={idx === blocks.length - 1} /> }
@@ -1601,7 +1602,7 @@ export function InvoiceDocument({
     );
 }
 
-function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, meta, updateMeta, isFirst, isLast, onSaveAsTemplate }: {
+function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, meta, updateMeta, isFirst, isLast, isMobile, onSaveAsTemplate }: {
     block: BlockData;
     isDark: boolean;
     isPreview: boolean;
@@ -1613,6 +1614,7 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
     updateMeta: (patch: Partial<InvoiceMeta>) => void;
     isFirst?: boolean;
     isLast?: boolean;
+    isMobile?: boolean;
     onSaveAsTemplate?: (id: string) => void;
 }) {
     const { setNodeRef, transform, transition } = useSortable({ id: block.id });
@@ -1629,13 +1631,13 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
             onSaveAsTemplate={onSaveAsTemplate}
         >
             <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
-                <BlockRenderer block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} meta={meta} updateMeta={updateMeta} />
+                <BlockRenderer block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} meta={meta} updateMeta={updateMeta} isMobile={isMobile} />
             </div>
         </SectionBlockWrapper>
     );
 }
 
-function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, updateMeta }: {
+function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, updateMeta, isMobile }: {
     block: BlockData;
     isDark: boolean;
     isPreview: boolean;
@@ -1643,6 +1645,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
     currency: string;
     meta: InvoiceMeta;
     updateMeta: (patch: Partial<InvoiceMeta>) => void;
+    isMobile?: boolean;
 }) {
     switch (block.type) {
         case 'header': {
@@ -1795,7 +1798,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
             const taxAmt = (subtotal - discAmt) * ((block.taxRate || 0) / 100);
             const total = subtotal - discAmt + taxAmt;
 
-            const th = cn("uppercase font-bold px-3 py-2", isDark ? "text-white/40" : "text-black/40");
+            const th = cn("uppercase font-bold px-3 py-2", isDark ? "text-white/40" : "text-black");
             const td = cn("border-none", isDark ? "text-white" : "text-black");
 
             return (
@@ -1807,22 +1810,13 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             borderWidth: 'var(--table-stroke-width)', 
                             borderStyle: 'solid', 
                             borderColor: 'var(--table-border-color)',
-                            backgroundColor: isDark ? '#1a1a1a' : '#ffffff'
+                            backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                            overflow: 'hidden'
                         }}
                     >
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                            <table className="w-full relative" style={{ borderRadius: 'var(--table-border-radius)', borderCollapse: 'separate', borderSpacing: 0 }}>
-                                <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
-                                    <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                        <th className="w-0 relative" />
-                                        <th className={cn(th, "pl-5 pr-2 py-2 w-full text-left")} style={{ borderTopLeftRadius: 'var(--table-border-radius)' }}>Item</th>
-                                        {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
-                                        <th className={cn(th, "px-3 py-2 text-right w-24", hideQty ? "pr-5 rounded-tr-[var(--table-border-radius)]" : "")}>Amount</th>
-                                        {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
-                                        {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                            {isMobile ? (
+                                <div className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
                                     <style dangerouslySetInnerHTML={{ __html: `
                                         .divide-y > * + * {
                                             border-top-width: var(--table-stroke-width) !important;
@@ -1842,11 +1836,49 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                                 removeRow={removeRow} 
                                                 duplicateRow={duplicateRow}
                                                 td={td}
+                                                isMobile={true}
                                             />
                                         ))}
                                     </SortableContext>
-                                </tbody>
-                            </table>
+                                </div>
+                            ) : (
+                                <table className="w-full relative" style={{ borderRadius: 'var(--table-border-radius)', borderCollapse: 'separate', borderSpacing: 0 }}>
+                                    <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
+                                        <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
+                                            <th className="w-0 relative" />
+                                            <th className={cn(th, "pl-5 pr-2 py-2 w-full text-left")} style={{ borderTopLeftRadius: 'var(--table-border-radius)' }}>Item</th>
+                                            {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
+                                            <th className={cn(th, "px-3 py-2 text-right w-24", hideQty ? "pr-5 rounded-tr-[var(--table-border-radius)]" : "")}>Amount</th>
+                                            {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
+                                            {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                                        <style dangerouslySetInnerHTML={{ __html: `
+                                            .divide-y > * + * {
+                                                border-top-width: var(--table-stroke-width) !important;
+                                                border-color: var(--table-border-color) !important;
+                                            }
+                                        ` }} />
+                                        <SortableContext items={rows.map((r: any) => r.id)} strategy={verticalListSortingStrategy}>
+                                            {rows.map((row: PricingRow) => (
+                                                <SortableRow 
+                                                    key={row.id} 
+                                                    row={row} 
+                                                    isDark={isDark} 
+                                                    isPreview={isPreview} 
+                                                    hideQty={hideQty} 
+                                                    currency={currency} 
+                                                    updateRow={updateRow} 
+                                                    removeRow={removeRow} 
+                                                    duplicateRow={duplicateRow}
+                                                    td={td}
+                                                />
+                                            ))}
+                                        </SortableContext>
+                                    </tbody>
+                                </table>
+                            )}
                         </DndContext>
                     </div>
 
@@ -1875,12 +1907,12 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         
                         <div className="flex flex-col items-end">
                             <div className="w-full max-w-[180px] space-y-1.5">
-                                <div className={cn("flex justify-between text-[12px] font-medium opacity-50")}>
+                                <div className={cn("flex justify-between text-[12px] font-medium", isDark ? "opacity-50" : "text-black")}>
                                     <span>Subtotal</span>
-                                    <span><MoneyAmount amount={subtotal} currency={currency} /></span>
+                                    <span><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
                                 </div>
                                 {(!isPreview || (block.discountRate || 0) > 0) && (
-                                    <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-50")}>
+                                    <div className={cn("flex justify-between items-center text-[12px] font-medium", isDark ? "opacity-50" : "text-black")}>
                                         <div className="flex items-center gap-2">
                                             <span>Discount{isPreview && <span className="ml-1 opacity-70">({block.discountRate}%)</span>}</span>
                                             {!isPreview && (
@@ -1893,11 +1925,11 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                             )}
                                             {!isPreview && <span>%</span>}
                                         </div>
-                                        <span>−<MoneyAmount amount={discAmt} currency={currency} /></span>
+                                        <span>−<MoneyAmount amount={discAmt} currency={currency} forceOriginal={isPreview} /></span>
                                     </div>
                                 )}
                                 {(!isPreview || (block.taxRate || 0) > 0) && (
-                                    <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-50")}>
+                                    <div className={cn("flex justify-between items-center text-[12px] font-medium", isDark ? "opacity-50" : "text-black")}>
                                         <div className="flex items-center gap-2">
                                             <span>Tax{isPreview && <span className="ml-1 opacity-70">({block.taxRate}%)</span>}</span>
                                             {!isPreview && (
@@ -1910,12 +1942,12 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                             )}
                                             {!isPreview && <span>%</span>}
                                         </div>
-                                        <span><MoneyAmount amount={taxAmt} currency={currency} /></span>
+                                        <span><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
                                     </div>
                                 )}
                                 <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
                                     <span>Total</span>
-                                    <span><MoneyAmount amount={total} currency={currency} /></span>
+                                    <span><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
                                 </div>
                             </div>
                         </div>
@@ -2161,9 +2193,116 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
 }
 
 
-function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td }: any) {
+function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td, isMobile }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
     const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 0 };
+
+    if (isMobile) {
+        return (
+            <div 
+                ref={setNodeRef} 
+                style={style} 
+                className={cn(
+                    "flex flex-col p-4 gap-3 relative transition-colors",
+                    isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.02]" : "hover:bg-black/[0.02]")
+                )}
+            >
+                {!isPreview && (
+                    <div className="absolute right-3 top-3 flex gap-1">
+                        <button 
+                            {...attributes} 
+                            {...listeners} 
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all",
+                                isDark ? "text-white/30 hover:text-white" : "text-black/30 hover:text-black"
+                            )}
+                        >
+                            <GripVertical size={14} />
+                        </button>
+                        <button 
+                            onClick={() => removeRow(row.id)} 
+                            className="p-1.5 rounded-lg text-red-500/50 hover:text-red-500"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
+                )}
+
+                <div className="flex flex-col pr-12">
+                    {isPreview ? (
+                        <>
+                            <div className="font-bold text-[14px] leading-tight">{row.title || row.description || 'Item'}</div>
+                            {row.description && row.title && (
+                                <div 
+                                    className="text-[12px] opacity-60 mt-1 leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: row.description }}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <input
+                                value={row.title || ''}
+                                onChange={e => updateRow(row.id, { title: e.target.value })}
+                                placeholder="Item Name..."
+                                className={cn("w-full bg-transparent outline-none font-bold text-[14px] p-0 border-none", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
+                            />
+                            <div
+                                contentEditable={!isPreview}
+                                suppressContentEditableWarning
+                                onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
+                                dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                                className={cn(
+                                    "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] empty:before:content-[attr(data-placeholder)] empty:before:opacity-30", 
+                                    isDark ? "text-white opacity-60" : "text-black"
+                                )}
+                                data-placeholder="Description (optional)..."
+                            />
+                        </>
+                    )}
+                </div>
+
+                <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center gap-4">
+                        {!hideQty && (
+                            <div className="flex flex-col">
+                                <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Qty</span>
+                                {isPreview ? (
+                                    <span className="text-[13px] font-bold">{row.qty}</span>
+                                ) : (
+                                    <input
+                                        type="number"
+                                        value={row.qty}
+                                        onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
+                                        className={cn("w-10 bg-transparent outline-none font-bold text-[13px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                    />
+                                )}
+                            </div>
+                        )}
+                        <div className="flex flex-col">
+                            <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Rate</span>
+                            {isPreview ? (
+                                <span className="text-[13px] font-bold"><MoneyAmount amount={row.rate} currency={currency} forceOriginal={true} /></span>
+                            ) : (
+                                <input
+                                    type="number"
+                                    value={row.rate}
+                                    onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
+                                    className={cn("w-20 bg-transparent outline-none font-bold text-[13px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                />
+                            )}
+                        </div>
+                    </div>
+                    {!hideQty && (
+                        <div className="flex flex-col items-end">
+                            <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Total</span>
+                            <span className="text-[16.5px] font-bold text-right"><MoneyAmount amount={row.qty * row.rate} currency={currency} forceOriginal={isPreview} /></span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <tr 
@@ -2243,7 +2382,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                 </td>
             )}
             <td className={cn(td, "px-3 text-right align-top", hideQty ? "pr-5" : "")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
-                {isPreview ? <span className={cn(hideQty && "font-bold")}><MoneyAmount amount={row.rate} currency={currency} /></span> : (
+                {isPreview ? <span className={cn(hideQty && "font-bold")}><MoneyAmount amount={row.rate} currency={currency} forceOriginal={isPreview} /></span> : (
                     <input
                         type="number"
                         value={row.rate}
@@ -2253,7 +2392,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     />
                 )}
             </td>
-            {!hideQty && <td className={cn(td, "pl-3 pr-5 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}><MoneyAmount amount={row.qty * row.rate} currency={currency} /></td>}
+            {!hideQty && <td className={cn(td, "pl-3 pr-5 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}><MoneyAmount amount={row.qty * row.rate} currency={currency} forceOriginal={isPreview} /></td>}
             {!isPreview && (
                 <td className="w-0 relative">
                     <div className={cn(

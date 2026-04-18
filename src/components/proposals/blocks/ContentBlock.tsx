@@ -18,6 +18,7 @@ import {
 } from "@blocknote/react";
 import { BlockNoteSchema, defaultBlockSpecs, filterSuggestionItems, combineByGroup, withPageBreak } from "@blocknote/core";
 import * as locales from "@blocknote/core/locales";
+import { cn } from '@/lib/utils';
 import { 
     withMultiColumn, 
     multiColumnDropCursor, 
@@ -233,10 +234,10 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                 text: isDarkBg ? "#ffffff" : "#000000",
                 background: "transparent",
             },
-            ...('colors' in baseTheme.colors ? {
-                colors: {
-                    ...(baseTheme.colors as any).colors,
-                    brown: "#000000",
+            ...(!isDarkBg ? {
+                sideMenu: "#000000",
+                highlightColors: {
+                    ...(baseTheme.colors as any).highlightColors,
                 }
             } : {})
         },
@@ -259,7 +260,17 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
     };
 
     return (
-        <div className="w-full max-w-full relative blocknote-editor">
+        <div className={cn("w-full max-w-full relative blocknote-editor", !isDarkBg && "force-black-text")}>
+            {!isDarkBg && (
+                <style dangerouslySetInnerHTML={{ __html: `
+                    .force-black-text .bn-editor, 
+                    .force-black-text .bn-editor *,
+                    .force-black-text .bn-editor [data-placeholder]::before {
+                        color: #000000 !important;
+                        opacity: 1 !important;
+                    }
+                ` }} />
+            )}
             <BlockNoteView 
                 editor={editor} 
                 theme={customTheme}

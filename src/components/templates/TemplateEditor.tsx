@@ -483,7 +483,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                         status="Pending"
                                         design={template.design}
                                         inline={true}
-                                        amountDue={convertAmount(totals.total, (template as any).meta?.currency || 'USD')}
+                                        amountDue={convertAmount(totals.total, (template as any).meta?.currency || 'USD', true)}
                                         onDownloadPDF={() => {}}
                                         onPrint={() => {}}
                                         onAccept={() => {}}
@@ -536,7 +536,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                                         design={template.design}
                                                         inline={true}
                                                         isMobile={true}
-                                                        amountDue={convertAmount(totals.total, (template as any).meta?.currency || 'USD')}
+                                                        amountDue={convertAmount(totals.total, (template as any).meta?.currency || 'USD', true)}
                                                         onDownloadPDF={() => {}}
                                                         onPrint={() => {}}
                                                         onAccept={() => {}}
