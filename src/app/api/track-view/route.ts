@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseService } from '@/lib/supabase-service';
+import { getGeoIntelligence } from '@/lib/geo';
 
 export async function POST(req: Request) {
     try {
@@ -10,9 +11,14 @@ export async function POST(req: Request) {
         }
 
         const docTitle = title || 'Untitled';
+        const visitor = await getGeoIntelligence(req);
 
         // Message format matches the design: `Someone opened "Title"`
-        const notificationTitle = `Someone opened "${docTitle}"`;
+        let notificationTitle = `Someone opened "${docTitle}"`;
+        if (visitor) {
+            notificationTitle = `Someone from ${visitor.country} ${visitor.flag} opened "${docTitle}"`;
+        }
+
         const notificationMessage =
             type === 'proposal'
                 ? `A client opened your proposal.`
@@ -28,7 +34,8 @@ export async function POST(req: Request) {
                 title: notificationTitle,
                 message: notificationMessage,
                 link: `/${type}s/${id}`,
-                read: false
+                read: false,
+                metadata: visitor ? { visitor } : null
             });
 
         if (error) {

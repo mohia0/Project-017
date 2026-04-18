@@ -571,6 +571,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                 setMeta(prev => ({ ...prev, design: t.design }));
             }
             setIsLoaded(true);
+            if (Array.isArray(t.blocks)) setFields(t.blocks);
             return;
         }
 
@@ -1395,16 +1396,30 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                                     <Image size={18} className={isDark ? "text-[#555] group-hover/img:text-primary" : "text-[#aaa] group-hover/img:text-primary"} />
                                                                                 )}
                                                                             </div>
-                                                                            <div className="flex-1 min-w-0">
+                                                                            <div className="flex-1 min-w-0 space-y-1">
+                                                                                {/* Label Input */}
                                                                                 <input 
-                                                                                    value={opt} 
+                                                                                    value={opt.split('|')[1] !== undefined ? opt.split('|')[1] : ''} 
                                                                                     onChange={e => {
                                                                                         const newOpts = [...(selectedField.options || [])];
-                                                                                        newOpts[idx] = e.target.value;
+                                                                                        const currentUrl = opt.split('|')[0];
+                                                                                        newOpts[idx] = `${currentUrl}|${e.target.value}`;
+                                                                                        updateField(selectedField.id, { options: newOpts });
+                                                                                    }}
+                                                                                    placeholder="Label (optional)"
+                                                                                    className={cn("w-full bg-transparent border-none text-[13px] outline-none font-bold", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
+                                                                                />
+                                                                                {/* URL Input (Small) */}
+                                                                                <input 
+                                                                                    value={opt.split('|')[0]} 
+                                                                                    onChange={e => {
+                                                                                        const newOpts = [...(selectedField.options || [])];
+                                                                                        const currentLabel = opt.split('|')[1];
+                                                                                        newOpts[idx] = currentLabel !== undefined ? `${e.target.value}|${currentLabel}` : e.target.value;
                                                                                         updateField(selectedField.id, { options: newOpts });
                                                                                     }}
                                                                                     placeholder="Image URL"
-                                                                                    className={cn("w-full bg-transparent border-none text-[13px] outline-none font-medium truncate", isDark ? "text-[#eee] placeholder:text-[#555]" : "text-[#111] placeholder:text-[#aaa]")}
+                                                                                    className={cn("w-full bg-transparent border-none text-[10px] outline-none opacity-40 hover:opacity-100 transition-opacity truncate", isDark ? "text-white" : "text-black")}
                                                                                 />
                                                                             </div>
                                                                             <button onClick={() => {
@@ -1759,18 +1774,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                             : isDark ? "bg-[#1a1a1a] border-[#252525] hover:border-[#333]" : "bg-white border-[#ebebeb] hover:border-black/10 hover:shadow-sm"
                                                     )}
                                                 >
-                                                    {/* Checkbox Overlay */}
-                                                    <div className="absolute top-2 right-2 flex items-center gap-0.5 z-20">
-                                                        <div className={cn('transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
-                                                            onClick={e => { e.stopPropagation(); toggleResponseSelection(r.id); }}>
-                                                            <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-                                                                <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
-                                                                    isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
-                                                                    {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+
 
                                                     {/* Card Header (Contact Style) */}
                                                     <div className="flex items-center gap-3 px-4 py-3.5 relative">
@@ -1788,10 +1792,10 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                         </div>
 
                                                         {/* Action Buttons (Top Right Overlay) */}
-                                                        <div className={cn("absolute top-3.5 right-4 z-10 flex items-center gap-1.5 transition-opacity", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+                                                        <div className={cn("absolute top-2 right-4 z-10 flex items-center gap-1.5 transition-opacity", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); handleCopyAll(r.data); }}
-                                                                className={cn("p-1 rounded-lg transition-colors shrink-0", isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black")}
+                                                                className={cn("p-1.5 rounded-lg transition-colors shrink-0", isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black")}
                                                                 title="Copy all responses"
                                                             >
                                                                 <Copy size={11} />
@@ -1805,11 +1809,17 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                 isDark={isDark}
                                                             />
 
-                                                            <div className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all shrink-0",
-                                                                isSelected ? "bg-primary border-primary" : isDark ? "border-white/20" : "border-[#ccc]")}>
-                                                                {isSelected && <Check size={10} strokeWidth={4} className="text-black" />}
+                                                            <div 
+                                                                onClick={(e) => { e.stopPropagation(); toggleResponseSelection(r.id); }}
+                                                                className={cn("w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer ml-1")}
+                                                            >
+                                                                <div className={cn("w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all",
+                                                                    isSelected ? "bg-primary border-primary shadow-sm" : isDark ? "border-white/20 bg-black/20" : "border-[#ccc] bg-white")}>
+                                                                    {isSelected && <Check size={10} strokeWidth={4} className="text-black" />}
+                                                                </div>
                                                             </div>
                                                         </div>
+
                                                     </div>
 
                                                     {/* Rows (CardRow Style) */}

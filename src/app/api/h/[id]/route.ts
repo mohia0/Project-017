@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseService } from '@/lib/supabase-service';
+import { getGeoIntelligence } from '@/lib/geo';
 
 // 1x1 transparent PNG (base64 decoded at runtime)
 const TRANSPARENT_PNG = Buffer.from(
@@ -19,10 +20,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             .single();
 
         if (!hookError && hook && hook.status === 'Active') {
-            const ip =
-                req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-                req.headers.get('x-real-ip') ||
-                'unknown';
+            const visitor = await getGeoIntelligence(req);
+            const ip = visitor?.ip || 'unknown';
             const ua = req.headers.get('user-agent') || 'unknown';
 
             // Log the view asynchronously — don't block the pixel response
@@ -33,14 +32,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                     user_agent: ua,
                 });
 
+                let notificationTitle = hook.title || `Someone opened "${hook.name}"`;
+                if (visitor) {
+                    notificationTitle = `Someone from ${visitor.country} ${visitor.flag} opened "${hook.name}"`;
+                }
+
                 await supabaseService.from('notifications').insert({
                     workspace_id: hook.workspace_id,
-                    title: hook.title || `Someone opened "${hook.name}"`,
+                    title: notificationTitle,
                     message: hook.link
                         ? `A hook was triggered on: ${hook.link}`
                         : 'A tracking hook was triggered.',
                     link: `/hooks`,
                     read: false,
+                    metadata: visitor ? { visitor } : null
                 });
             })();
         }

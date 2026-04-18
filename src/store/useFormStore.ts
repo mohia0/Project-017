@@ -38,6 +38,7 @@ export interface Form {
     fields: FormField[];
     meta?: any;
     created_at: string;
+    responses_count?: number;
 }
 
 interface FormState {
@@ -69,7 +70,7 @@ export const useFormStore = create<FormState>((set) => ({
 
         const { data, error } = await supabase
             .from('forms')
-            .select('*')
+            .select('*, responses_count:form_responses(count)')
             .eq('workspace_id', workspaceId)
             .order('created_at', { ascending: false });
 
@@ -80,7 +81,8 @@ export const useFormStore = create<FormState>((set) => ({
             // Ensure fields is always an array to prevent "0 fields" loading issues
             const formsWithFields = (data || []).map(f => ({
                 ...f,
-                fields: Array.isArray(f.fields) ? f.fields : []
+                fields: Array.isArray(f.fields) ? f.fields : [],
+                responses_count: f.responses_count?.[0]?.count || 0
             }));
             set({ forms: formsWithFields, isLoading: false });
         }

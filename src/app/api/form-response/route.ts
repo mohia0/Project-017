@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseService } from '@/lib/supabase-service';
+import { getGeoIntelligence } from '@/lib/geo';
 
 export async function POST(req: Request) {
     try {
@@ -63,6 +64,12 @@ export async function POST(req: Request) {
             }
         }
 
+        // 0.5 Get Geo Intelligence
+        const visitor = await getGeoIntelligence(req);
+        if (visitor) {
+            data._visitor = visitor;
+        }
+
         // 1. Insert the response
         const { data: responseData, error: responseError } = await supabaseService
             .from('form_responses')
@@ -98,7 +105,11 @@ export async function POST(req: Request) {
         }
 
         // 3. Create notification
-        const notificationTitle = `New Form Submission`;
+        let notificationTitle = `New Form Submission`;
+        if (visitor) {
+            notificationTitle = `New Form Submission from ${visitor.country} ${visitor.flag}`;
+        }
+        
         const notificationMessage = `${respondentName} just submitted a response to "${form_title || 'Untitled Form'}".`;
 
         await supabaseService
@@ -110,6 +121,7 @@ export async function POST(req: Request) {
                 link: `/forms/${form_id}?tab=responses`,
                 read: false,
                 type: 'submission',
+                metadata: visitor ? { visitor } : null
             });
 
         return NextResponse.json({ success: true, data: responseData });

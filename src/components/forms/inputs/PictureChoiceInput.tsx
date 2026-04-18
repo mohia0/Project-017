@@ -13,23 +13,28 @@ interface PictureChoiceInputProps {
     primaryColor: string;
 }
 
-/** Returns true if the string looks like an image src we can render */
-const isImageSrc = (s: string) => {
-    if (!s) return false;
-    return (
-        s.startsWith('http') ||
-        s.startsWith('/') ||       // relative paths like /api/files/...
-        s.startsWith('data:image') ||
-        s.startsWith('blob:')
-    );
+/** Parses an option string that may contain a label (format: "url|label") */
+const parseOption = (opt: string) => {
+    if (!opt) return { url: '', label: undefined };
+    const parts = opt.split('|');
+    if (parts.length > 1) {
+        return { 
+            url: parts[0], 
+            label: parts.slice(1).join('|') // Handle if label contains |
+        };
+    }
+    return { url: opt, label: undefined };
 };
 
 /** Extract a user-friendly display name from an image URL/path */
-const getDisplayName = (src: string, index: number): string => {
+const getDisplayName = (src: string, index: number, customLabel?: string): string => {
+    if (customLabel !== undefined) return customLabel;
+    
     try {
         // Get the last segment of the path
         const parts = src.split('/');
         const fileName = parts[parts.length - 1];
+        if (!fileName) return `Option ${index + 1}`;
 
         // Strip query params
         const cleanName = fileName.split('?')[0];
@@ -47,6 +52,17 @@ const getDisplayName = (src: string, index: number): string => {
     }
 };
 
+/** Returns true if the string looks like an image src we can render */
+const isImageSrc = (s: string) => {
+    if (!s) return false;
+    return (
+        s.startsWith('http') ||
+        s.startsWith('/') ||       // relative paths like /api/files/...
+        s.startsWith('data:image') ||
+        s.startsWith('blob:')
+    );
+};
+
 export const PictureChoiceInput = ({ 
     value, 
     onChange, 
@@ -58,9 +74,10 @@ export const PictureChoiceInput = ({
     return (
         <div className="grid grid-cols-2 gap-4">
             {options.map((opt, i) => {
+                const { url, label } = parseOption(opt);
                 const isSelected = value === opt;
-                const hasImage = isImageSrc(opt);
-                const displayName = hasImage ? getDisplayName(opt, i) : (opt || `Option ${i + 1}`);
+                const hasImage = isImageSrc(url);
+                const displayName = getDisplayName(url, i, label);
 
                 return (
                     <div 
@@ -91,7 +108,7 @@ export const PictureChoiceInput = ({
                         )}>
                             {hasImage ? (
                                 <img 
-                                    src={opt} 
+                                    src={url} 
                                     alt={displayName} 
                                     className="w-full h-full object-cover" 
                                     onError={(e) => {
@@ -105,12 +122,14 @@ export const PictureChoiceInput = ({
                             )}
                         </div>
 
-                        <span className={cn(
-                            "text-[12px] font-bold tracking-tight text-center w-full leading-tight",
-                            isSelected ? "text-primary" : (isDark ? "text-[#777]" : "text-[#555]")
-                        )} style={{ color: isSelected ? primaryColor : undefined }}>
-                            {displayName}
-                        </span>
+                        {displayName && (
+                            <span className={cn(
+                                "text-[12px] font-bold tracking-tight text-center w-full leading-tight",
+                                isSelected ? "text-primary" : (isDark ? "text-[#777]" : "text-[#555]")
+                            )} style={{ color: isSelected ? primaryColor : undefined }}>
+                                {displayName}
+                            </span>
+                        )}
                     </div>
                 );
             })}

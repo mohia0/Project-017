@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseService } from '@/lib/supabase-service';
+import { getGeoIntelligence } from '@/lib/geo';
 
 export async function POST(req: Request) {
     try {
@@ -86,8 +87,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, error: bookingError.message });
         }
 
+        // 1.5 Fetch visitor geo
+        const visitor = await getGeoIntelligence(req);
+        
         // 2. Create notification
-        const notificationTitle = `New Meeting Booked`;
+        let notificationTitle = `New Meeting Booked`;
+        if (visitor) {
+            notificationTitle = `New Meeting Booked from ${visitor.country} ${visitor.flag}`;
+        }
         const notificationMessage = `${booker_name} just booked a session for ${booked_date} at ${booked_time} on "${scheduler_title || 'Untitled Scheduler'}".`;
 
         await supabaseService
@@ -97,7 +104,8 @@ export async function POST(req: Request) {
                 title: notificationTitle,
                 message: notificationMessage,
                 link: `/schedulers/${scheduler_id}?tab=bookings&highlight=${bookingData.id}`,
-                read: false
+                read: false,
+                metadata: visitor ? { visitor } : null
             });
 
         // 3. Send confirmation email to booker and alert to organizer via /api/send-email

@@ -24,6 +24,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Radio, Copy } from 'lucide-react';
 import { appToast } from '@/lib/toast';
 import { SendEmailModal } from '@/components/modals/SendEmailModal';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 const COLORS = [
     '#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9',
@@ -233,9 +234,21 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                         <p className={cn("text-[10px] mt-0.5 leading-tight opacity-70", isDark ? "text-[#888]" : "text-[#666]")}>
                                             {notif.message}
                                         </p>
-                                        <p className={cn("text-[9px] mt-1 font-medium", isDark ? "text-[#444]" : "text-[#aaa]")}>
-                                            {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
-                                        </p>
+                                        <div className="flex items-center justify-between mt-1">
+                                            <p className={cn("text-[9px] font-medium", isDark ? "text-[#444]" : "text-[#aaa]")}>
+                                                {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                                            </p>
+                                            {notif.metadata?.visitor && (
+                                                <Tooltip 
+                                                    content={`${notif.metadata.visitor.flag} ${notif.metadata.visitor.country}, ${notif.metadata.visitor.city} (IP: ${notif.metadata.visitor.ip})`} 
+                                                    side="left"
+                                                >
+                                                    <div className="shrink-0 flex items-center justify-center cursor-help">
+                                                        <AlertCircle size={10} className="text-primary/70 hover:text-primary transition-colors" />
+                                                    </div>
+                                                </Tooltip>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 

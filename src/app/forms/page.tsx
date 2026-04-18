@@ -151,16 +151,12 @@ function TbBtn({ label, icon, active, hasArrow, onClick, isDark }: {
 /* ─── Checkbox ──────────────────────────────────────────────────── */
 function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
     return (
-        <div className={cn("w-[13px] h-[13px] rounded-[3px] border flex items-center justify-center transition-all shrink-0",
-            checked ? "bg-primary border-primary"
+        <div className={cn("w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center transition-all shrink-0",
+            checked ? "bg-primary border-primary shadow-sm"
                 : indeterminate ? "bg-primary/40 border-primary/60"
-                    : isDark ? "border-[#3a3a3a] bg-transparent" : "border-[#d0d0d0] bg-white")}>
+                    : isDark ? "border-white/10 bg-white/5" : "border-[#d0d0d0] bg-white")}>
             {(checked || indeterminate) && (
-                <svg width="7" height="5" viewBox="0 0 8 6" fill="none">
-                    {indeterminate && !checked
-                        ? <line x1="1" y1="3" x2="7" y2="3" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                        : <polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />}
-                </svg>
+                <Check size={11} strokeWidth={checked ? 4 : 2.5} className="text-black" />
             )}
         </div>
     );
@@ -188,14 +184,14 @@ function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }:
             <div className="p-4 flex flex-col gap-3 flex-1">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="flex items-start gap-1.5 min-w-0 -ml-2">
                         <div
                             onClick={(e) => { e.stopPropagation(); onToggle(); }}
-                            className="mt-0.5 cursor-pointer"
-                        >
+                            className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-all cursor-pointer",
+                                isDark ? "hover:bg-white/5" : "hover:bg-black/5")}>
                             <Chk checked={isSelected} isDark={isDark} />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 pt-1.5">
                             <div className={cn("font-bold text-[14px] truncate", isDark ? "text-white" : "text-[#111]")}>
                                 {f.title}
                             </div>
@@ -225,7 +221,7 @@ function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }:
                     </span>
                     <span className="flex items-center gap-1">
                         <MessageSquare size={11} />
-                        0 responses
+                        {f.responses_count || 0} response{f.responses_count !== 1 ? 's' : ''}
                     </span>
                 </div>
             </div>
@@ -562,8 +558,13 @@ export default function FormsPage() {
                             <div className={cn("grid px-0 py-2.5 text-[11px] font-semibold tracking-wider uppercase border-b sticky top-0 z-30 shadow-sm",
                                 isDark ? "bg-[#141414] border-[#252525] text-[#555]" : "bg-[#f7f7f7] border-[#ebebeb] text-[#bbb]")}
                                 style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 120px' }}>
-                                <div className="flex justify-center" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
-                                    <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                                <div className="flex justify-center">
+                                    <div 
+                                        onClick={(e) => { e.stopPropagation(); toggleAll(); }}
+                                        className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-all cursor-pointer",
+                                            isDark ? "hover:bg-white/5" : "hover:bg-black/5")}>
+                                        <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                                    </div>
                                 </div>
                                 <div className="px-4">Name</div>
                                 <div className="px-4">Status</div>
@@ -589,8 +590,13 @@ export default function FormsPage() {
                                                 isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
                                             style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 120px' }}>
 
-                                            <div className="flex items-center justify-center px-0 py-3 self-stretch" onClick={e => toggleRow(f.id, e)}>
-                                                <Chk checked={isSelected} isDark={isDark} />
+                                            <div className="flex items-center justify-center px-0 py-3 self-stretch">
+                                                <div 
+                                                    onClick={e => toggleRow(f.id, e)}
+                                                    className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-all cursor-pointer",
+                                                        isDark ? "hover:bg-white/5" : "hover:bg-black/5")}>
+                                                    <Chk checked={isSelected} isDark={isDark} />
+                                                </div>
                                             </div>
 
                                             <div className="flex flex-col justify-center px-4 py-3 min-w-0">
@@ -610,7 +616,7 @@ export default function FormsPage() {
                                             </div>
 
                                             <div className="flex flex-col justify-center px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#666]" : "text-[#aaa]")}>0</span>
+                                                <span className={cn(isDark ? "text-[#666]" : "text-[#aaa]")}>{f.responses_count || 0}</span>
                                             </div>
 
                                             <div className="flex flex-col justify-center px-4 py-3">
