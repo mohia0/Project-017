@@ -26,7 +26,10 @@ interface MoneyAmountProps {
     abbreviate?: boolean;
 }
 
-function fmt(amount: number, currency: string, abbreviate: boolean = false): string {
+/**
+ * Basic formatting for monetary values without currency conversion.
+ */
+export function formatAmount(amount: number, currency: string, abbreviate: boolean = false): string {
     if (abbreviate) {
         let val = amount;
         let suffix = '';
@@ -76,17 +79,17 @@ export function MoneyAmount({ amount, currency = 'USD', className, showBadge = f
 
     if (conversionCurrency && conversionCurrency !== currency && conversionRates[currency]) {
         const rate = conversionRates[currency];
-        displayText = fmt(amount * rate, conversionCurrency, abbreviate);
+        displayText = formatAmount(amount * rate, conversionCurrency, abbreviate);
         isConverted = true;
     } else {
-        displayText = fmt(amount, currency, abbreviate);
+        displayText = formatAmount(amount, currency, abbreviate);
     }
 
     return (
         <span
             data-financial=""
             className={className}
-            title={isConverted ? `Original: ${fmt(amount, currency)}` : undefined}
+            title={isConverted ? `Original: ${formatAmount(amount, currency)}` : undefined}
         >
             {displayText}
             {isConverted && showBadge && (
@@ -108,7 +111,7 @@ export function MoneyAmount({ amount, currency = 'USD', className, showBadge = f
 export function convertAmount(amount: number, currency: string = 'USD'): string {
     const { conversionCurrency, conversionRates } = useUIStore.getState();
     if (conversionCurrency && conversionCurrency !== currency && conversionRates[currency]) {
-        return fmt(amount * conversionRates[currency], conversionCurrency);
+        return formatAmount(amount * conversionRates[currency], conversionCurrency);
     }
-    return fmt(amount, currency);
+    return formatAmount(amount, currency);
 }

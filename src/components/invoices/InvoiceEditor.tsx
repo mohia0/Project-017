@@ -50,7 +50,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useSectionTemplateStore } from '@/store/useSectionTemplateStore';
 import { appToast } from '@/lib/toast';
-import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
+import { MoneyAmount, convertAmount, formatAmount } from '@/components/ui/MoneyAmount';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -463,8 +463,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             const receiptVars = {
                 client_name: meta.clientName || '',
                 invoice_number: meta.invoiceNumber || '',
-                amount_paid: fmt(totals.total, meta.currency),
-                amount_due: fmt(totals.total, meta.currency),
+                amount_paid: formatAmount(totals.total, meta.currency),
+                amount_due: formatAmount(totals.total, meta.currency),
                 document_link: docLink,
                 sender_name: '',
             };
@@ -492,7 +492,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 const reason = !hasEmail ? 'No client email on file.' : 'Auto-receipt is disabled.';
                 useNotificationStore.getState().addNotification({
                     title: `Receipt pending — ${meta.clientName || 'Client'}`,
-                    message: `${reason} Open the notification to send the receipt for ${meta.invoiceNumber || 'this invoice'} (${fmt(totals.total, meta.currency)}).`,
+                    message: `${reason} Open the notification to send the receipt for ${meta.invoiceNumber || 'this invoice'} (${convertAmount(totals.total, meta.currency)}).`,
                     link: `/invoices/${id}`,
                     type: 'receipt_pending',
                     metadata: {
@@ -840,7 +840,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     <ClientActionBar
                                         type="invoice"
                                         status={meta.status as any}
-                                        amountDue={fmt(totals.total, meta.currency)}
+                                        amountDue={convertAmount(totals.total, meta.currency)}
                                         paidAt="July 4, 2026"
                                         inline={true}
                                         design={meta.design}
@@ -904,7 +904,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                     <ClientActionBar
                                                         type="invoice"
                                                         status={meta.status as any}
-                                                        amountDue={fmt(totals.total, meta.currency)}
+                                                        amountDue={convertAmount(totals.total, meta.currency)}
                                                         paidAt="July 4, 2026"
                                                         isMobile={true}
                                                         inline={true}
