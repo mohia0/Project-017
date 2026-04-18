@@ -122,7 +122,7 @@ export function PaymentMethodSelectorModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className={cn(
                 "relative w-full max-w-[440px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200",
                 isDark ? "bg-[#1c1c1e] text-white" : "bg-white text-[#111]"

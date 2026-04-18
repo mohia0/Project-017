@@ -228,7 +228,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
             )}>
                 {/* ── TOP BAR ── */}
                 <div className={cn(
-                    "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative",
+                    "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors sticky top-0 z-[9999]",
                     isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
                 )}>
                     <div className="flex items-center gap-4 flex-1">
@@ -323,7 +323,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative z-[9999]",
+                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors sticky top-0 z-[9999]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 <div className="flex items-center gap-4 flex-1">
@@ -450,7 +450,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden relative z-0">
+            <div className="flex-1 flex overflow-hidden relative z-0 isolate">
                 <div 
                     className="flex-1 overflow-auto relative w-full"
                     style={{ 

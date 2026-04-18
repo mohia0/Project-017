@@ -180,7 +180,7 @@ export default function FileUploadModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
             <div 
                 className="absolute inset-0 bg-black/[0.15] backdrop-blur-[2px] transition-opacity" 
                 onClick={onClose} 

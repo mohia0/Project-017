@@ -18,6 +18,102 @@ import { AnimatePresence } from 'framer-motion';
 import { DateTime } from 'luxon';
 import { useSearchParams } from 'next/navigation';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Google Font loader — injects a <link> for the document's chosen font family
+// ─────────────────────────────────────────────────────────────────────────────
+const LOADED_FONTS = new Set<string>();
+function loadGoogleFont(family: string) {
+    if (!family || family === 'Inter' || LOADED_FONTS.has(family)) return;
+    LOADED_FONTS.add(family);
+    const encoded = encodeURIComponent(family);
+    const id = `gfont-${encoded}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${encoded}:wght@400;500;600;700;800;900&display=swap`;
+    document.head.appendChild(link);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full-screen paper-drop confetti celebration
+// ─────────────────────────────────────────────────────────────────────────────
+const CONFETTI_COLORS = [
+    '#d4af37', // Gold
+    '#bf953f', // Dark Gold
+    '#fcf6ba', // Light Gold
+    '#b38728', // Medium Gold
+    '#fbf5b7', // Pale Gold
+    '#ffffff', // White
+    '#e5e4e2', // Platinum
+    '#c0c0c0', // Silver
+    '#222222', // Charcoal/Dark Iron
+];
+
+function launchFullScreenConfetti(container: HTMLElement) {
+    const count = 220;
+    const dropped: HTMLElement[] = [];
+
+    // Inject keyframes once
+    const kfId = 'confetti-kf-fullscreen';
+    if (!document.getElementById(kfId)) {
+        const s = document.createElement('style');
+        s.id = kfId;
+        s.textContent = `
+            @keyframes cffall {
+                0%   { transform: translateY(-20px) translateX(0) rotate(0deg) scale(1); opacity:1; }
+                85%  { opacity:1; }
+                100% { transform: translateY(105vh) translateX(var(--cf-drift)) rotate(var(--cf-rot)) scale(var(--cf-scale)); opacity:0; }
+            }
+            @keyframes cfsway {
+                0%,100% { margin-left: 0; }
+                50%     { margin-left: var(--cf-sway); }
+            }
+        `;
+        document.head.appendChild(s);
+    }
+
+    for (let i = 0; i < count; i++) {
+        const el = document.createElement('div');
+        const color = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+        const size = 5 + Math.random() * 9;
+        const left = Math.random() * 100;
+        const delay = Math.random() * 1200;
+        const duration = 2200 + Math.random() * 1800;
+        const drift = (Math.random() - 0.5) * 280;
+        const rot   = Math.random() * 900 - 450;
+        const sway  = (Math.random() - 0.5) * 60;
+        const scale = 0.4 + Math.random() * 0.8;
+        const isCircle = Math.random() > 0.45;
+        const isLong   = !isCircle && Math.random() > 0.5;
+
+        el.style.cssText = `
+            position:fixed;
+            top:-20px;
+            left:${left}%;
+            width:${size}px;
+            height:${isLong ? size * 2.5 : size}px;
+            background:${color};
+            border-radius:${isCircle ? '50%' : '2px'};
+            animation:
+                cffall ${duration}ms ${delay}ms cubic-bezier(.25,.46,.45,.94) forwards,
+                cfsway ${duration * 0.6}ms ${delay}ms ease-in-out infinite alternate;
+            --cf-drift:${drift}px;
+            --cf-rot:${rot}deg;
+            --cf-scale:${scale};
+            --cf-sway:${sway}px;
+            pointer-events:none;
+            z-index:99999;
+            will-change:transform,opacity;
+        `;
+        container.appendChild(el);
+        dropped.push(el);
+    }
+
+    // Auto-clean when all animations done
+    setTimeout(() => dropped.forEach(el => el.remove()), 4200);
+}
+
 const KanbanBoard = dynamic(() => import('@/components/projects/KanbanBoard'), { ssr: false });
 const TaskDetailPanel = dynamic(() => import('@/components/projects/TaskDetailPanel'), { ssr: false });
 
@@ -784,6 +880,9 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isMobileViewport, setIsMobileViewport] = useState(false);
+    const [showCelebration, setShowCelebration] = useState(false);
+    const [celebrationName, setCelebrationName] = useState('');
+    const celebrationRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleResize = () => setIsMobileViewport(window.innerWidth < 768);
@@ -791,6 +890,12 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Load the document's chosen Google Font so public pages match the editor
+    useEffect(() => {
+        const family = liveData?.meta?.design?.fontFamily;
+        if (family) loadGoogleFont(family);
+    }, [liveData?.meta?.design?.fontFamily]);
     
     // Project specific state
     const [projectTasks, setProjectTasks] = useState<any[]>(data.projectTasks || []);
@@ -904,6 +1009,15 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     const handleUpdateStatus = async (status: string, signatureData?: any) => {
         if (isUpdating) return;
 
+        // If accepting a proposal, trigger the full-screen celebration immediately
+        if (status === 'Accepted') {
+            setCelebrationName(signatureData?.name ? signatureData.name.split(' ')[0] : 'there');
+            setShowCelebration(true);
+            setTimeout(() => {
+                if (celebrationRef.current) launchFullScreenConfetti(celebrationRef.current);
+            }, 50);
+        }
+
         try {
             setIsUpdating(true);
             const res = await fetch(`/api/p/${type}/${data.id}`, {
@@ -945,7 +1059,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
         const signatureBlock = (liveData.blocks || []).find((b: any) => b.type === 'signature' && b.signed);
         const signedBy = signatureBlock ? (signatureBlock.signerName || 'Client') : undefined;
         const signedAt = signatureBlock && liveData.updated_at
-            ? new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }).format(new Date(liveData.updated_at))
+            ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' }).format(new Date(liveData.updated_at))
             : undefined;
 
         return (
@@ -959,37 +1073,31 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     backgroundAttachment: 'fixed',
                 }}
             >
-                {!isMobileViewport && (
-                    <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none no-print">
-                        <div 
-                            className="absolute inset-0 pointer-events-none"
-                            style={{
-                            }}
-                        >
-                            <div className={cn(
-                                "absolute inset-0 pointer-events-none",
-                                meta.design?.topBlurTheme === 'dark'
-                                    ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                    : "bg-gradient-to-b from-white/80 to-transparent"
-                            )} />
-                        </div>
-                        <div className="relative z-10 w-full pointer-events-auto">
-                            <ClientActionBar
-                                type="proposal"
-                                status={meta.status as any}
-                                design={meta.design}
-                                signedBy={signedBy}
-                                signedAt={signedAt}
-                                inline={true}
-                                onDownloadPDF={handleDownload}
-                                onPrint={() => window.print()}
-                                onAccept={() => setIsSignModalOpen(true)}
-                                onDecline={() => setIsDeclineModalOpen(true)}
-                                className="w-full max-w-[850px] mx-auto px-6"
-                            />
-                        </div>
+                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-1 md:pt-3 pb-0 pointer-events-none no-print">
+                    <div className="absolute inset-0 pointer-events-none">
+                        <div className={cn(
+                            "absolute inset-0 pointer-events-none",
+                            meta.design?.topBlurTheme === 'dark'
+                                ? "bg-gradient-to-b from-black/80 to-transparent" 
+                                : "bg-gradient-to-b from-white/80 to-transparent"
+                        )} />
                     </div>
-                )}
+                    <div className="relative z-10 w-full pointer-events-auto px-4 md:px-0">
+                        <ClientActionBar
+                            type="proposal"
+                            status={meta.status as any}
+                            design={meta.design}
+                            signedBy={signedBy}
+                            signedAt={signedAt}
+                            inline={true}
+                            onDownloadPDF={handleDownload}
+                            onPrint={() => window.print()}
+                            onAccept={() => setIsSignModalOpen(true)}
+                            onDecline={() => setIsDeclineModalOpen(true)}
+                            className="w-full max-w-[850px] mx-auto md:px-6"
+                        />
+                    </div>
+                </div>
 
                 <div className={cn("flex flex-col items-center min-h-full pb-20", isMobileViewport ? "pt-2 px-4" : "pt-4 px-6")}>
                     <div
@@ -1000,36 +1108,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             boxShadow:       meta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                         }}
                     >
-                        {isMobileViewport && (
-                            <div className="sticky top-0 z-30 transition-all w-full pt-1 pb-0 pointer-events-none">
-                                <div 
-                                    className="absolute inset-0 pointer-events-none"
-                                    style={{
-                                    }}
-                                >
-                                    <div className={cn(
-                                        "absolute inset-0 pointer-events-none",
-                                        meta.design?.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                            : "bg-gradient-to-b from-white/80 to-transparent"
-                                    )} />
-                                </div>
-                                <div className="relative z-10 w-full pointer-events-auto">
-                                    <ClientActionBar
-                                        type="proposal"
-                                        status={meta.status as any}
-                                        isMobile={true}
-                                        inline={true}
-                                        design={meta.design}
-                                        onAccept={() => setIsSignModalOpen(true)}
-                                        onDecline={() => setIsDeclineModalOpen(true)}
-                                        onDownloadPDF={handleDownload}
-                                        onPrint={() => window.print()}
-                                        className="!py-3"
-                                    />
-                                </div>
-                            </div>
-                        )}
+
                         <ProposalDocument
                             meta={meta}
                             blocks={liveData.blocks || []}
@@ -1071,6 +1150,46 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     actionLabel="Decline Proposal"
                     isDark={false}
                 />
+
+                {/* 🎉 Full-screen celebration overlay */}
+                {showCelebration && (
+                    <div
+                        className="fixed inset-0 overflow-hidden flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-700"
+                        style={{ zIndex: 99998 }}
+                        aria-hidden="true"
+                    >
+                        <div ref={celebrationRef} className="absolute inset-0 pointer-events-none" />
+                        
+                        <div className="relative z-10 flex flex-col items-center justify-center animate-in zoom-in-[0.98] fade-in duration-1000 delay-150 px-6 text-center w-full max-w-lg mx-auto">
+                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#D4AF37]/10 flex items-center justify-center mb-6 md:mb-8 shadow-[0_0_30px_rgba(212,175,55,0.15)] ring-1 ring-[#D4AF37]/30 backdrop-blur-sm">
+                                <Check className="text-[#D4AF37] w-8 h-8 md:w-10 md:h-10" strokeWidth={1.5} />
+                            </div>
+
+                            <h2 
+                                className="text-3xl md:text-5xl lg:text-5xl text-white font-bold tracking-[0.08em] uppercase mb-4 leading-tight text-center"
+                                style={{
+                                    textShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                                    fontFamily: 'var(--font-inter), system-ui, sans-serif'
+                                }}
+                            >
+                                Proposal Signed
+                            </h2>
+                            <h3 
+                                className="text-lg md:text-2xl text-[#D4AF37] tracking-[0.2em] font-medium uppercase mb-12"
+                                style={{ textShadow: '0 2px 10px rgba(0,0,0,0.4)', fontFamily: 'var(--font-inter), system-ui, sans-serif' }}
+                            >
+                                Thank You, {celebrationName}
+                            </h3>
+                            
+                            <button
+                                onClick={() => setShowCelebration(false)}
+                                className="group relative px-12 py-3.5 md:py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs md:text-sm tracking-[0.15em] uppercase font-bold rounded-full overflow-hidden transition-all duration-300 hover:bg-white hover:text-black hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(0,0,0,0.2)]"
+                            >
+                                Continue
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -1103,37 +1222,31 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     backgroundAttachment: 'fixed',
                 }}
             >
-                {!isMobileViewport && (
-                    <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-3 pb-0 pointer-events-none no-print">
-                        <div 
-                            className="absolute inset-0 pointer-events-none"
-                            style={{
-                            }}
-                        >
-                            <div className={cn(
-                                "absolute inset-0 pointer-events-none",
-                                invoiceMeta.design?.topBlurTheme === 'dark'
-                                    ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                    : "bg-gradient-to-b from-white/80 to-transparent"
-                            )} />
-                        </div>
-                        <div className="relative z-10 w-full pointer-events-auto">
-                            <ClientActionBar
-                                type="invoice"
-                                status={invoiceMeta.status as any}
-                                amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(totals.total)}
-                                paidAt={paidAt}
-                                paidBy={paidBy}
-                                design={invoiceMeta.design}
-                                inline={true}
-                                onDownloadPDF={handleDownload}
-                                onPrint={() => window.print()}
-                                onPay={() => setIsBankModalOpen(true)}
-                                className="w-full max-w-[850px] mx-auto px-6"
-                            />
-                        </div>
+                <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-1 md:pt-3 pb-0 pointer-events-none no-print">
+                    <div className="absolute inset-0 pointer-events-none">
+                        <div className={cn(
+                            "absolute inset-0 pointer-events-none",
+                            invoiceMeta.design?.topBlurTheme === 'dark'
+                                ? "bg-gradient-to-b from-black/80 to-transparent" 
+                                : "bg-gradient-to-b from-white/80 to-transparent"
+                        )} />
                     </div>
-                )}
+                    <div className="relative z-10 w-full pointer-events-auto px-4 md:px-0">
+                        <ClientActionBar
+                            type="invoice"
+                            status={invoiceMeta.status as any}
+                            amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(totals.total)}
+                            paidAt={paidAt}
+                            paidBy={paidBy}
+                            design={invoiceMeta.design}
+                            inline={true}
+                            onDownloadPDF={handleDownload}
+                            onPrint={() => window.print()}
+                            onPay={() => setIsBankModalOpen(true)}
+                            className="w-full max-w-[850px] mx-auto md:px-6"
+                        />
+                    </div>
+                </div>
 
                 <div className={cn("flex flex-col items-center min-h-full pb-20", isMobileViewport ? "pt-2 px-4" : "pt-4 px-6")}>
                     <div
@@ -1144,36 +1257,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             boxShadow:       invoiceMeta.design?.blockShadow || '0 4px 20px -4px rgba(0,0,0,0.05)',
                         }}
                     >
-                        {isMobileViewport && (
-                            <div className="sticky top-0 z-30 transition-all w-full pt-1 pb-0 pointer-events-none">
-                                <div 
-                                    className="absolute inset-0 pointer-events-none"
-                                    style={{
-                                    }}
-                                >
-                                    <div className={cn(
-                                        "absolute inset-0 pointer-events-none",
-                                        invoiceMeta.design?.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                            : "bg-gradient-to-b from-white/80 to-transparent"
-                                    )} />
-                                </div>
-                                <div className="relative z-10 w-full pointer-events-auto">
-                                    <ClientActionBar
-                                        type="invoice"
-                                        status={invoiceMeta.status as any}
-                                        amountDue={new Intl.NumberFormat('en-US', { style: 'currency', currency: invoiceMeta.currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(totals.total)}
-                                        isMobile={true}
-                                        inline={true}
-                                        design={invoiceMeta.design}
-                                        onPay={() => setIsBankModalOpen(true)}
-                                        onDownloadPDF={handleDownload}
-                                        onPrint={() => window.print()}
-                                        className="!py-3"
-                                    />
-                                </div>
-                            </div>
-                        )}
+
                         <InvoiceDocument
                             meta={invoiceMeta}
                             blocks={liveData.blocks || []}

@@ -573,7 +573,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative z-[9999]",
+                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors sticky top-0 z-[9999]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#d2d2eb]"
             )}>
                 <div className="flex items-center gap-4 flex-1">
@@ -808,7 +808,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden relative z-0">
+            <div className="flex-1 flex flex-col overflow-hidden relative z-0 isolate">
                 <div className="flex-1 flex overflow-hidden relative">
                     <div 
                         className="flex-1 overflow-auto relative w-full"
@@ -1515,7 +1515,7 @@ export function InvoiceDocument({
     // Documents are always rendered in light mode regardless of app theme
     const documentStyle = React.useMemo(() => ({
         fontFamily: design.fontFamily || 'Inter',
-        color: '#555555',
+        color: '#000000',
         backgroundColor: 'var(--document-bg)',
         '--document-bg': design.blockBackgroundColor || '#ffffff',
         '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
@@ -1695,7 +1695,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             >
                                 Bill To: {meta.clientName}
                             </div>
-                            <div className="text-[11px] opacity-60 space-y-0.5">
+                            <div className="text-[11px] space-y-0.5">
                                 {meta.clientEmail && (
                                     <div 
                                         contentEditable={!isPreview}
@@ -1721,7 +1721,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         <div className="text-right text-[11px] space-y-1">
                             <div className="flex items-center justify-end gap-1">
                                 <span className="font-bold">ID #:</span> 
-                                <span className={cn(isDark ? "text-[#aaa]" : "text-[#666]")}>
+                                <span className={cn(isDark ? "text-[#aaa]" : "text-[#000]")}>
                                     {meta.invoiceNumber}
                                 </span>
                             </div>

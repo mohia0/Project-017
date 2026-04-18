@@ -580,7 +580,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-3 md:px-6 py-2.5 md:py-4 border-b shrink-0 transition-colors relative z-[9999]",
+                "flex items-center justify-between px-3 md:px-6 py-2.5 md:py-4 border-b shrink-0 transition-colors sticky top-0 z-[9999]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 {/* Left: Back + Title */}
@@ -808,7 +808,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden relative z-0">
+            <div className="flex-1 flex flex-col overflow-hidden relative z-0 isolate">
                 <div className="flex-1 flex overflow-hidden relative">
                     {/* ── LEFT: CANVAS ── */}
                     <div 
@@ -1573,7 +1573,7 @@ export function ProposalDocument({
     // Documents are always rendered in light mode regardless of app theme
     const documentStyle = React.useMemo(() => ({
         fontFamily: design.fontFamily || 'Inter',
-        color: '#555555',
+        color: '#000000',
         backgroundColor: 'var(--document-bg)',
         '--document-bg': design.blockBackgroundColor || '#ffffff',
         '--block-margin-bottom': `${design.marginBottom ?? 24}px`,
@@ -1936,7 +1936,7 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
                             {meta.clientName}
                         </span>
                     </div>
-                    <div className={cn("text-[11px] space-y-1", isDark ? "text-[#aaa]" : "text-[#555]")}>
+                    <div className={cn("text-[11px] space-y-1", isDark ? "text-[#aaa]" : "text-[#000]")}>
                         {meta.clientEmail && (
                             <div className="flex items-start gap-1">
                                 <span className="font-bold">Email:</span> 
@@ -1984,15 +1984,15 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
                 <div className="text-right text-[11px] space-y-1">
                     <div className="flex items-center justify-end gap-1">
                         <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Proposal Number:</span> 
-                        <span className={cn(isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.proposalNumber || '---'}</span>
+                        <span className={cn(isDark ? "text-[#aaa]" : "text-[#000]")}>{meta.proposalNumber || '---'}</span>
                     </div>
                     <div className="flex items-center justify-end gap-1">
                         <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Issue Date:</span> 
-                        <span className={cn(isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.issueDate || '---'}</span>
+                        <span className={cn(isDark ? "text-[#aaa]" : "text-[#000]")}>{meta.issueDate || '---'}</span>
                     </div>
                     <div className="flex items-center justify-end gap-1">
                         <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Due Date:</span> 
-                        <span className={cn(isDark ? "text-[#aaa]" : "text-[#666]")}>{meta.expirationDate || '---'}</span>
+                        <span className={cn(isDark ? "text-[#aaa]" : "text-[#000]")}>{meta.expirationDate || '---'}</span>
                     </div>
                 </div>
             </div>
@@ -2047,7 +2047,7 @@ function TextBlock({ block, isDark, isPreview, updateBlock, meta }: any) {
             <div
                 className={cn(
                     "py-1 text-[13px] leading-relaxed prose prose-p:my-1 prose-headings:my-2 max-w-none prose-h1:text-3xl prose-h2:text-xl prose-h3:text-lg",
-                    isDark ? "text-[#aaa] prose-invert" : "text-[#555]"
+                    isDark ? "text-[#aaa] prose-invert" : "text-[#000]"
                 )}
                 dangerouslySetInnerHTML={{ __html: block.content || '' }}
             />
@@ -2114,7 +2114,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
     };
 
     const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black");
-    const td = cn("py-2", isDark ? "text-white/80" : "text-black/80");
+    const td = cn("py-2", isDark ? "text-white/80" : "text-black");
 
     return (
         <div className="flex flex-col gap-2">

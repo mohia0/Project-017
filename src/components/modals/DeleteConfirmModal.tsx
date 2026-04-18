@@ -26,7 +26,7 @@ export function DeleteConfirmModal({
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
             <div className={cn(
                 "w-full max-w-[400px] rounded-2xl shadow-2xl overflow-hidden border animate-in fade-in zoom-in duration-200",
                 isDark ? "bg-[#1a1a1a] border-[#2e2e2e] text-[#eee]" : "bg-white border-[#f0f0f0] text-[#111]"

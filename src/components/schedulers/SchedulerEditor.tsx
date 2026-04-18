@@ -637,7 +637,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0 relative z-[100]",
+                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0 sticky top-0 z-[9999]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 {/* Left */}
@@ -804,7 +804,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
             </div>
 
             {/* ── BODY ── */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex overflow-hidden isolate">
                 {editorTab === 'editor' && (
                     <>
                         {/* ── CANVAS ── */}

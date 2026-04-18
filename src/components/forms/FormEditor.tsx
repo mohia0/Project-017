@@ -979,7 +979,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0 relative z-[100]",
+                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0 sticky top-0 z-[9999]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
@@ -1132,7 +1132,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
             </div>
 
             {/* ── BODY ── */}
-            <div className="flex-1 flex overflow-hidden min-h-0">
+            <div className="flex-1 flex overflow-hidden min-h-0 isolate">
                 {editorTab === 'editor' && (
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {/* Canvas + right panel row */}

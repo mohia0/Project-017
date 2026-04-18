@@ -146,7 +146,7 @@ export function SectionBlockWrapper({
         <div
             ref={setNodeRef}
             style={outerStyle}
-            className={cn('group overflow-visible', (isDragging || hovered) && 'z-[500]')}
+            className={cn('group overflow-visible', isDragging && 'opacity-40')}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
@@ -182,7 +182,7 @@ export function SectionBlockWrapper({
                 {hovered && (
                     <div
                         className={cn(
-                            'absolute right-0 flex items-center gap-0.5 z-[100]',
+                            'absolute right-0 flex items-center gap-0.5 z-[9990]',
                             'rounded-xl border px-2 py-1 transition-all animate-in fade-in zoom-in-95 duration-200',
                             isDark
                                 ? 'bg-[#1a1a1a] border-white/[0.1] text-[#999]'
