@@ -226,7 +226,7 @@ export default function HooksPage() {
     const filtered = useMemo(() => {
         let r = hooks.filter(h => {
             if (statusFilter !== 'All' && h.status !== statusFilter) return false;
-            if (searchQuery && !h.name.toLowerCase().includes(searchQuery.toLowerCase()) && !h.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+            if (searchQuery && !h.name.toLowerCase().includes(searchQuery.toLowerCase()) && !(h.title?.toLowerCase() || '').includes(searchQuery.toLowerCase())) return false;
             return true;
         });
         if (orderBy === 'name') r = [...r].sort((a, b) => a.name.localeCompare(b.name));
