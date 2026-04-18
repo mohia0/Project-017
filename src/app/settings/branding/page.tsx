@@ -162,11 +162,14 @@ export default function BrandingSettingsPage() {
 
     const [isSaving, setIsSaving] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const [hasSynced, setHasSynced] = useState(false);
+    const lastSavedRef = React.useRef<string>('');
 
 
 
     useEffect(() => {
         if (activeWorkspaceId) {
+            setHasSynced(false);
             fetchBranding(activeWorkspaceId);
         }
     }, [activeWorkspaceId, fetchBranding]);
@@ -174,8 +177,8 @@ export default function BrandingSettingsPage() {
 
 
     useEffect(() => {
-        if (branding && !isSaving && !isDirty) {
-            setFormData({
+        if (branding && !hasSynced) {
+            const data: BrandingFormData = {
                 primary_color: branding.primary_color || DEFAULT_BRANDING.primary_color,
                 secondary_color: branding.secondary_color || '',
                 apply_color_to_sidebar: branding.apply_color_to_sidebar || false,
@@ -185,13 +188,22 @@ export default function BrandingSettingsPage() {
                 branding_colors: (branding.branding_colors && branding.branding_colors.length > 0) 
                     ? branding.branding_colors 
                     : DEFAULT_PALETTE
-            });
+            };
+            setFormData(data);
+            lastSavedRef.current = JSON.stringify(data);
+            setHasSynced(true);
         }
-    }, [branding, isSaving, isDirty]);
+    }, [branding, hasSynced]);
 
     const updateField = (updates: Partial<BrandingFormData>) => {
         setFormData(prev => ({ ...prev, ...updates }));
         setIsDirty(true);
+
+        // Instant preview: update the branding object in the store directly 
+        // while we wait for the debounced auto-save to hit the database.
+        useSettingsStore.setState(s => ({
+            branding: s.branding ? { ...s.branding, ...updates } : { ...DEFAULT_BRANDING, workspace_id: activeWorkspaceId!, ...updates } as WorkspaceBranding
+        }));
     };
 
     const resetField = (field: keyof BrandingFormData) => {
@@ -201,29 +213,22 @@ export default function BrandingSettingsPage() {
 
 
     useEffect(() => {
-        // 1. Don't save if we haven't fetched yet, if we aren't dirty, or if we are already saving
-        if (!activeWorkspaceId || !hasFetched.branding || !isDirty || isSaving) return;
+        if (!activeWorkspaceId || !hasFetched.branding || !hasSynced) return;
 
-        // 2. Compare against what is CURRENTLY in the server store
-        // If there is no record yet (branding is null), we compare against DEFAULT_BRANDING
-        const serverState = branding || DEFAULT_BRANDING;
+        const currentJSON = JSON.stringify(formData);
+        const hasChanges = currentJSON !== lastSavedRef.current;
         
-        const hasChanges = 
-            debouncedFormData.primary_color !== (serverState.primary_color || DEFAULT_BRANDING.primary_color) ||
-            debouncedFormData.secondary_color !== (serverState.secondary_color || '') ||
-            debouncedFormData.apply_color_to_sidebar !== (serverState.apply_color_to_sidebar || false) ||
-            debouncedFormData.logo_light_url !== (serverState.logo_light_url || '') ||
-            debouncedFormData.logo_dark_url !== (serverState.logo_dark_url || '') ||
-            debouncedFormData.favicon_url !== (serverState.favicon_url || '') ||
-            JSON.stringify(debouncedFormData.branding_colors) !== JSON.stringify(serverState.branding_colors || DEFAULT_BRANDING.branding_colors);
+        setIsDirty(hasChanges);
+        if (!hasChanges || isSaving) return;
 
-        if (!hasChanges) return;
-
-        const saveChanges = async () => {
+        const timer = setTimeout(async () => {
             setIsSaving(true);
             try {
-                await updateBranding(activeWorkspaceId, debouncedFormData);
-                setIsDirty(false); // Reset dirty flag after successful save
+                // Take a snapshot of CURRENT formData at this moment
+                const dataToSave = JSON.parse(JSON.stringify(formData));
+                await updateBranding(activeWorkspaceId, dataToSave);
+                lastSavedRef.current = JSON.stringify(dataToSave);
+                setIsDirty(false);
                 appToast.success('Branding Saved');
             } catch (err) {
                 console.error("Auto-save failed:", err);
@@ -231,10 +236,10 @@ export default function BrandingSettingsPage() {
             } finally {
                 setIsSaving(false);
             }
-        };
+        }, 1000);
 
-        saveChanges();
-    }, [debouncedFormData, activeWorkspaceId, updateBranding, branding, hasFetched.branding]); // Removed isSaving from deps to avoid loop
+        return () => clearTimeout(timer);
+    }, [formData, activeWorkspaceId, updateBranding, branding, hasFetched.branding, hasSynced, isSaving]);
 
     if (!hasFetched.branding) {
         return (

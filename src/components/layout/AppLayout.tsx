@@ -170,7 +170,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return (
             <div className={cn(
                 "flex h-screen w-full items-center justify-center",
-                isDark ? "bg-[#0a0a0a]" : "bg-[#f0f0f0]"
+                isDark ? "bg-[#000000]" : "bg-[#e2e2e2]"
             )}>
                 <div className="w-8 h-8 rounded-full border-2 border-[#4dbf39] border-t-transparent animate-spin" />
             </div>
@@ -181,7 +181,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return (
             <div className={cn(
                 "flex h-screen w-full overflow-hidden",
-                isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f0f0f0] text-[#111]"
+                isDark ? "bg-[#000000] text-white" : "bg-[#e2e2e2] text-[#111]"
             )}>
                 <DocumentTitleSetter />
                 {children}
@@ -194,7 +194,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return (
             <div className={cn(
                 "flex flex-col h-screen w-full overflow-hidden",
-                isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f0f0f0] text-[#111]"
+                isDark ? "bg-[#000000] text-white" : "bg-[#e2e2e2] text-[#111]"
             )}>
                 {/* Main content — full height, bottom padding reserved for the floating nav bar */}
                 <main className={cn(
@@ -226,15 +226,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className={cn(
             "flex h-screen w-full overflow-hidden p-2.5 gap-2.5",
-            isDark ? "bg-[#0a0a0a] text-white" : "bg-[#f0f0f0] text-[#111]"
+            isDark ? "bg-[#000000] text-white" : "bg-[#e2e2e2] text-[#111]"
         )}>
             {/* LEFT — compact icon sidebar */}
             <LeftSystemMenu />
 
             {/* CENTER — main workspace */}
             <main className={cn(
-                "flex-1 flex flex-col relative overflow-hidden rounded-2xl transition-all duration-300 min-w-0",
-                isDark ? "bg-[#141414]" : "bg-white"
+                "flex-1 flex flex-col relative overflow-hidden rounded-2xl transition-all duration-300 min-w-0 border shadow-2xl",
+                isDark ? "bg-[#141414] border-white/5 shadow-black/40" : "bg-white border-black/[0.03] shadow-black/[0.04]"
             )}>
                 <WorkspaceDataSync />
                 <DocumentTitleSetter />
@@ -243,8 +243,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* RIGHT SIDEBAR UNIT — A unified rounded container */}
             <div className={cn(
-                "flex shrink-0 transition-all duration-300 rounded-2xl overflow-hidden border",
-                isDark ? "bg-[#0d0d0d] border-[#222]" : "bg-[#f5f5f5] border-[#e4e4e4]",
+                "flex shrink-0 transition-all duration-300 rounded-2xl overflow-hidden border shadow-2xl",
+                isDark ? "bg-[#0d0d0d] border-white/5 shadow-black/40" : "bg-[#f5f5f5] border-black/[0.03] shadow-black/[0.04]",
                 !rightPanel && "w-auto"
             )}>
                 <RightPanel />
