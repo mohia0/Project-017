@@ -20,6 +20,7 @@ import { ProposalDocument } from '@/components/proposals/ProposalEditor';
 import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
 import FormEditor from '@/components/forms/FormEditor';
 import SchedulerEditor from '@/components/schedulers/SchedulerEditor';
+import KanbanBoard from '@/components/projects/KanbanBoard';
 import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import { DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -200,6 +201,101 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
 
     if (template.entity_type === 'scheduler') {
         return <SchedulerEditor id={id} isTemplate={true} />;
+    }
+
+    if (template.entity_type === 'project') {
+        return (
+            <div className={cn(
+                "flex flex-col h-full w-full overflow-hidden font-sans text-[13px]",
+                isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f5f5f5] text-[#111]"
+            )}>
+                {/* ── TOP BAR ── */}
+                <div className={cn(
+                    "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative",
+                    isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
+                )}>
+                    <div className="flex items-center gap-4 flex-1">
+                        <button
+                            onClick={() => router.push('/templates')}
+                            className={cn(
+                                "flex items-center justify-center w-8 h-8 rounded-[8px] transition-all",
+                                isDark ? "text-[#666] hover:text-[#ccc] bg-[#222]" : "text-[#888] hover:text-[#111] bg-[#f0f0f0] hover:bg-[#e8e8e8]"
+                            )}
+                        >
+                            <ArrowLeft size={16} />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <div className={cn(
+                                "flex items-center gap-2 text-[13px] font-medium",
+                                isDark ? "text-white/40" : "text-gray-400"
+                            )}>
+                                <LayoutTemplate size={14} className="opacity-40" />
+                                <span>Project Template</span>
+                                <span className="opacity-30">/</span>
+                            </div>
+                            <input
+                                type="text"
+                                value={template.name || ""}
+                                onChange={(e) => setTemplate({ ...template, name: e.target.value })}
+                                className={cn(
+                                    "text-[13px] font-semibold bg-transparent outline-none transition-all min-w-[150px]",
+                                    isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300"
+                                )}
+                                placeholder="Untitled Template"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="flex items-center justify-center h-[32px] px-4 gap-2 rounded-[8px] transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black font-bold text-[12px] shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)] disabled:opacity-50"
+                        >
+                            <Save size={14} />
+                            Save
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-hidden">
+                    <KanbanBoard
+                        projectId="template"
+                        projectColor={template.design?.primaryColor || '#3d0ebf'}
+                        isDark={isDark}
+                        searchQuery=""
+                        showArchived={false}
+                        onTaskClick={() => {}}
+                        externalTasks={[]}
+                        externalGroups={template.blocks || []}
+                        onAddGroupOverride={(name, color) => {
+                            const newGroup = { id: uuidv4(), name, color, position: (template.blocks || []).length, project_id: 'template' };
+                            setTemplate({ ...template, blocks: [...(template.blocks || []), newGroup] });
+                        }}
+                        onRenameGroupOverride={(id, name) => {
+                            setTemplate({
+                                ...template,
+                                blocks: (template.blocks || []).map(g => g.id === id ? { ...g, name } : g)
+                            });
+                        }}
+                        onDeleteGroupOverride={(id) => {
+                            setTemplate({
+                                ...template,
+                                blocks: (template.blocks || []).filter(g => g.id !== id)
+                            });
+                        }}
+                        onReorderGroupOverride={(id, newIndex) => {
+                            const groups = [...(template.blocks || [])].sort((a, b) => a.position - b.position);
+                            const oldIndex = groups.findIndex(g => g.id === id);
+                            if (oldIndex === -1) return;
+                            const [moved] = groups.splice(oldIndex, 1);
+                            groups.splice(newIndex, 0, moved);
+                            const newBlocks = groups.map((g, i) => ({ ...g, position: i }));
+                            setTemplate({ ...template, blocks: newBlocks });
+                        }}
+                    />
+                </div>
+            </div>
+        );
     }
 
     return (

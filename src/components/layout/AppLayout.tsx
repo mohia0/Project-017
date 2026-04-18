@@ -16,6 +16,11 @@ import { useMenuStore } from '@/store/useMenuStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useProjectStore } from '@/store/useProjectStore';
+import { useFormStore } from '@/store/useFormStore';
+import { useSchedulerStore } from '@/store/useSchedulerStore';
+import { useHookStore } from '@/store/useHookStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { useFileStore } from '@/store/useFileStore';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -61,6 +66,7 @@ function DocumentTitleSetter() {
 
 function WorkspaceDataSync() {
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
+    const projects = useProjectStore(s => s.projects);
     
     useEffect(() => {
         if (activeWorkspaceId) {
@@ -69,6 +75,20 @@ function WorkspaceDataSync() {
             useClientStore.getState().fetchClients();
             useTemplateStore.getState().fetchTemplates();
             useProjectStore.getState().fetchProjects();
+            useFormStore.getState().fetchForms();
+            useSchedulerStore.getState().fetchSchedulers();
+            useHookStore.getState().fetchHooks();
+            useFileStore.getState().fetchFiles();
+            
+            // Settings Preload
+            const settingsStore = useSettingsStore.getState();
+            settingsStore.fetchProfile();
+            settingsStore.fetchStatuses(activeWorkspaceId);
+            settingsStore.fetchBranding(activeWorkspaceId);
+            settingsStore.fetchPayments(activeWorkspaceId);
+            settingsStore.fetchDomains(activeWorkspaceId);
+            settingsStore.fetchEmailConfig(activeWorkspaceId);
+            settingsStore.fetchEmailTemplates(activeWorkspaceId);
             
             // Notifications
             useNotificationStore.getState().fetchNotifications();
@@ -79,6 +99,36 @@ function WorkspaceDataSync() {
             };
         }
     }, [activeWorkspaceId]);
+
+    // ── Background preload: tasks / groups / items per project ──────────────
+    useEffect(() => {
+        if (!projects.length) return;
+        
+        const store = useProjectStore.getState();
+        projects.forEach(p => {
+            // Only fetch if we don't already have data cached for this project
+            if (!store.tasksByProject[p.id])  store.fetchTasks(p.id);
+            if (!store.groupsByProject[p.id]) store.fetchTaskGroups(p.id);
+            if (!store.itemsByProject[p.id])  store.fetchProjectItems(p.id);
+        });
+    }, [projects]);
+
+    // ── Background preload: Actual image files for browser cache ────────────
+    const files = useFileStore(s => s.items);
+    useEffect(() => {
+        if (!files.length) return;
+        
+        // Filter for images and preload their URLs
+        const images = files.filter(f => f.type === 'image' && (f.url || f.downloadUrl));
+        
+        images.forEach(img => {
+            const src = img.url || img.downloadUrl;
+            if (src) {
+                const i = new Image();
+                i.src = src;
+            }
+        });
+    }, [files]);
 
     return null;
 }

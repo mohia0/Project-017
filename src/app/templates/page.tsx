@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LayoutTemplate, Plus, FileText, Trash2, Calendar, FileType2, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, Pencil, BookmarkCheck, ClipboardList, Clock } from 'lucide-react';
+import { LayoutTemplate, Plus, FileText, Trash2, Calendar, FileType2, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, Pencil, BookmarkCheck, ClipboardList, Clock, Briefcase } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { appToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,7 @@ export default function TemplatesPage() {
     const { addScheduler } = useSchedulerStore();
     
     const [isCreating, setIsCreating] = useState(false);
-    const [activeTool, setActiveTool] = useState<'all' | 'proposal' | 'invoice' | 'form' | 'scheduler'>('all');
+    const [activeTool, setActiveTool] = useState<'proposal' | 'invoice' | 'form' | 'scheduler' | 'project'>('proposal');
     const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
     useEffect(() => {
@@ -76,6 +76,9 @@ export default function TemplatesPage() {
                     meta: { ...template.meta, title: `Copy of ${template.name}` } as any,
                 });
                 if (s) router.push(`/schedulers/${s.id}`);
+            } else if (template.entity_type === 'project') {
+                // The actual apply logic happens in CreateProjectModal, just route to projects for now
+                router.push(`/projects?templateId=${template.id}`);
             }
         } catch (error) {
             console.error("Error creating from template:", error);
@@ -85,16 +88,15 @@ export default function TemplatesPage() {
     };
 
     const filteredTemplates = templates.filter(t => {
-        if (activeTool === 'all') return true;
         return t.entity_type === activeTool;
     });
 
     const counts = {
-        all: templates.length,
         proposal: templates.filter(t => t.entity_type === 'proposal').length,
         invoice: templates.filter(t => t.entity_type === 'invoice').length,
         form: templates.filter(t => t.entity_type === 'form').length,
         scheduler: templates.filter(t => t.entity_type === 'scheduler').length,
+        project: templates.filter(t => t.entity_type === 'project').length,
     };
 
     return (
@@ -119,28 +121,20 @@ export default function TemplatesPage() {
                         <LayoutTemplate size={14} className="opacity-40" />
                         <span className="text-[13px] font-semibold tracking-tight">Templates</span>
                     </div>
-                    {activeTool !== 'all' && (
-                        <>
-                            <ChevronRight size={12} className="opacity-20" />
-                            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/5 dark:bg-white/5">
-                                {activeTool === 'proposal' ? <ProposalIcon size={14} className="opacity-40" /> 
-                                : activeTool === 'invoice' ? <InvoiceIcon size={14} className="opacity-40" /> 
-                                : activeTool === 'form' ? <ClipboardList size={14} className="opacity-40" /> 
-                                : <Clock size={14} className="opacity-40" />}
-                                <span className="text-[13px] font-semibold capitalize">{activeTool}s</span>
-                            </div>
-                        </>
-                    )}
+                    <>
+                        <ChevronRight size={12} className="opacity-20" />
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/5 dark:bg-white/5">
+                            {activeTool === 'proposal' ? <ProposalIcon size={14} className="opacity-40" /> 
+                            : activeTool === 'invoice' ? <InvoiceIcon size={14} className="opacity-40" /> 
+                            : activeTool === 'form' ? <ClipboardList size={14} className="opacity-40" /> 
+                            : activeTool === 'project' ? <Briefcase size={14} className="opacity-40" />
+                            : <Clock size={14} className="opacity-40" />}
+                            <span className="text-[13px] font-semibold capitalize">{activeTool}s</span>
+                        </div>
+                    </>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={() => {/* Open a "New Template" modal or redirect */}}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-[10px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors"
-                    >
-                        <Plus size={13} strokeWidth={2.5} /> New Template
-                    </button>
-                </div>
+
             </div>
 
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
@@ -152,11 +146,11 @@ export default function TemplatesPage() {
                     <p className={cn("hidden md:block px-3 py-2 text-[10px] font-bold uppercase tracking-widest opacity-30")}>Tools</p>
                     
                     {[
-                        { id: 'all', label: 'All Templates', icon: LayoutTemplate },
                         { id: 'proposal', label: 'Proposals', icon: ProposalIcon },
                         { id: 'invoice', label: 'Invoices', icon: InvoiceIcon },
                         { id: 'form', label: 'Forms', icon: ClipboardList },
-                        { id: 'scheduler', label: 'Schedulers', icon: Clock }
+                        { id: 'scheduler', label: 'Schedulers', icon: Clock },
+                        { id: 'project', label: 'Projects', icon: Briefcase }
                     ].map((tool) => (
                         <button
                             key={tool.id}
@@ -198,7 +192,7 @@ export default function TemplatesPage() {
                                 <LayoutTemplate size={32} strokeWidth={1.5} />
                             </div>
                             <div className="text-center">
-                                <p className="text-[14px] font-semibold">No {activeTool === 'all' ? '' : activeTool} templates found</p>
+                                <p className="text-[14px] font-semibold">No {activeTool} templates found</p>
                                 <p className="text-[12px] mt-1">Save a document as a template from the editor context menu.</p>
                             </div>
                         </div>
@@ -238,6 +232,7 @@ export default function TemplatesPage() {
                                                                 template.entity_type === 'invoice' ? 'INVOICE' : 
                                                                 template.entity_type === 'form' ? 'FORM' :
                                                                 template.entity_type === 'scheduler' ? 'BOOKING' :
+                                                                template.entity_type === 'project' ? 'PROJECT BOARD' :
                                                                 'PROPOSAL'
                                                             )}
                                                         </div>
@@ -247,7 +242,18 @@ export default function TemplatesPage() {
                                                 </div>
 
                                                 {/* Mini Content Blocks */}
-                                                {template.entity_type === 'scheduler' ? (
+                                                {template.entity_type === 'project' ? (
+                                                    <div className="flex gap-2 mt-4 overflow-hidden h-full">
+                                                        {[1, 2, 3].map(i => (
+                                                            <div key={i} className="flex-1 rounded-md border border-current opacity-20 p-2 flex flex-col gap-2">
+                                                                <div className="w-1/2 h-2 rounded-full bg-current opacity-40 mb-1" />
+                                                                {[1, 2].map(j => (
+                                                                    <div key={j} className="w-full h-8 rounded-md bg-current opacity-10" />
+                                                                ))}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : template.entity_type === 'scheduler' ? (
                                                     <div className="space-y-3 mt-2">
                                                         <div className="flex gap-1.5 overflow-hidden">
                                                             {[1, 2, 3, 4].map(i => (
@@ -316,6 +322,7 @@ export default function TemplatesPage() {
                                                 template.entity_type === 'proposal' ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
                                                 : template.entity_type === 'invoice' ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
                                                 : template.entity_type === 'form' ? "bg-orange-500/10 text-orange-500 border border-orange-500/20"
+                                                : template.entity_type === 'project' ? "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
                                                 : "bg-green-500/10 text-green-500 border border-green-500/20"
                                             )}>
                                                 {template.entity_type === 'scheduler' ? 'booking' : template.entity_type}

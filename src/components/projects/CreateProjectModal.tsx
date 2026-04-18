@@ -8,8 +8,9 @@ import { useProjectStore, ProjectStatus } from '@/store/useProjectStore';
 import { useClientStore } from '@/store/useClientStore';
 import DatePicker from '@/components/ui/DatePicker';
 import ClientEditor from '@/components/clients/ClientEditor';
-import { appToast } from '@/lib/toast';
 import { Avatar } from '@/components/ui/Avatar';
+import { useTemplateStore, Template } from '@/store/useTemplateStore';
+import { appToast } from '@/lib/toast';
 
 interface Props {
     open: boolean;
@@ -28,8 +29,11 @@ const COLOR_SWATCHES = [
 export default function CreateProjectModal({ open, onClose, onCreated }: Props) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { addProject } = useProjectStore();
+    const { addProject, addTaskGroup, addTask } = useProjectStore();
     const { clients, fetchClients } = useClientStore();
+    const { templates, fetchTemplates } = useTemplateStore();
+
+    const projectTemplates = templates.filter(t => t.entity_type === 'project');
 
     const [name, setName] = useState('');
     const [description, setDesc] = useState('');
@@ -45,11 +49,16 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
     const [clientSearch, setClientSearch] = useState('');
     const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
 
+    const [templateOpen, setTemplateOpen] = useState(false);
+    const [templateSearch, setTemplateSearch] = useState('');
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
     const clientRef = useRef<HTMLDivElement>(null);
     const statusRef = useRef<HTMLDivElement>(null);
     const colorRef = useRef<HTMLDivElement>(null);
+    const templateRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => { fetchClients(); }, [fetchClients]);
+    useEffect(() => { fetchClients(); fetchTemplates(); }, [fetchClients, fetchTemplates]);
 
     // Close dropdowns on outside click
     useEffect(() => {
@@ -62,6 +71,9 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
             }
             if (colorRef.current && !colorRef.current.contains(e.target as Node)) {
                 setColorOpen(false);
+            }
+            if (templateRef.current && !templateRef.current.contains(e.target as Node)) {
+                setTemplateOpen(false);
             }
         };
         document.addEventListener('mousedown', handler);
@@ -90,6 +102,35 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
                 is_archived: false,
             });
             if (p) {
+                if (selectedTemplateId) {
+                    const tpl = projectTemplates.find(t => t.id === selectedTemplateId);
+                    if (tpl?.blocks?.length) {
+                        for (const b of tpl.blocks) {
+                            const newGroup = await addTaskGroup({
+                                project_id: p.id,
+                                name: b.name || 'Group',
+                                color: b.color || '#3d0ebf',
+                                position: b.position || 0
+                            });
+                            
+                            if (newGroup && b.items?.length) {
+                                for (const t of b.items) {
+                                    await addTask({
+                                        project_id: p.id,
+                                        task_group_id: newGroup.id,
+                                        title: t.title || 'Untitled Task',
+                                        description: t.description || null,
+                                        status: 'todo',
+                                        priority: t.priority || 'medium',
+                                        position: t.position || 0,
+                                        is_archived: false,
+                                        custom_fields: []
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
                 appToast.success(`"${p.name}" created`);
                 onCreated();
                 onClose();
@@ -330,6 +371,74 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
                         )}
                     </div>
 
+                    {/* Template Dropdown */}
+                    <div className="relative" ref={templateRef}>
+                        <div
+                            className={cn(field, "flex flex-col gap-0.5 cursor-pointer")}
+                            onClick={() => setTemplateOpen(v => !v)}
+                        >
+                            <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Template (optional)</span>
+                            <div className="flex items-center justify-between">
+                                {selectedTemplateId
+                                    ? <span className={isDark ? "text-white" : "text-[#111]"}>{projectTemplates.find(t => t.id === selectedTemplateId)?.name}</span>
+                                    : <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Select template</span>
+                                }
+                                <ChevronRight size={14} className={cn("transition-transform", templateOpen ? "rotate-90" : "")} />
+                            </div>
+                        </div>
+                        {templateOpen && (
+                            <div className={cn(
+                                "absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden",
+                                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                            )}>
+                                <div className="p-2 border-b border-inherit">
+                                    <div className="relative">
+                                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-30" />
+                                        <input
+                                            autoFocus
+                                            value={templateSearch}
+                                            onChange={e => setTemplateSearch(e.target.value)}
+                                            placeholder="Search templates..."
+                                            className={cn(
+                                                "w-full text-[12px] pl-8 pr-3 py-1.5 rounded-lg outline-none",
+                                                isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]"
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="max-h-40 overflow-auto">
+                                    <button
+                                        onClick={() => { setSelectedTemplateId(null); setTemplateOpen(false); }}
+                                        className={cn(
+                                            "w-full text-left px-4 py-2.5 text-[13px] transition-colors",
+                                            isDark ? "text-[#555] hover:bg-white/5" : "text-[#999] hover:bg-[#fafafa]"
+                                        )}
+                                    >
+                                        Blank Project
+                                    </button>
+                                    {projectTemplates.filter(t => !templateSearch || t.name.toLowerCase().includes(templateSearch.toLowerCase())).map(t => (
+                                        <button
+                                            key={t.id}
+                                            onClick={() => { 
+                                                setSelectedTemplateId(t.id); 
+                                                if (t.design?.primaryColor) setColor(t.design.primaryColor);
+                                                setTemplateSearch(''); 
+                                                setTemplateOpen(false); 
+                                            }}
+                                            className={cn(
+                                                "w-full text-left px-4 py-2.5 text-[13px] transition-colors flex items-center justify-between",
+                                                isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                            )}
+                                        >
+                                            <span className="font-medium">{t.name}</span>
+                                            {t.id === selectedTemplateId && <Check size={13} className="text-primary" />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Deadline */}
                     <div className={cn(field, "flex flex-col gap-0.5")}>
                         <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Deadline</span>
@@ -339,21 +448,6 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
                             isDark={isDark}
                             placeholder="Set project deadline"
                         />
-                    </div>
-
-                    {/* More options divider */}
-                    <div className="relative py-1 flex items-center">
-                        <div className={cn("absolute inset-x-0 top-1/2 border-t", isDark ? "border-[#252525]" : "border-[#e0e0e0]")} />
-                        <span className={cn("relative z-10 px-2 text-[11px] font-semibold uppercase tracking-widest", isDark ? "bg-[#161616] text-[#444]" : "bg-[#f7f7f7] text-[#bbb]")}>Members & Team</span>
-                    </div>
-
-                    {/* Select Team Member placeholder */}
-                    <div className={cn(field, "flex items-center justify-between cursor-not-allowed opacity-60")}>
-                        <div className="flex items-center gap-2">
-                            <Plus size={13} className={isDark ? "text-[#555]" : "text-[#bbb]"} />
-                            <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Add team member</span>
-                        </div>
-                        <CircleHelp size={14} className="text-[#3b82f6] opacity-70" />
                     </div>
                 </div>
 

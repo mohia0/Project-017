@@ -175,9 +175,6 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                         notif.type !== 'receipt_pending' && (isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#f9f9f9]")
                                     )}
                                 >
-                                    {!notif.read && (
-                                        <div className="absolute left-2.5 top-5 w-1 h-1 rounded-full bg-primary" />
-                                    )}
                                     <div className={cn("w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 mt-0.5", 
                                         isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
                                     )}>
@@ -230,7 +227,13 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                             if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
                                             if (isProposal) return <FileText size={12} className={iconClass} />;
                                             if (isInvoice) return <Receipt size={12} className={iconClass} />;
-                                            if (isHook) return <Zap size={12} className="text-primary" fill="currentColor" />;
+                                            if (isHook) return (
+                                                <Zap 
+                                                    size={12} 
+                                                    style={{ color: notif.metadata?.color || 'var(--primary)' }} 
+                                                    fill="currentColor" 
+                                                />
+                                            );
                                             return <Eye size={12} className={iconClass} />;
                                         })()}
                                     </div>

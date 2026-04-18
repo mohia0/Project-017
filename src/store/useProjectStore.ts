@@ -38,6 +38,7 @@ export interface ProjectTaskGroup {
     name: string;
     position: number;
     color?: string;
+    icon?: string;
     created_at: string;
 }
 

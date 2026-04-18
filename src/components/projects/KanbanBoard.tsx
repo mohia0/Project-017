@@ -5,20 +5,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, X, MoreHorizontal, CheckSquare, Square, Check,
     Flag, Calendar, Trash2, Edit3, CheckCircle2,
-    PlayCircle, Eye, Inbox, RotateCcw, Circle, AlignLeft
+    PlayCircle, Eye, Inbox, RotateCcw, Circle, AlignLeft, Archive, Copy,
+    List, Clock, Target, Zap, Star, Heart, Shield, Box, Layout, Package, 
+    Briefcase, Ticket, Tags, Smile, User, Users, Home, Globe, Map, Compass,
+    Bell, Mail, Smartphone, Laptop, Cpu, Layers, Hammer, Rocket, Plane, 
+    Anchor, Coffee, Music, Lock, ShieldCheck, Key, Cloud, Umbrella, Sun, 
+    Moon, Flame, Droplet, Leaf, Flower2, Search, Settings, Share, Download
 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore, ProjectTask, ProjectTaskGroup, TaskStatus, TaskPriority } from '@/store/useProjectStore';
 import {
-    DndContext, closestCenter, PointerSensor, KeyboardSensor,
+    DndContext, closestCenter, closestCorners, PointerSensor, KeyboardSensor,
     useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent
 } from '@dnd-kit/core';
 import {
     SortableContext, verticalListSortingStrategy, horizontalListSortingStrategy, useSortable,
-    sortableKeyboardCoordinates,
+    sortableKeyboardCoordinates, arrayMove
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { appToast } from '@/lib/toast';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -49,6 +56,42 @@ const GROUP_COLORS = [
     '#3B82F6', '#06B6D4', '#10B981', '#22C55E', '#71717A',
 ];
 
+const GROUP_ICONS = [
+    // Essentials & Status
+    'List', 'CheckSquare', 'Flag', 'Clock', 'Target', 'Zap', 'Star', 'Heart', 'Shield', 'Box',
+    'Layout', 'Package', 'Briefcase', 'Ticket', 'Tags', 'Kanban', 'Milestone', 'Award', 'Trophy', 'Medal',
+    'CheckCircle', 'AlertCircle', 'Info', 'XCircle', 'HelpCircle', 'Pause', 'Play', 'RotateCcw', 'Eye',
+    
+    // Tech & Digital
+    'Code', 'Binary', 'Terminal', 'Fingerprint', 'Activity', 'TrendingUp', 'PieChart', 'BarChart3', 'LineChart',
+    'Wifi', 'Cpu', 'Laptop', 'Smartphone', 'Tablet', 'HardDrive', 'Network', 'Database', 'Cloud', 'Lock', 'Unlock',
+    'Key', 'ShieldCheck', 'Settings', 'ShieldAlert', 'Bug', 'Layers', 'Share2', 'Link',
+    
+    // Communication & People
+    'Bell', 'Mail', 'Phone', 'Inbox', 'Send', 'Globe', 'Map', 'Compass', 'Smile', 'User', 'Users', 'UserPlus',
+    'MessageSquare', 'MessageCircle', 'Mic', 'Headphones', 'Speaker', 'Tv', 'Video', 'Radio',
+    
+    // Nature & Lifestyle
+    'Sun', 'Moon', 'Umbrella', 'CloudRain', 'Snowflake', 'Wind', 'Sprout', 'TreeDeciduous', 'Mountain', 'Waves', 
+    'Flame', 'Droplet', 'Leaf', 'Flower2', 'Apple', 'Wine', 'Pizza', 'Coffee', 'GlassWater', 'Beer',
+    'HeartPulse', 'Scale', 'Stethoscope', 'Dumbbell', 'Crosshair', 'Anchor', 'Rocket', 'Plane', 'Car', 'Bike',
+    
+    // Business & Finance
+    'Banknote', 'Coins', 'CreditCard', 'Wallet', 'ShoppingCart', 'Store', 'Building', 'Factory', 'Warehouse', 
+    'FileText', 'Folder', 'Archive', 'Calculator', 'Library', 'GraduationCap', 'Book', 'PenTool', 'Brush', 'Palette',
+
+    // Misc & Fun
+    'Hammer', 'Wrench', 'Camera', 'Music', 'Gamepad2', 'Ghost', 'Dice5', 'Puzzle', 'Gift', 'Cake', 'Glasses',
+    'Search', 'Trash', 'Lightbulb', 'Magnet', 'Crown', 'Plug', 'MapPin', 'Globe2'
+];
+
+function GroupIcon({ name, size = 10, className = "" }: { name?: string, size?: number, className?: string }) {
+    if (!name) return null;
+    const Icon = (LucideIcons as any)[name];
+    if (!Icon) return null;
+    return <Icon size={size} className={className} />;
+}
+
 function shortId(id: string) { return `#${id.slice(-3).toUpperCase()}`; }
 function fmtDate(d: string | null | undefined) {
     if (!d) return null;
@@ -59,6 +102,79 @@ function fmtDate(d: string | null | undefined) {
 type CtxMenuState = { x: number; y: number; id: string; type: 'task' | 'group' } | null;
 
 // ─── Context Menu ─────────────────────────────────────────────────────────────
+
+const ICON_ALIASES: Record<string, string[]> = {
+    'eye': ['view', 'watch', 'look', 'visibility'],
+    'zap': ['lightning', 'fast', 'quick', 'power', 'flash'],
+    'smile': ['happy', 'face', 'emotion', 'mood'],
+    'trash': ['delete', 'remove', 'bin', 'discard'],
+    'archive': ['save', 'box', 'history'],
+    'clock': ['time', 'timer', 'history', 'schedule'],
+    'target': ['goal', 'aim', 'focus'],
+    'flag': ['priority', 'danger', 'mark', 'goal'],
+    'lock': ['secure', 'private', 'safety'],
+    'unlock': ['open', 'unsecure'],
+    'rocket': ['launch', 'fast', 'boost'],
+    'plane': ['travel', 'flight', 'air'],
+    'home': ['house', 'dashboard', 'start'],
+    'users': ['team', 'people', 'group'],
+    'user': ['person', 'profile', 'individual'],
+    'mail': ['email', 'letter', 'message', 'send'],
+    'phone': ['call', 'contact'],
+    'smartphone': ['mobile', 'cell', 'app'],
+    'laptop': ['computer', 'work', 'dev'],
+    'cpu': ['chip', 'processor', 'tech', 'ai'],
+    'database': ['storage', 'data', 'sql', 'server'],
+    'code': ['dev', 'script', 'programming', 'binary'],
+    'terminal': ['command', 'console', 'cli'],
+    'sun': ['day', 'light', 'weather', 'bright'],
+    'moon': ['night', 'dark', 'weather', 'sleep'],
+    'cloud': ['weather', 'online', 'server', 'storage'],
+    'umbrella': ['rain', 'protection', 'weather'],
+    'flame': ['fire', 'hot', 'trending', 'burn'],
+    'droplet': ['water', 'liquid', 'fluid'],
+    'leaf': ['nature', 'green', 'eco', 'organic'],
+    'flower2': ['nature', 'floral', 'growth'],
+    'sprout': ['nature', 'growth', 'new', 'start'],
+    'treedeciduous': ['nature', 'forest', 'wood'],
+    'crosshair': ['aim', 'target', 'focus'],
+    'dumbbell': ['fitness', 'gym', 'health', 'work'],
+    'stethoscope': ['medical', 'health', 'doctor'],
+    'heartpulse': ['health', 'medical', 'vital'],
+    'scale': ['balance', 'weight', 'legal'],
+    'link': ['chain', 'url', 'connect'],
+    'award': ['prize', 'certificate', 'win'],
+    'trophy': ['win', 'prize', 'first', 'goal'],
+    'medal': ['award', 'prize', 'honor'],
+    'briefcase': ['work', 'job', 'business', 'office'],
+    'ticket': ['task', 'issue', 'event'],
+    'tags': ['labels', 'category'],
+    'layout': ['design', 'grid', 'structure'],
+    'package': ['shipping', 'box', 'delivery'],
+    'inbox': ['receive', 'mail'],
+    'send': ['mail', 'message'],
+    'globe': ['world', 'international', 'web'],
+    'anchor': ['sea', 'marine', 'stable'],
+    'coffee': ['drink', 'break', 'pause'],
+    'music': ['sound', 'audio', 'play'],
+    'camera': ['photo', 'image', 'picture'],
+    'tv': ['screen', 'monitor'],
+    'mic': ['sound', 'voice', 'audio'],
+    'wifi': ['internet', 'signal', 'wireless'],
+    'trendingup': ['growth', 'performance', 'profit'],
+    'piechart': ['data', 'analytics', 'statistics'],
+    'barchart3': ['data', 'analytics', 'stats'],
+    'linechart': ['graph', 'trends', 'stats'],
+    'fingerprint': ['security', 'identity', 'biometric'],
+    'activity': ['pulse', 'health', 'vitals'],
+    'gift': ['present', 'offer', 'birthday'],
+    'cake': ['birthday', 'celebration', 'fun'],
+    'ghost': ['scary', 'spooky', 'fun'],
+    'dice5': ['game', 'random', 'luck'],
+    'puzzle': ['problem', 'logic', 'piece'],
+    'crown': ['king', 'queen', 'leader', 'first'],
+    'plug': ['power', 'electricity', 'connect'],
+};
 
 function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId }: {
     menu: NonNullable<CtxMenuState>;
@@ -78,7 +194,9 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
         return () => document.removeEventListener('mousedown', h);
     }, [onClose]);
 
-    const [pos, setPos] = useState({ x: menu.x, y: menu.y });
+    const [pos,        setPos]        = useState({ x: menu.x, y: menu.y });
+    const [iconSearch, setIconSearch] = useState('');
+
     useEffect(() => {
         if (menuRef.current) {
             const r = menuRef.current.getBoundingClientRect();
@@ -90,6 +208,19 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
     }, [menu.x, menu.y]);
 
     const group = menu.type === 'group' ? groups.find(g => g.id === menu.id) : null;
+
+    const filteredIcons = useMemo(() => {
+        if (!iconSearch) return GROUP_ICONS;
+        const q = iconSearch.toLowerCase();
+        return GROUP_ICONS.filter(name => {
+            const lowName = name.toLowerCase();
+            if (lowName.includes(q)) return true;
+            
+            // Check aliases
+            const aliases = ICON_ALIASES[lowName] || [];
+            return aliases.some(a => a.includes(q));
+        });
+    }, [iconSearch]);
 
     const Item = ({ label, icon, action, danger = false }: { label: string; icon: React.ReactNode; action: string; danger?: boolean }) => (
         <button
@@ -125,6 +256,8 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
                 <>
                     <Item label="Open details" icon={<Eye size={12} />}    action="open" />
                     <Item label="Edit task"    icon={<Edit3 size={12} />}   action="edit" />
+                    <Item label="Duplicate task" icon={<Copy size={12} />} action="duplicate" />
+                    <Item label="Archive task" icon={<Archive size={12} />} action="archive" />
                     <Divider />
                     <Item label="Delete task"  icon={<Trash2 size={12} />}  action="delete" danger />
                 </>
@@ -162,6 +295,59 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
                         </div>
                     </div>
                     <Divider />
+                    <div className="px-3 py-2.5">
+                        <div className="flex items-center justify-between mb-2.5">
+                            <span className={cn('text-[9px] font-bold uppercase tracking-[0.12em]', isDark ? 'text-[#555]' : 'text-[#c0c0c0]')}>
+                                Icon
+                            </span>
+                            {group.icon && (
+                                <button
+                                    onClick={() => { updateTaskGroup(group.id, projectId, { icon: '' }); onClose(); }}
+                                    className={cn('p-1 rounded-md transition-colors', isDark ? 'text-[#333] hover:bg-white/5 hover:text-[#777]' : 'text-[#ccc] hover:bg-black/5 hover:text-[#888]')}
+                                >
+                                    <RotateCcw size={10} strokeWidth={2.5} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Search input for icons */}
+                        <div className="relative mb-2.5">
+                            <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#888] opacity-50" />
+                            <input
+                                autoFocus
+                                value={iconSearch}
+                                onChange={e => setIconSearch(e.target.value)}
+                                onClick={e => e.stopPropagation()}
+                                onKeyDown={e => e.stopPropagation()}
+                                placeholder="Search..."
+                                className={cn(
+                                    'w-full pl-6 pr-2 py-1.5 text-[10px] rounded-lg outline-none transition-all placeholder:text-[#888]/40 border',
+                                    isDark 
+                                        ? 'bg-black/20 border-white/5 text-white focus:bg-black/40' 
+                                        : 'bg-black/[0.02] border-black/5 text-[#111] focus:bg-white focus:shadow-sm'
+                                )}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-6 gap-1 max-h-[140px] overflow-y-auto no-scrollbar pr-1">
+                            {filteredIcons.map(iconName => (
+                                <button
+                                    key={iconName}
+                                    onClick={() => { updateTaskGroup(group.id, projectId, { icon: iconName }); onClose(); }}
+                                    className={cn(
+                                        'w-7 h-7 flex items-center justify-center rounded-lg transition-all hover:scale-110 duration-150',
+                                        group.icon === iconName ? (isDark ? 'bg-white/10 text-white shadow-lg' : 'bg-black/5 text-black shadow-md') : 'text-[#666] opacity-40 hover:opacity-100 hover:bg-black/[0.03]'
+                                    )}
+                                >
+                                    <GroupIcon name={iconName} size={14} />
+                                </button>
+                            ))}
+                            {filteredIcons.length === 0 && (
+                                <div className="col-span-6 py-4 text-center opacity-30 text-[9px] font-medium italic">No icons found</div>
+                            )}
+                        </div>
+                    </div>
+                    <Divider />
                     <Item label="Delete group" icon={<Trash2 size={12} />} action="delete" danger />
                 </>
             )}
@@ -180,29 +366,42 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
     isLast?: boolean;
     isPreview?: boolean;
 }) {
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [showSure, setShowSure]     = useState(false);
+
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: task.id,
         data: { type: 'task' },
         disabled: isPreview,
     });
-    const { updateTask } = useProjectStore();
+    const { updateTask, deleteTask } = useProjectStore();
+
     const style = { transform: CSS.Translate.toString(transform), transition };
-    const pri   = PRIORITY_MAP[task.priority];
+    const pri    = PRIORITY_MAP[task.priority];
     const isDone = task.status === 'done';
+    const tags = (task.custom_fields?.tags as { label: string; color: string }[] | undefined) ?? [];
+    const checklists = (task.custom_fields?.checklists as { id: string; completed: boolean }[] | undefined) ?? [];
+    const totalChecks = checklists.length;
+    const completedChecks = checklists.filter(c => c.completed).length;
+
+    const hasMeta = task.due_date || task.priority !== 'none' || tags.length > 0 || totalChecks > 0;
 
     return (
         <div
             ref={setNodeRef}
-            style={style}
+            style={{ ...style, touchAction: 'none' }}
             {...(!isPreview ? attributes : {})}
             {...(!isPreview ? listeners : {})}
             onContextMenu={e => !isPreview && onCtx(e, task.id, 'task')}
             onClick={() => onAction('open', task)}
             className={cn(
-                'relative flex items-center select-none group/card transition-all duration-150 overflow-hidden',
-                !isPreview && "cursor-pointer",
+                'relative select-none group/card overflow-hidden min-h-[48px]',
+                !isDragging && 'transition-all duration-150',
+                !isPreview && 'cursor-pointer',
                 isDragging
-                    ? 'opacity-[0.05] scale-[0.98] z-20 rounded-[14px] bg-primary/5 border border-primary/20'
+                    ? isDark 
+                        ? 'bg-white/[0.02] border-dashed border-white/10 opacity-70 scale-[0.98] z-20 shadow-inner' 
+                        : 'bg-black/[0.01] border-dashed border-black/10 opacity-70 scale-[0.98] z-20 shadow-inner'
                     : isDark
                         ? 'hover:bg-white/[0.025]'
                         : 'hover:bg-[#f9f9f9]',
@@ -210,68 +409,63 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
                 isLast  && 'rounded-b-[14px]',
             )}
         >
-            {/* Priority left accent */}
-            {task.priority !== 'none' && (
+            {/* Priority left accent bar - hide when dragging skeleton */}
+            {!isDragging && (
                 <div
                     className={cn(
-                        'absolute left-0 top-[14px] bottom-[14px] w-[2.5px]',
-                        isFirst && 'top-[8px]',
-                        isLast  && 'bottom-[8px]',
+                        'absolute left-0 inset-y-0 w-[3px] transition-opacity',
+                        task.priority === 'none' ? 'opacity-0' : 'opacity-100',
+                        isFirst && 'rounded-tl-[14px]',
+                        isLast  && 'rounded-bl-[14px]',
                     )}
                     style={{ background: pri.color }}
                 />
             )}
 
-            <div className="flex items-center gap-2.5 pl-4 pr-3 py-[14px] flex-1">
+            <div className={cn("pl-4 pr-3 py-[15px] flex flex-col gap-2", isDragging && "invisible")}>
 
-                {/* Checkbox toggle - Read-only in preview */}
-                {isPreview ? (
-                    <div
-                        className={cn(
-                            'shrink-0 w-[16px] h-[16px] rounded-[5px] border flex items-center justify-center transition-all duration-200',
-                            isDone
-                                ? 'bg-emerald-500 border-emerald-500 text-white'
-                                : isDark
-                                    ? 'border-white/10'
-                                    : 'border-black/10'
-                        )}
-                    >
-                        {isDone && <Check size={10} strokeWidth={3.5} />}
-                    </div>
-                ) : (
-                    <button
-                        onClick={e => {
-                            e.stopPropagation();
-                            updateTask(task.id, task.project_id, { status: isDone ? 'todo' : 'done' });
-                        }}
-                        className={cn(
-                            'shrink-0 w-[16px] h-[16px] rounded-[5px] border flex items-center justify-center transition-all duration-200',
-                            isDone
-                                ? 'bg-emerald-500 border-emerald-500 text-white'
-                                : isDark
-                                    ? 'border-white/10 hover:border-white/30'
-                                    : 'border-black/10 hover:border-black/20'
-                        )}
-                    >
-                        <AnimatePresence mode="wait">
-                            {isDone && (
-                                <motion.div
-                                    initial={{ scale: 0, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    exit={{ scale: 0, opacity: 0 }}
-                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                >
-                                    <Check size={10} strokeWidth={3.5} />
-                                </motion.div>
+                {/* ── Top row: checkbox + title + action ── */}
+                <div className="flex items-start gap-2.5">
+
+                    {/* Checkbox */}
+                    {isPreview ? (
+                        <div className={cn(
+                            'mt-[2px] shrink-0 w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center transition-all',
+                            isDone ? 'bg-emerald-500 border-emerald-500 text-white' : isDark ? 'border-white/10' : 'border-black/10'
+                        )}>
+                            {isDone && <Check size={9} strokeWidth={3.5} />}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={e => {
+                                e.stopPropagation();
+                                updateTask(task.id, task.project_id, { status: isDone ? 'todo' : 'done' });
+                            }}
+                            className={cn(
+                                'mt-[2px] shrink-0 w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center transition-all duration-200',
+                                isDone
+                                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                                    : isDark ? 'border-white/10 hover:border-emerald-500/50' : 'border-black/10 hover:border-emerald-500/50'
                             )}
-                        </AnimatePresence>
-                    </button>
-                )}
+                        >
+                            <AnimatePresence mode="wait">
+                                {isDone && (
+                                    <motion.div
+                                        initial={{ scale: 0, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0, opacity: 0 }}
+                                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                    >
+                                        <Check size={9} strokeWidth={3.5} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </button>
+                    )}
 
-                <div className="flex-1 min-w-0">
                     {/* Title */}
                     <p className={cn(
-                        'text-[12.5px] font-semibold leading-relaxed',
+                        'flex-1 text-[12.5px] font-semibold leading-snug min-w-0',
                         isDone
                             ? isDark ? 'line-through text-[#383838]' : 'line-through text-[#c0c0c0]'
                             : isDark ? 'text-[#e0e0e0]' : 'text-[#1a1a1a]'
@@ -279,44 +473,126 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
                         {task.title}
                     </p>
 
-                    {/* Chips row */}
-                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        {/* Status + ID chip */}
+                    {/* Hover actions */}
+                    {!isPreview && (
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-all">
+                            {/* Delete Button with Sure? logic */}
+                            <div className="flex items-center">
+                                <AnimatePresence mode="wait" initial={false}>
+                                    {showSure ? (
+                                        <motion.button
+                                            key="sure"
+                                            initial={{ opacity: 0, scale: 0.8, x: 5 }}
+                                            animate={{ opacity: 1, scale: 1, x: 0 }}
+                                            exit={{ opacity: 0, scale: 0.8, x: 5 }}
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                setIsDeleting(true);
+                                                await deleteTask(task.id, task.project_id);
+                                            }}
+                                            className="px-2 py-1 rounded-md bg-red-500 text-white text-[9px] font-bold shadow-sm active:scale-95"
+                                        >
+                                            {isDeleting ? '...' : 'Sure?'}
+                                        </motion.button>
+                                    ) : (
+                                        <motion.button
+                                            key="trash"
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.8 }}
+                                            onClick={(e) => { e.stopPropagation(); setShowSure(true); setTimeout(() => setShowSure(false), 3000); }}
+                                            className={cn(
+                                                "w-5 h-5 flex items-center justify-center rounded-md transition-colors",
+                                                isDark ? "text-red-400/30 hover:text-red-400 hover:bg-red-500/10" : "text-red-300 hover:text-red-500 hover:bg-red-50"
+                                            )}
+                                        >
+                                            <Trash2 size={11} />
+                                        </motion.button>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+
+                            <button
+                                onClick={e => { e.stopPropagation(); onCtx(e, task.id, 'task'); }}
+                                className={cn(
+                                    'shrink-0 w-5 h-5 flex items-center justify-center rounded-md transition-all',
+                                    isDark
+                                        ? 'text-[#3a3a3a] hover:text-[#aaa] hover:bg-white/[0.07]'
+                                        : 'text-[#d0d0d0] hover:text-[#666] hover:bg-black/[0.05]'
+                                )}
+                            >
+                                <MoreHorizontal size={11} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Meta row: id · priority pill · tags · due date ── */}
+                {hasMeta && (
+                    <div className="flex flex-wrap items-center gap-1.5 pl-[23px]">
+                        {/* Short ID */}
                         <span className={cn(
-                            'inline-flex items-center gap-[5px] text-[9.5px] font-bold px-2 py-[3px] rounded-md tabular-nums',
-                            isDark
-                                ? 'bg-[#252525] text-[#4a4a4a] border border-[#2e2e2e]'
-                                : 'bg-[#f0f0f0] text-[#aaa] border border-[#e8e8e8]'
+                            'text-[9px] font-bold tabular-nums',
+                            isDark ? 'text-[#2e2e2e]' : 'text-[#d8d8d8]'
                         )}>
-                            {STATUS_ICON_MAP[task.status]}
                             {shortId(task.id)}
                         </span>
-                        
-                        {/* More chips... */}
+
+                        {/* Priority pill (skip 'none') */}
+                        {task.priority !== 'none' && (
+                            <span
+                                className="inline-flex items-center gap-[3px] px-1.5 py-[1.5px] rounded-[4px] text-[8.5px] font-bold"
+                                style={{ backgroundColor: `${pri.color}18`, color: pri.color }}
+                            >
+                                <Flag size={7} strokeWidth={2.5} />
+                                {pri.label}
+                            </span>
+                        )}
+
+                        {/* Tags */}
+                        {tags.map((t, i) => (
+                            <span
+                                key={i}
+                                className="px-1.5 py-[1.5px] rounded-[4px] text-[8.5px] font-bold"
+                                style={{ backgroundColor: `${t.color}15`, color: t.color }}
+                            >
+                                {t.label}
+                            </span>
+                        ))}
+
+                        {/* Due date */}
                         {task.due_date && (
-                             <span className={cn(
-                                'inline-flex items-center gap-[3px] text-[9.5px] font-bold',
-                                isDark ? 'text-[#4a4a4a]' : 'text-[#aaa]'
+                            <span className={cn(
+                                'inline-flex items-center gap-[3px] text-[9px] font-bold',
+                                isDark ? 'text-[#3a3a3a]' : 'text-[#bbb]'
                             )}>
-                                <Calendar size={8} strokeWidth={2.5} />
+                                <Calendar size={7} strokeWidth={2.5} />
                                 {fmtDate(task.due_date)}
                             </span>
                         )}
-                    </div>
-                </div>
 
-                {/* Hover actions - Hidden in preview */}
-                {!isPreview && (
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity z-10 shrink-0">
-                        <button
-                            onClick={e => { e.stopPropagation(); onCtx(e, task.id, 'task'); }}
-                            className={cn(
-                                'w-6 h-6 flex items-center justify-center rounded-lg transition-colors',
-                                isDark ? 'text-[#3a3a3a] hover:text-[#aaa] hover:bg-white/[0.07]' : 'text-[#d0d0d0] hover:text-[#777] hover:bg-black/[0.05]'
-                            )}
-                        >
-                            <MoreHorizontal size={12} />
-                        </button>
+                        {/* Subtasks Progress */}
+                        {totalChecks > 0 && (
+                            <span className={cn(
+                                'inline-flex items-center gap-[3px] text-[9px] font-bold',
+                                completedChecks === totalChecks ? 'text-emerald-500' : isDark ? 'text-[#3a3a3a]' : 'text-[#bbb]'
+                            )}>
+                                <CheckSquare size={7} strokeWidth={2.5} />
+                                {completedChecks}/{totalChecks}
+                            </span>
+                        )}
+                    </div>
+                )}
+
+                {/* ── Subtask Progress Bar (Minimal) ── */}
+                {totalChecks > 0 && totalChecks !== completedChecks && (
+                    <div className="pl-[23px] pr-2">
+                        <div className={cn("w-full h-[1.5px] rounded-full overflow-hidden", isDark ? "bg-white/[0.03]" : "bg-black/[0.03]")}>
+                            <div 
+                                className="h-full bg-emerald-500/30 transition-all duration-500" 
+                                style={{ width: `${(completedChecks / totalChecks) * 100}%` }}
+                            />
+                        </div>
                     </div>
                 )}
             </div>
@@ -337,6 +613,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
     forceEditing?: boolean;
     onRenameDone?: () => void;
     isPreview?: boolean;
+    onAddTask: (title?: string) => void;
 }) {
     const { updateTaskGroup, addTask } = useProjectStore();
     const [adding,   setAdding]   = useState(false);
@@ -404,7 +681,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
         >
             {/* ══ UNIFIED HEADER + CREATE TASK CARD ══ */}
             <div className={cn(
-                'rounded-[18px] overflow-hidden border mb-3 shrink-0',
+                'rounded-[18px] overflow-hidden border mb-3 shrink-0 group/col',
                 isDark
                     ? 'bg-[#161616] border-[#232323]'
                     : 'bg-white border-[#e8e8e8] shadow-sm shadow-black/[0.04]'
@@ -430,11 +707,17 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                         style={{ background: `linear-gradient(90deg, ${baseColor} 0%, ${baseColor}00 75%)` }}
                     />
 
-                    {/* Glowing color dot */}
+                    {/* Glowing color dot OR Icon */}
                     <div
-                        className="w-2.5 h-2.5 rounded-full shrink-0 relative z-10"
-                        style={{ background: baseColor, boxShadow: `0 0 0 3px ${baseColor}28` }}
-                    />
+                        className="w-4 h-4 flex items-center justify-center shrink-0 relative z-10"
+                        style={{ color: baseColor }}
+                    >
+                        {group.icon ? (
+                            <GroupIcon name={group.icon} size={15} className="shrink-0" />
+                        ) : (
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ background: baseColor, boxShadow: `0 0 0 3px ${baseColor}28` }} />
+                        )}
+                    </div>
 
                     {/* Name */}
                     <div className="flex-1 min-w-0 relative z-10">
@@ -444,12 +727,14 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                                 value={draft}
                                 onChange={e => setDraft(e.target.value)}
                                 onBlur={commitRename}
+                                onClick={e => e.stopPropagation()}
                                 onKeyDown={e => {
+                                    e.stopPropagation();
                                     if (e.key === 'Enter')  commitRename();
                                     if (e.key === 'Escape') { setDraft(group.name); setEditing(false); }
                                 }}
                                 className={cn(
-                                    'w-full text-[12.5px] font-bold bg-transparent outline-none border-b pb-px',
+                                    'w-full text-[12.5px] font-bold bg-transparent outline-none border-b pb-px relative z-20',
                                     isDark ? 'text-white border-white/20' : 'text-[#111] border-black/15'
                                 )}
                             />
@@ -466,11 +751,11 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                         )}
                     </div>
 
-                    {/* Right controls */}
-                    <div className="flex items-center gap-1 shrink-0 relative z-10">
+                    <div className="flex items-center shrink-0 relative z-10 w-6 h-6">
                         <span className={cn(
-                            'text-[10px] font-bold tabular-nums min-w-[20px] h-[20px] px-1.5 rounded-[6px] flex items-center justify-center',
-                            isDark ? 'bg-white/[0.07] text-[#555]' : 'bg-black/[0.05] text-[#aaa]'
+                            'absolute right-0 text-[10px] font-bold tabular-nums min-w-[20px] h-[20px] px-1.5 rounded-[6px] flex items-center justify-center transition-all duration-200',
+                            isDark ? 'bg-white/[0.07] text-[#555]' : 'bg-black/[0.05] text-[#aaa]',
+                            !isPreview && 'group-hover/hdr:opacity-0 group-hover/hdr:scale-90'
                         )}>
                             {tasks.length}
                         </span>
@@ -478,7 +763,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                             <button
                                 onClick={e => { e.stopPropagation(); onCtx(e, group.id, 'group'); }}
                                 className={cn(
-                                    'w-6 h-6 flex items-center justify-center rounded-[7px] opacity-0 group-hover/hdr:opacity-100 transition-all',
+                                    'absolute right-0 w-6 h-6 flex items-center justify-center rounded-[7px] opacity-0 group-hover/hdr:opacity-100 transition-all scale-90 group-hover/hdr:scale-100',
                                     isDark
                                         ? 'text-[#444] hover:text-[#aaa] hover:bg-white/[0.08]'
                                         : 'text-[#ccc] hover:text-[#555] hover:bg-black/[0.06]'
@@ -495,25 +780,27 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
 
                 {/* ─ Create task button — same card, unified unit ─ */}
                 {!isPreview && (
-                    <button
-                        onClick={() => setAdding(true)}
-                        className={cn(
-                            'w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[11.5px] font-semibold transition-all group/add',
-                            isDark
-                                ? 'text-[#383838] hover:text-[#888] hover:bg-white/[0.025]'
-                                : 'text-[#c4c4c4] hover:text-[#555] hover:bg-black/[0.018]'
-                        )}
-                    >
-                        <div className={cn(
-                            'w-[18px] h-[18px] rounded-[5px] flex items-center justify-center border transition-all',
-                            isDark
-                                ? 'border-[#2e2e2e] text-[#3a3a3a] group-hover/add:border-[#444] group-hover/add:text-[#888]'
-                                : 'border-[#e0e0e0] text-[#ccc] group-hover/add:border-[#bbb] group-hover/add:text-[#555]'
-                        )}>
-                            <Plus size={10} strokeWidth={2.5} />
-                        </div>
-                        Create task
-                    </button>
+                    <div className="overflow-hidden transition-all duration-300 group-hover/col:max-h-[50px] max-h-0 opacity-0 group-hover/col:opacity-100">
+                        <button
+                            onClick={() => setAdding(true)}
+                            className={cn(
+                                'w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[11.5px] font-semibold transition-all group/add',
+                                isDark
+                                    ? 'text-[#383838] hover:text-[#888] hover:bg-white/[0.025]'
+                                    : 'text-[#c4c4c4] hover:text-[#555] hover:bg-black/[0.018]'
+                            )}
+                        >
+                            <div className={cn(
+                                'w-[18px] h-[18px] rounded-[5px] flex items-center justify-center border transition-all',
+                                isDark
+                                    ? 'border-[#2e2e2e] text-[#3a3a3a] group-hover/add:border-[#444] group-hover/add:text-[#888]'
+                                    : 'border-[#e0e0e0] text-[#ccc] group-hover/add:border-[#bbb] group-hover/add:text-[#555]'
+                            )}>
+                                <Plus size={10} strokeWidth={2.5} />
+                            </div>
+                            Create task
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -565,7 +852,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                                     disabled={saving || !titleStr.trim()}
                                     className="px-3.5 py-1 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
                                 >
-                                    {saving ? '…' : 'Save'}
+                                    {saving ? '…' : 'Add'}
                                 </button>
                             </div>
                         </motion.div>
@@ -689,16 +976,27 @@ interface KanbanBoardProps {
     isPreview?:     boolean;
     externalTasks?:  ProjectTask[];
     externalGroups?: ProjectTaskGroup[];
+    onAddGroupOverride?: (name: string, color: string) => void;
+    onRenameGroupOverride?: (id: string, name: string) => void;
+    onDeleteGroupOverride?: (id: string) => void;
+    onReorderGroupOverride?: (id: string, newIndex: number) => void;
+    
+    onAddTaskOverride?: (groupId: string, title?: string) => void;
+    onUpdateTaskOverride?: (taskId: string, updates: Partial<ProjectTask>) => void;
+    onDeleteTaskOverride?: (id: string) => void;
+    onReorderTaskOverride?: (taskId: string, destGroupId: string, newPosition: number) => void;
 }
 
 export default function KanbanBoard({ 
     projectId, isDark, searchQuery, showArchived,
     filterPriority = 'all', filterStatus = 'all', orderBy = 'position',
-    onTaskClick, isPreview, externalTasks, externalGroups 
+    onTaskClick, isPreview, externalTasks, externalGroups,
+    onAddGroupOverride, onRenameGroupOverride, onDeleteGroupOverride, onReorderGroupOverride,
+    onAddTaskOverride, onUpdateTaskOverride, onDeleteTaskOverride, onReorderTaskOverride
 }: KanbanBoardProps) {
     const {
         tasksByProject, groupsByProject, fetchTasks, fetchTaskGroups,
-        addTaskGroup, reorderTask, reorderTaskGroup, deleteTask, deleteTaskGroup,
+        addTaskGroup, reorderTask, reorderTaskGroup, deleteTask, deleteTaskGroup, updateTask, addTask
     } = useProjectStore();
 
     const tasks  = useMemo(() => externalTasks || tasksByProject[projectId] || [], [externalTasks, tasksByProject, projectId]);
@@ -716,7 +1014,7 @@ export default function KanbanBoard({
     const [pendingDelete, setPendingDelete] = useState<{ id: string, type: 'task' | 'group' } | null>(null);
 
     useEffect(() => {
-        setLocalTasks(tasks);
+        setLocalTasks([...tasks].sort((a, b) => a.position - b.position));
     }, [tasks]);
 
     useEffect(() => {
@@ -744,30 +1042,37 @@ export default function KanbanBoard({
         const overData = over.data.current;
 
         if (activeData?.type === 'task') {
-            const activeIdStr = active.id as string;
-            const overIdStr = over.id as string;
+            const activeId = active.id as string;
+            const overId = over.id as string;
 
             setLocalTasks(prev => {
-                const activeTask = prev.find(t => t.id === activeIdStr);
-                if (!activeTask) return prev;
+                const activeIndex = prev.findIndex(t => t.id === activeId);
+                const overIndex = prev.findIndex(t => t.id === overId);
 
-                // If over a group column
-                if (overData?.type === 'group') {
-                    if (activeTask.task_group_id !== overIdStr) {
-                        return prev.map(t => 
-                            t.id === activeIdStr ? { ...t, task_group_id: overIdStr, position: 0 } : t
-                        );
-                    }
-                } 
-                // If over another task
-                else {
-                    const overTask = prev.find(t => t.id === overIdStr);
-                    if (overTask && activeTask.task_group_id !== overTask.task_group_id) {
-                        return prev.map(t => 
-                            t.id === activeIdStr 
-                                ? { ...t, task_group_id: overTask.task_group_id, position: overTask.position } 
-                                : t
-                        );
+                if (activeIndex !== -1) {
+                    // 1. Moving over another task
+                    if (overIndex !== -1) {
+                        const activeTask = prev[activeIndex];
+                        const overTask = prev[overIndex];
+
+                        if (activeTask.task_group_id !== overTask.task_group_id) {
+                            // Cross-group reorder
+                            const newItems = [...prev];
+                            newItems[activeIndex] = { ...activeTask, task_group_id: overTask.task_group_id };
+                            return arrayMove(newItems, activeIndex, overIndex);
+                        } else {
+                            // Same-group reorder
+                            return arrayMove(prev, activeIndex, overIndex);
+                        }
+                    } 
+                    // 2. Moving over an empty group/column
+                    else if (overData?.type === 'group') {
+                        const activeTask = prev[activeIndex];
+                        if (activeTask.task_group_id !== overId) {
+                            const newItems = [...prev];
+                            newItems[activeIndex] = { ...activeTask, task_group_id: overId };
+                            return arrayMove(newItems, activeIndex, 0);
+                        }
                     }
                 }
                 return prev;
@@ -794,18 +1099,25 @@ export default function KanbanBoard({
                 if (overTask) ni = groups.findIndex(g => g.id === overTask.task_group_id);
             }
             const oi = groups.findIndex(g => g.id === active.id);
-            if (oi !== -1 && ni !== -1 && oi !== ni) reorderTaskGroup(active.id as string, projectId, ni);
+            if (oi !== -1 && ni !== -1 && oi !== ni) {
+                if (onReorderGroupOverride) {
+                    onReorderGroupOverride(active.id as string, ni);
+                } else {
+                    reorderTaskGroup(active.id as string, projectId, ni);
+                }
+            }
         } else if (type === 'task') {
             const task = localTasks.find(t => t.id === active.id);
             if (task) {
-                const overId = over.id as string;
-                const overTask = localTasks.find(t => t.id === overId);
-                
-                if (overTask) {
-                    reorderTask(task.id, projectId, overTask.task_group_id ?? null, overTask.position);
+                const destGroupId = task.task_group_id;
+                // Calculate position based on final localTasks order
+                const colTasks = localTasks.filter(t => t.task_group_id === destGroupId);
+                const finalPos = colTasks.findIndex(t => t.id === task.id);
+
+                if (onReorderTaskOverride) {
+                    onReorderTaskOverride(task.id, destGroupId || '', finalPos);
                 } else {
-                    // Over a group
-                    reorderTask(task.id, projectId, overId, 0);
+                    reorderTask(task.id, projectId, destGroupId || null, finalPos);
                 }
             }
         }
@@ -814,8 +1126,29 @@ export default function KanbanBoard({
     const handleAddGroup = async (name: string) => {
         const finalName = name.trim() || 'New Group';
         const color = GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)];
-        await addTaskGroup({ project_id: projectId, name: finalName, position: groups.length, color });
+        if (onAddGroupOverride) {
+            onAddGroupOverride(finalName, color);
+        } else {
+            await addTaskGroup({ project_id: projectId, name: finalName, position: groups.length, color });
+        }
         setAddingGroup(false);
+    };
+
+    const handleAddTask = (groupId: string, title?: string) => {
+        if (onAddTaskOverride) {
+            onAddTaskOverride(groupId, title);
+            return;
+        }
+        addTask({ 
+            project_id: projectId, 
+            task_group_id: groupId, 
+            title: title || 'New Task',
+            status: 'todo',
+            priority: 'none',
+            position: tasks.length,
+            custom_fields: {},
+            is_archived: false
+        });
     };
 
     const handleCtxAction = (action: string, type: 'task' | 'group', id: string) => {
@@ -825,8 +1158,32 @@ export default function KanbanBoard({
             if (action === 'delete') {
                 setPendingDelete({ id, type: 'task' });
             }
+            if (action === 'archive') {
+                if (onUpdateTaskOverride) onUpdateTaskOverride(id, { is_archived: true });
+                else updateTask(id, projectId, { is_archived: true });
+                appToast.success('Archived', 'Task moved to archive');
+            }
+            if (action === 'duplicate') {
+                const { id: _id, created_at: _ca, workspace_id: _wsid, ...rest } = t;
+                addTask({
+                    ...rest,
+                    title: `${t.title} (copy)`,
+                    position: t.position + 1
+                });
+                appToast.success('Duplicated', 'Task cloned successfully');
+            }
+            if (action === 'open') onTaskClick(t);
         } else if (type === 'group') {
-            if (action === 'rename') setRenamingId(id);
+            if (action === 'rename') {
+                if (onRenameGroupOverride) {
+                    const newName = prompt("Enter new group name:", groups.find(g => g.id === id)?.name || "");
+                    if (newName !== null && newName.trim() !== '') {
+                        onRenameGroupOverride(id, newName.trim());
+                    }
+                } else {
+                    setRenamingId(id);
+                }
+            }
             if (action === 'delete') {
                 setPendingDelete({ id, type: 'group' });
             }
@@ -846,7 +1203,7 @@ export default function KanbanBoard({
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ zoom: 0.9 }}>
             <DndContext
                 sensors={sensors}
-                collisionDetection={closestCenter}
+                collisionDetection={closestCorners}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
@@ -882,8 +1239,6 @@ export default function KanbanBoard({
                                 });
                             } else if (orderBy === 'title') {
                                 colTasks = [...colTasks].sort((a, b) => a.title.localeCompare(b.title));
-                            } else {
-                                colTasks = colTasks.sort((a, b) => a.position - b.position);
                             }
 
                             return (
@@ -898,6 +1253,7 @@ export default function KanbanBoard({
                                     forceEditing={renamingId === g.id}
                                     onRenameDone={() => setRenamingId(null)}
                                     isPreview={isPreview}
+                                    onAddTask={() => handleAddTask(g.id)}
                                 />
                             );
                         })}
@@ -964,24 +1320,44 @@ export default function KanbanBoard({
                             </div>
                         ) : activeGroup ? (
                             <div
-                                className="w-[268px] rounded-[18px] overflow-hidden shadow-2xl ring-2 ring-primary/30 scale-[1.02] opacity-90"
-                                style={{ background: activeGroup.color || '#374151' }}
+                                className={cn(
+                                    'w-[272px] rounded-[18px] overflow-hidden border shadow-2xl scale-[1.02] opacity-95',
+                                    isDark ? 'bg-[#161616] border-[#232323]' : 'bg-white border-[#e8e8e8]'
+                                )}
                             >
-                                <div
-                                    className="absolute inset-0 pointer-events-none"
-                                    style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.2) 0%, transparent 70%)' }}
-                                />
-                                <div className="flex items-center justify-center pt-5 pb-[10px] px-4">
-                                    <div className="flex items-center gap-1.5 px-3.5 py-[7px] rounded-full" style={{ background: 'rgba(0,0,0,0.20)' }}>
-                                        <AlignLeft size={11} className="text-white/70" />
-                                        <span className="text-[11.5px] font-bold text-white">{activeGroup.name}</span>
+                                <div className="relative flex items-center gap-2.5 px-3.5 py-3">
+                                    {/* Ambient color wash */}
+                                    <div
+                                        className="absolute inset-0 pointer-events-none"
+                                        style={{ background: `linear-gradient(125deg, ${activeGroup.color || '#374151'}18 0%, ${activeGroup.color || '#374151'}06 55%, transparent 100%)` }}
+                                    />
+                                    {/* Top accent line */}
+                                    <div
+                                        className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none"
+                                        style={{ background: `linear-gradient(90deg, ${activeGroup.color || '#374151'} 0%, ${activeGroup.color || '#374151'}00 75%)` }}
+                                    />
+
+                                    {/* Glowing color dot OR Icon */}
+                                    <div
+                                        className="w-4 h-4 flex items-center justify-center shrink-0 relative z-10"
+                                        style={{ color: activeGroup.color || '#374151' }}
+                                    >
+                                        {activeGroup.icon ? (
+                                            <GroupIcon name={activeGroup.icon} size={15} className="shrink-0" />
+                                        ) : (
+                                            <div className="w-2.5 h-2.5 rounded-full" style={{ 
+                                                background: activeGroup.color || '#374151', 
+                                                boxShadow: `0 0 0 3px ${activeGroup.color || '#374151'}28` 
+                                            }} />
+                                        )}
                                     </div>
-                                </div>
-                                <div className="flex items-center justify-between px-3.5 py-[9px]" style={{ background: 'rgba(0,0,0,0.22)' }}>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-[6px] h-[6px] rounded-full bg-white/35" />
-                                        <span className="text-[10.5px] font-semibold text-white/55">{activeGroup.name}</span>
-                                    </div>
+
+                                    <span className={cn(
+                                        'block text-[12.5px] font-bold truncate leading-tight relative z-10',
+                                        isDark ? 'text-[#e0e0e0]' : 'text-[#111]'
+                                    )}>
+                                        {activeGroup.name}
+                                    </span>
                                 </div>
                             </div>
                         ) : null}
@@ -996,9 +1372,14 @@ export default function KanbanBoard({
                 onConfirm={async () => {
                     if (pendingDelete) {
                         if (pendingDelete.type === 'task') {
-                            await deleteTask(pendingDelete.id, projectId);
+                            if (onDeleteTaskOverride) onDeleteTaskOverride(pendingDelete.id);
+                            else await deleteTask(pendingDelete.id, projectId);
                         } else {
-                            await deleteTaskGroup(pendingDelete.id, projectId);
+                            if (onDeleteGroupOverride) {
+                                onDeleteGroupOverride(pendingDelete.id);
+                            } else {
+                                await deleteTaskGroup(pendingDelete.id, projectId);
+                            }
                         }
                         setPendingDelete(null);
                     }

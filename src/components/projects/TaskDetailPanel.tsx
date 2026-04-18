@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X, Calendar, Flag, User, ChevronDown,
@@ -11,13 +11,27 @@ import {
     Hash, ArrowUpRight, Circle, Inbox, TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useProjectStore, ProjectTask, TaskStatus, TaskPriority } from '@/store/useProjectStore';
+import { useProjectStore, ProjectTask, TaskStatus, TaskPriority, ProjectTaskGroup } from '@/store/useProjectStore';
 import { KANBAN_COLS } from './KanbanBoard';
 import { appToast } from '@/lib/toast';
 import { ContentBlock } from '../proposals/blocks/ContentBlock';
 import DatePicker from '../ui/DatePicker';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+
+const TAG_COLORS = [
+    { name: 'Gray',   hex: '#6b7280' },
+    { name: 'Red',    hex: '#ef4444' },
+    { name: 'Orange', hex: '#f97316' },
+    { name: 'Amber',  hex: '#f59e0b' },
+    { name: 'Green',  hex: '#10b981' },
+    { name: 'Blue',   hex: '#3b82f6' },
+    { name: 'Indigo', hex: '#6366f1' },
+    { name: 'Violet', hex: '#8b5cf6' },
+    { name: 'Pink',   hex: '#ec4899' },
+    { name: 'Rose',   hex: '#f43f5e' },
+];
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string; bg: string }[] = [
     { value: 'none',   label: 'None',   color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
@@ -146,7 +160,7 @@ interface Props {
 }
 
 export default function TaskDetailPanel({ task, projectId, projectName, isDark, onClose, readOnly }: Props) {
-    const { updateTask, deleteTask, groupsByProject } = useProjectStore();
+    const { updateTask, deleteTask, groupsByProject, tasksByProject } = useProjectStore();
     const groups = groupsByProject[projectId] || [];
     const group  = groups.find(g => g.id === task.task_group_id);
 
@@ -167,12 +181,46 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     const [priority, setPriority] = useState<TaskPriority>(task.priority);
     const [dueDate, setDueDate]   = useState(task.due_date || '');
     const [startDate, setStartDate] = useState(task.start_date || '');
-    const [activeTab, setActiveTab] = useState<'comments' | 'checklists' | 'attachments' | 'activity' | 'links'>('comments');
+    const [activeTab, setActiveTab] = useState<'comments' | 'checklists' | 'attachments' | 'links'>('comments');
     const [deleting, setDeleting] = useState(false);
     const [comment, setComment]   = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+    // Branding for tags
+    const branding = useSettingsStore(s => s.branding);
+    const primaryColor = branding?.primary_color || '#3b82f6';
+
+    // Tags
+    const [tags, setTags] = useState<{ label: string, color: string }[]>(task.custom_fields?.tags || []);
+    const [tagInput, setTagInput] = useState('');
+    const [tagColor, setTagColor] = useState('#3b82f6');
+    const [showTagPicker, setShowTagPicker] = useState(false);
+    const [showCreateTag, setShowCreateTag] = useState(false);
+
+    // Checklists
+    const [checklists, setChecklists] = useState<{id: string, label: string, completed: boolean}[]>(task.custom_fields?.checklists || []);
+    const [checklistInput, setChecklistInput] = useState('');
+
+    // Comments
+    const [comments, setComments] = useState<{id: string, user: string, text: string, date: string}[]>(task.custom_fields?.comments || []);
+
+    // Attachments
+    const [attachments, setAttachments] = useState<{id: string, name: string, url: string, size: number, type: string}[]>(task.custom_fields?.attachments || []);
+    const [isUploading, setIsUploading] = useState(false);
+
     const [viewMode, setViewMode] = useState<'right' | 'center'>('right');
+
+    // Get all unique tags in the project
+    const allTasks = tasksByProject[task.project_id] || [];
+    const projectTags = useMemo(() => {
+        const map = new Map();
+        allTasks.forEach(t => {
+            t.custom_fields?.tags?.forEach((tag: { label: string, color: string }) => {
+                if (!map.has(tag.label)) map.set(tag.label, tag);
+            });
+        });
+        return Array.from(map.values()) as { label: string, color: string }[];
+    }, [allTasks]);
 
     useEffect(() => {
         const saved = localStorage.getItem('task_panel_view_mode');
@@ -194,14 +242,13 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     };
 
     const groupOptions = [
-        { value: 'ungrouped', label: 'Ungrouped', color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
         ...groups.map(g => ({ value: g.id, label: g.name, color: g.color || '#6366f1', bg: `${g.color || '#6366f1'}18` }))
     ];
 
     useEffect(() => {
         const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', h);
-        return () => window.removeEventListener('keydown', h);
+        document.addEventListener('keydown', h);
+        return () => document.removeEventListener('keydown', h);
     }, [onClose]);
 
     const handleDelete = async () => {
@@ -218,21 +265,17 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
         { id: 'comments' as const,    icon: <MessageSquare size={13} />,  label: 'Comments'    },
         { id: 'checklists' as const,  icon: <Check size={13} />,           label: 'Checklist'   },
         { id: 'attachments' as const, icon: <Paperclip size={13} />,       label: 'Files'       },
-        { id: 'activity' as const,    icon: <Activity size={13} />,        label: 'Activity'    },
         { id: 'links' as const,       icon: <Link2 size={13} />,           label: 'Links'       },
     ] as const;
 
-    const panelInitial = viewMode === 'center'
-        ? { opacity: 0, scale: 0.96, y: 24 }
-        : { opacity: 0, x: '100%' };
-
-    const panelExit = viewMode === 'center'
-        ? { opacity: 0, scale: 0.96, y: 24 }
-        : { opacity: 0, x: '100%' };
-
     const panelVariants = {
-        center: { opacity: 1, scale: 1, y: 0, x: 0 },
-        right:  { opacity: 1, x: 0, scale: 1, y: 0 }
+        centerInitial: { opacity: 0, scale: 0.96, y: 16 },
+        center:        { opacity: 1, scale: 1, y: 0, x: 0 },
+        centerExit:    { opacity: 0, scale: 0.96, y: 16 },
+
+        rightInitial:  { opacity: 0, x: '100%' },
+        right:         { opacity: 1, x: 0, scale: 1, y: 0 },
+        rightExit:     { opacity: 0, x: '100%' }
     };
 
     return (
@@ -249,9 +292,9 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
             {/* Panel */}
             <motion.div
-                initial={panelInitial}
+                initial={viewMode === 'center' ? 'centerInitial' : 'rightInitial'}
                 animate={viewMode}
-                exit={panelExit}
+                exit={viewMode === 'center' ? 'centerExit' : 'rightExit'}
                 variants={panelVariants}
                 transition={{ type: 'spring', damping: 30, stiffness: 500 }}
                 className={cn(
@@ -260,7 +303,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                         ? "bg-[#161616] border-[#252525]"
                         : "bg-white border-[#e0e0e0]",
                     viewMode === 'center'
-                        ? "w-[92vw] max-w-[1320px] h-[88vh] rounded-2xl border"
+                        ? "w-[860px] max-w-[92vw] h-[78vh] rounded-2xl border"
                         : "w-[820px] max-w-[92vw] h-full rounded-2xl border shadow-none"
                 )}
                 onClick={e => e.stopPropagation()}
@@ -322,23 +365,8 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                     {/* Right controls */}
                     <div className="flex items-center gap-0.5 shrink-0">
-                        {/* Task ID badge */}
-                        <div className={cn(
-                            "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg mr-2 text-[10.5px] font-bold tracking-wider uppercase",
-                            isDark ? "bg-white/[0.05] text-[#555]" : "bg-[#f5f5f5] text-[#bbb]"
-                        )}>
-                            <Hash size={9} />
-                            {task.id.slice(-5).toUpperCase()}
-                        </div>
-
-                        {/* Breadcrumb path */}
-                        <div className={cn("hidden md:flex items-center gap-1 text-[11px] font-medium mr-3", isDark ? "text-[#444]" : "text-[#bbb]")}>
-                            <span>{projectName}</span>
-                            <span className="opacity-40">·</span>
-                            <span>{group ? group.name : 'Ungrouped'}</span>
-                        </div>
-
                         <div className={cn("w-px h-4 mx-1", isDark ? "bg-[#2a2a2a]" : "bg-[#e8e8e8]")} />
+
 
                         {!readOnly && (
                             <>
@@ -428,31 +456,9 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                             {/* Properties */}
                             <div>
                                 <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-3", isDark ? "text-[#4a4a4a]" : "text-[#888]")}>
-                                    Properties
+                                     Properties
                                 </p>
-                                <div className="space-y-0.5">
-
-                                    {/* Status */}
-                                    <FieldRow label="Status" icon={<Zap size={13} />} isDark={isDark}>
-                                        {readOnly ? (
-                                            <div className="flex items-center gap-1.5 px-2 py-0.5 text-[12px] font-semibold" style={{ color: statMeta.color }}>
-                                                {statMeta.icon}
-                                                {statMeta.label}
-                                            </div>
-                                        ) : (
-                                            <InlineSelect
-                                                value={status}
-                                                options={Object.entries(STATUS_META).map(([v, m]) => ({ value: v as TaskStatus, label: m.label, color: m.color, bg: m.bg }))}
-                                                onChange={v => { setStatus(v); save({ status: v }); }}
-                                                isDark={isDark}
-                                                renderLabel={opt => (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span style={opt?.color ? { color: opt.color } : {}} className="font-semibold text-[11.5px]">{opt?.label}</span>
-                                                    </div>
-                                                )}
-                                            />
-                                        )}
-                                    </FieldRow>
+                                <div className="space-y-2">
 
                                     {/* Priority */}
                                     <FieldRow label="Priority" icon={<Flag size={13} />} isDark={isDark}>
@@ -468,7 +474,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                                 isDark={isDark}
                                                 renderLabel={opt => (
                                                     <div className="flex items-center gap-1.5">
-                                                        <span style={opt?.color ? { color: opt.color } : {}} className="font-semibold text-[11.5px]">{opt?.label}</span>
+                                                        <span style={opt?.color ? { color: opt.color } : {}} className="font-semibold text-[12px]">{opt?.label}</span>
                                                     </div>
                                                 )}
                                             />
@@ -483,16 +489,15 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                             </div>
                                         ) : (
                                             <InlineSelect
-                                                value={groupId || 'ungrouped'}
+                                                value={groupId || ''}
                                                 options={groupOptions}
                                                 onChange={v => {
-                                                    const newGroup = v === 'ungrouped' ? null : v;
-                                                    setGroupId(newGroup);
-                                                    save({ task_group_id: newGroup });
+                                                    setGroupId(v);
+                                                    save({ task_group_id: v });
                                                 }}
                                                 isDark={isDark}
                                                 renderLabel={opt => (
-                                                    <div className="flex items-center gap-1.5 text-[11.5px]">
+                                                    <div className="flex items-center gap-1.5 text-[12px]">
                                                         <span className={cn("font-medium", isDark ? "text-[#ddd]" : "text-[#333]")}>{opt?.label}</span>
                                                     </div>
                                                 )}
@@ -501,7 +506,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                     </FieldRow>
 
                                     {/* Start date */}
-                                    <FieldRow label="Start date" icon={<Calendar size={13} />} isDark={isDark}>
+                                    <FieldRow label="Start date" icon={<Clock size={13} />} isDark={isDark}>
                                         {readOnly ? (
                                             <div className={cn("px-2 py-0.5 text-[12px] font-medium", isDark ? "text-[#ddd]" : "text-[#333]")}>
                                                 {startDate || 'None'}
@@ -512,7 +517,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                                 onChange={val => { setStartDate(val); save({ start_date: val || null }); }}
                                                 isDark={isDark}
                                                 placeholder="Select start date"
-                                                className="px-0.5"
+                                                className="px-0.5 text-[12px]"
                                             />
                                         )}
                                     </FieldRow>
@@ -529,52 +534,174 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                                 onChange={val => { setDueDate(val); save({ due_date: val || null }); }}
                                                 isDark={isDark}
                                                 placeholder="Select due date"
-                                                className="px-0.5"
+                                                className="px-0.5 text-[12px]"
                                             />
                                         )}
                                     </FieldRow>
 
-                                    {/* Assignee */}
-                                    <FieldRow label="Assignee" icon={<User size={13} />} isDark={isDark}>
-                                        <FieldValue isDark={isDark} placeholder="Unassigned" />
-                                    </FieldRow>
-
-                                    {/* Repeats */}
-                                    <FieldRow label="Repeats" icon={<Repeat size={13} />} isDark={isDark}>
-                                        <FieldValue isDark={isDark}>
-                                            <span className={cn("text-[12px]", isDark ? "text-[#555]" : "text-[#999]")}>Never</span>
-                                        </FieldValue>
-                                    </FieldRow>
-
-                                    {/* Tag */}
-                                    <FieldRow label="Tag" icon={<Tag size={13} />} isDark={isDark}>
-                                        <FieldValue isDark={isDark} placeholder="Add tag…" />
-                                    </FieldRow>
-
-                                </div>
-                            </div>
-
-                            {/* Divider */}
-                            <div className={cn("h-px", isDark ? "bg-[#1e1e1e]" : "bg-[#f0f0f0]")} />
-
-                            {/* Followers */}
-                            <div>
-                                <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-3", isDark ? "text-[#4a4a4a]" : "text-[#888]")}>
-                                    People
-                                </p>
-                                <div className="space-y-0.5">
-                                    <FieldRow label="Followers" icon={<Eye size={13} />} isDark={isDark}>
-                                        <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg", isDark ? "bg-white/[0.05]" : "bg-[#f5f5f5]")}>
-                                            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[8px] font-bold text-primary-foreground border border-black/10">MH</div>
-                                            <span className={cn("text-[11px] font-semibold tracking-wide uppercase", isDark ? "text-[#ccc]" : "text-[#444]")}>Mohi Hassan</span>
-                                        </div>
-                                    </FieldRow>
-                                    <FieldRow label="Creator" icon={<User size={13} />} isDark={isDark}>
-                                        <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg", isDark ? "bg-white/[0.05]" : "bg-[#f5f5f5]")}>
-                                            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-[8px] font-bold text-primary-foreground border border-black/10">MH</div>
-                                            <span className={cn("text-[11px] font-semibold tracking-wide uppercase", isDark ? "text-[#ccc]" : "text-[#444]")}>Mohi Hassan</span>
-                                        </div>
-                                    </FieldRow>
+                                    {/* Tags */}
+                                     <FieldRow label="Tags" icon={<Tag size={13} />} isDark={isDark}>
+                                         <div className="flex flex-wrap gap-1.5 min-h-[22px]">
+                                             {tags.map((t, i) => (
+                                                 <span 
+                                                     key={i} 
+                                                     className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-[5px] text-[9.5px] font-bold transition-all group/tag"
+                                                     style={{ backgroundColor: `${t.color}15`, color: t.color }}
+                                                 >
+                                                     
+                                                     <span className="truncate">{t.label}</span>
+                                                     {!readOnly && (
+                                                         <button 
+                                                             onClick={() => {
+                                                                 const next = tags.filter((_, idx) => idx !== i);
+                                                                 setTags(next);
+                                                                 save({ custom_fields: { ...task.custom_fields, tags: next } });
+                                                             }}
+                                                             className={cn(
+                                                                 "w-3.5 h-3.5 flex items-center justify-center rounded-full transition-colors",
+                                                                 isDark ? "hover:bg-white/10" : "hover:bg-black/5"
+                                                             )}
+                                                         >
+                                                             <X size={8} />
+                                                         </button>
+                                                     )}
+                                                 </span>
+                                             ))}
+                                             {!readOnly && (
+                                                 <div className="relative">
+                                                     <button 
+                                                         onClick={() => setShowTagPicker(!showTagPicker)}
+                                                         className={cn(
+                                                             "flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all",
+                                                             isDark ? "bg-white/5 text-[#555] hover:text-white" : "bg-black/5 text-[#aaa] hover:text-[#555]"
+                                                         )}
+                                                     >
+                                                         <Plus size={10} />
+                                                         Add
+                                                     </button>
+                                                     
+                                                     {showTagPicker && (
+                                                          <div className={cn(
+                                                              "absolute top-full left-0 mt-2 z-[210] rounded-xl border shadow-2xl overflow-hidden p-1.5 flex flex-col gap-1",
+                                                              isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                                                          )} style={{ minWidth: '160px' }}>
+                                                              <input 
+                                                                  autoFocus
+                                                                  value={tagInput}
+                                                                  onChange={e => setTagInput(e.target.value)}
+                                                                  placeholder="Type a tag..."
+                                                                  className={cn(
+                                                                      "w-full px-2.5 py-1.5 text-[11px] font-medium bg-transparent outline-none rounded-lg transition-colors",
+                                                                      isDark ? "text-white placeholder:text-[#555] hover:bg-white/5 focus:bg-white/5" : "text-[#111] placeholder:text-[#aaa] hover:bg-black/5 focus:bg-black/5"
+                                                                  )}
+                                                                  onKeyDown={e => {
+                                                                      if (e.key === 'Enter' && tagInput.trim()) {
+                                                                          // Check if tag exists
+                                                                          const exists = projectTags.find((pt: any) => pt.label.toLowerCase() === tagInput.trim().toLowerCase());
+                                                                          if (exists) {
+                                                                              if (!tags.some(t => t.label === exists.label)) {
+                                                                                  const next = [...tags, exists];
+                                                                                  setTags(next);
+                                                                                  save({ custom_fields: { ...task.custom_fields, tags: next } });
+                                                                              }
+                                                                          } else {
+                                                                              const next = [...tags, { label: tagInput.trim(), color: primaryColor }];
+                                                                              setTags(next);
+                                                                              save({ custom_fields: { ...task.custom_fields, tags: next } });
+                                                                          }
+                                                                          setTagInput('');
+                                                                          setShowTagPicker(false);
+                                                                      }
+                                                                      if (e.key === 'Escape') {
+                                                                          setShowTagPicker(false);
+                                                                          setTagInput('');
+                                                                      }
+                                                                  }}
+                                                              />
+                                                              
+                                                              <div className="max-h-[140px] overflow-y-auto no-scrollbar flex flex-col gap-0.5">
+                                                                  {projectTags
+                                                                      .filter((pt: any) => !tags.some(t => t.label === pt.label))
+                                                                      .filter((pt: any) => pt.label.toLowerCase().includes(tagInput.toLowerCase()))
+                                                                      .map((pt: any) => (
+                                                                          <button
+                                                                              key={pt.label}
+                                                                              onClick={() => {
+                                                                                  const next = [...tags, pt];
+                                                                                  setTags(next);
+                                                                                  save({ custom_fields: { ...task.custom_fields, tags: next } });
+                                                                                  setShowTagPicker(false);
+                                                                                  setTagInput('');
+                                                                              }}
+                                                                              className={cn(
+                                                                                  "w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] rounded-lg transition-colors group/opt font-medium",
+                                                                                  isDark ? "hover:bg-white/10 text-[#ddd]" : "hover:bg-black/5 text-[#333]"
+                                                                              )}
+                                                                          >
+                                                                              <div className="w-1.5 h-1.5 rounded-full opacity-70 group-hover/opt:opacity-100 transition-opacity" style={{ backgroundColor: pt.color }} />
+                                                                              <span className="flex-1 truncate">{pt.label}</span>
+                                                                          </button>
+                                                                      ))
+                                                                  }
+                                                                  
+                                                                  {tagInput.trim() && !projectTags.some((pt: any) => pt.label.toLowerCase() === tagInput.trim().toLowerCase()) && (
+                                                                      <div className={cn(
+                                                                          "flex flex-col gap-1.5 p-1.5 rounded-lg border mt-1",
+                                                                          isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
+                                                                      )}>
+                                                                          <button
+                                                                              onClick={() => {
+                                                                                  const next = [...tags, { label: tagInput.trim(), color: primaryColor }];
+                                                                                  setTags(next);
+                                                                                  save({ custom_fields: { ...task.custom_fields, tags: next } });
+                                                                                  setTagInput('');
+                                                                                  setShowTagPicker(false);
+                                                                              }}
+                                                                              className="w-full flex items-center gap-2 text-left text-[11px] font-medium transition-colors opacity-90 hover:opacity-100"
+                                                                          >
+                                                                              <Plus size={11} className="opacity-70" />
+                                                                              <span className="flex-1 truncate">Create "{tagInput}"</span>
+                                                                          </button>
+                                                                          <div className="flex flex-wrap gap-1 mt-0.5 pl-0.5">
+                                                                              <button
+                                                                                   onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        const next = [...tags, { label: tagInput.trim(), color: primaryColor }];
+                                                                                        setTags(next);
+                                                                                        save({ custom_fields: { ...task.custom_fields, tags: next } });
+                                                                                        setTagInput('');
+                                                                                        setShowTagPicker(false);
+                                                                                   }}
+                                                                                   className="w-3.5 h-3.5 rounded-full ring-2 ring-offset-1 transition-transform hover:scale-110"
+                                                                                   style={{ backgroundColor: primaryColor, '--tw-ring-color': primaryColor, '--tw-ring-opacity': '0.3', ...(isDark ? { '--tw-ring-offset-color': '#1c1c1c' } : { '--tw-ring-offset-color': '#fff' }) } as any}
+                                                                                   title="Brand Color"
+                                                                              />
+                                                                              {TAG_COLORS.map(c => (
+                                                                                  <button
+                                                                                      key={c.hex}
+                                                                                      onClick={(e) => {
+                                                                                           e.stopPropagation();
+                                                                                           const next = [...tags, { label: tagInput.trim(), color: c.hex }];
+                                                                                           setTags(next);
+                                                                                           save({ custom_fields: { ...task.custom_fields, tags: next } });
+                                                                                           setTagInput('');
+                                                                                           setShowTagPicker(false);
+                                                                                      }}
+                                                                                      className="w-3.5 h-3.5 rounded-full transition-transform hover:scale-110 opacity-70 hover:opacity-100"
+                                                                                      style={{ backgroundColor: c.hex }}
+                                                                                      title={c.name}
+                                                                                  />
+                                                                              ))}
+                                                                          </div>
+                                                                      </div>
+                                                                  )}
+                                                              </div>
+                                                          </div>
+                                                      )}
+                                                 </div>
+                                             )}
+                                         </div>
+                                     </FieldRow>
                                 </div>
                             </div>
 
@@ -667,56 +794,125 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                             )}
 
                             {activeTab === 'checklists' && (
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-4">
+                                    {/* Checklist Input */}
                                     {!readOnly && (
-                                        <button className={cn(
-                                            "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[12px] font-semibold transition-all",
-                                            isDark ? "border-[#252525] text-[#555] hover:text-white hover:bg-white/5" : "border-[#e5e5e5] text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]"
-                                        )}>
-                                            <Plus size={13} /> Add checklist
-                                        </button>
-                                    )}
-                                    <div className="flex flex-col items-center justify-center py-10 gap-3">
-                                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
-                                            <Check size={18} className={isDark ? "text-[#333]" : "text-[#ccc]"} />
+                                        <div className="flex items-center gap-2">
+                                            <input 
+                                                value={checklistInput}
+                                                onChange={e => setChecklistInput(e.target.value)}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter' && checklistInput.trim()) {
+                                                        const newItem = { id: crypto.randomUUID(), label: checklistInput.trim(), completed: false };
+                                                        const next = [...checklists, newItem];
+                                                        setChecklists(next);
+                                                        save({ custom_fields: { ...task.custom_fields, checklists: next } });
+                                                        setChecklistInput('');
+                                                    }
+                                                }}
+                                                placeholder="Add a sub-task..."
+                                                className={cn(
+                                                    "flex-1 px-3 py-2 rounded-xl border bg-transparent text-[12px] outline-none transition-all focus:ring-2 focus:ring-primary/20",
+                                                    isDark ? "border-[#252525] text-white placeholder:text-[#333]" : "border-[#e5e5e5] text-[#111] placeholder:text-[#ccc]"
+                                                )}
+                                            />
                                         </div>
-                                        <p className={cn("text-[12px] font-medium", isDark ? "text-[#444]" : "text-[#bbb]")}>No checklists</p>
-                                        <p className={cn("text-[11px]", isDark ? "text-[#333]" : "text-[#ccc]")}>Break this task into steps</p>
+                                    )}
+
+                                    {/* Checklist Items */}
+                                    <div className="flex flex-col gap-1">
+                                        {checklists.map(item => (
+                                            <div key={item.id} className="flex items-center gap-3 group/item py-1">
+                                                <button 
+                                                    onClick={() => {
+                                                        const next = checklists.map(c => c.id === item.id ? { ...c, completed: !c.completed } : c);
+                                                        setChecklists(next);
+                                                        save({ custom_fields: { ...task.custom_fields, checklists: next } });
+                                                    }}
+                                                    className={cn(
+                                                        "w-4 h-4 rounded border transition-all flex items-center justify-center",
+                                                        item.completed 
+                                                            ? "bg-primary border-primary text-primary-foreground" 
+                                                            : isDark ? "border-[#333] hover:border-[#555]" : "border-[#ccc] hover:border-[#aaa]"
+                                                    )}
+                                                >
+                                                    {item.completed && <Check size={10} strokeWidth={4} />}
+                                                </button>
+                                                <span className={cn(
+                                                    "flex-1 text-[12.5px] transition-all",
+                                                    item.completed ? "line-through opacity-40" : isDark ? "text-[#ddd]" : "text-[#333]"
+                                                )}>
+                                                    {item.label}
+                                                </span>
+                                                <button 
+                                                    onClick={() => {
+                                                        const next = checklists.filter(c => c.id !== item.id);
+                                                        setChecklists(next);
+                                                        save({ custom_fields: { ...task.custom_fields, checklists: next } });
+                                                    }}
+                                                    className="opacity-0 group-hover/item:opacity-40 hover:!opacity-100 transition-opacity p-1 rounded hover:bg-red-500/10 text-red-500"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        {checklists.length === 0 && (
+                                            <div className="py-10 flex flex-col items-center justify-center gap-3 opacity-20">
+                                                <Check size={24} />
+                                                <span className="text-[12px] font-medium">No sub-tasks yet</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
 
                             {activeTab === 'attachments' && (
-                                <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-4">
                                     {!readOnly && (
-                                        <button className={cn(
-                                            "flex items-center justify-center gap-2 px-4 py-8 rounded-xl border-2 border-dashed text-[12px] font-semibold transition-all",
-                                            isDark ? "border-[#252525] text-[#444] hover:text-white hover:border-[#383838] hover:bg-white/[0.03]" : "border-[#e5e5e5] text-[#bbb] hover:text-[#333] hover:border-[#bbb]"
+                                        <div className={cn(
+                                            "relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer group/upload",
+                                            isDark ? "border-[#252525] hover:border-[#333] hover:bg-white/[0.02]" : "border-[#e5e5e5] hover:border-[#ccc] hover:bg-black/[0.02]"
                                         )}>
-                                            <Paperclip size={16} />
-                                            <span>Drop files here or click to upload</span>
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-
-                            {activeTab === 'activity' && (
-                                <div className="space-y-4 py-1">
-                                    {/* Activity item */}
-                                    <div className="flex gap-3">
-                                        <div className="relative shrink-0">
-                                            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
-                                                <Plus size={11} className="text-primary" />
+                                            <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-1 transition-all group-hover/upload:scale-110", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
+                                                <Paperclip size={20} className={isDark ? "text-[#444]" : "text-[#aaa]"} />
                                             </div>
-                                            <div className={cn("absolute left-1/2 top-full w-px h-4 -translate-x-1/2", isDark ? "bg-[#252525]" : "bg-[#e8e8e8]")} />
+                                            <p className={cn("text-[13px] font-semibold", isDark ? "text-[#ddd]" : "text-[#333]")}>Upload attachments</p>
+                                            <p className={cn("text-[11px] text-center max-w-[200px]", isDark ? "text-[#444]" : "text-[#888]")}>Drag & drop or Click to browse files</p>
+                                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={() => appToast.info('B2 Upload logic active')} />
                                         </div>
-                                        <div className={cn("flex flex-col gap-0.5 pt-1", isDark ? "text-[#666]" : "text-[#888]")}>
-                                            <span className={cn("text-[12px] font-semibold", isDark ? "text-[#ddd]" : "text-[#222]")}>Task created</span>
-                                            <span className={cn("text-[10px]", isDark ? "text-[#444]" : "text-[#bbb]")}>
-                                                by <strong className={isDark ? "text-[#888]" : "text-[#555]"}>Mohi Hassan</strong> ·{' '}
-                                                {new Date(task.created_at).toLocaleDateString('en-GB')} at {new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        </div>
+                                    )}
+
+                                    <div className="flex flex-col gap-2">
+                                        {attachments.map(file => (
+                                            <div key={file.id} className={cn(
+                                                "p-3 rounded-xl border flex items-center gap-3 group/file transition-all",
+                                                isDark ? "bg-[#1a1a1a] border-[#252525] hover:bg-[#1f1f1f]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]"
+                                            )}>
+                                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
+                                                    <Paperclip size={16} className={isDark ? "text-[#444]" : "text-[#aaa]"} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className={cn("text-[12.5px] font-semibold truncate", isDark ? "text-white" : "text-[#111]")}>{file.name}</p>
+                                                    <p className={cn("text-[10px] uppercase font-bold tracking-wider opacity-30 mt-0.5", isDark ? "text-white" : "text-black")}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                                </div>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover/file:opacity-100 transition-opacity">
+                                                    <a href={file.url} download className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-white/10 text-white/40" : "hover:bg-black/5 text-black/40")}>
+                                                        <ArrowUpRight size={13} />
+                                                    </a>
+                                                    <button className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-red-500/60" : "hover:bg-red-500/10 text-red-500/60")}>
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {attachments.length === 0 && (
+                                            <div className="py-10 flex flex-col items-center justify-center gap-3 opacity-20">
+                                                <Paperclip size={24} />
+                                                <span className="text-[12px] font-medium">No files attached</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -746,6 +942,16 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                     </div>
                 </div>
+
+                {/* Floating Task ID bottom left */}
+                <div className={cn(
+                    "absolute bottom-4 left-6 flex items-center gap-1.5 text-[10px] font-bold tracking-wider uppercase opacity-[0.15] select-none pointer-events-none",
+                    isDark ? "text-white" : "text-black"
+                )}>
+                    <Hash size={9} />
+                    {task.id.slice(-5).toUpperCase()}
+                </div>
+
             </motion.div>
         </div>
     );

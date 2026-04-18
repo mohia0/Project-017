@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, Check, Calendar, RefreshCw } from 'lucide-react';
+import { X, Check, Calendar, RefreshCw, ChevronRight, Search, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useProjectStore, Project } from '@/store/useProjectStore';
+import { useClientStore } from '@/store/useClientStore';
 import { appToast } from '@/lib/toast';
 import DatePicker from '@/components/ui/DatePicker';
+import ClientEditor from '@/components/clients/ClientEditor';
+import { Avatar } from '@/components/ui/Avatar';
+import { useRef } from 'react';
 
 interface Props {
     open: boolean;
@@ -19,18 +23,47 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
     const isDark = theme === 'dark';
     const { updateProject } = useProjectStore();
 
-    const [name, setName]         = useState(project.name);
-    const [desc, setDesc]         = useState(project.description || '');
-    const [deadline, setDeadline] = useState(project.deadline || '');
-    const [saving, setSaving]     = useState(false);
+    const { clients, fetchClients } = useClientStore();
+
+    const [name, setName]               = useState(project.name);
+    const [desc, setDesc]               = useState(project.description || '');
+    const [deadline, setDeadline]       = useState(project.deadline || '');
+    const [clientId, setClientId]       = useState<string | null>(project.client_id || null);
+    const [clientName, setClientName]   = useState(project.client_name || '');
+    const [clientOpen, setClientOpen]   = useState(false);
+    const [clientSearch, setClientSearch] = useState('');
+    const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
+    const [saving, setSaving]           = useState(false);
+
+    const clientRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => { fetchClients(); }, [fetchClients]);
 
     useEffect(() => {
         if (open) {
             setName(project.name);
             setDesc(project.description || '');
             setDeadline(project.deadline || '');
+            setClientId(project.client_id || null);
+            setClientName(project.client_name || '');
         }
     }, [open, project]);
+
+    // Close dropdowns on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (clientRef.current && !clientRef.current.contains(e.target as Node)) {
+                setClientOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const filteredClients = clients.filter(c =>
+        !clientSearch || 
+        (c.contact_person + ' ' + (c.company_name || '')).toLowerCase().includes(clientSearch.toLowerCase())
+    );
 
     const handleSave = async () => {
         if (!name.trim()) { appToast.error("Error", 'Project name is required'); return; }
@@ -39,7 +72,9 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
             const success = await updateProject(project.id, { 
                 name: name.trim(), 
                 description: desc.trim() || null, 
-                deadline: deadline || null 
+                deadline: deadline || null,
+                client_id: clientId,
+                client_name: clientName || null
             });
             if (success) {
                 appToast.success('Project updated successfully');
@@ -49,6 +84,17 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
             }
         } finally {
             setSaving(false);
+        }
+    };
+    const handleCreateClient = async (data: any) => {
+        const client = await useClientStore.getState().addClient(data);
+        if (client) {
+            setClientName(client.contact_person || client.company_name);
+            setClientId(client.id);
+            setIsClientEditorOpen(false);
+            setClientSearch('');
+            setClientOpen(false);
+            appToast.success('Contact created and selected');
         }
     };
 
@@ -88,7 +134,7 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
                 </div>
 
                 {/* Body */}
-                <div className="px-5 pb-5 flex flex-col gap-2.5 max-h-[70vh] overflow-y-auto">
+                <div className="px-5 pb-5 flex flex-col gap-2.5">
                     {/* Project Name */}
                     <div className={cn(field, "flex flex-col gap-0.5 text-left")}>
                         <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Project Name</span>
@@ -121,6 +167,84 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
                             placeholder="Set project deadline"
                         />
                     </div>
+
+                    {/* Client Selector */}
+                    <div className="relative" ref={clientRef}>
+                        <div
+                            className={cn(field, "flex flex-col gap-0.5 cursor-pointer text-left")}
+                            onClick={() => setClientOpen(v => !v)}
+                        >
+                            <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Client (optional)</span>
+                            <div className="flex items-center justify-between">
+                                {clientName
+                                    ? <span className={isDark ? "text-white" : "text-[#111]"}>{clientName}</span>
+                                    : <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Select client</span>
+                                }
+                                <ChevronRight size={14} className={cn("transition-transform", clientOpen ? "rotate-90" : "")} />
+                            </div>
+                        </div>
+                        {clientOpen && (
+                            <div className={cn(
+                                "absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden",
+                                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                            )}>
+                                <div className="p-2 border-b border-inherit">
+                                    <div className="relative">
+                                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-30" />
+                                        <input
+                                            autoFocus
+                                            value={clientSearch}
+                                            onChange={e => setClientSearch(e.target.value)}
+                                            placeholder="Search clients..."
+                                            className={cn(
+                                                "w-full text-[12px] pl-8 pr-3 py-1.5 rounded-lg outline-none",
+                                                isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]"
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="max-h-40 overflow-auto">
+                                    <button
+                                        onClick={() => { setClientId(null); setClientName(''); setClientOpen(false); }}
+                                        className={cn(
+                                            "w-full text-left px-4 py-2.5 text-[13px] transition-colors",
+                                            isDark ? "text-[#555] hover:bg-white/5" : "text-[#999] hover:bg-[#fafafa]"
+                                        )}
+                                    >
+                                        No client
+                                    </button>
+                                    {filteredClients.map(c => (
+                                        <button
+                                            key={c.id}
+                                            onClick={() => { setClientName(c.contact_person || c.company_name); setClientId(c.id); setClientSearch(''); setClientOpen(false); }}
+                                            className={cn(
+                                                "w-full text-left px-4 py-2 text-[13px] transition-colors flex items-center gap-2",
+                                                isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                            )}
+                                        >
+                                            <Avatar name={c.contact_person || c.company_name} src={c.avatar_url} className="w-5 h-5" isDark={isDark} />
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{c.contact_person}</span>
+                                                {c.company_name && <span className={cn("text-[10px]", isDark ? "text-[#555]" : "text-[#aaa]")}>{c.company_name}</span>}
+                                            </div>
+                                            {c.id === clientId && <Check size={13} className="ml-auto text-primary" />}
+                                        </button>
+                                    ))}
+                                    <div className={cn("border-t", isDark ? "border-white/5" : "border-black/5")} />
+                                    <button
+                                        onClick={() => setIsClientEditorOpen(true)}
+                                        className={cn(
+                                            "w-full text-left px-4 py-2.5 text-[13px] font-bold transition-colors flex items-center gap-2",
+                                            isDark ? "text-primary hover:bg-white/5" : "text-primary hover:bg-black/5"
+                                        )}
+                                    >
+                                        <Plus size={14} strokeWidth={3} />
+                                        {clientSearch ? `Create "${clientSearch}"` : 'Create new contact'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer */}
@@ -140,13 +264,25 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
                     <button
                         onClick={handleSave}
                         disabled={saving || !name.trim()}
-                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-colors disabled:opacity-60"
+                        className="flex items-center gap-2 px-5 py-2 text-[13px] font-bold rounded-xl bg-[#4dbf39] hover:bg-[#59d044] text-black transition-all active:scale-95 disabled:opacity-60"
                     >
                         {saving ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
                         Save Changes
                     </button>
                 </div>
             </div>
+
+            {isClientEditorOpen && (
+                <ClientEditor
+                    onClose={() => setIsClientEditorOpen(false)}
+                    onSave={handleCreateClient}
+                    initialData={{
+                        contact_person: clientSearch,
+                        company_name: '',
+                        email: ''
+                    }}
+                />
+            )}
         </div>
     );
 }

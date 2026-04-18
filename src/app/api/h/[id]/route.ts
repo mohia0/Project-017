@@ -13,9 +13,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     try {
         // Fetch hook details — needed for notification title/link
-        const { data: hook, error: hookError } = await supabaseService
+            const { data: hook, error: hookError } = await supabaseService
             .from('hooks')
-            .select('id, workspace_id, name, title, link, status')
+            .select('id, workspace_id, name, title, link, status, color')
             .eq('id', id)
             .single();
 
@@ -26,30 +26,48 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
             // Log the view asynchronously — don't block the pixel response
             (async () => {
-                await supabaseService.from('hook_events').insert({
-                    hook_id: hook.id,
-                    ip_address: ip,
-                    user_agent: ua,
-                });
+                const thresholdDate = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+                
+                // Group by IP and User-Agent within a 2-minute window
+                const { data: recentEvent } = await supabaseService
+                    .from('hook_events')
+                    .select('id')
+                    .eq('hook_id', hook.id)
+                    .eq('ip_address', ip)
+                    .eq('user_agent', ua)
+                    .gte('created_at', thresholdDate)
+                    .limit(1)
+                    .maybeSingle();
 
-                const notificationTitle = `Someone viewed "${hook.name}"`;
-                const messageParts = [];
-                // Case-insensitive check for default value
-                if (hook.title && !hook.title.toLowerCase().includes('webhook endpoint')) {
-                    messageParts.push(hook.title);
+                if (!recentEvent) {
+                    await supabaseService.from('hook_events').insert({
+                        hook_id: hook.id,
+                        ip_address: ip,
+                        user_agent: ua,
+                    });
+
+                    const notificationTitle = `Someone viewed "${hook.name}"`;
+                    const messageParts = [];
+                    // Case-insensitive check for default value
+                    if (hook.title && !hook.title.toLowerCase().includes('webhook endpoint')) {
+                        messageParts.push(hook.title);
+                    }
+                    if (hook.link) messageParts.push(`Source: ${hook.link}`);
+                    if (messageParts.length === 0) messageParts.push(`Pixel tracking event recorded.`);
+
+                    await supabaseService.from('notifications').insert({
+                        workspace_id: hook.workspace_id,
+                        title: notificationTitle,
+                        message: messageParts.join(' • '),
+                        link: `/hooks`,
+                        read: false,
+                        type: 'hook',
+                        metadata: { 
+                            visitor, 
+                            color: hook.color 
+                        }
+                    });
                 }
-                if (hook.link) messageParts.push(`Source: ${hook.link}`);
-                if (messageParts.length === 0) messageParts.push(`Pixel tracking event recorded.`);
-
-                await supabaseService.from('notifications').insert({
-                    workspace_id: hook.workspace_id,
-                    title: notificationTitle,
-                    message: messageParts.join(' • '),
-                    link: `/hooks`,
-                    read: false,
-                    type: 'hook',
-                    metadata: visitor ? { visitor } : null
-                });
             })();
         }
     } catch (_) {

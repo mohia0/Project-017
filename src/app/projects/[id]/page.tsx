@@ -9,7 +9,7 @@ import {
     MoreHorizontal, RefreshCw, Edit3, Link2, FileText, Receipt,
     ArchiveRestore, Upload, Download, Copy, Zap,
     Target, TrendingUp, Clock, CheckCircle2, AlertCircle, Layers,
-    ArrowLeft, Eye, PenLine, ExternalLink, Monitor, Smartphone, Send,
+    ArrowLeft, Eye, PenLine, ExternalLink, Monitor, Smartphone, Send, Settings, LayoutTemplate
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -20,6 +20,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { Avatar } from '@/components/ui/Avatar';
 import EditProjectModal from '@/components/projects/EditProjectModal';
+import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
+import { useTemplateStore } from '@/store/useTemplateStore';
+import { DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import dynamic from 'next/dynamic';
 
 const KanbanBoard = dynamic(() => import('@/components/projects/KanbanBoard'), { ssr: false });
@@ -176,222 +179,425 @@ function CircleProgress({ pct, color, size = 36, isDark }: { pct: number; color:
     );
 }
 
-// ─── Linked Items Tab ─────────────────────────────────────────────────────────
-
 function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: boolean }) {
-    const { itemsByProject, fetchProjectItems, addProjectItem, removeProjectItem } = useProjectStore();
-    const { invoices, fetchInvoices } = useInvoiceStore();
-    const { proposals, fetchProposals } = useProposalStore();
+    const router = useRouter();
+    const { itemsByProject, fetchProjectItems, addProjectItem, removeProjectItem, isLoading: projectsLoading } = useProjectStore();
+    const { invoices, fetchInvoices, isLoading: invoicesLoading } = useInvoiceStore();
+    const { proposals, fetchProposals, isLoading: proposalsLoading } = useProposalStore();
     const items = itemsByProject[projectId] || [];
 
-    const [linkOpen, setLinkOpen] = useState(false);
-    const [search, setSearch]     = useState('');
-    const [linkType, setLinkType] = useState<'invoice' | 'proposal'>('invoice');
+    const [linkOpen, setLinkOpen]   = useState(false);
+    const [search, setSearch]       = useState('');
+    const [linkType, setLinkType]   = useState<'invoice' | 'proposal'>('invoice');
+    const [unlinking, setUnlinking] = useState<string | null>(null);
+
+    const [tableFilter, setTableFilter] = useState<'invoice' | 'proposal'>('invoice');
+
+    const { activeWorkspaceId } = useUIStore();
 
     useEffect(() => {
+        if (!activeWorkspaceId || !projectId) return;
         fetchProjectItems(projectId);
         fetchInvoices();
         fetchProposals();
-    }, [projectId, fetchProjectItems, fetchInvoices, fetchProposals]);
+    }, [projectId, activeWorkspaceId, fetchProjectItems, fetchInvoices, fetchProposals]);
+
+    const linkedInvoices  = items.filter(i => i.item_type === 'invoice');
+    const linkedProposals = items.filter(i => i.item_type === 'proposal');
+    const getInvoice  = (id: string) => invoices.find((i: any) => i.id === id) as any;
+    const getProposal = (id: string) => proposals.find((p: any) => p.id === id) as any;
 
     const available = useMemo(() => {
         const linked = new Set(items.map(i => i.item_id));
         const src = linkType === 'invoice' ? invoices : proposals;
-        return src.filter((i: any) => !linked.has(i.id) && (!search || i.title?.toLowerCase().includes(search.toLowerCase())));
+        return (src as any[]).filter(i => !linked.has(i.id) && (!search || i.title?.toLowerCase().includes(search.toLowerCase())));
     }, [linkType, invoices, proposals, items, search]);
+
+    const totalInvoiced = linkedInvoices.reduce((sum, li) => {
+        const inv = getInvoice(li.item_id);
+        return sum + Number(inv?.amount || 0);
+    }, 0);
 
     const handleLink = async (itemId: string) => {
         await addProjectItem({ project_id: projectId, item_type: linkType, item_id: itemId });
-        appToast.success('Linked', 'Item has been linked to this project');
+        appToast.success('Linked', 'Item linked to this project');
         setLinkOpen(false);
         setSearch('');
     };
     const handleUnlink = async (id: string) => {
+        setUnlinking(id);
         await removeProjectItem(id, projectId);
-        appToast.success('Unlinked', 'Item has been removed from this project');
+        setUnlinking(null);
+        appToast.success('Unlinked', 'Item removed from this project');
     };
 
-    const linkedInvoices  = items.filter(i => i.item_type === 'invoice');
-    const linkedProposals = items.filter(i => i.item_type === 'proposal');
-    const getInvoice  = (id: string) => invoices.find((i: any) => i.id === id);
-    const getProposal = (id: string) => proposals.find((p: any) => p.id === id);
+    const STATUS_META: Record<string, { color: string; label: string }> = {
+        draft:    { color: isDark ? '#555' : '#aaa', label: 'Draft'    },
+        pending:  { color: '#f59e0b',                label: 'Pending'  },
+        sent:     { color: '#6366f1',                label: 'Sent'     },
+        paid:     { color: '#10b981',                label: 'Paid'     },
+        overdue:  { color: '#ef4444',                label: 'Overdue'  },
+        accepted: { color: '#10b981',                label: 'Accepted' },
+        rejected: { color: '#ef4444',                label: 'Rejected' },
+        viewed:   { color: '#f59e0b',                label: 'Viewed'   },
+        approved: { color: '#10b981',                label: 'Approved' },
+    };
+    const getS = (s: string) => STATUS_META[s?.toLowerCase()] ?? { color: isDark ? '#444' : '#bbb', label: s || 'Draft' };
 
-    const totalInvoiced = linkedInvoices.reduce((sum, li) => {
-        const inv = getInvoice(li.item_id) as any;
-        return sum + Number(inv?.amount || 0);
-    }, 0);
+    const cardBase = cn(
+        "group flex items-center gap-3 px-4 py-3 rounded-xl border transition-all",
+        isDark
+            ? "bg-[#1c1c1c] border-[#252525] hover:border-[#333] hover:bg-[#1e1e1e]"
+            : "bg-white border-[#ebebeb] hover:border-[#d5d5d5] shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
+    );
+
+    const skeletonCard = (key: string) => (
+        <div key={key} className={cn("flex items-center gap-3 px-4 py-3 rounded-xl border", isDark ? "bg-[#1c1c1c] border-[#252525]" : "bg-white border-[#ebebeb]")}>
+            <div className={cn("w-8 h-8 rounded-xl shrink-0 animate-pulse", isDark ? "bg-white/5" : "bg-[#f0f0f0]")} />
+            <div className="flex-1 space-y-2">
+                <div className={cn("h-2.5 w-32 rounded-full animate-pulse", isDark ? "bg-white/5" : "bg-[#efefef]")} />
+                <div className={cn("h-2 w-20 rounded-full animate-pulse", isDark ? "bg-white/[0.03]" : "bg-[#f5f5f5]")} />
+            </div>
+        </div>
+    );
 
     return (
-        <div className={cn("flex-1 overflow-y-auto min-h-0", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
-            <div className="max-w-3xl mx-auto p-6 space-y-6">
+        <div className={cn("flex-1 overflow-y-auto min-h-0 no-scrollbar", isDark ? "bg-[#141414]" : "bg-[#f4f4f6]")}>
+
+            {/* ── Link picker overlay ── */}
+            <AnimatePresence>
+                {linkOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => { setLinkOpen(false); setSearch(''); }}
+                            className="fixed inset-0 z-40"
+                            style={{ background: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.18)' }}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 14, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 14, scale: 0.97 }}
+                            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                            className={cn(
+                                "fixed left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-50",
+                                "w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden",
+                                isDark ? "bg-[#1a1a1a] border-[#2a2a2a]" : "bg-white border-[#e0e0e0]"
+                            )}
+                        >
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-5 pt-5 pb-4">
+                                <div>
+                                    <h4 className={cn("text-[14px] font-bold", isDark ? "text-white" : "text-[#111]")}>Link an Item</h4>
+                                    <p className={cn("text-[11px] mt-0.5", isDark ? "text-[#555]" : "text-[#aaa]")}>Connect invoices or proposals to this project</p>
+                                </div>
+                                <button
+                                    onClick={() => { setLinkOpen(false); setSearch(''); }}
+                                    className={cn("w-8 h-8 flex items-center justify-center rounded-xl transition-all", isDark ? "text-[#555] hover:text-[#ccc] hover:bg-white/5" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}
+                                >
+                                    <X size={15} />
+                                </button>
+                            </div>
+
+                            {/* Type selector */}
+                            <div className="px-5 pb-3">
+                                <div className={cn("flex gap-1 p-1 rounded-xl", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
+                                    {(['invoice', 'proposal'] as const).map(t => (
+                                        <button
+                                            key={t}
+                                            onClick={() => { setLinkType(t); setSearch(''); }}
+                                            className={cn(
+                                                "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11.5px] font-semibold transition-all",
+                                                linkType === t
+                                                    ? isDark ? "bg-white/10 text-white shadow-sm" : "bg-white text-[#111] shadow-sm"
+                                                    : isDark ? "text-[#555] hover:text-[#aaa]" : "text-[#aaa] hover:text-[#555]"
+                                            )}
+                                        >
+                                            {t === 'invoice' ? <Receipt size={12} /> : <FileText size={12} />}
+                                            {t === 'invoice' ? 'Invoices' : 'Proposals'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Search */}
+                            <div className="px-5 pb-3">
+                                <div className={cn(
+                                    "flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border",
+                                    isDark ? "bg-white/[0.03] border-white/[0.07]" : "bg-[#f9f9f9] border-[#ebebeb]"
+                                )}>
+                                    <Search size={13} className={isDark ? "text-[#444]" : "text-[#ccc]"} />
+                                    <input
+                                        autoFocus
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        placeholder={`Search ${linkType === 'invoice' ? 'invoices' : 'proposals'}…`}
+                                        className={cn("flex-1 bg-transparent text-[12.5px] outline-none", isDark ? "text-[#ccc] placeholder:text-[#333]" : "text-[#333] placeholder:text-[#bbb]")}
+                                    />
+                                    {search && (
+                                        <button onClick={() => setSearch('')} className={cn("transition-colors", isDark ? "text-[#444] hover:text-[#aaa]" : "text-[#ccc] hover:text-[#666]")}>
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Results */}
+                            <div className={cn("border-t overflow-y-auto max-h-[280px] no-scrollbar", isDark ? "border-[#222]" : "border-[#f0f0f0]")}>
+                                {available.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
+                                            {linkType === 'invoice' ? <Receipt size={16} className={isDark ? "text-[#333]" : "text-[#ccc]"} /> : <FileText size={16} className={isDark ? "text-[#333]" : "text-[#ccc]"} />}
+                                        </div>
+                                        <p className={cn("text-[12px] font-medium", isDark ? "text-[#444]" : "text-[#999]")}>
+                                            {search ? 'No results found' : `All ${linkType === 'invoice' ? 'invoices' : 'proposals'} already linked`}
+                                        </p>
+                                    </div>
+                                ) : available.slice(0, 30).map((item: any) => {
+                                    const { color: sc, label: statusLabel } = getS(item.status);
+                                    const isInv = linkType === 'invoice';
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => handleLink(item.id)}
+                                            className={cn(
+                                                "w-full flex items-center gap-3 px-5 py-3 text-left transition-all group",
+                                                isDark ? "hover:bg-white/[0.03]" : "hover:bg-[#fafafa]"
+                                            )}
+                                        >
+                                            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                                                style={{ background: isInv ? 'rgba(16,185,129,0.1)' : 'rgba(99,102,241,0.1)' }}>
+                                                {isInv ? <Receipt size={13} className="text-emerald-500" /> : <FileText size={13} className="text-indigo-500" />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={cn("text-[12.5px] font-semibold truncate", isDark ? "text-[#ccc]" : "text-[#222]")}>
+                                                    {item.title || `${isInv ? 'INV' : 'PROP'}-${item.id.slice(-6).toUpperCase()}`}
+                                                </p>
+                                                {item.client_name && <p className={cn("text-[11px] truncate mt-0.5", isDark ? "text-[#444]" : "text-[#aaa]")}>{item.client_name}</p>}
+                                            </div>
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                                                style={{ color: sc, background: `${sc}15` }}>
+                                                {statusLabel}
+                                            </span>
+                                            {item.amount > 0 && (
+                                                <span className={cn("text-[12px] font-bold tabular-nums shrink-0", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                                                    ${Number(item.amount).toLocaleString()}
+                                                </span>
+                                            )}
+                                            <div className={cn(
+                                                "w-6 h-6 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all shrink-0",
+                                                isDark ? "bg-white/8 text-[#aaa]" : "bg-[#f0f0f0] text-[#555]"
+                                            )}>
+                                                <Plus size={11} />
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* ── Main content ── */}
+            <div className="max-w-3xl mx-auto px-5 pt-6 pb-10 space-y-5">
+
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className={cn("text-[15px] font-bold tracking-tight", isDark ? "text-white" : "text-[#111]")}>
-                            Linked Items
-                        </h3>
-                        <p className={cn("text-[11px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                            Connect invoices and proposals to this project
+                        <h3 className={cn("text-[13.5px] font-bold", isDark ? "text-white" : "text-[#111]")}>Finances</h3>
+                        <p className={cn("text-[11px] mt-0.5", isDark ? "text-[#444]" : "text-[#aaa]")}>
+                            {items.length === 0 ? 'No items connected' : `${items.length} item${items.length !== 1 ? 's' : ''} connected`}
                         </p>
                     </div>
                     <button
-                        onClick={() => setLinkOpen(v => !v)}
-                        className="flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-[12px] font-bold rounded-[8px] transition-all active:scale-95 shadow-lg shadow-primary/20"
+                        onClick={() => { setLinkOpen(v => !v); setSearch(''); }}
+                        className="flex items-center gap-1.5 px-3.5 h-8 rounded-xl text-[11.5px] font-semibold transition-all bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 shadow-sm shadow-primary/25"
                     >
                         <Plus size={13} /> Link Item
                     </button>
                 </div>
 
-                {/* Summary Cards */}
-                {items.length > 0 && (
-                    <div className="grid grid-cols-3 gap-3">
-                        {[
-                            { label: 'Total Links', value: items.length, color: '#6366f1', icon: <Link2 size={14} /> },
-                            { label: 'Invoices', value: linkedInvoices.length, color: '#10b981', icon: <Receipt size={14} /> },
-                            { label: 'Proposals', value: linkedProposals.length, color: '#f59e0b', icon: <FileText size={14} /> },
-                        ].map(s => (
-                            <div key={s.label} className={cn(
-                                "flex items-center gap-3 p-4 rounded-xl border",
-                                isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb] shadow-sm"
-                            )}>
-                                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${s.color}18` }}>
-                                    <span style={{ color: s.color }}>{s.icon}</span>
-                                </div>
-                                <div>
-                                    <p className={cn("text-[10px] font-bold uppercase tracking-wider", isDark ? "text-[#444]" : "text-[#bbb]")}>{s.label}</p>
-                                    <p className={cn("text-[18px] font-bold leading-tight", isDark ? "text-white" : "text-[#111]")}>{s.value}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                {/* ── Unified Table ── */}
+                {items.length > 0 && (() => {
+                    const baseRows: Array<{ linkId: string; type: 'invoice' | 'proposal'; item: any; isUnlinking: boolean; route: string; }> = [
+                        ...linkedInvoices.map(li => ({ linkId: li.id, type: 'invoice' as const, item: getInvoice(li.item_id), isUnlinking: unlinking === li.id, route: `/invoices/${li.item_id}` })),
+                        ...linkedProposals.map(lp => ({ linkId: lp.id, type: 'proposal' as const, item: getProposal(lp.item_id), isUnlinking: unlinking === lp.id, route: `/proposals/${lp.item_id}` })),
+                    ];
+                    const allRows = baseRows.filter(r => r.type === tableFilter);
+                    const grandTotal = allRows.reduce((sum, r) => sum + Number(r.item?.amount || 0), 0);
+                    const cols = '36px 1fr 110px 100px 90px 110px';
+                    const thCls = cn('px-3 py-2.5 text-[10px] font-bold uppercase tracking-widest text-left', isDark ? 'text-[#3a3a3a]' : 'text-[#bbb]');
 
-                {/* Link picker */}
-                <AnimatePresence>
-                    {linkOpen && (
-                        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                            className={cn("rounded-xl border shadow-xl overflow-hidden", isDark ? "bg-[#1a1a1a] border-[#2a2a2a]" : "bg-white border-[#e0e0e0]")}>
-                            <div className={cn("flex border-b", isDark ? "border-[#222]" : "border-[#f0f0f0]")}>
-                                {(['invoice', 'proposal'] as const).map(t => (
-                                    <button key={t} onClick={() => setLinkType(t)}
-                                        className={cn("flex-1 py-3 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2",
-                                            linkType === t ? "border-primary text-primary" : `border-transparent ${isDark ? "text-[#555]" : "text-[#ccc]"}`)}>
-                                        {t === 'invoice' ? 'Invoices' : 'Proposals'}
+                    const filterOptions: { id: 'invoice' | 'proposal'; label: string; count: number }[] = [
+                        { id: 'invoice',  label: 'Invoices',  count: linkedInvoices.length },
+                        { id: 'proposal', label: 'Proposals', count: linkedProposals.length },
+                    ];
+
+                    return (
+                        <div className={cn('rounded-2xl border overflow-hidden', isDark ? 'bg-[#161616] border-[#222]' : 'bg-white border-[#e8e8e8] shadow-sm')}>
+                            {/* ── Type filter toggles ── */}
+                            <div className={cn('flex items-center gap-1 px-3 py-2.5 border-b', isDark ? 'border-[#1e1e1e] bg-[#0e0e0e]' : 'border-[#f0f0f0] bg-[#f9f9f9]')}>
+                                {filterOptions.map(opt => (
+                                    <button
+                                        key={opt.id}
+                                        onClick={() => setTableFilter(opt.id)}
+                                        className={cn(
+                                            'flex items-center gap-1.5 px-2.5 h-7 rounded-lg text-[11px] font-semibold transition-all',
+                                            tableFilter === opt.id
+                                                ? isDark ? 'bg-white/10 text-white' : 'bg-white text-[#111] shadow-sm border border-black/[0.06]'
+                                                : isDark ? 'text-[#444] hover:text-[#aaa] hover:bg-white/5' : 'text-[#aaa] hover:text-[#555] hover:bg-black/[0.03]'
+                                        )}
+                                    >
+                                        {opt.id === 'invoice' && <Receipt size={10} />}
+                                        {opt.id === 'proposal' && <FileText size={10} />}
+                                        {opt.label}
+                                        <span className={cn('text-[9px] font-bold tabular-nums', tableFilter === opt.id ? (isDark ? 'text-white/40' : 'text-black/30') : (isDark ? 'text-[#333]' : 'text-[#ccc]'))}>
+                                            {opt.count}
+                                        </span>
                                     </button>
                                 ))}
                             </div>
-                            <div className={cn("flex items-center gap-2 px-3 py-2 border-b", isDark ? "border-[#1e1e1e]" : "border-[#f5f5f5]")}>
-                                <Search size={11} className={isDark ? "text-[#444]" : "text-[#ccc]"} />
-                                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-                                    className={cn("flex-1 bg-transparent text-[12px] outline-none", isDark ? "text-[#ccc] placeholder:text-[#333]" : "text-[#333] placeholder:text-[#bbb]")} />
+                            {/* Table header */}
+                            <div className={cn('grid items-center border-b', isDark ? 'border-[#1e1e1e] bg-[#111]' : 'border-[#f0f0f0] bg-[#fafafa]')} style={{ gridTemplateColumns: cols }}>
+                                <div className={thCls} />
+                                <div className={thCls}>Item</div>
+                                <div className={thCls}>Client</div>
+                                <div className={thCls}>Status</div>
+                                <div className={cn(thCls, 'text-right')}>Amount</div>
+                                <div className={thCls} />
                             </div>
-                            <div className="max-h-[200px] overflow-y-auto py-1">
-                                {available.length === 0
-                                    ? <p className={cn("text-center text-[11px] py-6", isDark ? "text-[#444]" : "text-[#bbb]")}>No items available</p>
-                                    : (available as any[]).slice(0, 25).map((item: any) => (
-                                        <button key={item.id} onClick={() => handleLink(item.id)}
-                                            className={cn("w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors", isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")}>
-                                            <span className={cn("text-[12px] font-medium truncate flex-1", isDark ? "text-[#ccc]" : "text-[#333]")}>{item.title || item.id.slice(-6).toUpperCase()}</span>
-                                            <span className={cn("text-[10px] shrink-0", isDark ? "text-[#555]" : "text-[#bbb]")}>{item.status}</span>
-                                        </button>
-                                    ))
+                            {/* Rows */}
+                            {allRows.map((row, idx) => {
+                                const isLast = idx === allRows.length - 1;
+                                if (!row.item) {
+                                    const loading = row.type === 'invoice' ? invoicesLoading : proposalsLoading;
+                                    if (loading) return (
+                                        <div key={row.linkId} className={cn('grid items-center border-b', isDark ? 'border-[#1c1c1c]' : 'border-[#f5f5f5]')} style={{ gridTemplateColumns: cols }}>
+                                            {[1,2,3,4,5].map(i => <div key={i} className={cn('h-2.5 rounded-full animate-pulse mx-2 my-4', isDark ? 'bg-white/5' : 'bg-[#f0f0f0]')} />)}
+                                            <div />
+                                        </div>
+                                    );
+                                    return (
+                                        <div key={row.linkId} className={cn('grid items-center border-b opacity-50', isDark ? 'border-[#1c1c1c]' : 'border-[#f5f5f5]')} style={{ gridTemplateColumns: cols }}>
+                                            <div className="flex items-center justify-center py-3"><AlertCircle size={13} className="text-red-400/60" /></div>
+                                            <span className={cn('text-[11.5px] italic px-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Not found</span>
+                                            <span /><span /><span />
+                                            <button onClick={(e) => { e.stopPropagation(); handleUnlink(row.linkId); }} className={cn('w-7 h-7 m-auto flex items-center justify-center rounded-lg transition-all', isDark ? 'text-[#333] hover:text-red-400 hover:bg-red-500/10' : 'text-[#ccc] hover:text-red-500 hover:bg-red-50')}><X size={12} /></button>
+                                        </div>
+                                    );
                                 }
+                                const { color: sc, label: statusLabel } = getS(row.item.status);
+                                const isInv = row.type === 'invoice';
+                                return (
+                                    <div key={row.linkId} onClick={() => !row.isUnlinking && router.push(row.route)}
+                                        className={cn('group grid items-center cursor-pointer transition-colors', !isLast && (isDark ? 'border-b border-[#1c1c1c]' : 'border-b border-[#f5f5f5]'), row.isUnlinking && 'opacity-50 pointer-events-none', isDark ? 'hover:bg-white/[0.025]' : 'hover:bg-[#fafafa]')}
+                                        style={{ gridTemplateColumns: cols }}>
+                                        <div className="flex items-center justify-center py-3.5">
+                                            <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: isInv ? 'rgba(16,185,129,0.12)' : 'rgba(99,102,241,0.12)' }}>
+                                                {isInv ? <Receipt size={11} className="text-emerald-500" /> : <FileText size={11} className="text-indigo-500" />}
+                                            </div>
+                                        </div>
+                                        <div className="min-w-0 px-3 py-3.5">
+                                            <p className={cn('text-[12px] font-semibold truncate', isDark ? 'text-[#e0e0e0]' : 'text-[#111]')}>
+                                                {row.item.title || `${isInv ? 'INV' : 'PROP'}-${row.item.id.slice(-6).toUpperCase()}`}
+                                            </p>
+                                        </div>
+                                        <div className="px-3 py-3.5 min-w-0">
+                                            <p className={cn('text-[11px] truncate', isDark ? 'text-[#444]' : 'text-[#aaa]')}>{row.item.client_name || '—'}</p>
+                                        </div>
+                                        <div className="px-3 py-3.5">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ color: sc, background: `${sc}18` }}>{statusLabel}</span>
+                                        </div>
+                                        <div className="px-3 py-3.5 text-right">
+                                            <span className={cn('text-[12px] font-bold tabular-nums', isDark ? 'text-[#999]' : 'text-[#333]')}>
+                                                {Number(row.item.amount || 0) > 0 ? `$${Number(row.item.amount).toLocaleString()}` : '—'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-end pr-2 gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    window.open(`${window.location.origin}/p/${row.type}/${row.item.id}`, '_blank');
+                                                }}
+                                                title="Preview"
+                                                className={cn('w-7 h-7 flex items-center justify-center rounded-lg transition-all', isDark ? 'text-[#444] hover:text-[#ccc] hover:bg-white/5' : 'text-[#ccc] hover:text-[#555] hover:bg-black/[0.03]')}
+                                            >
+                                                <ExternalLink size={12} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigator.clipboard.writeText(`${window.location.origin}/p/${row.type}/${row.item.id}`);
+                                                    appToast.success('Link Copied');
+                                                }}
+                                                title="Copy Link"
+                                                className={cn('w-7 h-7 flex items-center justify-center rounded-lg transition-all', isDark ? 'text-[#444] hover:text-[#ccc] hover:bg-white/5' : 'text-[#ccc] hover:text-[#555] hover:bg-black/[0.03]')}
+                                            >
+                                                <Copy size={12} />
+                                            </button>
+                                            <div className={cn("w-[1px] h-3 mx-0.5", isDark ? "bg-[#222]" : "bg-[#eee]")} />
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleUnlink(row.linkId); }} 
+                                                disabled={row.isUnlinking}
+                                                title="Unlink"
+                                                className={cn('w-7 h-7 flex items-center justify-center rounded-lg transition-all', isDark ? 'text-[#444] hover:text-red-400 hover:bg-red-500/10' : 'text-[#ccc] hover:text-red-500 hover:bg-red-50')}
+                                            >
+                                                {row.isUnlinking ? <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <X size={12} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {/* Totals footer */}
+                            <div className={cn('grid items-center border-t', isDark ? 'border-[#1e1e1e] bg-[#111]' : 'border-[#f0f0f0] bg-[#fafafa]')} style={{ gridTemplateColumns: cols }}>
+                                <div />
+                                <div className={cn('px-3 py-3 text-[10px] font-bold uppercase tracking-widest', isDark ? 'text-[#333]' : 'text-[#ccc]')}>{allRows.length} item{allRows.length !== 1 ? 's' : ''}</div>
+                                <div />
+                                <div className={cn('px-3 py-3 text-[10px] font-bold uppercase tracking-widest', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Total</div>
+                                <div className="px-3 py-3 text-right">
+                                    <span className={cn('text-[13px] font-extrabold tabular-nums', isDark ? 'text-white' : 'text-[#111]')}>${grandTotal.toLocaleString()}</span>
+                                </div>
+                                <div />
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Linked invoices */}
-                {linkedInvoices.length > 0 && (
-                    <div>
-                        <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2", isDark ? "text-[#444]" : "text-[#bbb]")}>
-                            <Receipt size={10} /> Invoices
-                            <span className="ml-auto font-normal normal-case tracking-normal">
-                                Total: <strong className={isDark ? "text-[#888]" : "text-[#555]"}>${totalInvoiced.toLocaleString()}</strong>
-                            </span>
-                        </p>
-                        <div className="flex flex-col gap-2">
-                            {linkedInvoices.map(li => {
-                                const inv = getInvoice(li.item_id) as any;
-                                if (!inv) return null;
-                                return (
-                                    <div key={li.id} className={cn(
-                                        "flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all group hover:shadow-sm",
-                                        isDark ? "bg-[#1a1a1a] border-[#252525] hover:border-[#333]" : "bg-white border-[#ebebeb] hover:border-[#d8d8d8]"
-                                    )}>
-                                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(16,185,129,0.1)' }}>
-                                            <Receipt size={14} className="text-emerald-500" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className={cn("text-[12.5px] font-semibold truncate", isDark ? "text-[#ddd]" : "text-[#222]")}>{inv.title || `INV-${inv.id.slice(-6).toUpperCase()}`}</p>
-                                            <p className={cn("text-[11px]", isDark ? "text-[#555]" : "text-[#aaa]")}>{inv.client_name || '—'}</p>
-                                        </div>
-                                        <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", isDark ? "bg-white/5 text-[#777]" : "bg-[#f5f5f5] text-[#999]")}>{inv.status}</span>
-                                        <span className={cn("text-[13px] font-bold tabular-nums", isDark ? "text-[#aaa]" : "text-[#444]")}>${Number(inv.amount || 0).toLocaleString()}</span>
-                                        <button onClick={() => handleUnlink(li.id)} className={cn("w-7 h-7 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all", isDark ? "text-[#444] hover:text-red-400 hover:bg-red-500/10" : "text-[#ccc] hover:text-red-400 hover:bg-red-50")}>
-                                            <X size={12} />
-                                        </button>
-                                    </div>
-                                );
-                            })}
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
-                {/* Linked proposals */}
-                {linkedProposals.length > 0 && (
-                    <div>
-                        <p className={cn("text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2", isDark ? "text-[#444]" : "text-[#bbb]")}>
-                            <FileText size={10} /> Proposals
-                        </p>
-                        <div className="flex flex-col gap-2">
-                            {linkedProposals.map(lp => {
-                                const prop = getProposal(lp.item_id) as any;
-                                if (!prop) return null;
-                                return (
-                                    <div key={lp.id} className={cn(
-                                        "flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all group hover:shadow-sm",
-                                        isDark ? "bg-[#1a1a1a] border-[#252525] hover:border-[#333]" : "bg-white border-[#ebebeb] hover:border-[#d8d8d8]"
-                                    )}>
-                                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(99,102,241,0.1)' }}>
-                                            <FileText size={14} className="text-indigo-500" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className={cn("text-[12.5px] font-semibold truncate", isDark ? "text-[#ddd]" : "text-[#222]")}>{prop.title || `PROP-${prop.id.slice(-6).toUpperCase()}`}</p>
-                                            <p className={cn("text-[11px]", isDark ? "text-[#555]" : "text-[#aaa]")}>{prop.client_name || '—'}</p>
-                                        </div>
-                                        <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", isDark ? "bg-white/5 text-[#777]" : "bg-[#f5f5f5] text-[#999]")}>{prop.status}</span>
-                                        <span className={cn("text-[13px] font-bold tabular-nums", isDark ? "text-[#aaa]" : "text-[#444]")}>${Number(prop.amount || 0).toLocaleString()}</span>
-                                        <button onClick={() => handleUnlink(lp.id)} className={cn("w-7 h-7 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-all", isDark ? "text-[#444] hover:text-red-400 hover:bg-red-500/10" : "text-[#ccc] hover:text-red-400 hover:bg-red-50")}>
-                                            <X size={12} />
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
+                {/* Empty state */}
                 {items.length === 0 && !linkOpen && (
-                    <div className={cn("flex flex-col items-center justify-center py-20 gap-5 text-center rounded-2xl border border-dashed", isDark ? "border-[#252525]" : "border-[#e5e5e5]")}>
-                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
-                            <Link2 size={24} className={isDark ? "text-[#333]" : "text-[#ccc]"} />
+                    <div className={cn(
+                        "flex flex-col items-center justify-center py-24 gap-5 rounded-3xl border border-dashed",
+                        isDark ? "border-[#252525]" : "border-[#e0e0e0]"
+                    )}>
+                        <div className="relative">
+                            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center", isDark ? "bg-white/[0.04]" : "bg-[#f5f5f5]")}>
+                                <Link2 size={22} className={isDark ? "text-[#333]" : "text-[#d0d0d0]"} />
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center bg-primary">
+                                <Plus size={11} className="text-white" />
+                            </div>
                         </div>
-                        <div>
-                            <p className={cn("text-[14px] font-semibold", isDark ? "text-[#505050]" : "text-[#888]")}>No linked items</p>
-                            <p className={cn("text-[12px] mt-1", isDark ? "text-[#333]" : "text-[#ccc]")}>Connect invoices or proposals to track financials</p>
+                        <div className="text-center space-y-1">
+                            <p className={cn("text-[13.5px] font-semibold", isDark ? "text-[#555]" : "text-[#888]")}>Nothing linked yet</p>
+                            <p className={cn("text-[11.5px]", isDark ? "text-[#333]" : "text-[#bbb]")}>Connect invoices or proposals to track project financials</p>
                         </div>
-                        <button onClick={() => setLinkOpen(true)} className="flex items-center gap-1.5 px-4 py-2 rounded-[8px] bg-primary hover:bg-primary/90 text-primary-foreground text-[12px] font-semibold transition-all">
+                        <button
+                            onClick={() => setLinkOpen(true)}
+                            className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-[12px] font-semibold transition-all active:scale-95"
+                        >
                             <Plus size={13} /> Link First Item
                         </button>
                     </div>
                 )}
+
             </div>
         </div>
     );
 }
 
-// ─── Main Project Detail Page ─────────────────────────────────────────────────
 
 export default function ProjectDetailPage() {
     const router    = useRouter();
@@ -400,10 +606,12 @@ export default function ProjectDetailPage() {
 
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { projects, updateProject, fetchProjects, tasksByProject } = useProjectStore();
+    const { projects, updateProject, fetchProjects, tasksByProject, groupsByProject } = useProjectStore();
+    const { addTemplate } = useTemplateStore();
 
     const [activeTab, setActiveTab]           = useState<Tab>('tasks');
     const [selectedTask, setSelectedTask]     = useState<ProjectTask | null>(null);
+    const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
     const [statusOpen, setStatusOpen]         = useState(false);
     const [actionsOpen, setActionsOpen]       = useState(false);
     const [searchQuery, setSearchQuery]       = useState('');
@@ -439,6 +647,47 @@ export default function ProjectDetailPage() {
 
     const project = projects.find(p => p.id === projectId);
 
+    const handleSaveTemplate = async (name: string, description: string, isDefault: boolean) => {
+        if (!project) return;
+        const projectTasks = tasksByProject[projectId] || [];
+        const blocks = [...(groupsByProject[projectId] || [])].sort((a,b) => a.position - b.position).map((g) => ({
+            id: g.id,
+            name: g.name,
+            color: g.color || '#333',
+            icon: g.icon || null,
+            position: g.position,
+            items: projectTasks.filter(t => t.task_group_id === g.id && !t.is_archived).map(t => ({
+                id: t.id,
+                title: t.title,
+                description: t.description || '',
+                priority: t.priority,
+                position: t.position
+            }))
+        }));
+
+        const success = await addTemplate({
+            name,
+            description,
+            entity_type: 'project',
+            blocks,
+            design: {
+                ...DEFAULT_DOCUMENT_DESIGN,
+                primaryColor: project.color || '#3d0ebf',
+                fontFamily: 'Inter',
+                documentTitle: project.name,
+                backgroundColor: '#ffffff'
+            },
+            is_default: isDefault,
+            meta: {
+                icon: project.icon || 'Briefcase',
+            }
+        });
+        if (success) {
+            appToast.success('Template Saved', 'Project saved as a template.');
+            setSaveTemplateOpen(false);
+        }
+    };
+
     useEffect(() => {
         if (project && !isLoaded) {
             setTitle(project.name);
@@ -467,8 +716,8 @@ export default function ProjectDetailPage() {
     const dl = deadlineMeta(project.deadline);
 
     const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-        { id: 'tasks',  label: 'Tasks',        icon: <Layers size={13} /> },
-        { id: 'linked', label: 'Linked Items', icon: <Link2 size={13} /> },
+        { id: 'tasks',  label: 'Tasks',    icon: <Layers size={13} /> },
+        { id: 'linked', label: 'Finances',  icon: <Receipt size={13} /> },
     ];
 
     const copyLink = () => {
@@ -521,12 +770,37 @@ export default function ProjectDetailPage() {
                                 isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300")}
                             placeholder="Project Name"
                         />
-                        {project.client_name && (
-                            <span className={cn("text-[12px] hidden lg:block shrink-0 truncate max-w-[140px] opacity-40 ml-1",
-                                isDark ? "text-white" : "text-black")}>
-                                · {project.client_name}
-                            </span>
-                        )}
+
+                    </div>
+                </div>
+
+                {/* Center Toggle */}
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden lg:flex">
+                    <div className={cn("p-1 rounded-[10px] flex items-center gap-1", isDark ? "bg-white/[0.04]" : "bg-black/[0.04]")}>
+                        {TABS.map(tab => {
+                            const active = activeTab === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={cn(
+                                        "px-3.5 py-1 rounded-[7px] text-[11px] font-bold transition-all flex items-center gap-2 outline-none",
+                                        active
+                                            ? isDark 
+                                                ? "bg-[#222] text-white shadow-[0_2px_8px_rgba(0,0,0,0.4)] border border-white/5" 
+                                                : "bg-white text-[#111] shadow-[0_2px_6px_rgba(0,0,0,0.06)] border border-black/5"
+                                            : isDark 
+                                                ? "text-[#444] hover:text-[#ccc]" 
+                                                : "text-[#999] hover:text-[#555]"
+                                    )}
+                                >
+                                    <span className={cn("opacity-40 transition-opacity", active && "text-primary opacity-100")}>
+                                        {tab.icon}
+                                    </span>
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -579,7 +853,7 @@ export default function ProjectDetailPage() {
                         )}
                     </div>
 
-                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />
+                    <div className={cn("w-px h-5 mx-0.5 hidden md:block", isDark ? "bg-white/10" : "bg-[#e2e2e2]")} />
 
                     <button
                         onClick={() => window.open(window.location.origin + '/p/project/' + project.id, '_blank')}
@@ -601,6 +875,13 @@ export default function ProjectDetailPage() {
                         {copied ? <Check size={14} className="text-primary" /> : <Link2 size={14} />}
                     </button>
 
+                    <button 
+                        onClick={() => setShowEdit(true)}
+                        className={cn("hidden sm:flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all border",
+                            isDark ? "bg-white/[0.05] text-[#aaa] hover:text-white border-white/[0.08]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111] border-black/5")}>
+                        <Settings size={14} />
+                    </button>
+
                     <div className="relative" ref={actionsRef}>
                         <button onClick={() => setActionsOpen(v => !v)}
                             className={cn("flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all border",
@@ -611,6 +892,8 @@ export default function ProjectDetailPage() {
                             <div className={cn("absolute right-0 top-full mt-1.5 w-48 rounded-[10px] shadow-xl py-1 z-50 border",
                                 isDark ? "bg-[#0c0c0c] border-[#222]" : "bg-white border-[#d2d2eb]")}>
                                 {[
+                                    { icon: Settings, label: 'Project Settings', action: () => setShowEdit(true) },
+                                    { icon: LayoutTemplate, label: 'Save as Template', action: () => setSaveTemplateOpen(true) },
                                     { icon: Archive, label: 'Archive Project', action: () => { updateProject(project.id, { is_archived: true }); router.push('/projects'); } },
                                     { icon: ExternalLink, label: 'Open Live View', action: () => window.open(window.location.origin + '/p/project/' + project.id, '_blank') },
                                     { icon: Link2, label: 'Copy Project Link', action: copyLink },
@@ -635,32 +918,7 @@ export default function ProjectDetailPage() {
                 </div>
             </div>
 
-            {/* ── SECONDARY TAB BAR ── */}
-            <div className={cn("flex items-center gap-0 px-4 md:px-6 border-b shrink-0",
-                isDark ? "bg-[#111] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]")}>
-                {TABS.map(tab => (
-                    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                        className={cn(
-                            "px-4 py-2.5 text-[12px] font-semibold border-b-2 transition-all",
-                            activeTab === tab.id
-                                ? "border-primary text-primary"
-                                : (isDark ? "border-transparent text-[#555] hover:text-[#aaa]" : "border-transparent text-[#aaa] hover:text-[#555]")
-                        )}>
-                        <div className="flex items-center gap-2">
-                            <span className="opacity-60">{tab.icon}</span>
-                            {tab.label}
-                            {tab.id === 'tasks' && (
-                                <span className={cn(
-                                    "ml-1 text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full",
-                                    activeTab === 'tasks'
-                                        ? "bg-primary/10 text-primary"
-                                        : (isDark ? "bg-white/5 text-[#444]" : "bg-black/5 text-[#bbb]")
-                                )}>{progress.total}</span>
-                            )}
-                        </div>
-                    </button>
-                ))}
-            </div>
+
 
             {/* ── TASKS TOOLBAR ── */}
             {activeTab === 'tasks' && (
@@ -881,6 +1139,14 @@ export default function ProjectDetailPage() {
                 open={showEdit}
                 onClose={() => setShowEdit(false)}
                 project={project}
+            />
+
+            <SaveTemplateModal
+                open={saveTemplateOpen}
+                onClose={() => setSaveTemplateOpen(false)}
+                onSave={handleSaveTemplate}
+                defaultName={`${project.name} Template`}
+                entityType="project"
             />
         </div>
     );

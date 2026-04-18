@@ -8,7 +8,7 @@ interface SaveTemplateModalProps {
     onClose: () => void;
     onSave: (name: string, description: string, isDefault: boolean) => Promise<void>;
     defaultName?: string;
-    entityType: 'proposal' | 'invoice';
+    entityType: 'proposal' | 'invoice' | 'form' | 'scheduler' | 'project';
 }
 
 export function SaveTemplateModal({ open, onClose, onSave, defaultName, entityType }: SaveTemplateModalProps) {
@@ -49,7 +49,7 @@ export function SaveTemplateModal({ open, onClose, onSave, defaultName, entityTy
     );
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div 
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
                 onClick={onClose} 
@@ -110,10 +110,10 @@ export function SaveTemplateModal({ open, onClose, onSave, defaultName, entityTy
                         <div className={cn(
                             "w-[18px] h-[18px] rounded-[5px] flex items-center justify-center shrink-0 transition-colors border",
                             isDefault 
-                                ? "bg-primary border-primary text-primary-foreground" 
+                                ? "bg-[#4dbf39] border-[#4dbf39] text-black" 
                                 : isDark ? "border-white/20" : "border-black/20"
                         )}>
-                            {isDefault && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            {isDefault && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                         </div>
                         <input type="checkbox" className="hidden" checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />
                         <div className="flex flex-col">
@@ -139,7 +139,7 @@ export function SaveTemplateModal({ open, onClose, onSave, defaultName, entityTy
                         <button
                             type="submit"
                             disabled={!name.trim() || isSubmitting}
-                            className="px-4 py-2 text-[12px] font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="px-6 py-2.5 text-[12px] font-bold rounded-xl bg-[#4dbf39] hover:bg-[#59d044] text-black transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)]"
                         >
                             {isSubmitting ? 'Saving...' : 'Save Template'}
                         </button>

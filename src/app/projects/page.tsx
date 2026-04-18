@@ -96,7 +96,7 @@ function StatusCell({ status, onStatusChange, isDark }: { status: ProjectStatus;
                 <span className={isDark ? '' : cfg.badgeText}>{status}</span>
                 <ChevronDown size={10} className="opacity-50" />
             </button>
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="left">
                 <div className="py-1">
                     {STATUS_ORDER.map(s => {
                         const sCfg = STATUS_CFG[s];
@@ -426,6 +426,17 @@ export default function ProjectsPage() {
     const [orderOpen, setOrderOpen]       = useState(false);
 
     useEffect(() => { fetchProjects(); }, [fetchProjects]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('templateId') || params.get('new')) {
+                setCreateModalOpen(true, 'Project');
+                // Optional: remove params from URL without reloading
+                // window.history.replaceState({}, '', '/projects');
+            }
+        }
+    }, [setCreateModalOpen]);
 
     /* ── Derived ── */
     const filtered = useMemo(() => {

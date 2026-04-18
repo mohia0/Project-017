@@ -7,7 +7,7 @@ export interface Template {
     id: string;
     name: string;
     description?: string;
-    entity_type: 'proposal' | 'invoice' | 'form' | 'scheduler';
+    entity_type: 'proposal' | 'invoice' | 'form' | 'scheduler' | 'project';
     blocks: any[]; // The structured content blocks
     design: DocumentDesign; 
     meta?: any;
@@ -23,7 +23,7 @@ interface TemplateState {
     addTemplate: (template: Omit<Template, 'id' | 'created_at'>) => Promise<boolean>;
     deleteTemplate: (id: string) => Promise<boolean>;
     updateTemplate: (id: string, patch: Partial<Omit<Template, 'id' | 'created_at'>>) => Promise<boolean>;
-    setDefaultTemplate: (id: string, entity_type: 'proposal' | 'invoice' | 'form' | 'scheduler') => Promise<void>;
+    setDefaultTemplate: (id: string, entity_type: 'proposal' | 'invoice' | 'form' | 'scheduler' | 'project') => Promise<void>;
 }
 
 export const useTemplateStore = create<TemplateState>((set) => ({
@@ -156,7 +156,7 @@ export const useTemplateStore = create<TemplateState>((set) => ({
         }
     },
 
-    setDefaultTemplate: async (id: string, entity_type: 'proposal' | 'invoice' | 'form' | 'scheduler') => {
+    setDefaultTemplate: async (id: string, entity_type: 'proposal' | 'invoice' | 'form' | 'scheduler' | 'project') => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) return;
 

@@ -12,6 +12,23 @@ export async function POST(req: Request) {
 
         const docTitle = title || 'Untitled';
         const visitor = await getGeoIntelligence(req);
+        const ip = visitor?.ip || 'unknown';
+
+        // Session Grouping: Check if we've notified about this view from this IP in the last 2 mins
+        const thresholdDate = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        const { data: recentNotification } = await supabaseService
+            .from('notifications')
+            .select('id')
+            .eq('workspace_id', workspace_id)
+            .eq('link', `/${type}s/${id}`)
+            .eq('metadata->visitor->>ip', ip)
+            .gte('created_at', thresholdDate)
+            .limit(1)
+            .maybeSingle();
+
+        if (recentNotification) {
+            return NextResponse.json({ success: true, message: 'Session already tracked' });
+        }
 
         // Message format matches the design: `Someone opened "Title"`
         const notificationTitle = `Someone opened "${docTitle}"`;
@@ -32,6 +49,7 @@ export async function POST(req: Request) {
                 message: notificationMessage,
                 link: `/${type}s/${id}`,
                 read: false,
+                type: 'view',
                 metadata: visitor ? { visitor } : null
             });
 

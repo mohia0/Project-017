@@ -245,7 +245,23 @@ export default function CreateEntryModal() {
 
     // Auto-select default template when tab or templates change
     useEffect(() => {
-        if (tab === 'Proposal' || tab === 'Invoice') {
+        // First check if there is a templateId in the URL
+        let urlTemplateId: string | null = null;
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            urlTemplateId = params.get('templateId');
+        }
+        
+        if (urlTemplateId && templates.some(t => t.id === urlTemplateId && t.entity_type === tab.toLowerCase())) {
+            const urlTpl = templates.find(t => t.id === urlTemplateId);
+            if (urlTpl) {
+                setSelectedTemplateName(urlTpl.name);
+                setSelectedTemplateId(urlTpl.id);
+                return;
+            }
+        }
+
+        if (tab === 'Proposal' || tab === 'Invoice' || tab === 'Project') {
             const defaultTpl = templates.find(t => t.entity_type === tab.toLowerCase() && t.is_default);
             if (defaultTpl) {
                 setSelectedTemplateName(defaultTpl.name);
@@ -343,7 +359,40 @@ export default function CreateEntryModal() {
                     name: prName.trim(), description: prDesc || null, status: prStatus, color: prColor, icon: 'Briefcase',
                     client_id: selectedClientId, client_name: selectedClient || clientQuery, deadline: prDeadline || null, members: [], is_archived: false
                 });
-                if (p) { setCreateModalOpen(false); router.push(`/projects/${p.id}`); }
+                if (p) { 
+                    if (selectedTemplateId) {
+                        const tpl = templates.find(t => t.id === selectedTemplateId);
+                        if (tpl?.blocks?.length) {
+                            for (const b of tpl.blocks) {
+                                const newGroup = await useProjectStore.getState().addTaskGroup({
+                                    project_id: p.id,
+                                    name: b.name || 'Group',
+                                    color: b.color || '#3d0ebf',
+                                    icon: b.icon || null,
+                                    position: b.position || 0
+                                });
+                                
+                                if (newGroup && b.items?.length) {
+                                    for (const t of b.items) {
+                                        await useProjectStore.getState().addTask({
+                                            project_id: p.id,
+                                            task_group_id: newGroup.id,
+                                            title: t.title || 'Untitled Task',
+                                            description: t.description || null,
+                                            status: 'todo',
+                                            priority: t.priority || 'medium',
+                                            position: t.position || 0,
+                                            is_archived: false,
+                                            custom_fields: []
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    setCreateModalOpen(false); 
+                    router.push(`/projects/${p.id}`); 
+                }
             } else if (tab === 'Hook') {
                 if (!hName.trim()) return;
                 const h = await addHook({ name: hName.trim(), title: hTitle.trim() || null, link: hLink.trim() || null, color: hColor });
@@ -401,7 +450,7 @@ export default function CreateEntryModal() {
                 }
             </div>
             {showClientDrop && (
-                <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
                     <div className="p-2 border-b border-inherit">
                         <input autoFocus value={clientQuery} onChange={e => { setClientQuery(e.target.value); setSelectedClient(''); setSelectedClientId(null); }} placeholder="Search clients..." className={cn("w-full text-[12px] px-3 py-1.5 rounded-lg outline-none", isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]")} />
                     </div>
@@ -439,7 +488,7 @@ export default function CreateEntryModal() {
                 }
             </div>
             {showProjectDrop && (
-                <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
                     <div className="p-2 border-b border-inherit">
                         <input autoFocus value={projectQuery} onChange={e => { setProjectQuery(e.target.value); setSelectedProject(''); setSelectedProjectId(null); }} placeholder="Search projects..." className={cn("w-full text-[12px] px-3 py-1.5 rounded-lg outline-none", isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]")} />
                     </div>
@@ -473,7 +522,7 @@ export default function CreateEntryModal() {
                 }
             </div>
             {showCompanyDrop && (
-                <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
                     <div className="p-2 border-b border-inherit">
                         <input autoFocus value={companyQuery} onChange={e => { setCompanyQuery(e.target.value); setSelectedCompany(''); setSelectedCompanyId(null); }} placeholder="Search companies..." className={cn("w-full text-[12px] px-3 py-1.5 rounded-lg outline-none", isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]")} />
                     </div>
@@ -518,7 +567,7 @@ export default function CreateEntryModal() {
                 }
             </div>
             {showTemplateDrop && (
-                <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
                     <div className="p-2 border-b border-inherit">
                         <input autoFocus value={templateQuery} onChange={e => { setTemplateQuery(e.target.value); setSelectedTemplateName(''); setSelectedTemplateId(null); }} placeholder="Search templates..." className={cn("w-full text-[12px] px-3 py-1.5 rounded-lg outline-none", isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]")} />
                     </div>
@@ -767,7 +816,7 @@ export default function CreateEntryModal() {
                                                     </div>
                                                 </div>
                                                 {showPrStatusDrop && (
-                                                    <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                                                    <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
                                                         <div className="py-1">
                                                             {PROJECT_STATUS_OPTIONS.map(s => (
                                                                 <button key={s} onClick={() => { setPrStatus(s); setShowPrStatusDrop(false); }} className={cn("w-full text-left px-4 py-2.5 text-[13px] transition-colors flex items-center justify-between", isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-black/5 text-[#333]")}>
@@ -789,10 +838,18 @@ export default function CreateEntryModal() {
                                                     </div>
                                                 </div>
                                                 {showPrColorDrop && (
-                                                    <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
-                                                        <div className="p-2 grid grid-cols-5 gap-2">
+                                                    <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#191919] border-[#252525] p-2" : "bg-white border-[#e8e8e8] p-2")}>
+                                                        <div className="grid grid-cols-8 gap-1.5">
                                                             {COLORS.map(c => (
-                                                                <button key={c} onClick={() => { setPrColor(c); setShowPrColorDrop(false); }} className={cn("w-8 h-8 rounded-full border-2 transition-transform hover:scale-110", prColor === c ? (isDark ? "border-white" : "border-[#111]") : "border-transparent shadow-sm")} style={{ backgroundColor: c }} />
+                                                                <button 
+                                                                    key={c} 
+                                                                    onClick={() => { setPrColor(c); setShowPrColorDrop(false); }} 
+                                                                    className={cn(
+                                                                        "w-5 h-5 rounded-full transition-all hover:scale-110", 
+                                                                        prColor === c ? "ring-2 ring-offset-2 ring-primary/40 ring-offset-transparent" : "opacity-80 hover:opacity-100"
+                                                                    )} 
+                                                                    style={{ backgroundColor: c }} 
+                                                                />
                                                             ))}
                                                         </div>
                                                     </div>
@@ -804,19 +861,13 @@ export default function CreateEntryModal() {
                                             <span className={labelStyle}>Deadline</span>
                                             <DatePicker value={prDeadline} onChange={setPrDeadline} isDark={isDark} placeholder="Set project deadline" />
                                         </div>
-
-                                        {/* Members & Team */}
                                         <div className="relative py-1 flex items-center">
                                             <div className={cn("absolute inset-x-0 top-1/2 border-t", isDark ? "border-[#252525]" : "border-[#e0e0e0]")} />
-                                            <span className={cn("relative z-10 px-2 text-[11px] font-semibold uppercase tracking-widest", isDark ? "bg-[#161616] text-[#444]" : "bg-[#f7f7f7] text-[#bbb]")}>Members & Team</span>
+                                            <span className={cn("relative z-10 px-2 text-[11px] font-semibold uppercase tracking-widest", isDark ? "bg-[#161616] text-[#444]" : "bg-[#f7f7f7] text-[#bbb]")}>Template options</span>
                                         </div>
-                                        <div className={cn(fieldStyle, "flex-row items-center justify-between cursor-not-allowed opacity-60 px-4 py-3")}>
-                                            <div className="flex items-center gap-2">
-                                                <Plus size={13} className={isDark ? "text-[#555]" : "text-[#bbb]"} />
-                                                <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Add team member</span>
-                                            </div>
-                                            <div className="w-3.5 h-3.5 rounded-full border border-blue-500/50 flex items-center justify-center text-[8px] text-blue-500 font-bold">?</div>
-                                        </div>
+                                        {renderTemplatePicker()}
+
+
                                     </div>
                                 )}
 
@@ -939,9 +990,17 @@ export default function CreateEntryModal() {
                                         </div>
                                         <div className="flex flex-col gap-2.5 mt-2">
                                             <span className={cn(labelStyle, "ml-1 flex items-center gap-1.5")}><Palette size={10} /> Brand Color</span>
-                                            <div className="grid grid-cols-8 gap-2.5">
+                                            <div className="grid grid-cols-10 gap-2 mt-1 px-1">
                                                 {COLORS.map(c => (
-                                                    <button key={c} onClick={() => setHColor(c)} className={cn("w-7 h-7 rounded-full border border-2 transition-all hover:scale-110", hColor === c ? (isDark ? "border-white" : "border-[#111]") : "border-transparent")} style={{ backgroundColor: c }} />
+                                                    <button 
+                                                        key={c} 
+                                                        onClick={() => setHColor(c)} 
+                                                        className={cn(
+                                                            "w-5 h-5 rounded-full transition-all hover:scale-110", 
+                                                            hColor === c ? "ring-2 ring-offset-2 ring-primary/40 ring-offset-transparent" : "opacity-80 hover:opacity-100"
+                                                        )} 
+                                                        style={{ backgroundColor: c }} 
+                                                    />
                                                 ))}
                                             </div>
                                         </div>
