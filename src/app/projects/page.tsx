@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
-import { useProjectStore, Project, ProjectStatus } from '@/store/useProjectStore';
+import { useProjectStore, Project, ProjectStatus, ProjectMember } from '@/store/useProjectStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { Avatar } from '@/components/ui/Avatar';
@@ -143,14 +144,23 @@ function CircleProgress({ pct, color, size = 44, isDark }: { pct: number; color:
 
 // ─── Project Card ─────────────────────────────────────────────────────────────
 
-function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle, onStatusChange }: {
+function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle, onStatusChange, currentUser }: {
     project: Project; isDark: boolean; onClick: () => void;
     onArchive: () => void; onDelete: () => void;
     taskProgress: { total: number; done: number; pct: number };
     isSelected: boolean; onToggle: () => void; onStatusChange: (status: ProjectStatus) => void;
+    currentUser?: any;
 }) {
     const dl = deadlineMeta(project.deadline);
     const cfg = STATUS_CFG[project.status];
+
+    const displayMembers = useMemo(() => {
+        const m = [...project.members];
+        if (currentUser && !m.some(u => u.id === currentUser.id)) {
+            m.unshift({ id: currentUser.id, name: currentUser.full_name || 'Owner', avatar_url: currentUser.avatar_url } as ProjectMember);
+        }
+        return m;
+    }, [project.members, currentUser]);
 
     return (
         <motion.div
@@ -169,7 +179,7 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
             )}
         >
             {/* Left accent vertical line */}
-            <div className="absolute left-[-1px] top-[-1px] bottom-[-1px] w-[4.5px] rounded-l-[10px]" style={{ background: project.color }} />
+            <div className="absolute left-0 top-0 bottom-0 w-[4px] rounded-l-[9px]" style={{ background: project.color }} />
 
             {/* Card header */}
             <div className={cn(
@@ -181,12 +191,7 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
                         isDark ? "text-white" : "text-[#111]")}>
                         {project.name}
                     </p>
-                    {project.client_name && (
-                        <p className={cn("text-[10.5px] truncate mt-0.5",
-                            isDark ? "text-[#555]" : "text-[#aaa]")}>
-                            {project.client_name}
-                        </p>
-                    )}
+                    {/* Client name removed as per request for cleaner UI */}
                 </div>
                 {/* Checkbox */}
                 <div onClick={e => { e.stopPropagation(); onToggle(); }} className={cn('cursor-pointer ml-2 shrink-0 transition-opacity mt-0.5', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
@@ -221,19 +226,19 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
                 "flex items-center justify-between px-4 py-2.5 border-t mt-auto",
                 isDark ? "border-[#202020]" : "border-[#f5f5f5]"
             )}>
-                {project.members.length > 0 ? (
+                {displayMembers.length > 0 ? (
                     <div className="flex -space-x-1.5">
-                        {project.members.slice(0, 4).map((m, i) => (
+                        {displayMembers.slice(0, 4).map((m, i) => (
                             <Avatar key={i} name={m.name} src={m.avatar_url}
                                 className={cn("w-5 h-5 rounded-full ring-1",
                                     isDark ? "ring-[#1a1a1a]" : "ring-white")}
                                 isDark={isDark} />
                         ))}
-                        {project.members.length > 4 && (
+                        {displayMembers.length > 4 && (
                             <div className={cn(
                                 "w-5 h-5 rounded-full ring-1 flex items-center justify-center text-[8px] font-bold",
                                 isDark ? "ring-[#1a1a1a] bg-[#2a2a2a] text-[#777]" : "ring-white bg-[#eee] text-[#aaa]"
-                            )}>+{project.members.length - 4}</div>
+                            )}>+{displayMembers.length - 4}</div>
                         )}
                     </div>
                 ) : (
@@ -266,14 +271,23 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
 
 // ─── Table Row ────────────────────────────────────────────────────────────────
 
-function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle, onStatusChange }: {
+function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle, onStatusChange, currentUser }: {
     project: Project; isDark: boolean; onClick: () => void;
     onArchive: () => void; onDelete: () => void;
     taskProgress: { total: number; done: number; pct: number };
     isSelected: boolean; onToggle: () => void; onStatusChange: (status: ProjectStatus) => void;
+    currentUser?: any;
 }) {
     const dl  = deadlineMeta(project.deadline);
     const cfg = STATUS_CFG[project.status];
+
+    const displayMembers = useMemo(() => {
+        const m = [...project.members];
+        if (currentUser && !m.some(u => u.id === currentUser.id)) {
+            m.unshift({ id: currentUser.id, name: currentUser.full_name || 'Owner', avatar_url: currentUser.avatar_url } as ProjectMember);
+        }
+        return m;
+    }, [project.members, currentUser]);
 
     return (
         <div
@@ -297,7 +311,6 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress,
             {/* Name */}
             <div className="flex-1 min-w-0 py-3 pl-3 pr-4 self-center">
                 <p className={cn("font-bold text-[12.5px] truncate", isDark ? "text-white" : "text-[#111]")}>{project.name}</p>
-                {project.client_name && <p className={cn("text-[10.5px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>{project.client_name}</p>}
             </div>
             {/* Status */}
             <div className="shrink-0 py-3 pr-4 self-center">
@@ -319,19 +332,19 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress,
             </div>
             {/* Members */}
             <div className="shrink-0 py-3 self-center">
-                {project.members.length > 0 ? (
+                {displayMembers.length > 0 ? (
                     <div className="flex -space-x-1.5">
-                        {project.members.slice(0, 3).map((m, i) => (
+                        {displayMembers.slice(0, 3).map((m, i) => (
                             <Avatar key={i} name={m.name} src={m.avatar_url}
                                 className={cn("w-5 h-5 rounded-full ring-1",
                                     isDark ? "ring-[#1a1a1a]" : "ring-white")}
                                 isDark={isDark} />
                         ))}
-                        {project.members.length > 3 && (
+                        {displayMembers.length > 3 && (
                             <div className={cn(
                                 "w-5 h-5 rounded-full ring-1 flex items-center justify-center text-[8px] font-bold",
                                 isDark ? "ring-[#1a1a1a] bg-[#252525] text-[#666]" : "ring-white bg-[#eee] text-[#aaa]"
-                            )}>+{project.members.length - 3}</div>
+                            )}>+{displayMembers.length - 3}</div>
                         )}
                     </div>
                 ) : (
@@ -409,6 +422,7 @@ export default function ProjectsPage() {
     const { theme, setCreateModalOpen } = useUIStore();
     const isDark  = theme === 'dark';
     const { projects, fetchProjects, updateProject, deleteProject, bulkDuplicateProjects, isLoading, tasksByProject } = useProjectStore();
+    const { profile: currentUser } = useSettingsStore();
     const allTasks = useMemo(() => Object.values(tasksByProject).flat(), [tasksByProject]);
 
     const [view, setView]             = useState<'cards' | 'table'>('cards');
@@ -676,6 +690,7 @@ export default function ProjectsPage() {
                                     isSelected={selectedIds.has(p.id)}
                                     onToggle={() => toggleRow(p.id)}
                                     onStatusChange={(status) => updateProject(p.id, { status })}
+                                    currentUser={currentUser}
                                 />
                             ))}
                         </AnimatePresence>
@@ -716,6 +731,7 @@ export default function ProjectsPage() {
                                     isSelected={selectedIds.has(p.id)}
                                     onToggle={() => toggleRow(p.id)}
                                     onStatusChange={(status) => updateProject(p.id, { status })}
+                                    currentUser={currentUser}
                                 />
                             ))}
                         </AnimatePresence>

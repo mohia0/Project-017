@@ -12,20 +12,9 @@ import {
     ChevronLeft, ChevronRight, Minus,
     AlertCircle, CheckCircle2, Clock, Ban
 } from 'lucide-react';
+import { MoneyAmount } from '@/components/ui/MoneyAmount';
 
-/* ─── Formatters ─────────────────────────────────────────────────── */
-function fmt$(val: number) {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency', currency: 'USD',
-        minimumFractionDigits: 0, maximumFractionDigits: 2
-    }).format(val);
-}
-
-function fmtShort$(val: number) {
-    if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
-    if (val >= 1_000) return `$${(val / 1_000).toFixed(1)}K`;
-    return fmt$(val);
-}
+// Removed local fmt$ and fmtShort$ to use global MoneyAmount component
 
 function pctChange(current: number, previous: number): number | null {
     if (previous === 0 && current === 0) return null;
@@ -62,7 +51,7 @@ function BarChart({ data, isDark }: { data: BarData[]; isDark: boolean }) {
                         return (
                             <span key={i} className={cn("text-[9px] tabular-nums leading-none",
                                 isDark ? "text-[#444]" : "text-[#ccc]")}>
-                                {fmtShort$(v)}
+                                <MoneyAmount amount={v} abbreviate />
                             </span>
                         );
                     })}
@@ -90,7 +79,7 @@ function BarChart({ data, isDark }: { data: BarData[]; isDark: boolean }) {
                                             "opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10",
                                             isDark ? "bg-[#222] text-white border border-[#333]" : "bg-white text-[#111] border border-[#e0e0e0] shadow-md"
                                         )}>
-                                            {fmt$(d.value)}
+                                            <MoneyAmount amount={d.value} />
                                         </div>
                                     )}
                                     
@@ -124,15 +113,16 @@ function BarChart({ data, isDark }: { data: BarData[]; isDark: boolean }) {
 /* ─── KPI Card ───────────────────────────────────────────────────── */
 interface KpiProps {
     label: string;
-    value: string;
-    subValue?: string;
+    value: number | string;
+    subValue?: React.ReactNode;
     change?: number | null;
     icon: React.ReactNode;
     iconBg: string;
     isDark: boolean;
+    currency?: string;
 }
 
-function KpiCard({ label, value, subValue, change, icon, iconBg, isDark }: KpiProps) {
+function KpiCard({ label, value, subValue, change, icon, iconBg, isDark, currency }: KpiProps) {
     const isPositive = change !== null && change !== undefined && change > 0;
     const isNegative = change !== null && change !== undefined && change < 0;
     const isNeutral = change === null || change === undefined || change === 0;
@@ -158,7 +148,9 @@ function KpiCard({ label, value, subValue, change, icon, iconBg, isDark }: KpiPr
                 <div>
                     <div className={cn("text-[22px] font-bold tracking-tight leading-none",
                         isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
-                        {value}
+                        {typeof value === 'number' || !isNaN(Number(value)) ? (
+                            <MoneyAmount amount={Number(value)} currency={currency} />
+                        ) : value}
                     </div>
                     {subValue && (
                         <div className={cn("text-[11px] mt-1", isDark ? "text-[#555]" : "text-[#bbb]")}>
@@ -335,7 +327,7 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
                                                                 </span>
                                                                 <div className="flex items-center justify-between gap-4 mt-0.5">
                                                                     <span className={cn("text-[13px] font-black tabular-nums", cell.val > 0 ? "text-green-500" : "opacity-30")}>
-                                                                        {cell.val > 0 ? fmt$(cell.val) : "No Income"}
+                                                                        {cell.val > 0 ? <MoneyAmount amount={cell.val} /> : "No Income"}
                                                                     </span>
                                                                 </div>
                                                                 {isToday && (
@@ -372,7 +364,7 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
                     ))}
                 </div>
                 <span className={cn("text-[10px] font-bold tabular-nums", isDark ? "text-[#444]" : "text-[#bbb]")}>
-                    Annual Total: {fmt$(flat.reduce((a, b) => a + b, 0))}
+                    Annual Total: <MoneyAmount amount={flat.reduce((a, b) => a + b, 0)} />
                 </span>
             </div>
         </div>
@@ -398,7 +390,7 @@ function StatusRow({ label, count, amount, icon, iconColor, barColor, isDark }: 
                     <div className="flex items-center gap-2">
                         <span className={cn("text-[11px] tabular-nums", isDark ? "text-[#666]" : "text-[#bbb]")}>{count}</span>
                         <span className={cn("text-[11px] font-semibold tabular-nums", isDark ? "text-[#ddd]" : "text-[#222]")}>
-                            {fmt$(amount)}
+                            <MoneyAmount amount={amount} />
                         </span>
                     </div>
                 </div>
@@ -596,7 +588,7 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         <KpiCard
                             label="Paid Invoices (3 Months)"
-                            value={fmt$(invoiceStats.paidLast3Amount)}
+                            value={invoiceStats.paidLast3Amount}
                             subValue={`${invoiceStats.paid.count} total paid`}
                             change={paidLast3Change}
                             icon={<Receipt size={13} className="text-white" />}
@@ -605,8 +597,8 @@ export default function DashboardPage() {
                         />
                         <KpiCard
                             label="Current Year Revenue"
-                            value={fmt$(invoiceStats.currentIncome)}
-                            subValue={`vs ${invoiceStats.lastYearIncome === 0 ? 'no data' : fmt$(invoiceStats.lastYearIncome)} last year`}
+                            value={invoiceStats.currentIncome}
+                            subValue={<>vs {invoiceStats.lastYearIncome === 0 ? 'no data' : <MoneyAmount amount={invoiceStats.lastYearIncome} />} last year</>}
                             change={currentIncomeChange}
                             icon={<TrendingUp size={13} className="text-white" />}
                             iconBg="#6366f1"
@@ -615,7 +607,7 @@ export default function DashboardPage() {
                         <KpiCard
                             label="Signed Proposals (30d)"
                             value={String(proposalStats.signedLast30Count)}
-                            subValue={proposalStats.signedLast30Amount > 0 ? fmt$(proposalStats.signedLast30Amount) : `${proposalStats.accepted.count} total accepted`}
+                            subValue={proposalStats.signedLast30Amount > 0 ? <MoneyAmount amount={proposalStats.signedLast30Amount} /> : `${proposalStats.accepted.count} total accepted`}
                             change={signedProposalsChange}
                             icon={<FileText size={13} className="text-white" />}
                             iconBg="#f59e0b"
@@ -623,7 +615,7 @@ export default function DashboardPage() {
                         />
                         <KpiCard
                             label="Uncollected Revenue"
-                            value={fmt$(invoiceStats.missing)}
+                            value={invoiceStats.missing}
                             subValue={`${invoiceStats.missingCount} outstanding invoice${invoiceStats.missingCount !== 1 ? 's' : ''}`}
                             change={null}
                             icon={<AlertCircle size={13} className="text-white" />}
@@ -642,7 +634,7 @@ export default function DashboardPage() {
                                     All-Time Invoices
                                 </div>
                                 <div className={cn("text-[10px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                    Total value by status · {fmt$(invoiceStats.total.amount)}
+                                    Total value by status · <MoneyAmount amount={invoiceStats.total.amount} />
                                 </div>
                             </div>
                             <div style={{ height: 140 }}>
@@ -658,7 +650,7 @@ export default function DashboardPage() {
                                     All-Time Proposals
                                 </div>
                                 <div className={cn("text-[10px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
-                                    Total value by status · {fmt$(proposalStats.total.amount)}
+                                    Total value by status · <MoneyAmount amount={proposalStats.total.amount} />
                                 </div>
                             </div>
                             <div style={{ height: 140 }}>

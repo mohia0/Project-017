@@ -15,6 +15,7 @@ import {
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore, ProjectTask, ProjectTaskGroup, TaskStatus, TaskPriority } from '@/store/useProjectStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import {
     DndContext, closestCenter, closestCorners, PointerSensor, KeyboardSensor,
     useSensor, useSensors, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent
@@ -91,6 +92,8 @@ function GroupIcon({ name, size = 10, className = "" }: { name?: string, size?: 
     if (!Icon) return null;
     return <Icon size={size} className={className} />;
 }
+
+const DEFAULT_PALETTE = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316'];
 
 function shortId(id: string) { return `#${id.slice(-3).toUpperCase()}`; }
 function fmtDate(d: string | null | undefined) {
@@ -186,7 +189,12 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
     projectId: string;
 }) {
     const menuRef = useRef<HTMLDivElement>(null);
-    const { updateTaskGroup } = useProjectStore();
+    const { updateTask, updateTaskGroup } = useProjectStore();
+    const { branding } = useSettingsStore();
+
+    const colors = ((branding?.branding_colors && branding.branding_colors.length > 0) 
+        ? branding.branding_colors 
+        : DEFAULT_PALETTE).filter(c => c.toLowerCase() !== '#ffffff' && c.toLowerCase() !== '#000000');
 
     useEffect(() => {
         const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose(); };
@@ -258,6 +266,39 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
                     <Item label="Edit task"    icon={<Edit3 size={12} />}   action="edit" />
                     <Item label="Duplicate task" icon={<Copy size={12} />} action="duplicate" />
                     <Item label="Archive task" icon={<Archive size={12} />} action="archive" />
+                    <Divider />
+                    <div className="px-3 py-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className={cn('text-[9px] font-bold uppercase tracking-[0.12em]', isDark ? 'text-[#3a3a3a]' : 'text-[#c0c0c0]')}>
+                                Task Color
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-1 flex-wrap">
+                            {colors.map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => { 
+                                        updateTask(menu.id, projectId, { custom_fields: { color: c } }); 
+                                        onClose(); 
+                                    }}
+                                    className={cn(
+                                        'w-4 h-4 rounded-full transition-all hover:scale-110 duration-150',
+                                        tasks.find(t => t.id === menu.id)?.custom_fields?.color === c && 'ring-1 ring-offset-1 ' + (isDark ? 'ring-white/40 ring-offset-[#181818]' : 'ring-black/40 ring-offset-white')
+                                    )}
+                                    style={{ backgroundColor: c }}
+                                />
+                            ))}
+                            <button
+                                onClick={() => { 
+                                    updateTask(menu.id, projectId, { custom_fields: { color: null } }); 
+                                    onClose(); 
+                                }}
+                                className={cn('w-4 h-4 rounded-full border flex items-center justify-center transition-colors', isDark ? 'border-white/10 hover:bg-white/5 text-white/40' : 'border-black/10 hover:bg-black/5 text-black/40')}
+                            >
+                                <X size={8} strokeWidth={3} />
+                            </button>
+                        </div>
+                    </div>
                     <Divider />
                     <Item label="Delete task"  icon={<Trash2 size={12} />}  action="delete" danger />
                 </>
@@ -348,6 +389,7 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
                         </div>
                     </div>
                     <Divider />
+                    <Item label="Duplicate group" icon={<Copy size={12} />} action="duplicate" />
                     <Item label="Delete group" icon={<Trash2 size={12} />} action="delete" danger />
                 </>
             )}
@@ -357,7 +399,7 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
 
 // ─── Task Card ────────────────────────────────────────────────────────────────
 
-function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }: {
+function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, isSelected, onToggleSelect, isSelectionMode }: {
     task: ProjectTask;
     isDark: boolean;
     onCtx: (e: React.MouseEvent, id: string, type: 'task' | 'group') => void;
@@ -365,6 +407,9 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
     isFirst?: boolean;
     isLast?: boolean;
     isPreview?: boolean;
+    isSelected?: boolean;
+    onToggleSelect?: () => void;
+    isSelectionMode?: boolean;
 }) {
     const [isDeleting, setIsDeleting] = useState(false);
     const [showSure, setShowSure]     = useState(false);
@@ -393,7 +438,13 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
             {...(!isPreview ? attributes : {})}
             {...(!isPreview ? listeners : {})}
             onContextMenu={e => !isPreview && onCtx(e, task.id, 'task')}
-            onClick={() => onAction('open', task)}
+            onClick={() => {
+                if (isSelectionMode && onToggleSelect) {
+                    onToggleSelect();
+                } else {
+                    onAction('open', task);
+                }
+            }}
             className={cn(
                 'relative select-none group/card overflow-hidden min-h-[48px]',
                 !isDragging && 'transition-all duration-150',
@@ -402,13 +453,25 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
                     ? isDark 
                         ? 'bg-white/[0.02] border-dashed border-white/10 opacity-70 scale-[0.98] z-20 shadow-inner' 
                         : 'bg-black/[0.01] border-dashed border-black/10 opacity-70 scale-[0.98] z-20 shadow-inner'
-                    : isDark
-                        ? 'hover:bg-white/[0.025]'
-                        : 'hover:bg-[#f9f9f9]',
+                    : isSelected
+                        ? isDark ? 'bg-primary/5 ring-1 ring-primary/30' : 'bg-primary/[0.03] ring-1 ring-primary/30'
+                        : isDark
+                            ? 'hover:bg-white/[0.025]'
+                            : 'hover:bg-[#f9f9f9]',
                 isFirst && 'rounded-t-[14px]',
                 isLast  && 'rounded-b-[14px]',
             )}
         >
+            {/* Super Modern Minimal Color Indicator */}
+            {task.custom_fields?.color && !isDragging && (
+                <div 
+                    className="absolute top-0 left-0 right-0 h-[2.5px] z-[1] opacity-70" 
+                    style={{ 
+                        backgroundColor: task.custom_fields.color,
+                        boxShadow: `0 1px 4px ${task.custom_fields.color}15`
+                    }} 
+                />
+            )}
             {/* Priority left accent bar - hide when dragging skeleton */}
             {!isDragging && (
                 <div
@@ -425,7 +488,7 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
             <div className={cn("pl-4 pr-3 py-[15px] flex flex-col gap-2", isDragging && "invisible")}>
 
                 {/* ── Top row: checkbox + title + action ── */}
-                <div className="flex items-start gap-2.5">
+                <div className="relative flex items-start gap-2.5">
 
                     {/* Checkbox */}
                     {isPreview ? (
@@ -439,7 +502,11 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
                         <button
                             onClick={e => {
                                 e.stopPropagation();
-                                updateTask(task.id, task.project_id, { status: isDone ? 'todo' : 'done' });
+                                if (isSelectionMode && onToggleSelect) {
+                                    onToggleSelect();
+                                } else {
+                                    updateTask(task.id, task.project_id, { status: isDone ? 'todo' : 'done' });
+                                }
                             }}
                             className={cn(
                                 'mt-[2px] shrink-0 w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center transition-all duration-200',
@@ -473,9 +540,33 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
                         {task.title}
                     </p>
 
-                    {/* Hover actions */}
+                    {/* Hover actions - absolute overlay so title doesn't shrink */}
                     {!isPreview && (
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-all">
+                        <div className={cn(
+                            "absolute top-[-2px] right-[-4px] flex items-center gap-0.5 transition-all duration-200 py-0.5 pl-8 pr-1 z-10",
+                            isSelected ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto",
+                            isDark 
+                                ? "bg-gradient-to-l from-[#1b1b1b] via-[#1b1b1b]/80 to-transparent" 
+                                : "bg-gradient-to-l from-[#f9f9f9] via-[#f9f9f9]/80 to-transparent"
+                        )}>
+                            
+                            {/* Selection Checkbox */}
+                            {onToggleSelect && (
+                                <button
+                                    onClick={e => { e.stopPropagation(); onToggleSelect(); }}
+                                    className={cn(
+                                        "w-5 h-5 flex items-center justify-center rounded-full transition-colors",
+                                        isDark ? "hover:bg-white/[0.07]" : "hover:bg-black/[0.05]"
+                                    )}
+                                >
+                                    <div className={cn("w-[13px] h-[13px] rounded-full border flex items-center justify-center transition-all",
+                                        isSelected ? "bg-primary border-primary" : isDark ? "border-[#3a3a3a] bg-transparent" : "border-[#d0d0d0] bg-white"
+                                    )}>
+                                        {isSelected && <Check size={8} strokeWidth={3.5} className="text-primary-foreground text-white" />}
+                                    </div>
+                                </button>
+                            )}
+
                             {/* Delete Button with Sure? logic */}
                             <div className="flex items-center">
                                 <AnimatePresence mode="wait" initial={false}>
@@ -487,8 +578,12 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
                                             exit={{ opacity: 0, scale: 0.8, x: 5 }}
                                             onClick={async (e) => {
                                                 e.stopPropagation();
-                                                setIsDeleting(true);
-                                                await deleteTask(task.id, task.project_id);
+                                                if (isSelectionMode && onToggleSelect) {
+                                                    onToggleSelect();
+                                                } else {
+                                                    setIsDeleting(true);
+                                                    await deleteTask(task.id, task.project_id);
+                                                }
                                             }}
                                             className="px-2 py-1 rounded-md bg-red-500 text-white text-[9px] font-bold shadow-sm active:scale-95"
                                         >
@@ -500,7 +595,15 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
                                             initial={{ opacity: 0, scale: 0.8 }}
                                             animate={{ opacity: 1, scale: 1 }}
                                             exit={{ opacity: 0, scale: 0.8 }}
-                                            onClick={(e) => { e.stopPropagation(); setShowSure(true); setTimeout(() => setShowSure(false), 3000); }}
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                if (isSelectionMode && onToggleSelect) {
+                                                    onToggleSelect();
+                                                } else {
+                                                    setShowSure(true); 
+                                                    setTimeout(() => setShowSure(false), 3000); 
+                                                }
+                                            }}
                                             className={cn(
                                                 "w-5 h-5 flex items-center justify-center rounded-md transition-colors",
                                                 isDark ? "text-red-400/30 hover:text-red-400 hover:bg-red-500/10" : "text-red-300 hover:text-red-500 hover:bg-red-50"
@@ -513,7 +616,14 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
                             </div>
 
                             <button
-                                onClick={e => { e.stopPropagation(); onCtx(e, task.id, 'task'); }}
+                                onClick={e => { 
+                                    e.stopPropagation(); 
+                                    if (isSelectionMode && onToggleSelect) {
+                                        onToggleSelect();
+                                    } else {
+                                        onCtx(e, task.id, 'task'); 
+                                    }
+                                }}
                                 className={cn(
                                     'shrink-0 w-5 h-5 flex items-center justify-center rounded-md transition-all',
                                     isDark
@@ -603,7 +713,7 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview }:
 
 // ─── Task Group Column ────────────────────────────────────────────────────────
 
-function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceEditing, onRenameDone, isPreview }: {
+function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceEditing, onRenameDone, isPreview, onAddTask, selectedIds, toggleSelection, isSelectionMode }: {
     group: ProjectTaskGroup;
     tasks: ProjectTask[];
     isDark: boolean;
@@ -614,6 +724,9 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
     onRenameDone?: () => void;
     isPreview?: boolean;
     onAddTask: (title?: string) => void;
+    selectedIds?: Set<string>;
+    toggleSelection?: (id: string) => void;
+    isSelectionMode?: boolean;
 }) {
     const { updateTaskGroup, addTask } = useProjectStore();
     const [adding,   setAdding]   = useState(false);
@@ -639,7 +752,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: group.id,
         data: { type: 'group' },
-        disabled: isPreview,
+        disabled: isPreview || editing,
     });
 
     const commitRename = async () => {
@@ -656,16 +769,39 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
     const doSaveTask = async () => {
         if (!titleStr.trim()) { setAdding(false); return; }
         setSaving(true);
-        await addTask({
-            project_id:    projectId,
-            task_group_id: group.id,
-            title:         titleStr.trim(),
-            status:        'todo',
-            priority:      'none',
-            position:      tasks.length,
-            custom_fields: {},
-            is_archived:   false,
-        });
+
+        const lines = titleStr.split('\n').map(l => l.trim());
+        const bulkTasks = lines.filter(l => l.startsWith('//')).map(l => l.replace(/^\/\/\s*/, ''));
+
+        if (bulkTasks.length > 0) {
+            // Sequential creation to maintain order
+            for (let i = 0; i < bulkTasks.length; i++) {
+                const title = bulkTasks[i];
+                if (!title) continue;
+                await addTask({
+                    project_id:    projectId,
+                    task_group_id: group.id,
+                    title,
+                    status:        'todo',
+                    priority:      'none',
+                    position:      tasks.length + i,
+                    custom_fields: {},
+                    is_archived:   false,
+                });
+            }
+        } else {
+            await addTask({
+                project_id:    projectId,
+                task_group_id: group.id,
+                title:         titleStr.trim(),
+                status:        'todo',
+                priority:      'none',
+                position:      tasks.length,
+                custom_fields: {},
+                is_archived:   false,
+            });
+        }
+
         setSaving(false);
         setTitleStr('');
         setAdding(false);
@@ -673,11 +809,24 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
 
     const baseColor = group.color || '#374151';
 
+    if (isDragging) {
+        return (
+            <div
+                ref={setNodeRef}
+                style={{ transform: CSS.Translate.toString(transform), transition }}
+                className={cn(
+                    'flex flex-col w-[272px] min-w-[272px] shrink-0 h-[600px] rounded-[22px] border-2 border-dashed transition-colors duration-200',
+                    isDark ? 'bg-white/[0.02] border-white/5' : 'bg-black/[0.01] border-black/[0.04]'
+                )}
+            />
+        );
+    }
+
     return (
         <div
             ref={setNodeRef}
             style={{ transform: CSS.Translate.toString(transform), transition }}
-            className={cn('flex flex-col w-[272px] min-w-[272px] shrink-0 h-full', isDragging && 'opacity-20 z-30')}
+            className="flex flex-col w-[272px] min-w-[272px] shrink-0 h-full"
         >
             {/* ══ UNIFIED HEADER + CREATE TASK CARD ══ */}
             <div className={cn(
@@ -688,8 +837,8 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
             )}>
                 {/* ─ Header row ─ */}
                 <div
-                    {...(!isPreview ? listeners : {})}
-                    {...(!isPreview ? attributes : {})}
+                    {...(!isPreview && !editing ? listeners : {})}
+                    {...(!isPreview && !editing ? attributes : {})}
                     className={cn(
                         'relative flex items-center gap-2.5 px-3.5 py-3 select-none group/hdr overflow-hidden',
                         !isPreview ? 'cursor-grab active:cursor-grabbing' : ''
@@ -751,11 +900,11 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                         )}
                     </div>
 
-                    <div className="flex items-center shrink-0 relative z-10 w-6 h-6">
+                    <div className="shrink-0 relative z-10 w-6 h-6 ml-2">
                         <span className={cn(
-                            'absolute right-0 text-[10px] font-bold tabular-nums min-w-[20px] h-[20px] px-1.5 rounded-[6px] flex items-center justify-center transition-all duration-200',
+                            'absolute inset-0 text-[10px] font-bold tabular-nums rounded-[6px] flex items-center justify-center transition-all duration-200',
                             isDark ? 'bg-white/[0.07] text-[#555]' : 'bg-black/[0.05] text-[#aaa]',
-                            !isPreview && 'group-hover/hdr:opacity-0 group-hover/hdr:scale-90'
+                            !isPreview && 'group-hover/hdr:opacity-0 group-hover/hdr:scale-90 pointer-events-none'
                         )}>
                             {tasks.length}
                         </span>
@@ -763,7 +912,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                             <button
                                 onClick={e => { e.stopPropagation(); onCtx(e, group.id, 'group'); }}
                                 className={cn(
-                                    'absolute right-0 w-6 h-6 flex items-center justify-center rounded-[7px] opacity-0 group-hover/hdr:opacity-100 transition-all scale-90 group-hover/hdr:scale-100',
+                                    'absolute inset-0 flex items-center justify-center rounded-[7px] opacity-0 group-hover/hdr:opacity-100 transition-all scale-90 group-hover/hdr:scale-100',
                                     isDark
                                         ? 'text-[#444] hover:text-[#aaa] hover:bg-white/[0.08]'
                                         : 'text-[#ccc] hover:text-[#555] hover:bg-black/[0.06]'
@@ -877,6 +1026,9 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                                         isFirst={i === 0}
                                         isLast={i === tasks.length - 1}
                                         isPreview={isPreview}
+                                        isSelected={selectedIds?.has(t.id) ?? false}
+                                        onToggleSelect={() => toggleSelection?.(t.id)}
+                                        isSelectionMode={isSelectionMode}
                                     />
                                     {i < tasks.length - 1 && (
                                         <div className={cn('mx-4 h-px', isDark ? 'bg-[#1e1e1e]' : 'bg-[#f4f4f4]')} />
@@ -996,7 +1148,7 @@ export default function KanbanBoard({
 }: KanbanBoardProps) {
     const {
         tasksByProject, groupsByProject, fetchTasks, fetchTaskGroups,
-        addTaskGroup, reorderTask, reorderTaskGroup, deleteTask, deleteTaskGroup, updateTask, addTask
+        addTaskGroup, reorderTask, reorderTaskGroup, deleteTask, deleteTaskGroup, duplicateTaskGroup, updateTask, addTask
     } = useProjectStore();
 
     const tasks  = useMemo(() => externalTasks || tasksByProject[projectId] || [], [externalTasks, tasksByProject, projectId]);
@@ -1012,6 +1164,63 @@ export default function KanbanBoard({
     const [ctxMenu,    setCtxMenu]    = useState<CtxMenuState>(null);
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [pendingDelete, setPendingDelete] = useState<{ id: string, type: 'task' | 'group' } | null>(null);
+
+    // Bulk selection state
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const toggleSelection = (id: string) => {
+        const next = new Set(selectedIds);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedIds(next);
+    };
+
+    const handleBulkDuplicate = async () => {
+        const ids = Array.from(selectedIds);
+        const promise = (async () => {
+            for (const id of ids) {
+                const original = tasks.find(t => t.id === id);
+                if (original) {
+                    const { id: _, created_at: __, workspace_id: ___, ...rest } = original;
+                    await addTask({
+                        ...rest,
+                        title: `${original.title} (copy)`,
+                        position: original.position + 1
+                    });
+                }
+            }
+        })();
+        appToast.promise(promise, {
+            loading: `Duplicating ${ids.length} task${ids.length !== 1 ? 's' : ''}…`,
+            success: `${ids.length} task${ids.length !== 1 ? 's' : ''} duplicated`,
+            error: 'Duplication failed'
+        });
+        await promise;
+        setSelectedIds(new Set());
+    };
+
+    const handleBulkArchive = async () => {
+        const ids = Array.from(selectedIds);
+        const promise = Promise.all(ids.map(id => updateTask(id, projectId, { is_archived: true })));
+        appToast.promise(promise, {
+            loading: `Archiving ${ids.length} task${ids.length !== 1 ? 's' : ''}…`,
+            success: `${ids.length} task${ids.length !== 1 ? 's' : ''} archived`,
+            error: 'Archive failed'
+        });
+        await promise;
+        setSelectedIds(new Set());
+    };
+
+    const handleBulkDelete = async () => {
+        const ids = Array.from(selectedIds);
+        const promise = Promise.all(ids.map(id => deleteTask(id, projectId)));
+        appToast.promise(promise, {
+            loading: `Deleting ${ids.length} task${ids.length !== 1 ? 's' : ''}…`,
+            success: `${ids.length} task${ids.length !== 1 ? 's' : ''} deleted`,
+            error: 'Delete failed'
+        });
+        await promise;
+        setSelectedIds(new Set());
+    };
 
     useEffect(() => {
         setLocalTasks([...tasks].sort((a, b) => a.position - b.position));
@@ -1184,6 +1393,10 @@ export default function KanbanBoard({
                     setRenamingId(id);
                 }
             }
+            if (action === 'duplicate') {
+                duplicateTaskGroup(id, projectId);
+                appToast.success('Duplicated', 'Group and tasks cloned successfully');
+            }
             if (action === 'delete') {
                 setPendingDelete({ id, type: 'group' });
             }
@@ -1200,7 +1413,7 @@ export default function KanbanBoard({
     const activeGroup = activeType === 'group' ? groups.find(g => g.id === activeId)  : null;
 
     return (
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden" style={{ zoom: 0.9 }}>
+        <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden" style={{ zoom: 0.9 }}>
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCorners}
@@ -1254,6 +1467,9 @@ export default function KanbanBoard({
                                     onRenameDone={() => setRenamingId(null)}
                                     isPreview={isPreview}
                                     onAddTask={() => handleAddTask(g.id)}
+                                    selectedIds={selectedIds}
+                                    toggleSelection={toggleSelection}
+                                    isSelectionMode={selectedIds.size > 0}
                                 />
                             );
                         })}
@@ -1363,6 +1579,39 @@ export default function KanbanBoard({
                         ) : null}
                     </DragOverlay>
                 )}
+
+                {/* Bulk banner floating bottom center */}
+                <AnimatePresence>
+                    {selectedIds.size > 0 && !isPreview && (
+                        <motion.div 
+                            initial={{ y: 50, opacity: 0 }} 
+                            animate={{ y: 0, opacity: 1 }} 
+                            exit={{ y: 50, opacity: 0 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                            className={cn(
+                                "absolute bottom-10 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 px-4 py-3 rounded-2xl text-[12px] font-medium border shadow-2xl backdrop-blur-md",
+                                isDark ? "bg-[#1c1c1c]/90 border-[#2e2e2e] text-[#aaa] shadow-black/60" : "bg-white/90 border-[#e8e8e8] text-[#666] shadow-black/10"
+                            )}>
+                            <span className="opacity-80 font-bold tracking-tight">{selectedIds.size} task{selectedIds.size > 1 ? 's' : ''} selected</span>
+                            <div className={cn("w-[2px] h-4 rounded-full", isDark ? "bg-[#333]" : "bg-[#eee]")} />
+                            <div className="flex items-center gap-4">
+                                <button onClick={handleBulkDuplicate} className={cn("flex items-center gap-1.5 transition-all outline-none font-semibold", isDark ? "hover:text-white" : "hover:text-black")}>
+                                    <Copy size={13} className="opacity-70" />Duplicate
+                                </button>
+                                <button onClick={handleBulkArchive} className={cn("flex items-center gap-1.5 transition-all outline-none font-semibold", isDark ? "hover:text-emerald-400 text-emerald-500/80" : "hover:text-emerald-600 text-emerald-500")}>
+                                    <Archive size={13} className="opacity-70" />Archive
+                                </button>
+                                <div className={cn("w-[2px] h-4 rounded-full", isDark ? "bg-[#333]" : "bg-[#eee]")} />
+                                <button onClick={handleBulkDelete} className={cn("flex items-center gap-1.5 transition-all outline-none font-semibold", isDark ? "hover:text-red-400 text-red-500/80" : "hover:text-red-600 text-red-500")}>
+                                    <Trash2 size={13} className="opacity-70" />Delete
+                                </button>
+                                <button onClick={() => setSelectedIds(new Set())} className={cn("ml-2 p-1 rounded-md transition-colors", isDark ? "hover:bg-white/10 text-white/50 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black")}>
+                                    <X size={15} strokeWidth={2.5}/>
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </DndContext>
 
             {/* Delete Confirmation */}

@@ -14,8 +14,9 @@ export interface Hook {
     color: string;
     status: HookStatus;
     created_at: string;
-    // Client-side enrichment: total trigger count
+    // Client-side enrichment
     event_count?: number;
+    last_fired_at?: string | null;
 }
 
 interface HookState {
@@ -23,7 +24,8 @@ interface HookState {
     isLoading: boolean;
     error: string | null;
     fetchHooks: () => Promise<void>;
-    addHook: (hook: Omit<Hook, 'id' | 'created_at' | 'workspace_id' | 'event_count' | 'status'>) => Promise<Hook | null>;
+    refreshHookEventCount: (hookId: string) => Promise<void>;
+    addHook: (hook: Omit<Hook, 'id' | 'created_at' | 'workspace_id' | 'event_count' | 'status' | 'last_fired_at'>) => Promise<Hook | null>;
     updateHook: (id: string, updates: Partial<Pick<Hook, 'name' | 'title' | 'link' | 'color' | 'status'>>) => Promise<void>;
     deleteHook: (id: string) => Promise<void>;
     bulkDeleteHooks: (ids: string[]) => Promise<void>;
@@ -33,7 +35,7 @@ interface HookState {
 
 export const useHookStore = create<HookState>((set) => ({
     hooks: [],
-    isLoading: true,
+    isLoading: false,
     error: null,
 
     fetchHooks: async () => {
@@ -46,24 +48,58 @@ export const useHookStore = create<HookState>((set) => ({
         const hasData = useHookStore.getState().hooks.length > 0;
         if (!hasData) set({ isLoading: true, error: null });
 
-        // Fetch hooks with event counts via a join
+        // Fetch hooks with event counts + latest event timestamp via a join
         const { data, error } = await supabase
             .from('hooks')
-            .select('*, hook_events(count)')
+            .select('*, hook_events(count, created_at)')
             .eq('workspace_id', workspaceId)
             .order('created_at', { ascending: false });
 
         if (error) {
             set({ error: error.message, isLoading: false });
         } else {
-            const enriched: Hook[] = (data || []).map((h: any) => ({
-                ...h,
-                status: h.status || 'Active',
-                color: h.color || '#4dbf39',
-                event_count: h.hook_events?.[0]?.count ?? 0,
-                hook_events: undefined,
-            }));
+            const enriched: Hook[] = (data || []).map((h: any) => {
+                const events: any[] = h.hook_events || [];
+                const count = events[0]?.count ?? 0;
+                // Find most recent event timestamp across the joined rows
+                const lastFiredAt = events
+                    .map((e: any) => e.created_at)
+                    .filter(Boolean)
+                    .sort()
+                    .reverse()[0] ?? null;
+                return {
+                    ...h,
+                    status: h.status || 'Active',
+                    color: h.color || '#4dbf39',
+                    event_count: count,
+                    last_fired_at: lastFiredAt,
+                    hook_events: undefined,
+                };
+            });
             set({ hooks: enriched, isLoading: false });
+        }
+    },
+
+    // Re-fetch a single hook's event count — called when the panel opens
+    refreshHookEventCount: async (hookId: string) => {
+        const { data: events, error } = await supabase
+            .from('hook_events')
+            .select('created_at')
+            .eq('hook_id', hookId)
+            .order('created_at', { ascending: false });
+
+        if (!error && events) {
+            set((state) => ({
+                hooks: state.hooks.map((h) =>
+                    h.id === hookId
+                        ? {
+                            ...h,
+                            event_count: events.length,
+                            last_fired_at: events[0]?.created_at ?? null,
+                        }
+                        : h
+                ),
+            }));
         }
     },
 
@@ -77,7 +113,7 @@ export const useHookStore = create<HookState>((set) => ({
             set({ error: error.message });
             return null;
         }
-        const newHook: Hook = { ...(data as Hook), event_count: 0 };
+        const newHook: Hook = { ...(data as Hook), event_count: 0, last_fired_at: null };
         set((state) => ({ hooks: [newHook, ...state.hooks] }));
         return newHook;
     },
@@ -99,7 +135,11 @@ export const useHookStore = create<HookState>((set) => ({
                     h.id === id ? { ...h, ...(data as Hook) } : h
                 ),
             }));
-            appToast.success('Hook updated');
+            // Only toast for meaningful updates — not silent status toggles
+            const isStatusOnlyUpdate = Object.keys(updates).length === 1 && 'status' in updates;
+            if (!isStatusOnlyUpdate) {
+                appToast.success('Hook updated');
+            }
         }
     },
 
@@ -125,14 +165,15 @@ export const useHookStore = create<HookState>((set) => ({
     duplicateHook: async (id) => {
         const h = useHookStore.getState().hooks.find(x => x.id === id);
         if (!h) return null;
-        const { id: _, created_at: __, workspace_id: ___, event_count: ____, ...payload } = h;
+        // Keep workspace_id — only strip DB-generated fields
+        const { id: _, created_at: __, event_count: ___, last_fired_at: ____, ...payload } = h;
         const newHookPayload = { ...payload, name: `${payload.name} (Copy)`, title: `${payload.title} (Copy)`, status: 'Active' };
         const { data, error } = await supabase.from('hooks').insert(newHookPayload).select().single();
         if (error) {
             set({ error: error.message });
             return null;
         }
-        const newHook: Hook = { ...(data as Hook), event_count: 0 };
+        const newHook: Hook = { ...(data as Hook), event_count: 0, last_fired_at: null };
         set((state) => ({ hooks: [newHook, ...state.hooks] }));
         return newHook;
     },
@@ -140,9 +181,10 @@ export const useHookStore = create<HookState>((set) => ({
     bulkDuplicateHooks: async (ids) => {
         const hooksToDuplicate = useHookStore.getState().hooks.filter(h => ids.includes(h.id));
         if (!hooksToDuplicate.length) return;
-        
+
+        // Keep workspace_id — only strip DB-generated fields
         const payloads = hooksToDuplicate.map(h => {
-            const { id: _, created_at: __, workspace_id: ___, event_count: ____, ...payload } = h;
+            const { id: _, created_at: __, event_count: ___, last_fired_at: ____, ...payload } = h;
             return { ...payload, name: `${payload.name} (Copy)`, title: `${payload.title} (Copy)`, status: 'Active' };
         });
 
@@ -150,7 +192,7 @@ export const useHookStore = create<HookState>((set) => ({
         if (error) {
             set({ error: error.message });
         } else if (data) {
-            const newHooks = (data as any[]).map(h => ({ ...h, event_count: 0 }));
+            const newHooks = (data as any[]).map(h => ({ ...h, event_count: 0, last_fired_at: null }));
             set((state) => ({ hooks: [...newHooks, ...state.hooks] }));
         }
     }

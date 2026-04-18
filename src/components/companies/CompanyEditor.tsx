@@ -29,6 +29,7 @@ interface CompanyEditorProps {
     initialData?: CompanyFormData;
     onClose: () => void;
     onSave: (data: CompanyFormData) => Promise<void>;
+    isSimple?: boolean;
 }
 
 const INDUSTRIES = [
@@ -79,7 +80,7 @@ function FormField({
     );
 }
 
-export default function CompanyEditor({ initialData, onClose, onSave }: CompanyEditorProps) {
+export default function CompanyEditor({ initialData, onClose, onSave, isSimple }: CompanyEditorProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
 
@@ -125,6 +126,11 @@ export default function CompanyEditor({ initialData, onClose, onSave }: CompanyE
         if (Object.keys(e).length) { setErrors(e); return; }
         setSaving(true);
         try { await onSave(form); }
+        catch (err: any) {
+            console.error(err);
+            const { appToast } = await import('@/lib/toast');
+            appToast.error('Error', err.message || 'Failed to save company');
+        }
         finally { setSaving(false); }
     };
 
@@ -138,10 +144,9 @@ export default function CompanyEditor({ initialData, onClose, onSave }: CompanyE
                 "w-full max-w-[480px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 fade-in duration-200",
                 isDark ? "bg-[#161616] border border-[#252525]" : "bg-[#f7f7f7] border border-[#e0e0e0]"
             )}>
-                {/* Header */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-4">
                     <h2 className={cn("text-[17px] font-bold tracking-tight", isDark ? "text-white" : "text-[#111]")}>
-                        {initialData ? 'Edit company' : 'New company'}
+                        {initialData?.name && !isSimple ? 'Edit company' : 'Create company'}
                     </h2>
                     <button
                         onClick={onClose}
@@ -157,37 +162,39 @@ export default function CompanyEditor({ initialData, onClose, onSave }: CompanyE
                 {/* Body */}
                 <div className="px-5 pb-5 flex flex-col gap-2.5 max-h-[70vh] overflow-y-auto">
                     {/* Avatar Upload */}
-                    <div 
-                        onClick={() => setIsAvatarModalOpen(true)}
-                        className={cn(
-                            "w-full rounded-xl border px-4 py-3 cursor-pointer transition-all",
-                            isDark
-                                ? "bg-[#1c1c1c] border-[#2e2e2e] hover:border-[#444]"
-                                : "bg-white border-[#e0e0e0] hover:border-[#ccc]"
-                        )}
-                    >
-                        <div className="flex items-center gap-1.5 mb-1.5 grayscale opacity-60">
-                            <ImageIcon size={11} className={isDark ? "text-white" : "text-[#333]"} />
-                            <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Company logo</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Avatar 
-                                src={form.avatar_url} 
-                                name={form.name} 
-                                className="w-10 h-10 rounded-xl border border-black/5" 
-                                isDark={isDark} 
-                                fallbackClassName="border border-dashed border-black/10 dark:border-white/10 rounded-xl"
-                            />
-                            <div className="flex flex-col">
-                                <span className={cn("text-[13px] font-medium", isDark ? "text-white/60" : "text-black/60")}>
-                                    {form.avatar_url ? 'Update logo' : 'Upload logo'}
-                                </span>
-                                <span className={cn("text-[10px]", isDark ? "text-[#444]" : "text-[#ccc]")}>
-                                    JPG, PNG or SVG. Max 2MB.
-                                </span>
+                    {!isSimple && (
+                        <div 
+                            onClick={() => setIsAvatarModalOpen(true)}
+                            className={cn(
+                                "w-full rounded-xl border px-4 py-3 cursor-pointer transition-all",
+                                isDark
+                                    ? "bg-[#1c1c1c] border-[#2e2e2e] hover:border-[#444]"
+                                    : "bg-white border-[#e0e0e0] hover:border-[#ccc]"
+                            )}
+                        >
+                            <div className="flex items-center gap-1.5 mb-1.5 grayscale opacity-60">
+                                <ImageIcon size={11} className={isDark ? "text-white" : "text-[#333]"} />
+                                <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Company logo</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Avatar 
+                                    src={form.avatar_url} 
+                                    name={form.name} 
+                                    className="w-10 h-10 rounded-xl border border-black/5" 
+                                    isDark={isDark} 
+                                    fallbackClassName="border border-dashed border-black/10 dark:border-white/10 rounded-xl"
+                                />
+                                <div className="flex flex-col">
+                                    <span className={cn("text-[13px] font-medium", isDark ? "text-white/60" : "text-black/60")}>
+                                        {form.avatar_url ? 'Update logo' : 'Upload logo'}
+                                    </span>
+                                    <span className={cn("text-[10px]", isDark ? "text-[#444]" : "text-[#ccc]")}>
+                                        JPG, PNG or SVG. Max 2MB.
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     <FormField
                         isDark={isDark} autoFocus
@@ -199,54 +206,56 @@ export default function CompanyEditor({ initialData, onClose, onSave }: CompanyE
                         error={errors.name}
                     />
 
-                    <div className="grid grid-cols-2 gap-2.5">
-                        <div className="relative" ref={industryRef}>
-                            <div 
-                                onClick={() => setShowIndustryDrop(!showIndustryDrop)}
-                                className={cn(
-                                    "w-full rounded-xl border px-4 py-3 text-[13px] cursor-pointer transition-all",
-                                    isDark ? "bg-[#1c1c1c] border-[#2e2e2e] hover:bg-white/[0.02]" : "bg-white border-[#e0e0e0] hover:bg-black/[0.02]"
-                                )}
-                            >
-                                <div className="flex items-center gap-1.5 mb-0.5 opacity-40">
-                                    <FileText size={11} className={isDark ? "text-white" : "text-[#333]"} />
-                                    <span className="text-[11px] font-semibold text-inherit">Industry</span>
-                                </div>
-                                <div className={cn("text-[13px]", !form.industry ? "text-[#777]" : (isDark ? "text-white" : "text-[#111]"))}>
-                                    {form.industry || 'Select industry'}
-                                </div>
-                            </div>
-                            {showIndustryDrop && (
-                                <div className={cn(
-                                    "absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden",
-                                    isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
-                                )}>
-                                    <div className="max-h-40 overflow-auto py-1">
-                                        {INDUSTRIES.map(ind => (
-                                            <button 
-                                                key={ind} 
-                                                onClick={() => { update('industry')(ind); setShowIndustryDrop(false); }}
-                                                className={cn(
-                                                    "w-full text-left px-4 py-2 text-[13px] transition-colors",
-                                                    isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
-                                                )}
-                                            >
-                                                {ind}
-                                            </button>
-                                        ))}
+                    {!isSimple && (
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <div className="relative" ref={industryRef}>
+                                <div 
+                                    onClick={() => setShowIndustryDrop(!showIndustryDrop)}
+                                    className={cn(
+                                        "w-full rounded-xl border px-4 py-3 text-[13px] cursor-pointer transition-all",
+                                        isDark ? "bg-[#1c1c1c] border-[#2e2e2e] hover:bg-white/[0.02]" : "bg-white border-[#e0e0e0] hover:bg-black/[0.02]"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-1.5 mb-0.5 opacity-40">
+                                        <FileText size={11} className={isDark ? "text-white" : "text-[#333]"} />
+                                        <span className="text-[11px] font-semibold text-inherit">Industry</span>
+                                    </div>
+                                    <div className={cn("text-[13px]", !form.industry ? "text-[#777]" : (isDark ? "text-white" : "text-[#111]"))}>
+                                        {form.industry || 'Select industry'}
                                     </div>
                                 </div>
-                            )}
+                                {showIndustryDrop && (
+                                    <div className={cn(
+                                        "absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden",
+                                        isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                                    )}>
+                                        <div className="max-h-40 overflow-auto py-1">
+                                            {INDUSTRIES.map(ind => (
+                                                <button 
+                                                    key={ind} 
+                                                    onClick={() => { update('industry')(ind); setShowIndustryDrop(false); }}
+                                                    className={cn(
+                                                        "w-full text-left px-4 py-2 text-[13px] transition-colors",
+                                                        isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
+                                                    )}
+                                                >
+                                                    {ind}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <FormField
+                                isDark={isDark}
+                                label="Website"
+                                icon={<Globe size={11} />}
+                                value={form.website || ''}
+                                onChange={update('website')}
+                                placeholder="https://..."
+                            />
                         </div>
-                        <FormField
-                            isDark={isDark}
-                            label="Website"
-                            icon={<Globe size={11} />}
-                            value={form.website || ''}
-                            onChange={update('website')}
-                            placeholder="https://..."
-                        />
-                    </div>
+                    )}
 
                     <FormField
                         isDark={isDark}
@@ -258,7 +267,7 @@ export default function CompanyEditor({ initialData, onClose, onSave }: CompanyE
                         placeholder="contact@company.com"
                     />
 
-                    <div className="grid grid-cols-2 gap-2.5">
+                    {isSimple ? (
                         <FormField
                             isDark={isDark}
                             label="Phone"
@@ -267,53 +276,68 @@ export default function CompanyEditor({ initialData, onClose, onSave }: CompanyE
                             onChange={update('phone')}
                             placeholder="+1 234..."
                         />
-                        <FormField
-                            isDark={isDark}
-                            label="Tax number"
-                            icon={<Hash size={11} />}
-                            value={form.tax_number || ''}
-                            onChange={update('tax_number')}
-                            placeholder="VAT / EIN"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2.5">
-                        <FormField
-                            isDark={isDark}
-                            label="Address"
-                            icon={<MapPin size={11} />}
-                            value={form.address || ''}
-                            onChange={update('address')}
-                            placeholder="Street, city"
-                        />
-                        <CountryPicker
-                            isDark={isDark}
-                            value={form.country || ''}
-                            onChange={update('country')}
-                        />
-                    </div>
-
-                    <div className={cn(
-                        "w-full rounded-xl border px-4 py-3 text-[13px] transition-all focus-within:ring-2",
-                        isDark
-                            ? "bg-[#1c1c1c] border-[#2e2e2e] focus-within:ring-[#333] focus-within:border-[#444]"
-                            : "bg-white border-[#e0e0e0] focus-within:ring-[#e8e8e8] focus-within:border-[#ccc]"
-                    )}>
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                            <FileText size={11} className={cn("opacity-40", isDark ? "text-white" : "text-[#333]")} />
-                            <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Notes</span>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <FormField
+                                isDark={isDark}
+                                label="Phone"
+                                icon={<Phone size={11} />}
+                                value={form.phone || ''}
+                                onChange={update('phone')}
+                                placeholder="+1 234..."
+                            />
+                            <FormField
+                                isDark={isDark}
+                                label="Tax number"
+                                icon={<Hash size={11} />}
+                                value={form.tax_number || ''}
+                                onChange={update('tax_number')}
+                                placeholder="VAT / EIN"
+                            />
                         </div>
-                        <textarea
-                            value={form.notes || ''}
-                            onChange={e => update('notes')(e.target.value)}
-                            rows={2}
-                            placeholder="Internal notes..."
-                            className={cn(
-                                "bg-transparent outline-none text-[13px] w-full resize-none",
-                                isDark ? "text-white placeholder:text-[#555]" : "text-[#111] placeholder:text-[#bbb]"
-                            )}
-                        />
-                    </div>
+                    )}
+
+                    {!isSimple && (
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <FormField
+                                isDark={isDark}
+                                label="Address"
+                                icon={<MapPin size={11} />}
+                                value={form.address || ''}
+                                onChange={update('address')}
+                                placeholder="Street, city"
+                            />
+                            <CountryPicker
+                                isDark={isDark}
+                                value={form.country || ''}
+                                onChange={update('country')}
+                            />
+                        </div>
+                    )}
+
+                    {!isSimple && (
+                        <div className={cn(
+                            "w-full rounded-xl border px-4 py-3 text-[13px] transition-all focus-within:ring-2",
+                            isDark
+                                ? "bg-[#1c1c1c] border-[#2e2e2e] focus-within:ring-[#333] focus-within:border-[#444]"
+                                : "bg-white border-[#e0e0e0] focus-within:ring-[#e8e8e8] focus-within:border-[#ccc]"
+                        )}>
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                                <FileText size={11} className={cn("opacity-40", isDark ? "text-white" : "text-[#333]")} />
+                                <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>Notes</span>
+                            </div>
+                            <textarea
+                                value={form.notes || ''}
+                                onChange={e => update('notes')(e.target.value)}
+                                rows={2}
+                                placeholder="Internal notes..."
+                                className={cn(
+                                    "bg-transparent outline-none text-[13px] w-full resize-none",
+                                    isDark ? "text-white placeholder:text-[#555]" : "text-[#111] placeholder:text-[#bbb]"
+                                )}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -335,7 +359,7 @@ export default function CompanyEditor({ initialData, onClose, onSave }: CompanyE
                         disabled={saving}
                         className="flex items-center gap-2 px-5 py-2 text-[13px] font-semibold rounded-xl bg-primary hover:bg-primary-hover text-primary-foreground transition-colors disabled:opacity-60"
                     >
-                        {saving ? 'Saving...' : (initialData ? 'Save changes' : 'Create company')}
+                        {saving ? 'Saving...' : (initialData?.name && !isSimple ? 'Save changes' : 'Create company')}
                         {!saving && <ChevronRight size={14} />}
                     </button>
                 </div>

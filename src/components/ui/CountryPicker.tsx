@@ -85,7 +85,7 @@ export function CountryPicker({
     );
 
     return (
-        <div className="relative w-full" ref={ref}>
+        <div className={cn("relative w-full", open ? "z-50" : "z-10")} ref={ref}>
             {minimal ? (
                 <div 
                     onClick={() => setOpen(!open)}

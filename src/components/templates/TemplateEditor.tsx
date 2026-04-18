@@ -10,7 +10,7 @@ import {
     Plus, Settings, RotateCcw, ChevronRight, LayoutGrid,
     User, Calendar, DollarSign, Tag, Zap, Trash2, MoreHorizontal,
     PanelRight, Palette, PlusCircle, Check, Info, Upload,
-    AlignLeft
+    AlignLeft, ChevronDown
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
@@ -29,10 +29,9 @@ import DatePicker from '@/components/ui/DatePicker';
 import { STATUS_COLORS } from '@/lib/statusConfig';
 import { appToast } from '@/lib/toast';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
+import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
 
-function fmt(n: number, currency = 'USD') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
-}
+// Removed local fmt to use global MoneyAmount component
 
 interface TemplateEditorProps {
     id: string;
@@ -57,6 +56,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
     const [showActionsMenu, setShowActionsMenu] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [insertAfterIdx, setInsertAfterIdx] = useState<number | null>(null);
 
     const actionsRef = useRef<HTMLDivElement>(null);
 
@@ -129,6 +129,23 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     }, []);
 
     const addBlock = (type: any, afterId?: string) => {
+        if (type === 'template') {
+            const idx = afterId && template?.blocks ? template.blocks.findIndex((b: any) => b.id === afterId) : -1;
+            useUIStore.getState().openRightPanel({
+                type: 'template_browser',
+                onInsert: (blockData: any) => {
+                    const nb = { ...blockData, id: uuidv4() };
+                    setTemplate(prev => {
+                        if (!prev) return prev;
+                        const next = [...(prev.blocks || [])];
+                        next.splice(idx + 1, 0, nb);
+                        return { ...prev, blocks: next };
+                    });
+                }
+            });
+            setOpenInsertMenu(null);
+            return;
+        }
         const nb = { 
             id: uuidv4(), 
             type,
@@ -306,7 +323,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative",
+                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative z-[9999]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 <div className="flex items-center gap-4 flex-1">
@@ -433,7 +450,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden relative">
+            <div className="flex-1 flex overflow-hidden relative z-0">
                 <div 
                     className="flex-1 overflow-auto relative w-full"
                     style={{ 
@@ -466,7 +483,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                         status="Pending"
                                         design={template.design}
                                         inline={true}
-                                        amountDue={fmt(totals.total, (template as any).meta?.currency || 'USD')}
+                                        amountDue={convertAmount(totals.total, (template as any).meta?.currency || 'USD')}
                                         onDownloadPDF={() => {}}
                                         onPrint={() => {}}
                                         onAccept={() => {}}
@@ -519,7 +536,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                                         design={template.design}
                                                         inline={true}
                                                         isMobile={true}
-                                                        amountDue={fmt(totals.total, (template as any).meta?.currency || 'USD')}
+                                                        amountDue={convertAmount(totals.total, (template as any).meta?.currency || 'USD')}
                                                         onDownloadPDF={() => {}}
                                                         onPrint={() => {}}
                                                         onAccept={() => {}}
@@ -704,20 +721,23 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                         icon={<DollarSign size={11} className="opacity-50" />}
                                         onReset={() => updateMeta({ currency: 'USD' })}
                                     >
-                                        <select
-                                            value={(template as any).meta?.currency || 'USD'}
-                                            onChange={e => updateMeta({ currency: e.target.value })}
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium appearance-none",
-                                                isDark ? "text-[#ccc]" : "text-[#333]"
-                                            )}
-                                        >
-                                            <option value="USD">US Dollar ($)</option>
-                                            <option value="EUR">Euro (€)</option>
-                                            <option value="GBP">British Pound (£)</option>
-                                            <option value="SAR">Saudi Riyal (﷼)</option>
-                                            <option value="AED">UAE Dirham (د.إ)</option>
-                                        </select>
+                                        <div className="relative flex items-center">
+                                            <select
+                                                value={(template as any).meta?.currency || 'USD'}
+                                                onChange={e => updateMeta({ currency: e.target.value })}
+                                                className={cn(
+                                                    "w-full text-[12px] bg-transparent outline-none font-medium appearance-none pr-6 cursor-pointer",
+                                                    isDark ? "text-[#ccc]" : "text-[#333]"
+                                                )}
+                                            >
+                                                <option value="USD">US Dollar ($)</option>
+                                                <option value="EUR">Euro (€)</option>
+                                                <option value="GBP">British Pound (£)</option>
+                                                <option value="SAR">Saudi Riyal (﷼)</option>
+                                                <option value="AED">UAE Dirham (د.إ)</option>
+                                            </select>
+                                            <ChevronDown size={11} className="absolute right-0 pointer-events-none opacity-40" />
+                                        </div>
                                     </MetaField>
                                 </>
                             )}
@@ -773,6 +793,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                 isDark={isDark}
             />
 
+
         </div>
     );
 }
@@ -783,8 +804,8 @@ function MetaField({ label, children, isDark, icon, onReset }: any) {
             "rounded-lg border px-3 py-2.5 transition-colors",
             isDark ? "border-[#252525] bg-[#1f1f1f] hover:border-[#333]" : "border-[#eeeeee] bg-white hover:border-[#e4e4e4]"
         )}>
-            <div className="flex items-center justify-between mb-1">
-                <div className={cn("flex items-center gap-1.5 text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>
+            <div className="flex items-center justify-between mb-1.5 ">
+                <div className={cn("flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest", isDark ? "text-[#555]" : "text-[#bbb]")}>
                     {icon}
                     {label}
                 </div>

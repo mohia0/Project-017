@@ -13,9 +13,12 @@ import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { Image as ImageIcon } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { CountryPicker } from '@/components/ui/CountryPicker';
+import { appToast } from '@/lib/toast';
+import CompanyEditor from '@/components/companies/CompanyEditor';
 
 interface ClientFormData {
     company_name: string;
+    company_id?: string | null;
     contact_person: string;
     email: string;
     phone?: string;
@@ -84,6 +87,7 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
 
     const [form, setForm] = useState<ClientFormData>({
         company_name:   initialData?.company_name   || '',
+        company_id:     (initialData as any)?.company_id || null,
         contact_person: initialData?.contact_person || '',
         email:          initialData?.email          || '',
         phone:          initialData?.phone          || '',
@@ -94,6 +98,7 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
         avatar_url:     initialData?.avatar_url || '',
     });
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+    const [isCompanyEditorOpen, setIsCompanyEditorOpen] = useState(false);
     const [errors, setErrors] = useState<Partial<Record<keyof ClientFormData, string>>>({});
     const [saving, setSaving] = useState(false);
 
@@ -194,6 +199,7 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
                         isDark={isDark}
                         value={form.company_name}
                         onChange={update('company_name')}
+                        onCreateNew={(q) => setIsCompanyEditorOpen(true)}
                     />
 
                     <FormField
@@ -296,6 +302,37 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
                     isOpen={isAvatarModalOpen}
                     onClose={() => setIsAvatarModalOpen(false)}
                     onUpload={(url) => update('avatar_url')(url)}
+                />
+            )}
+
+            {isCompanyEditorOpen && (
+                <CompanyEditor
+                    isSimple={true}
+                    onClose={() => setIsCompanyEditorOpen(false)}
+                    onSave={async (data) => {
+                        const { addCompany, error } = useCompanyStore.getState();
+                        const company = await addCompany(data);
+                        if (company) {
+                            setForm(f => ({ ...f, company_name: company.name, company_id: company.id }));
+                            setIsCompanyEditorOpen(false);
+                            appToast.success('Company created');
+                        } else {
+                            const latestError = useCompanyStore.getState().error;
+                            appToast.error('Could not create company', latestError || 'Check your connection');
+                        }
+                    }}
+                    initialData={{
+                        name: form.company_name,
+                        industry: '',
+                        website: '',
+                        email: '',
+                        phone: '',
+                        address: '',
+                        country: '',
+                        tax_number: '',
+                        notes: '',
+                        avatar_url: ''
+                    }}
                 />
             )}
         </div>

@@ -3,7 +3,7 @@
 import React, { ReactNode, useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2, Copy, Palette, X } from 'lucide-react';
+import { GripVertical, Trash2, Copy, Palette, X, LayoutPanelTop } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { ColorisInput } from '@/components/ui/ColorisInput';
@@ -21,6 +21,7 @@ interface SectionBlockWrapperProps {
     isLast?: boolean;
     backgroundColor?: string;
     onBackgroundColorChange?: (color: string) => void;
+    onSaveAsTemplate?: (id: string) => void;
 }
 
 // A small inline colour palette
@@ -52,12 +53,15 @@ export function SectionBlockWrapper({
     isLast = false,
     backgroundColor,
     onBackgroundColorChange,
+    onSaveAsTemplate,
 }: SectionBlockWrapperProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     const [hovered, setHovered] = useState(false);
     const [showPalette, setShowPalette] = useState(false);
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const deleteResetTimerRef = useRef<NodeJS.Timeout | null>(null);
     const paletteRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +69,7 @@ export function SectionBlockWrapper({
 
     const handleMouseEnter = () => {
         if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        if (deleteResetTimerRef.current) clearTimeout(deleteResetTimerRef.current);
         setHovered(true);
     };
 
@@ -72,6 +77,7 @@ export function SectionBlockWrapper({
         hoverTimerRef.current = setTimeout(() => {
             if (!showPalette) {
                 setHovered(false);
+                setIsConfirmingDelete(false);
             }
         }, 150); // Small delay to allow crossing the gap
     };
@@ -140,12 +146,16 @@ export function SectionBlockWrapper({
         <div
             ref={setNodeRef}
             style={outerStyle}
-            className={cn('group overflow-visible', isDragging && 'z-50')}
+            className={cn('group overflow-visible', (isDragging || hovered) && 'z-[500]')}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
             {/* Full-bleed section background */}
             <div
+                className={cn(
+                    'transition-all duration-300',
+                    hovered && !isPreview ? 'border-2 border-primary border-dashed' : 'border-2 border-transparent'
+                )}
                 style={{
                     position: 'absolute',
                     inset: 0,
@@ -153,7 +163,6 @@ export function SectionBlockWrapper({
                     right: '-3rem',
                     backgroundColor: sectionBg,
                     pointerEvents: 'none',
-                    transition: 'background-color 0.2s',
                     borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : undefined,
                     borderTopRightRadius: isFirst ? 'var(--block-border-radius)' : undefined,
                     borderBottomLeftRadius: isLast ? 'var(--block-border-radius)' : undefined,
@@ -180,9 +189,7 @@ export function SectionBlockWrapper({
                                 : 'bg-white border-[#e2e2e2] text-[#888]',
                         )}
                         style={{ 
-                            top: isFirst 
-                                ? 'calc(100% - var(--block-margin-bottom) + 14px)' 
-                                : 'calc(var(--block-margin-top) - 42px)' 
+                            top: isFirst ? 'calc(100% + 14px)' : '-46px'
                         }}
                     >
                         {/* Drag handle */}
@@ -271,27 +278,55 @@ export function SectionBlockWrapper({
                         >
                             <Copy size={13} />
                         </button>
+
+                        {onSaveAsTemplate && (
+                            <button
+                                onClick={() => onSaveAsTemplate(id)}
+                                className={cn(
+                                    'p-2 rounded-lg transition-all',
+                                    isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
+                                )}
+                                title="Save section as template"
+                            >
+                                <LayoutPanelTop size={13} />
+                            </button>
+                        )}
                         <button
-                            onClick={() => onDelete(id)}
+                            onClick={() => {
+                                if (isConfirmingDelete) {
+                                    onDelete(id);
+                                } else {
+                                    setIsConfirmingDelete(true);
+                                }
+                            }}
+                            onMouseLeave={() => {
+                                // Reset after 3 seconds if not clicked
+                                deleteResetTimerRef.current = setTimeout(() => setIsConfirmingDelete(false), 3000);
+                            }}
                             className={cn(
-                                'p-2 rounded-lg transition-all',
-                                isDark ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-500',
+                                'px-2 py-1.5 rounded-lg transition-all text-[11px] font-bold flex items-center gap-1.5 min-w-[32px] justify-center',
+                                isConfirmingDelete 
+                                    ? 'bg-red-500 text-white shadow-lg' 
+                                    : isDark ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-500'
                             )}
                         >
-                            <Trash2 size={13} />
+                            {isConfirmingDelete ? (
+                                <>
+                                    <Trash2 size={12} strokeWidth={2.5} />
+                                    <span>Sure?</span>
+                                </>
+                            ) : (
+                                <Trash2 size={13} />
+                            )}
                         </button>
                     </div>
                 )}
 
-                {/* Content — dashed border on hover */}
+                {/* Content */}
                 <div
                     className={cn(
-                        'transition-all duration-300 py-3 -my-3 px-12 -mx-12',
-                        hovered && !isPreview
-                            ? isDark
-                                ? 'border border-white/40 border-dashed'
-                                : 'border border-black/30 border-dashed'
-                            : 'border border-transparent',
+                        'transition-all duration-300 py-3 -my-3 px-12 -mx-12 relative',
+                        hovered && !isPreview ? 'z-10' : ''
                     )}
                     style={{
                         borderTopLeftRadius: isFirst ? 'var(--block-border-radius)' : undefined,

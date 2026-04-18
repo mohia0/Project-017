@@ -25,6 +25,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
+import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
 import {
     DndContext,
     closestCenter,
@@ -309,7 +310,7 @@ function InvoiceCard({ i, onOpen, onArchive, onSendEmail, isDark, onStatusChange
                 </CardRow>
 
                 <CardRow label="Total" isDark={isDark}>
-                    {fmt$(Number(i.amount || 0), i.meta?.currency)}
+                    <MoneyAmount amount={Number(i.amount || 0)} currency={i.meta?.currency} showBadge />
                 </CardRow>
 
                 <CardRow label="Status" isDark={isDark} noBorder>
@@ -657,7 +658,7 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
             {/* Amount */}
             <div className="shrink-0 text-right">
                 <div className={cn("text-[13px] font-bold tabular-nums", isDark ? "text-[#ddd]" : "text-[#222]")}>
-                    {fmt$(Number(inv.amount || 0), inv.meta?.currency)}
+                    <MoneyAmount amount={Number(inv.amount || 0)} currency={inv.meta?.currency} showBadge />
                 </div>
                 <ChevronRight size={14} className={cn("ml-auto mt-0.5", isDark ? "text-[#444]" : "text-[#ccc]")} />
             </div>
@@ -1162,7 +1163,7 @@ export default function InvoicesPage() {
                                     isActive ? "text-white" : (isDark ? "bg-[#252525] text-[#666]" : "bg-[#f0f0f0] text-[#aaa]"))}>
                                 <span className="font-bold tabular-nums">{st.count}</span>
                                 <span className="opacity-80 font-medium">{s.name}</span>
-                                {st.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]">{fmt$(st.amount, displayCurrency)}</span>}
+                                {st.amount > 0 && <span className="ml-auto font-bold tabular-nums opacity-90 text-[9px]"><MoneyAmount amount={st.amount} currency={displayCurrency} /></span>}
                             </button>
                         );
                     })}
@@ -1271,7 +1272,7 @@ export default function InvoicesPage() {
 
                             <div className={cn("sticky right-0 px-4 py-2 flex items-center justify-end z-40",
                                 isDark ? "bg-[#1a1a1a]" : "bg-[#f5f5f7]")}>
-                                Total: {fmt$(stats[statusFilter]?.amount ?? 0, displayCurrency)}
+                                Total: <MoneyAmount amount={stats[statusFilter]?.amount ?? 0} currency={displayCurrency} className="ml-1" />
                             </div>
                         </div>
                     </DndContext>
@@ -1368,7 +1369,7 @@ export default function InvoicesPage() {
                                             isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"),
                                             isDark ? "text-[#ccc]" : "text-[#333]")}>
                                             <span className="transition-transform group-hover:-translate-x-[115px] duration-300">
-                                                {fmt$(Number(inv.amount || 0), inv.meta?.currency)}
+                                                <MoneyAmount amount={Number(inv.amount || 0)} currency={inv.meta?.currency} />
                                             </span>
                                             <div className="absolute right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
                                                 {(inv.status === 'Pending' || inv.status === 'Overdue') && (
@@ -1524,8 +1525,8 @@ export default function InvoicesPage() {
                     variables={{
                         client_name: sendInvoiceData.client_name || '',
                         invoice_number: sendInvoiceData.title || sendInvoiceData.id.slice(-6).toUpperCase() || '',
-                        amount_due: fmt$(Number(sendInvoiceData.amount || 0), sendInvoiceData.meta?.currency),
-                        amount_paid: fmt$(Number(sendInvoiceData.amount || 0), sendInvoiceData.meta?.currency),
+                        amount_due: convertAmount(Number(sendInvoiceData.amount || 0), sendInvoiceData.meta?.currency),
+                        amount_paid: convertAmount(Number(sendInvoiceData.amount || 0), sendInvoiceData.meta?.currency),
                         due_date: sendInvoiceData.due_date || '',
                         document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${sendInvoiceData.id}` : '',
                         days_overdue: sendInvoiceData.due_date ? String(Math.max(0, Math.floor((new Date().getTime() - new Date(sendInvoiceData.due_date).getTime()) / (1000 * 3600 * 24)))) : '0',

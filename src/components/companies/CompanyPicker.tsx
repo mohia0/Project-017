@@ -14,6 +14,7 @@ interface CompanyPickerProps {
     label?: string;
     placeholder?: string;
     minimal?: boolean;
+    onCreateNew?: (query: string) => void;
 }
 
 export function CompanyPicker({
@@ -22,7 +23,8 @@ export function CompanyPicker({
     isDark,
     label = "Company name",
     placeholder = "Type to search or add",
-    minimal = false
+    minimal = false,
+    onCreateNew
 }: CompanyPickerProps) {
     const { companies, fetchCompanies } = useCompanyStore();
     const [query, setQuery] = useState(value);
@@ -153,7 +155,12 @@ export function CompanyPicker({
                                 {filtered.length > 0 && <div className={cn("border-t", isDark ? "border-[#252525]" : "border-[#f0f0f0]")} />}
                                 <button
                                     type="button"
-                                    onMouseDown={e => { e.preventDefault(); setOpen(false); setCreateModalOpen(true, 'Company'); }}
+                                    onMouseDown={e => {
+                                        e.preventDefault();
+                                        setOpen(false);
+                                        if (onCreateNew) onCreateNew(query);
+                                        else setCreateModalOpen(true, 'Company');
+                                    }}
                                     className={cn(
                                         "w-full flex items-center gap-2 px-4 py-2.5 text-[13px] font-medium transition-colors",
                                         "text-primary hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"

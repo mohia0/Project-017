@@ -43,11 +43,14 @@ import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSel
 import ImageUploadModal from '../modals/ImageUploadModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
+import { SaveSectionTemplateModal } from '@/components/modals/SaveSectionTemplateModal';
 import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useSectionTemplateStore } from '@/store/useSectionTemplateStore';
 import { appToast } from '@/lib/toast';
+import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -101,9 +104,7 @@ type RightPanelTab = 'details' | 'appearance' | 'automation';
 
 
 
-function fmt(n: number, currency = 'USD') {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n);
-}
+// Removed local fmt to use global MoneyAmount component
 
 const BLOCK_MENU = [
     { type: 'header'    as BlockType, label: 'Header & Meta', icon: PanelTop,            tag: 'Layout' },
@@ -154,8 +155,10 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
+    const [insertAfterIdx, setInsertAfterIdx] = useState<number | null>(null);
     const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
     const [currencyDropdownOpen, setCurrencyDropdownOpen] = useState(false);
+    const [discountDropdownOpen, setDiscountDropdownOpen] = useState(false);
     const [isSendModalOpen, setIsSendModalOpen] = useState(false);
 
     // Project selection state
@@ -402,9 +405,24 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     }, [debouncedMeta, debouncedBlocks, id, isLoaded, updateInvoice]);
 
     /* ── Block mutations ── */
-    const addBlock = (type: BlockType, afterId?: string) => {
+    const addBlock = (type: BlockType | 'template', afterId?: string) => {
+        if (type === 'template') {
+            const idx = afterId ? blocks.findIndex(b => b.id === afterId) : -1;
+            useUIStore.getState().openRightPanel({
+                type: 'template_browser',
+                onInsert: (bd: any) => {
+                    setBlocks(prev => {
+                        const next = [...prev];
+                        next.splice(idx + 1, 0, bd);
+                        return next;
+                    });
+                }
+            });
+            setOpenInsertMenu(null);
+            return;
+        }
         const nb: BlockData = {
-            id: uuidv4(), type,
+            id: uuidv4(), type: type as BlockType,
             ...(type === 'heading'   ? { content: 'New Section',  level: 2 } : {}),
             ...(type === 'text'      ? { content: '' } : {}),
             ...(type === 'pricing'   ? { rows: [{ id: uuidv4(), description: '', qty: 1, rate: 0 }], taxRate: 0, discountRate: 0, showTax: false, showDiscount: false } : {}),
@@ -526,16 +544,24 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
         pricingBlocks.forEach(b => {
             const blockSub = (b.rows || []).reduce((sum, r) => sum + (r.qty * r.rate), 0);
-            const blockDisc = blockSub * ((b.discountRate || 0) / 100);
-            const blockTax = (blockSub - blockDisc) * ((b.taxRate || 0) / 100);
-            
+            let bDisc = 0;
+            let bTax = 0;
+
+            if (meta.discountCalc === 'after_tax') {
+                bTax = blockSub * ((b.taxRate || 0) / 100);
+                bDisc = (blockSub + bTax) * ((b.discountRate || 0) / 100);
+            } else {
+                bDisc = blockSub * ((b.discountRate || 0) / 100);
+                bTax = (blockSub - bDisc) * ((b.taxRate || 0) / 100);
+            }
+
             subtotal += blockSub;
-            discAmt += blockDisc;
-            taxAmt += blockTax;
+            discAmt += bDisc;
+            taxAmt += bTax;
         });
 
         return { subtotal, discAmt, taxAmt, total: subtotal - discAmt + taxAmt };
-    }, [blocks]);
+    }, [blocks, meta.discountCalc]);
 
     const sc = getStatusColors(meta.status, customStatuses);
 
@@ -547,7 +573,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative",
+                "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors relative z-[9999]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#d2d2eb]"
             )}>
                 <div className="flex items-center gap-4 flex-1">
@@ -782,7 +808,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden relative">
+            <div className="flex-1 flex flex-col overflow-hidden relative z-0">
                 <div className="flex-1 flex overflow-hidden relative">
                     <div 
                         className="flex-1 overflow-auto relative w-full"
@@ -1068,13 +1094,14 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         <div className="relative" ref={projectRef}>
                                             <div 
                                                 className={cn(
-                                                    "w-full text-[12px] cursor-pointer font-medium truncate",
+                                                    "w-full flex items-center justify-between text-[12px] cursor-pointer font-medium transition-opacity hover:opacity-80",
                                                     isDark ? "text-[#ccc]" : "text-[#333]",
                                                     !selectedProject && (isDark ? "text-[#444]" : "text-[#ccc]")
                                                 )}
                                                 onClick={() => setShowProjectDrop(v => !v)}
                                             >
-                                                {selectedProject || "No project"}
+                                                <span className="truncate">{selectedProject || "No project"}</span>
+                                                <ChevronDown size={11} className={cn("transition-transform duration-200 opacity-40 shrink-0", showProjectDrop ? "rotate-180" : "")} />
                                             </div>
 
                                             {showProjectDrop && (
@@ -1128,12 +1155,17 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         icon={<Calendar size={11} className="opacity-50" />}
                                         onReset={() => updateMeta({ issueDate: new Date().toISOString().split('T')[0] })}
                                     >
-                                        <DatePicker 
-                                            value={meta.issueDate} 
-                                            onChange={v => updateMeta({ issueDate: v })} 
-                                            isDark={isDark} 
-                                            align="right" 
-                                        />
+                                        <div className="relative group/field">
+                                            <DatePicker 
+                                                value={meta.issueDate} 
+                                                onChange={v => updateMeta({ issueDate: v })} 
+                                                isDark={isDark} 
+                                                align="right" 
+                                            />
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover/field:opacity-60 transition-opacity">
+                                                <ChevronDown size={11} />
+                                            </div>
+                                        </div>
                                     </MetaField>
                                     <MetaField 
                                         label="Due Date" 
@@ -1141,13 +1173,18 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         icon={<Calendar size={11} className="opacity-50" />}
                                         onReset={() => updateMeta({ dueDate: '' })}
                                     >
-                                        <DatePicker 
-                                            value={meta.dueDate} 
-                                            onChange={v => updateMeta({ dueDate: v })} 
-                                            isDark={isDark} 
-                                            align="right" 
-                                            placeholder="Set due date"
-                                        />
+                                        <div className="relative group/field">
+                                            <DatePicker 
+                                                value={meta.dueDate} 
+                                                onChange={v => updateMeta({ dueDate: v })} 
+                                                isDark={isDark} 
+                                                align="right" 
+                                                placeholder="Set due date"
+                                            />
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover/field:opacity-60 transition-opacity">
+                                                <ChevronDown size={11} />
+                                            </div>
+                                        </div>
                                     </MetaField>
 
                                     <MetaField
@@ -1267,17 +1304,46 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         icon={<Tag size={11} className="opacity-50" />}
                                         onReset={() => updateMeta({ discountCalc: 'before_tax' })}
                                     >
-                                        <select
-                                            value={meta.discountCalc}
-                                            onChange={e => updateMeta({ discountCalc: e.target.value as any })}
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium appearance-none",
-                                                isDark ? "text-[#ccc]" : "text-[#333]"
-                                            )}
-                                        >
-                                            <option value="before_tax">Before tax</option>
-                                            <option value="after_tax">After tax</option>
-                                        </select>
+                                        <div className="relative">
+                                            <button
+                                                onClick={() => setDiscountDropdownOpen(prev => !prev)}
+                                                className={cn(
+                                                    "w-full flex items-center justify-between text-[12px] bg-transparent outline-none font-medium transition-opacity hover:opacity-80",
+                                                    isDark ? "text-[#ccc]" : "text-[#333]"
+                                                )}
+                                            >
+                                                <span className="truncate">
+                                                    {meta.discountCalc === 'before_tax' ? 'Before tax' : 'After tax'}
+                                                </span>
+                                                <ChevronDown size={11} className={cn("transition-transform duration-200 opacity-40 shrink-0", discountDropdownOpen ? "rotate-180" : "")} />
+                                            </button>
+                                            <Dropdown 
+                                                open={discountDropdownOpen} 
+                                                onClose={() => setDiscountDropdownOpen(false)} 
+                                                isDark={isDark}
+                                                className="w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-t-none"
+                                                align="left"
+                                            >
+                                                <DItem
+                                                    label="Before tax"
+                                                    active={meta.discountCalc === 'before_tax'}
+                                                    isDark={isDark}
+                                                    onClick={() => {
+                                                        updateMeta({ discountCalc: 'before_tax' });
+                                                        setDiscountDropdownOpen(false);
+                                                    }}
+                                                />
+                                                <DItem
+                                                    label="After tax"
+                                                    active={meta.discountCalc === 'after_tax'}
+                                                    isDark={isDark}
+                                                    onClick={() => {
+                                                        updateMeta({ discountCalc: 'after_tax' });
+                                                        setDiscountDropdownOpen(false);
+                                                    }}
+                                                />
+                                            </Dropdown>
+                                        </div>
                                     </MetaField>
 
 
@@ -1401,8 +1467,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 variables={{
                     client_name: meta.clientName || '',
                     invoice_number: meta.invoiceNumber || '',
-                    amount_due: fmt(totals.total, meta.currency),
-                    amount_paid: fmt(totals.total, meta.currency),
+                    amount_due: convertAmount(totals.total, meta.currency),
+                    amount_paid: convertAmount(totals.total, meta.currency),
                     due_date: meta.dueDate || '',
                     document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${id}` : '',
                     days_overdue: meta.dueDate ? String(Math.max(0, Math.floor((new Date().getTime() - new Date(meta.dueDate).getTime()) / (1000 * 3600 * 24)))) : '0',
@@ -1433,6 +1499,8 @@ export function InvoiceDocument({
     updateMeta: (patch: Partial<InvoiceMeta>) => void;
     setBlocks: React.Dispatch<React.SetStateAction<BlockData[]>>;
 }) {
+    const [savingSectionId, setSavingSectionId] = React.useState<string | null>(null);
+    const { addSectionTemplate } = useSectionTemplateStore();
     const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -1494,6 +1562,7 @@ export function InvoiceDocument({
                                     updateMeta={updateMeta}
                                     isFirst={idx === 0}
                                     isLast={idx === blocks.length - 1}
+                                    onSaveAsTemplate={(blockId) => setSavingSectionId(blockId)}
                                 />
                                 {!isPreview && <InsertZone idx={idx} isDark={false} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} isLast={idx === blocks.length - 1} /> }
                             </React.Fragment>
@@ -1501,12 +1570,38 @@ export function InvoiceDocument({
                     </div>
                 </SortableContext>
             </DndContext>
-            {/* Final global summary removed as it's now part of the table block for cleaner layout */}
+            <SaveSectionTemplateModal
+                open={!!savingSectionId}
+                onClose={() => setSavingSectionId(null)}
+                blockType={savingSectionId ? blocks.find((b: any) => b.id === savingSectionId)?.type || 'content' : 'content'}
+                sourceEntity="invoice"
+                onSave={async (name, description, tags) => {
+                    const savingBlock = savingSectionId ? blocks.find((b: any) => b.id === savingSectionId) : null;
+                    if (!savingBlock) return;
+                    await appToast.promise(
+                        addSectionTemplate({
+                            name,
+                            description,
+                            tags,
+                            block_type: savingBlock.type,
+                            source_entity: 'invoice',
+                            block_data: savingBlock,
+                            background_color: savingBlock.backgroundColor,
+                        }),
+                        {
+                            loading: 'Saving section...',
+                            success: 'Section template saved!',
+                            error: 'Failed to save section'
+                        }
+                    );
+                    setSavingSectionId(null);
+                }}
+            />
         </div>
     );
 }
 
-function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, meta, updateMeta, isFirst, isLast }: {
+function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, meta, updateMeta, isFirst, isLast, onSaveAsTemplate }: {
     block: BlockData;
     isDark: boolean;
     isPreview: boolean;
@@ -1518,6 +1613,7 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
     updateMeta: (patch: Partial<InvoiceMeta>) => void;
     isFirst?: boolean;
     isLast?: boolean;
+    onSaveAsTemplate?: (id: string) => void;
 }) {
     const { setNodeRef, transform, transition } = useSortable({ id: block.id });
     return (
@@ -1530,6 +1626,7 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
             isLast={isLast}
             backgroundColor={block.backgroundColor}
             onBackgroundColorChange={(color) => updateBlock(block.id, { backgroundColor: color })}
+            onSaveAsTemplate={onSaveAsTemplate}
         >
             <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
                 <BlockRenderer block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} meta={meta} updateMeta={updateMeta} />
@@ -1780,7 +1877,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             <div className="w-full max-w-[180px] space-y-1.5">
                                 <div className={cn("flex justify-between text-[12px] font-medium opacity-50")}>
                                     <span>Subtotal</span>
-                                    <span>{fmt(subtotal, currency)}</span>
+                                    <span><MoneyAmount amount={subtotal} currency={currency} /></span>
                                 </div>
                                 {(!isPreview || (block.discountRate || 0) > 0) && (
                                     <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-50")}>
@@ -1796,7 +1893,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                             )}
                                             {!isPreview && <span>%</span>}
                                         </div>
-                                        <span>−{fmt(discAmt, currency)}</span>
+                                        <span>−<MoneyAmount amount={discAmt} currency={currency} /></span>
                                     </div>
                                 )}
                                 {(!isPreview || (block.taxRate || 0) > 0) && (
@@ -1813,12 +1910,12 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                             )}
                                             {!isPreview && <span>%</span>}
                                         </div>
-                                        <span>{fmt(taxAmt, currency)}</span>
+                                        <span><MoneyAmount amount={taxAmt} currency={currency} /></span>
                                     </div>
                                 )}
                                 <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
                                     <span>Total</span>
-                                    <span>{fmt(total, currency)}</span>
+                                    <span><MoneyAmount amount={total} currency={currency} /></span>
                                 </div>
                             </div>
                         </div>
@@ -1920,8 +2017,8 @@ function MetaField({
             "rounded-lg border px-3 py-2.5 transition-colors",
             isDark ? "border-[#252525] bg-[#1f1f1f] hover:border-[#333]" : "border-[#eeeeee] bg-white hover:border-[#e4e4e4]"
         )}>
-            <div className="flex items-center justify-between mb-1">
-                <div className={cn("flex items-center gap-1.5 text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>
+            <div className="flex items-center justify-between mb-1.5 ">
+                <div className={cn("flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest", isDark ? "text-[#555]" : "text-[#bbb]")}>
                     {icon}
                     {label}
                 </div>
@@ -1968,7 +2065,7 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
     }, [isOpen, onClose]);
 
     return (
-        <div className="relative h-0 z-20 w-full" ref={menuRef}>
+        <div className={cn("relative h-0 w-full", (hovered || isOpen) ? "z-[1000]" : "z-20")} ref={menuRef}>
             <div 
                 className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center group/insert h-8" 
                 style={{
@@ -2005,7 +2102,7 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
                 {isOpen && (
                     <div 
                         className={cn(
-                            "absolute left-1/2 -translate-x-1/2 w-56 rounded-xl border shadow-xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100",
+                            "absolute left-1/2 -translate-x-1/2 w-56 rounded-xl border shadow-xl py-1.5 z-[1001] animate-in fade-in zoom-in-95 duration-100",
                             isLast ? "bottom-full mb-1" : "top-full mt-1",
                             isDark ? "bg-[#1f1f1f] border-[#333]" : "bg-white border-[#e5e5e5]"
                         )}
@@ -2037,6 +2134,25 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
                                 </span>
                             </button>
                         ))}
+                        <div className={cn("my-1 border-t", isDark ? "border-[#333]" : "border-[#f0f0f0]")} />
+                        <button
+                            onClick={() => { onAdd('template' as any); onClose(); setHovered(false); }}
+                            className={cn(
+                                "w-full flex items-center justify-between px-3 py-2 text-[12px] transition-colors font-semibold group",
+                                isDark ? "text-[var(--primary-color)] hover:bg-white/5" : "text-[var(--primary-color)] hover:bg-[#f5f5f5]"
+                            )}
+                        >
+                            <div className="flex items-center gap-2">
+                                <LayoutTemplate size={13} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+                                Browse Templates
+                            </div>
+                            <span className={cn(
+                                "text-[9px] px-1.5 py-0.5 rounded font-semibold",
+                                isDark ? "bg-[var(--primary-color)]/20 text-[var(--primary-color)]" : "bg-[var(--primary-color)]/10 text-[var(--primary-color)]"
+                            )}>
+                                Saved
+                            </span>
+                        </button>
                     </div>
                 )}
             </div>
@@ -2127,7 +2243,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                 </td>
             )}
             <td className={cn(td, "px-3 text-right align-top", hideQty ? "pr-5" : "")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
-                {isPreview ? <span className={cn(hideQty && "font-bold")}>{fmt(row.rate, currency)}</span> : (
+                {isPreview ? <span className={cn(hideQty && "font-bold")}><MoneyAmount amount={row.rate} currency={currency} /></span> : (
                     <input
                         type="number"
                         value={row.rate}
@@ -2137,7 +2253,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     />
                 )}
             </td>
-            {!hideQty && <td className={cn(td, "pl-3 pr-5 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}>{fmt(row.qty * row.rate, currency)}</td>}
+            {!hideQty && <td className={cn(td, "pl-3 pr-5 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}><MoneyAmount amount={row.qty * row.rate} currency={currency} /></td>}
             {!isPreview && (
                 <td className="w-0 relative">
                     <div className={cn(

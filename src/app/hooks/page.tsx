@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import {
     Search, Table2, LayoutGrid, Plus, ChevronDown,
     Zap, Activity, Link, ExternalLink, Trash2, Pencil,
-    Check, ArrowUpDown, Globe, Copy, X, SquareCheck
+    Check, ArrowUpDown, Globe, Copy, X, SquareCheck, Clock
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { formatDistanceToNow } from 'date-fns';
 
 function fmtDate(d: string) {
     const date = new Date(d);
@@ -161,12 +162,17 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
                         <Activity size={10} />
                         {h.event_count ?? 0} triggers
                     </span>
-                    {h.link && (
+                    {h.last_fired_at ? (
+                        <span className="flex items-center gap-1 min-w-0">
+                            <Clock size={10} className="shrink-0" />
+                            <span className="truncate">{formatDistanceToNow(new Date(h.last_fired_at), { addSuffix: true })}</span>
+                        </span>
+                    ) : h.link ? (
                         <span className="flex items-center gap-1 min-w-0">
                             <Globe size={10} className="shrink-0" />
                             <span className="truncate max-w-[100px]">{h.link}</span>
                         </span>
-                    )}
+                    ) : null}
                 </div>
             </div>
 

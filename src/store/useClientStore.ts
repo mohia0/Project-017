@@ -68,7 +68,14 @@ export const useClientStore = create<ClientState>((set) => ({
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) return null;
 
-        const payload = { ...client, workspace_id: workspaceId };
+        // Filter out null/undefined/empty fields to avoid DB schema cache errors
+        const payload: any = { workspace_id: workspaceId };
+        Object.entries(client).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                payload[key] = value;
+            }
+        });
+
         const { data, error } = await supabase.from('clients').insert(payload).select().single();
         if (error) {
             console.error("Supabase insert error (clients):", error.message, error.details, error.hint);

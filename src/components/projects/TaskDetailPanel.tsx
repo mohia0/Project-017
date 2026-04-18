@@ -181,7 +181,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     const [priority, setPriority] = useState<TaskPriority>(task.priority);
     const [dueDate, setDueDate]   = useState(task.due_date || '');
     const [startDate, setStartDate] = useState(task.start_date || '');
-    const [activeTab, setActiveTab] = useState<'comments' | 'checklists' | 'attachments' | 'links'>('comments');
+    const [activeTab, setActiveTab] = useState<'comments' | 'checklists' | 'attachments' | 'links'>('checklists');
     const [deleting, setDeleting] = useState(false);
     const [comment, setComment]   = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -262,49 +262,48 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     const statMeta = STATUS_META[status];
 
     const TABS = [
-        { id: 'comments' as const,    icon: <MessageSquare size={13} />,  label: 'Comments'    },
         { id: 'checklists' as const,  icon: <Check size={13} />,           label: 'Checklist'   },
+        { id: 'comments' as const,    icon: <MessageSquare size={13} />,  label: 'Comments'    },
         { id: 'attachments' as const, icon: <Paperclip size={13} />,       label: 'Files'       },
         { id: 'links' as const,       icon: <Link2 size={13} />,           label: 'Links'       },
     ] as const;
 
-    const panelVariants = {
-        centerInitial: { opacity: 0, scale: 0.96, y: 16 },
-        center:        { opacity: 1, scale: 1, y: 0, x: 0 },
-        centerExit:    { opacity: 0, scale: 0.96, y: 16 },
+    // Snappy ease curve: custom cubic-bezier for fast open, quick close
+    const EASE_OUT: [number,number,number,number] = [0.22, 1, 0.36, 1];
+    const EASE_IN:  [number,number,number,number] = [0.64, 0, 0.78, 0];
 
-        rightInitial:  { opacity: 0, x: '100%' },
-        right:         { opacity: 1, x: 0, scale: 1, y: 0 },
-        rightExit:     { opacity: 0, x: '100%' }
-    };
+    const isRight = viewMode === 'right';
 
     return (
         <div className={cn(
             "fixed inset-0 z-[100] flex p-0 sm:p-2.5 overflow-hidden pointer-events-none",
-            viewMode === 'center' ? "items-center justify-center" : "items-stretch justify-end"
+            isRight ? "items-stretch justify-end" : "items-center justify-center"
         )}>
-            {/* Overlay */}
+            {/* Overlay — 120ms fade */}
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className={cn("fixed inset-0 pointer-events-auto", isDark ? "bg-black/40" : "bg-black/15")}
+                transition={{ duration: 0.12, ease: EASE_OUT }}
+                className={cn("fixed inset-0 pointer-events-auto", isDark ? "bg-black/35" : "bg-black/12")}
                 onClick={onClose}
             />
 
             {/* Panel */}
             <motion.div
-                initial={viewMode === 'center' ? 'centerInitial' : 'rightInitial'}
-                animate={viewMode}
-                exit={viewMode === 'center' ? 'centerExit' : 'rightExit'}
-                variants={panelVariants}
-                transition={{ type: 'spring', damping: 30, stiffness: 500 }}
+                initial={isRight ? { opacity: 0, x: 40 } : { opacity: 0, y: 10, scale: 0.98 }}
+                animate={isRight ? { opacity: 1, x: 0 } : { opacity: 1, y: 0, scale: 1 }}
+                exit={isRight
+                    ? { opacity: 0, x: 40, transition: { duration: 0.13, ease: EASE_IN } }
+                    : { opacity: 0, y: 8,  scale: 0.98, transition: { duration: 0.11, ease: EASE_IN } }
+                }
+                transition={{ duration: isRight ? 0.18 : 0.15, ease: EASE_OUT }}
                 className={cn(
                     "flex flex-col relative pointer-events-auto overflow-hidden shadow-2xl",
                     isDark
                         ? "bg-[#161616] border-[#252525]"
                         : "bg-white border-[#e0e0e0]",
-                    viewMode === 'center'
-                        ? "w-[860px] max-w-[92vw] h-[78vh] rounded-2xl border"
-                        : "w-[820px] max-w-[92vw] h-full rounded-2xl border shadow-none"
+                    isRight
+                        ? "w-[820px] max-w-[92vw] h-full rounded-2xl border shadow-none"
+                        : "w-[860px] max-w-[92vw] h-[78vh] rounded-2xl border"
                 )}
                 onClick={e => e.stopPropagation()}
                 style={{
@@ -481,6 +480,38 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                         )}
                                     </FieldRow>
 
+                                    {/* Task Color */}
+                                    <FieldRow label="Accent Color" icon={<Zap size={13} />} isDark={isDark}>
+                                        <div className="flex items-center gap-1.5 px-1">
+                                            {((branding?.branding_colors && branding.branding_colors.length > 0) 
+                                                ? branding.branding_colors 
+                                                : ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316']).filter(c => c.toLowerCase() !== '#ffffff' && c.toLowerCase() !== '#000000').map(c => (
+                                                <button
+                                                    key={c}
+                                                    disabled={readOnly}
+                                                    onClick={() => save({ custom_fields: { color: c } })}
+                                                    className={cn(
+                                                        "w-3.5 h-3.5 rounded-full transition-all",
+                                                        task.custom_fields?.color === c ? "ring-2 ring-offset-1 scale-110" : "opacity-40 hover:opacity-100 hover:scale-110",
+                                                        task.custom_fields?.color === c ? (isDark ? "ring-white/40 ring-offset-[#161616]" : "ring-black/40 ring-offset-white") : ""
+                                                    )}
+                                                    style={{ backgroundColor: c }}
+                                                />
+                                            ))}
+                                            {!readOnly && (
+                                                <button
+                                                    onClick={() => save({ custom_fields: { color: null } })}
+                                                    className={cn(
+                                                        "w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors",
+                                                        isDark ? "border-white/10 hover:bg-white/5 text-white/40" : "border-black/10 hover:bg-black/5 text-black/40"
+                                                    )}
+                                                >
+                                                    <X size={8} strokeWidth={3} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </FieldRow>
+
                                     {/* Group */}
                                     <FieldRow label="Group" icon={<AlignLeft size={13} />} isDark={isDark}>
                                         {readOnly ? (
@@ -572,27 +603,27 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                                      <button 
                                                          onClick={() => setShowTagPicker(!showTagPicker)}
                                                          className={cn(
-                                                             "flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all",
+                                                             "flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all",
                                                              isDark ? "bg-white/5 text-[#555] hover:text-white" : "bg-black/5 text-[#aaa] hover:text-[#555]"
                                                          )}
                                                      >
-                                                         <Plus size={10} />
+                                                         <Plus size={9} />
                                                          Add
                                                      </button>
                                                      
                                                      {showTagPicker && (
                                                           <div className={cn(
-                                                              "absolute top-full left-0 mt-2 z-[210] rounded-xl border shadow-2xl overflow-hidden p-1.5 flex flex-col gap-1",
+                                                              "absolute top-full left-0 mt-2 z-[210] rounded-xl border shadow-2xl overflow-hidden p-1 flex flex-col gap-1",
                                                               isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
-                                                          )} style={{ minWidth: '160px' }}>
+                                                          )} style={{ minWidth: '140px' }}>
                                                               <input 
                                                                   autoFocus
                                                                   value={tagInput}
                                                                   onChange={e => setTagInput(e.target.value)}
                                                                   placeholder="Type a tag..."
                                                                   className={cn(
-                                                                      "w-full px-2.5 py-1.5 text-[11px] font-medium bg-transparent outline-none rounded-lg transition-colors",
-                                                                      isDark ? "text-white placeholder:text-[#555] hover:bg-white/5 focus:bg-white/5" : "text-[#111] placeholder:text-[#aaa] hover:bg-black/5 focus:bg-black/5"
+                                                                      "w-full px-2 py-1 text-[10px] font-medium bg-transparent outline-none rounded-lg transition-colors",
+                                                                      isDark ? "text-white placeholder:text-[#3a3a3a] hover:bg-white/5 focus:bg-white/5" : "text-[#111] placeholder:text-[#aaa] hover:bg-black/5 focus:bg-black/5"
                                                                   )}
                                                                   onKeyDown={e => {
                                                                       if (e.key === 'Enter' && tagInput.trim()) {

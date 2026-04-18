@@ -243,7 +243,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* RIGHT SIDEBAR UNIT — A unified rounded container */}
             <div className={cn(
-                "flex shrink-0 transition-all duration-300 rounded-2xl overflow-hidden border shadow-2xl",
+                "flex shrink-0 transition-all duration-300 rounded-2xl overflow-hidden border shadow-2xl z-50",
                 isDark ? "bg-[#0d0d0d] border-white/5 shadow-black/40" : "bg-[#f5f5f5] border-black/[0.03] shadow-black/[0.04]",
                 !rightPanel && "w-auto"
             )}>
@@ -255,49 +255,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <CreateEntryModal />
             <CSVImportModal />
             <PrivacyModeEffect />
+            <ConversionRatesInitEffect />
         </div>
     );
 }
 
+/* Restore live rates for persisted conversionCurrency on startup */
+function ConversionRatesInitEffect() {
+    const conversionCurrency = useUIStore(s => s.conversionCurrency);
+    const fetchConversionRates = useUIStore(s => s.fetchConversionRates);
+    const hasFetched = React.useRef(false);
+
+    useEffect(() => {
+        if (!hasFetched.current && conversionCurrency) {
+            hasFetched.current = true;
+            fetchConversionRates(conversionCurrency);
+        }
+    }, [conversionCurrency, fetchConversionRates]);
+
+    return null;
+}
 function PrivacyModeEffect() {
     const isPrivacyMode = useUIStore(s => s.isPrivacyMode);
 
     useEffect(() => {
         if (isPrivacyMode) {
-            document.body.classList.add('privacy-mode');
-            
-            // Smart blurring logic
-            const blurNumbers = () => {
-                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
-                let node;
-                while(node = walker.nextNode()) {
-                    const text = node.nodeValue || '';
-                    // Match currency symbols or numbers with 3+ digits or decimals
-                    const hasCurrencyValue = /[$€£¥]\s?\d+|[\d,]{3,}(\.\d+)?/.test(text);
-                    
-                    if (hasCurrencyValue && node.parentElement) {
-                        // Avoid blurring parent if it's an input or already has a child with blur
-                        if (['INPUT', 'TEXTAREA', 'SCRIPT', 'STYLE'].includes(node.parentElement.tagName)) continue;
-                        node.parentElement.classList.add('privacy-blur');
-                    }
-                }
-            };
-
-            // Run once
-            blurNumbers();
-            
-            // Re-run on DOM changes for dynamic content
-            const observer = new MutationObserver(blurNumbers);
-            observer.observe(document.body, { childList: true, subtree: true });
-            
-            return () => {
-                observer.disconnect();
-                document.body.classList.remove('privacy-mode');
-                document.querySelectorAll('.privacy-blur').forEach(el => el.classList.remove('privacy-blur'));
-            };
+            document.documentElement.classList.add('privacy-mode');
         } else {
-            document.body.classList.remove('privacy-mode');
-            document.querySelectorAll('.privacy-blur').forEach(el => el.classList.remove('privacy-blur'));
+            document.documentElement.classList.remove('privacy-mode');
         }
     }, [isPrivacyMode]);
 

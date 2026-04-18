@@ -14,7 +14,8 @@ export type RightPanelState =
     | { type: 'contact'; id: string }
     | { type: 'company'; id: string }
     | { type: 'hook'; id: string; editing?: boolean }
-    | { type: 'form_response'; id: string; formId: string };
+    | { type: 'form_response'; id: string; formId: string }
+    | { type: 'template_browser'; onInsert: (blockData: any) => void };
 
 interface UIState {
     activeWorkspaceId: string | null;
@@ -46,6 +47,12 @@ interface UIState {
     toggleRightPanelCollapse: () => void;
     isPrivacyMode: boolean;
     togglePrivacyMode: () => void;
+    /* currency conversion */
+    conversionCurrency: string | null;        // target currency code, null = disabled
+    conversionRates: Record<string, number>;  // base→target rates keyed by source code
+    conversionLoading: boolean;
+    setConversionCurrency: (code: string | null) => void;
+    fetchConversionRates: (targetCode: string) => Promise<void>;
 }
 
 export const useUIStore = create<UIState>()(
@@ -104,6 +111,36 @@ export const useUIStore = create<UIState>()(
             toggleRightPanelCollapse: () => set((state) => ({ isRightPanelCollapsed: !state.isRightPanelCollapsed })),
             isPrivacyMode: false,
             togglePrivacyMode: () => set((state) => ({ isPrivacyMode: !state.isPrivacyMode })),
+
+            /* currency conversion */
+            conversionCurrency: null,
+            conversionRates: {},
+            conversionLoading: false,
+            setConversionCurrency: (code) => {
+                if (!code) {
+                    set({ conversionCurrency: null, conversionRates: {}, conversionLoading: false });
+                } else {
+                    set({ conversionCurrency: code });
+                    get().fetchConversionRates(code);
+                }
+            },
+            fetchConversionRates: async (targetCode) => {
+                set({ conversionLoading: true });
+                try {
+                    // Using exchangerate-api.com free tier (no key needed for basic endpoint)
+                    const res = await fetch(`https://api.exchangerate-api.com/v4/latest/${targetCode}`);
+                    if (!res.ok) throw new Error('Rate fetch failed');
+                    const data = await res.json();
+                    // data.rates[srcCode] = how many targetCode per 1 srcCode, so we invert
+                    const rates: Record<string, number> = {};
+                    for (const [code, rate] of Object.entries(data.rates as Record<string, number>)) {
+                        rates[code] = rate === 0 ? 0 : (1 / rate);
+                    }
+                    set({ conversionRates: rates, conversionLoading: false });
+                } catch {
+                    set({ conversionLoading: false });
+                }
+            },
         }),
         {
             name: 'ui-storage',
@@ -114,7 +151,8 @@ export const useUIStore = create<UIState>()(
                 isToolsMenuExpanded: state.isToolsMenuExpanded,
                 rightPanelWidth: state.rightPanelWidth,
                 isRightPanelCollapsed: state.isRightPanelCollapsed,
-                isPrivacyMode: state.isPrivacyMode
+                isPrivacyMode: state.isPrivacyMode,
+                conversionCurrency: state.conversionCurrency,
             }),
         }
     )

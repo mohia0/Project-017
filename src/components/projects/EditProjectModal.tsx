@@ -6,11 +6,14 @@ import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useProjectStore, Project } from '@/store/useProjectStore';
 import { useClientStore } from '@/store/useClientStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { appToast } from '@/lib/toast';
 import DatePicker from '@/components/ui/DatePicker';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { Avatar } from '@/components/ui/Avatar';
 import { useRef } from 'react';
+
+const DEFAULT_PALETTE = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316'];
 
 interface Props {
     open: boolean;
@@ -22,6 +25,7 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     const { updateProject } = useProjectStore();
+    const { branding } = useSettingsStore();
 
     const { clients, fetchClients } = useClientStore();
 
@@ -34,6 +38,11 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
     const [clientSearch, setClientSearch] = useState('');
     const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
     const [saving, setSaving]           = useState(false);
+    const [color, setColor]             = useState(project.color || '#10b981');
+
+    const colors = ((branding?.branding_colors && branding.branding_colors.length > 0) 
+        ? branding.branding_colors 
+        : DEFAULT_PALETTE).filter(c => c.toLowerCase() !== '#ffffff' && c.toLowerCase() !== '#000000');
 
     const clientRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +55,7 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
             setDeadline(project.deadline || '');
             setClientId(project.client_id || null);
             setClientName(project.client_name || '');
+            setColor(project.color || '#10b981');
         }
     }, [open, project]);
 
@@ -74,7 +84,8 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
                 description: desc.trim() || null, 
                 deadline: deadline || null,
                 client_id: clientId,
-                client_name: clientName || null
+                client_name: clientName || null,
+                color: color
             });
             if (success) {
                 appToast.success('Project updated successfully');
@@ -144,6 +155,24 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
                             className="bg-transparent outline-none text-[13px] w-full"
                             placeholder="e.g. Brand Redesign 2026"
                         />
+                    </div>
+
+                    {/* Project Color Palette */}
+                    <div className="flex items-center justify-between px-1 py-1 mb-2">
+                        <span className={cn("text-[11px] font-bold uppercase tracking-wider opacity-40", isDark ? "text-white" : "text-black")}>Color</span>
+                        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                            {colors.map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => setColor(c)}
+                                    style={{ backgroundColor: c }}
+                                    className={cn(
+                                        "w-3.5 h-3.5 rounded-full transition-all active:scale-90",
+                                        color === c ? "ring-1 ring-offset-2 " + (isDark ? "ring-white ring-offset-[#161616]" : "ring-black ring-offset-white") : "hover:scale-110 opacity-70 hover:opacity-100"
+                                    )}
+                                />
+                            ))}
+                        </div>
                     </div>
 
                     {/* Description */}

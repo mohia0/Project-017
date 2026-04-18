@@ -441,7 +441,7 @@ export default function CreateEntryModal() {
     const labelStyle = cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]");
 
     const renderClientPicker = () => (
-        <div className="relative" ref={clientRef}>
+        <div className={cn("relative", showClientDrop ? "z-50" : "z-10")} ref={clientRef}>
             <div className={cn(fieldStyle, "cursor-pointer justify-center")} onClick={() => setShowClientDrop(v => !v)}>
                 <span className={labelStyle}>Client (optional)</span>
                 {selectedClient
@@ -450,7 +450,7 @@ export default function CreateEntryModal() {
                 }
             </div>
             {showClientDrop && (
-                <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
                     <div className="p-2 border-b border-inherit">
                         <input autoFocus value={clientQuery} onChange={e => { setClientQuery(e.target.value); setSelectedClient(''); setSelectedClientId(null); }} placeholder="Search clients..." className={cn("w-full text-[12px] px-3 py-1.5 rounded-lg outline-none", isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]")} />
                     </div>
@@ -479,7 +479,7 @@ export default function CreateEntryModal() {
     );
 
     const renderProjectPicker = () => (
-        <div className="relative" ref={projectRef}>
+        <div className={cn("relative", showProjectDrop ? "z-50" : "z-10")} ref={projectRef}>
             <div className={cn(fieldStyle, "cursor-pointer justify-center")} onClick={() => setShowProjectDrop(v => !v)}>
                 <span className={labelStyle}>Project (optional)</span>
                 {selectedProject
@@ -488,7 +488,7 @@ export default function CreateEntryModal() {
                 }
             </div>
             {showProjectDrop && (
-                <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
                     <div className="p-2 border-b border-inherit">
                         <input autoFocus value={projectQuery} onChange={e => { setProjectQuery(e.target.value); setSelectedProject(''); setSelectedProjectId(null); }} placeholder="Search projects..." className={cn("w-full text-[12px] px-3 py-1.5 rounded-lg outline-none", isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]")} />
                     </div>
@@ -513,7 +513,7 @@ export default function CreateEntryModal() {
     );
 
     const renderCompanyPicker = () => (
-        <div className="relative" ref={companyRef}>
+        <div className={cn("relative", showCompanyDrop ? "z-50" : "z-10")} ref={companyRef}>
             <div className={cn(fieldStyle, "cursor-pointer justify-center")} onClick={() => setShowCompanyDrop(v => !v)}>
                 <span className={labelStyle}>Company (optional)</span>
                 {selectedCompany
@@ -522,7 +522,7 @@ export default function CreateEntryModal() {
                 }
             </div>
             {showCompanyDrop && (
-                <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
                     <div className="p-2 border-b border-inherit">
                         <input autoFocus value={companyQuery} onChange={e => { setCompanyQuery(e.target.value); setSelectedCompany(''); setSelectedCompanyId(null); }} placeholder="Search companies..." className={cn("w-full text-[12px] px-3 py-1.5 rounded-lg outline-none", isDark ? "bg-[#252525] text-white placeholder:text-[#555]" : "bg-[#f5f5f5] text-[#111] placeholder:text-[#aaa]")} />
                     </div>
@@ -551,7 +551,7 @@ export default function CreateEntryModal() {
 
 
     const renderTemplatePicker = () => (
-        <div className="relative" ref={templateRef}>
+        <div className={cn("relative", showTemplateDrop ? "z-50" : "z-10")} ref={templateRef}>
             <div className={cn(fieldStyle, "cursor-pointer justify-center")} onClick={() => setShowTemplateDrop(v => !v)}>
                 <span className={labelStyle}>Template</span>
                 {selectedTemplateName
@@ -743,7 +743,7 @@ export default function CreateEntryModal() {
                                             <input value={cmpName} onChange={e => setCmpName(e.target.value)} placeholder="Acme Corp" autoFocus className="bg-transparent outline-none text-[13px] w-full mt-0.5" />
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="relative" ref={industryRef}>
+                                            <div className={cn("relative", showIndustryDrop ? "z-50" : "z-10")} ref={industryRef}>
                                                 <div className={cn(fieldStyle, "cursor-pointer")} onClick={() => setShowIndustryDrop(!showIndustryDrop)}>
                                                     <span className={labelStyle}>Industry</span>
                                                     <div className="flex items-center justify-between">
@@ -807,7 +807,7 @@ export default function CreateEntryModal() {
                                             <textarea value={prDesc} onChange={e => setPrDesc(e.target.value)} placeholder="Optional project details..." rows={2} className="bg-transparent outline-none text-[13px] w-full mt-0.5 resize-none" />
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="relative" ref={prStatusRef}>
+                                            <div className={cn("relative", showPrStatusDrop ? "z-50" : "z-10")} ref={prStatusRef}>
                                                 <div className={cn(fieldStyle, "cursor-pointer")} onClick={() => setShowPrStatusDrop(!showPrStatusDrop)}>
                                                     <span className={labelStyle}>Status</span>
                                                     <div className="flex items-center justify-between">
@@ -816,7 +816,7 @@ export default function CreateEntryModal() {
                                                     </div>
                                                 </div>
                                                 {showPrStatusDrop && (
-                                                    <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+                                                    <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
                                                         <div className="py-1">
                                                             {PROJECT_STATUS_OPTIONS.map(s => (
                                                                 <button key={s} onClick={() => { setPrStatus(s); setShowPrStatusDrop(false); }} className={cn("w-full text-left px-4 py-2.5 text-[13px] transition-colors flex items-center justify-between", isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-black/5 text-[#333]")}>
@@ -828,7 +828,7 @@ export default function CreateEntryModal() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="relative" ref={prColorRef}>
+                                            <div className={cn("relative", showPrColorDrop ? "z-50" : "z-10")} ref={prColorRef}>
                                                 <div className={cn(fieldStyle, "cursor-pointer")} onClick={() => setShowPrColorDrop(!showPrColorDrop)}>
                                                     <span className={labelStyle}>Brand Color</span>
                                                     <div className="flex items-center gap-2">
@@ -838,7 +838,7 @@ export default function CreateEntryModal() {
                                                     </div>
                                                 </div>
                                                 {showPrColorDrop && (
-                                                    <div className={cn("absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#191919] border-[#252525] p-2" : "bg-white border-[#e8e8e8] p-2")}>
+                                                    <div className={cn("absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-xl z-50 overflow-hidden", isDark ? "bg-[#191919] border-[#252525] p-2" : "bg-white border-[#e8e8e8] p-2")}>
                                                         <div className="grid grid-cols-8 gap-1.5">
                                                             {COLORS.map(c => (
                                                                 <button 
@@ -1035,6 +1035,7 @@ export default function CreateEntryModal() {
 
             {isCompanyEditorOpen && (
                 <CompanyEditor
+                    isSimple={true}
                     onClose={() => setIsCompanyEditorOpen(false)}
                     onSave={async (data) => {
                         const company = await addCompany(data);

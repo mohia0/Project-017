@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LayoutTemplate, Plus, FileText, Trash2, Calendar, FileType2, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, Pencil, BookmarkCheck, ClipboardList, Clock, Briefcase } from 'lucide-react';
+import { LayoutTemplate, Plus, Trash2, Calendar, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, BookmarkCheck, ClipboardList, Clock, Briefcase, LayoutPanelTop, Zap, Search, PanelTop, Table, PenLine, FileText, Tag } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { appToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,9 @@ import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useFormStore } from '@/store/useFormStore';
 import { useSchedulerStore } from '@/store/useSchedulerStore';
+import { useSectionTemplateStore, SectionTemplate } from '@/store/useSectionTemplateStore';
+import { useSnippetStore, Snippet } from '@/store/useSnippetStore';
+import { SnippetPreview } from '@/components/proposals/blocks/SnippetPreview';
 
 export default function TemplatesPage() {
     const router = useRouter();
@@ -27,10 +30,21 @@ export default function TemplatesPage() {
     const [isCreating, setIsCreating] = useState(false);
     const [activeTool, setActiveTool] = useState<'proposal' | 'invoice' | 'form' | 'scheduler' | 'project'>('proposal');
     const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
+    const [activeCategory, setActiveCategory] = useState<'document' | 'section' | 'snippet'>('document');
+    const [sectionSearch, setSectionSearch] = useState('');
+    const [sectionTypeFilter, setSectionTypeFilter] = useState('all');
+    const [snippetSearch, setSnippetSearch] = useState('');
+    const [sectionToDelete, setSectionToDelete] = useState<string | null>(null);
+    const [snippetToDelete, setSnippetToDelete] = useState<string | null>(null);
+
+    const { sectionTemplates, fetchSectionTemplates, deleteSectionTemplate, isLoading: isSectionsLoading } = useSectionTemplateStore();
+    const { snippets, fetchSnippets, deleteSnippet, isLoading: isSnippetsLoading } = useSnippetStore();
 
     useEffect(() => {
         fetchTemplates();
-    }, [fetchTemplates]);
+        fetchSectionTemplates();
+        fetchSnippets();
+    }, [fetchTemplates, fetchSectionTemplates, fetchSnippets]);
 
     const handleUseTemplate = async (template: Template) => {
         setIsCreating(true);
@@ -121,23 +135,250 @@ export default function TemplatesPage() {
                         <LayoutTemplate size={14} className="opacity-40" />
                         <span className="text-[13px] font-semibold tracking-tight">Templates</span>
                     </div>
-                    <>
-                        <ChevronRight size={12} className="opacity-20" />
-                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/5 dark:bg-white/5">
-                            {activeTool === 'proposal' ? <ProposalIcon size={14} className="opacity-40" /> 
-                            : activeTool === 'invoice' ? <InvoiceIcon size={14} className="opacity-40" /> 
-                            : activeTool === 'form' ? <ClipboardList size={14} className="opacity-40" /> 
-                            : activeTool === 'project' ? <Briefcase size={14} className="opacity-40" />
-                            : <Clock size={14} className="opacity-40" />}
-                            <span className="text-[13px] font-semibold capitalize">{activeTool}s</span>
-                        </div>
-                    </>
                 </div>
 
-
+                {/* ── Category Tabs ── */}
+                <div className={cn('flex items-center gap-0.5 p-1 rounded-2xl border', isDark ? 'bg-[#0f0f0f] border-[#252525]' : 'bg-[#f3f3f3] border-[#e8e8e8]')}>
+                    {[
+                        { id: 'document', label: 'Document Templates', icon: LayoutTemplate },
+                        { id: 'section',  label: 'Section Templates',  icon: LayoutPanelTop },
+                        { id: 'snippet',  label: 'Snippets',           icon: Zap },
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveCategory(tab.id as any)}
+                            className={cn(
+                                'flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[12px] font-semibold transition-all',
+                                activeCategory === tab.id
+                                    ? isDark ? 'bg-white/10 text-white shadow-sm' : 'bg-white text-black shadow-sm'
+                                    : isDark ? 'text-white/40 hover:text-white/70' : 'text-black/40 hover:text-black/70'
+                            )}
+                        >
+                            <tab.icon size={13} />
+                            <span className="hidden sm:inline">{tab.label}</span>
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+            {/* ── Section Templates Tab ── */}
+            {activeCategory === 'section' && (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className={cn('px-5 py-3 border-b flex items-center gap-3', isDark ? 'border-[#252525]' : 'border-[#ebebeb]')}>
+                        <div className={cn('flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border', isDark ? 'bg-white/5 border-white/10' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
+                            <Search size={13} className="opacity-30 shrink-0" />
+                            <input
+                                value={sectionSearch}
+                                onChange={e => setSectionSearch(e.target.value)}
+                                placeholder="Search section templates..."
+                                className="flex-1 bg-transparent outline-none text-[13px] placeholder:opacity-30"
+                            />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            {['all', 'content', 'pricing', 'signature', 'header'].map(type => (
+                                <button
+                                    key={type}
+                                    onClick={() => setSectionTypeFilter(type)}
+                                    className={cn(
+                                        'px-2.5 py-1.5 rounded-xl text-[11px] font-semibold capitalize transition-all border',
+                                        sectionTypeFilter === type
+                                            ? isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-black text-white border-black'
+                                            : isDark ? 'border-white/5 text-white/40 hover:border-white/15 hover:text-white/70' : 'border-[#e8e8e8] text-black/40 hover:border-[#ccc] hover:text-black/70'
+                                    )}
+                                >
+                                    {type === 'all' ? 'All' : type}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className={cn('flex-1 overflow-auto p-6', isDark ? 'bg-[#0f0f0f]' : 'bg-[#f9f9fb]')}>
+                        {sectionTemplates.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full opacity-40 gap-4">
+                                <div className={cn('w-20 h-20 rounded-3xl flex items-center justify-center', isDark ? 'bg-white/5' : 'bg-black/5')}>
+                                    <LayoutPanelTop size={36} strokeWidth={1.5} />
+                                </div>
+                                <div className="text-center max-w-[280px]">
+                                    <p className="text-[15px] font-bold">No section templates yet</p>
+                                    <p className="text-[12px] mt-1.5 leading-relaxed">
+                                        Hover over any block in a Proposal or Invoice editor, then click the
+                                        <span className={cn('mx-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center', isDark ? 'bg-white/10' : 'bg-black/8')}>
+                                            <LayoutPanelTop size={9} className="mr-0.5" /> save
+                                        </span>
+                                        icon to save a section here.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                                {sectionTemplates
+                                    .filter(t => 
+                                        t.name.toLowerCase().includes(sectionSearch.toLowerCase()) && 
+                                        (sectionTypeFilter === 'all' || t.block_type === sectionTypeFilter)
+                                    )
+                                    .map(t => (
+                                    <div key={t.id} className={cn(
+                                        "group flex flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-xl",
+                                        isDark 
+                                            ? "bg-[#181818] border-[#252525] hover:border-primary/30" 
+                                            : "bg-white border-[#ebebeb] hover:border-primary/30"
+                                    )}>
+                                        <div 
+                                            className="h-28 relative p-4 flex flex-col items-center justify-center border-b border-inherit opacity-80"
+                                            style={{ backgroundColor: t.background_color || (isDark ? '#222' : '#f5f5f5') }}
+                                        >
+                                            {t.block_type === 'header' ? <PanelTop size={32} className="opacity-30" /> :
+                                             t.block_type === 'pricing' ? <Table size={32} className="opacity-30" /> :
+                                             t.block_type === 'signature' ? <PenLine size={32} className="opacity-30" /> :
+                                             <FileText size={32} className="opacity-30" />}
+                                             
+                                             <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    appToast.promise(
+                                                        useSectionTemplateStore.getState().deleteSectionTemplate(t.id),
+                                                        { loading: 'Deleting...', success: 'Template deleted', error: 'Failed to delete' }
+                                                    );
+                                                }}
+                                                className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                        </div>
+                                        <div className="p-4 flex-1 flex flex-col min-h-0">
+                                            <h3 className="font-bold text-[14px] truncate" title={t.name}>{t.name}</h3>
+                                            <p className="text-[12px] opacity-60 mt-1 line-clamp-2 min-h-[36px]">
+                                                {t.description || 'No description provided.'}
+                                            </p>
+                                            
+                                            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-inherit">
+                                                <span className={cn(
+                                                    "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest",
+                                                    isDark ? "bg-white/10 text-white/70" : "bg-black/5 text-black/60"
+                                                )}>
+                                                    {t.block_type}
+                                                </span>
+                                                {t.tags?.slice(0, 2).map(tag => (
+                                                    <span key={tag} className={cn(
+                                                        "px-2 py-0.5 rounded text-[10px] font-semibold flex items-center",
+                                                        isDark ? "bg-white/5 text-white/50" : "bg-black/5 text-black/50"
+                                                    )}>
+                                                        <Tag size={9} className="mr-1" />{tag}
+                                                    </span>
+                                                ))}
+                                                {t.tags && t.tags.length > 2 && (
+                                                    <span className={cn(
+                                                        "px-1 py-0.5 rounded text-[10px] font-semibold flex items-center opacity-50",
+                                                        isDark ? "bg-white/5" : "bg-black/5"
+                                                    )}>+{t.tags.length - 2}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Snippets Tab ── */}
+            {activeCategory === 'snippet' && (
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className={cn('px-5 py-3 border-b', isDark ? 'border-[#252525]' : 'border-[#ebebeb]')}>
+                        <div className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border', isDark ? 'bg-white/5 border-white/10' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
+                            <Search size={13} className="opacity-30 shrink-0" />
+                            <input
+                                value={snippetSearch}
+                                onChange={e => setSnippetSearch(e.target.value)}
+                                placeholder="Search snippets..."
+                                className="flex-1 bg-transparent outline-none text-[13px] placeholder:opacity-30"
+                            />
+                        </div>
+                    </div>
+
+                    <div className={cn('flex-1 overflow-auto', isDark ? 'bg-[#0f0f0f]' : 'bg-[#f9f9fb]')}>
+                        {snippets.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full opacity-40 gap-4 p-8">
+                                <div className={cn('w-20 h-20 rounded-3xl flex items-center justify-center bg-yellow-500/10')}>
+                                    <Zap size={36} className="text-yellow-500" strokeWidth={1.5} />
+                                </div>
+                                <div className="text-center max-w-[300px]">
+                                    <p className="text-[15px] font-bold">No snippets yet</p>
+                                    <p className="text-[12px] mt-1.5 leading-relaxed">
+                                        Select text inside any content block, click the
+                                        <span className="mx-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-yellow-500/15 text-yellow-500 inline-flex items-center">
+                                            <Zap size={9} className="mr-0.5" /> Save
+                                        </span>
+                                        button in the formatting bar, and it will appear here.
+                                    </p>
+                                    <p className="text-[11px] mt-2 opacity-70">
+                                        Type <span className={cn('font-black px-1.5 rounded-md', isDark ? 'bg-white/10' : 'bg-black/8')}>::</span> in any editor to instantly insert a snippet.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-inherit">
+                                {snippets
+                                    .filter(s => s.name.toLowerCase().includes(snippetSearch.toLowerCase()))
+                                    .map(s => (
+                                    <div key={s.id} className={cn(
+                                        "flex items-start gap-4 p-4 transition-all hover:bg-black/[0.02] dark:hover:bg-white/[0.02] group"
+                                    )}>
+                                        <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center shrink-0 mt-0.5">
+                                            <Zap size={16} className="text-yellow-500" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold text-[14px] truncate">{s.name}</h3>
+                                            <div className={cn(
+                                                "mt-1.5 rounded-xl border overflow-hidden max-h-[100px] relative pointer-events-none",
+                                                isDark ? "bg-[#1a1a1a] border-white/5" : "bg-[#fcfcfc] border-black/5"
+                                            )}>
+                                                <div className="scale-[0.85] origin-top-left -mb-[10%]">
+                                                    <SnippetPreview 
+                                                        blocks={s.content_blocks} 
+                                                        isDark={isDark} 
+                                                    />
+                                                </div>
+                                            </div>
+                                            {s.tags && s.tags.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                                    {s.tags.map(tag => (
+                                                        <span key={tag} className={cn(
+                                                            "px-2 py-0.5 rounded text-[10px] font-semibold flex items-center",
+                                                            isDark ? "bg-white/5 text-white/50" : "bg-black/5 text-black/50"
+                                                        )}>
+                                                            <Tag size={9} className="mr-1" />{tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    appToast.promise(
+                                                        useSnippetStore.getState().deleteSnippet(s.id),
+                                                        { loading: 'Deleting...', success: 'Snippet deleted', error: 'Failed to delete' }
+                                                    );
+                                                }}
+                                                className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                                                title="Delete snippet"
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Document Templates Tab (existing) ── */}
+            {activeCategory === 'document' && <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                 {/* ── Sidebar ── */}
                 <div className={cn(
                     "w-full md:w-56 border-b md:border-b-0 md:border-r shrink-0 flex flex-row md:flex-col p-2 md:p-3 gap-2 overflow-x-auto no-scrollbar",
@@ -407,7 +648,7 @@ export default function TemplatesPage() {
                         </div>
                     )}
                 </div>
-            </div>
+            </div>}
 
             <DeleteConfirmModal 
                 open={!!templateToDelete}

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
+import { SectionTemplateBrowser } from '@/components/templates/SectionTemplateBrowser';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
@@ -992,7 +993,7 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
 
 /* ─── Hook Detail Panel ─── */
 function HookPanel({ id, initialEditing = false, isDark }: { id: string; initialEditing?: boolean; isDark: boolean }) {
-    const { hooks, updateHook } = useHookStore();
+    const { hooks, updateHook, refreshHookEventCount } = useHookStore();
     const hook = hooks.find(h => h.id === id);
     
     const [editing, setEditing] = useState(initialEditing);
@@ -1000,6 +1001,12 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
     useEffect(() => {
         setEditing(initialEditing);
     }, [id, initialEditing]);
+
+    // Refresh event count + last_fired_at when the panel opens
+    useEffect(() => {
+        refreshHookEventCount(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id]);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [form, setForm] = useState({ name: '', title: '', link: '', color: '' });
@@ -1101,6 +1108,26 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
                     </div>
                 ) : (
                     <div className="px-4 py-5 flex flex-col gap-6">
+                        {/* Stats row */}
+                        <div className={cn('flex items-center gap-4 rounded-xl border px-4 py-3', isDark ? 'bg-[#1a1a1a] border-[#252525]' : 'bg-[#f7f7f9] border-[#ebebf0]')}>
+                            <div className="flex flex-col items-center gap-0.5 flex-1">
+                                <span className={cn('text-[20px] font-black tabular-nums tracking-tight', isDark ? 'text-white' : 'text-[#111]')}>
+                                    {hook.event_count ?? 0}
+                                </span>
+                                <span className={cn('text-[9px] font-bold uppercase tracking-wider', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Triggers</span>
+                            </div>
+                            <div className={cn('w-px self-stretch', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e8e8e8]')} />
+                            <div className="flex flex-col items-center gap-0.5 flex-1">
+                                <span className={cn('text-[11px] font-bold text-center leading-tight', isDark ? 'text-[#aaa]' : 'text-[#555]')}>
+                                    {hook.last_fired_at
+                                        ? formatDistanceToNow(new Date(hook.last_fired_at), { addSuffix: true })
+                                        : '—'
+                                    }
+                                </span>
+                                <span className={cn('text-[9px] font-bold uppercase tracking-wider', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Last fired</span>
+                            </div>
+                        </div>
+
                         {/* Placement link */}
                         {hook.link && (
                             <div>
@@ -1330,19 +1357,22 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
         if (!rightPanel) return null;
         return (
             <div className="flex flex-col h-full overflow-hidden">
-                <PanelHeader
-                    title={titles[rightPanel.type] || 'Details'}
-                    icon={panelIcons[rightPanel.type]}
-                    isDark={isDark}
-                    onClose={closeRightPanel}
-                    onAction={rightPanel.type === 'notifications' ? useNotificationStore.getState().clearAll : undefined}
-                    actionIcon={rightPanel.type === 'notifications' ? Trash2 : undefined}
-                />
+                {rightPanel.type !== 'template_browser' && (
+                    <PanelHeader
+                        title={titles[rightPanel.type] || 'Details'}
+                        icon={panelIcons[rightPanel.type]}
+                        isDark={isDark}
+                        onClose={closeRightPanel}
+                        onAction={rightPanel.type === 'notifications' ? useNotificationStore.getState().clearAll : undefined}
+                        actionIcon={rightPanel.type === 'notifications' ? Trash2 : undefined}
+                    />
+                )}
                 {rightPanel.type === 'notifications' && <NotificationsPanel isDark={isDark} />}
                 {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
                 {rightPanel.type === 'company' && <CompanyPanel id={rightPanel.id} isDark={isDark} />}
                 {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} initialEditing={rightPanel.editing} isDark={isDark} />}
                 {rightPanel.type === 'form_response' && <FormResponsePanel id={rightPanel.id} formId={rightPanel.formId} isDark={isDark} />}
+                {rightPanel.type === 'template_browser' && <SectionTemplateBrowser onInsert={rightPanel.onInsert} />}
             </div>
         );
     }
@@ -1385,20 +1415,23 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                         className="h-full flex flex-col overflow-hidden"
                         style={{ width: rightPanel.type === 'notifications' ? 280 : rightPanelWidth }}
                     >
-                        <PanelHeader
-                            title={titles[rightPanel.type] || 'Details'}
-                            icon={panelIcons[rightPanel.type]}
-                            isDark={isDark}
-                            onClose={closeRightPanel}
-                            onAction={rightPanel.type === 'notifications' ? useNotificationStore.getState().clearAll : undefined}
-                            actionIcon={rightPanel.type === 'notifications' ? Trash2 : undefined}
-                        />
+                        {rightPanel.type !== 'template_browser' && (
+                            <PanelHeader
+                                title={titles[rightPanel.type] || 'Details'}
+                                icon={panelIcons[rightPanel.type]}
+                                isDark={isDark}
+                                onClose={closeRightPanel}
+                                onAction={rightPanel.type === 'notifications' ? useNotificationStore.getState().clearAll : undefined}
+                                actionIcon={rightPanel.type === 'notifications' ? Trash2 : undefined}
+                            />
+                        )}
 
                         {rightPanel.type === 'notifications' && <NotificationsPanel isDark={isDark} />}
                         {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
                         {rightPanel.type === 'company' && <CompanyPanel id={rightPanel.id} isDark={isDark} />}
                         {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} initialEditing={rightPanel.editing} isDark={isDark} />}
                         {rightPanel.type === 'form_response' && <FormResponsePanel id={rightPanel.id} formId={rightPanel.formId} isDark={isDark} />}
+                        {rightPanel.type === 'template_browser' && <SectionTemplateBrowser onInsert={rightPanel.onInsert} />}
                     </div>
                 </motion.div>
             )}

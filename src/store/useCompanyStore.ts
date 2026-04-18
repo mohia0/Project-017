@@ -57,11 +57,22 @@ export const useCompanyStore = create<CompanyState>((set) => ({
 
     addCompany: async (company) => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
-        if (!workspaceId) return null;
+        if (!workspaceId) {
+            set({ error: 'No active workspace selected' });
+            return null;
+        }
 
+        // Filter out empty/null fields to avoid issues with missing columns in DB
+        const payload: any = { workspace_id: workspaceId };
+        Object.entries(company).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                payload[key] = value;
+            }
+        });
+        
         const { data, error } = await supabase
             .from('companies')
-            .insert({ ...company, workspace_id: workspaceId })
+            .insert(payload)
             .select()
             .single();
         if (error) {

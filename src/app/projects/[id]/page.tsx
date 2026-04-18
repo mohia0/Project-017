@@ -733,9 +733,14 @@ export default function ProjectDetailPage() {
 
             {/* ── TOP BAR ── */}
             <div className={cn(
-                "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0 relative z-[100]",
+                "flex items-center justify-between px-3 md:px-6 py-2.5 md:py-4 border-b shrink-0 relative z-[100]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
+                {/* Subtle Branding Accent Glow */}
+                <div 
+                    className="absolute left-0 top-0 bottom-0 w-[240px] pointer-events-none opacity-[0.05]"
+                    style={{ background: `linear-gradient(to right, ${project.color}, transparent)` }}
+                />
                 {/* Left */}
                 <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
                     <button
@@ -809,16 +814,18 @@ export default function ProjectDetailPage() {
                     <div className="relative hidden md:flex items-center" ref={statusRef}>
                         <button
                             onClick={() => setStatusOpen(s => !s)}
+                            style={{ 
+                                backgroundColor: isDark ? `${sc}15` : `${sc}10`,
+                                color: sc,
+                                borderColor: `${sc}30`
+                            }}
                             className={cn(
-                                "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all border",
-                                isDark
-                                    ? "bg-white/[0.05] text-[#aaa] hover:text-white border-white/[0.08]"
-                                    : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111] border-black/5"
+                                "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all border outline-none hover:shadow-sm"
                             )}
                         >
-                            <div className="w-1.5 h-1.5 rounded-full opacity-70" style={{ backgroundColor: sc }} />
+                            <div className="w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]" style={{ backgroundColor: sc }} />
                             {project.status}
-                            <ChevronDown size={14} className="ml-1 opacity-50" />
+                            <ChevronDown size={14} className="ml-1 opacity-70" />
                         </button>
                         {statusOpen && (
                             <div className={cn(

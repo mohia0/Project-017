@@ -55,6 +55,7 @@ export interface ProjectTask {
     due_date?: string | null;
     start_date?: string | null;
     position: number;
+    color?: string | null;
     custom_fields: Record<string, any>;
     is_archived: boolean;
     created_at: string;
@@ -98,6 +99,7 @@ interface ProjectState {
     addTaskGroup: (group: Omit<ProjectTaskGroup, 'id' | 'created_at' | 'workspace_id'>) => Promise<ProjectTaskGroup | null>;
     updateTaskGroup: (id: string, projectId: string, updates: Partial<ProjectTaskGroup>) => Promise<void>;
     deleteTaskGroup: (id: string, projectId: string) => Promise<void>;
+    duplicateTaskGroup: (id: string, projectId: string) => Promise<void>;
     reorderTaskGroup: (id: string, projectId: string, newPosition: number) => Promise<void>;
 
     // Linked Items (keyed by projectId)
@@ -248,16 +250,30 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     },
 
     updateTask: async (id, projectId, updates) => {
+        const currentTask = (get().tasksByProject[projectId] || []).find(t => t.id === id);
+        let finalUpdates = { ...updates };
+
+        // Handle nested custom_fields merging
+        if (updates.custom_fields && currentTask) {
+            finalUpdates.custom_fields = {
+                ...(currentTask.custom_fields || {}),
+                ...updates.custom_fields
+            };
+        }
+
         // Optimistic
         set((s) => ({
             tasksByProject: {
                 ...s.tasksByProject,
-                [projectId]: (s.tasksByProject[projectId] || []).map((t) => t.id === id ? { ...t, ...updates } : t),
+                [projectId]: (s.tasksByProject[projectId] || []).map((t) => t.id === id ? { ...t, ...finalUpdates } : t),
             },
         }));
-        const { data, error } = await supabase.from('project_tasks').update(updates).eq('id', id).select().single();
-        if (error) set({ error: error.message });
-        else if (data) {
+
+        const { data, error } = await supabase.from('project_tasks').update(finalUpdates).eq('id', id).select().single();
+        if (error) {
+            console.error("Update task error:", error);
+            set({ error: error.message });
+        } else if (data) {
             set((s) => ({
                 tasksByProject: {
                     ...s.tasksByProject,
@@ -392,6 +408,57 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
                 [projectId]: (s.groupsByProject[projectId] || []).filter((g) => g.id !== id),
             },
         }));
+    },
+
+    duplicateTaskGroup: async (id, projectId) => {
+        const workspaceId = useUIStore.getState().activeWorkspaceId;
+        if (!workspaceId) return;
+
+        const groups = get().groupsByProject[projectId] || [];
+        const group = groups.find(g => g.id === id);
+        if (!group) return;
+
+        try {
+            // 1. Create new group
+            const { id: _, created_at: __, ...groupPayload } = group;
+            const { data: newGroup, error: groupErr } = await supabase
+                .from('project_task_groups')
+                .insert({
+                    ...groupPayload,
+                    name: `${group.name} (Copy)`,
+                    position: groups.length,
+                    workspace_id: workspaceId
+                })
+                .select()
+                .single();
+
+            if (groupErr || !newGroup) throw groupErr || new Error("Failed to create new group");
+
+            // 2. Fetch and duplicate tasks
+            const originalTasks = (get().tasksByProject[projectId] || []).filter(t => t.task_group_id === id);
+            if (originalTasks.length > 0) {
+                const taskPayloads = originalTasks.map(t => {
+                    const { id: _, created_at: __, ...rest } = t;
+                    return {
+                        ...rest,
+                        task_group_id: newGroup.id,
+                        workspace_id: workspaceId
+                    };
+                });
+
+                const { error: tasksErr } = await supabase.from('project_tasks').insert(taskPayloads);
+                if (tasksErr) throw tasksErr;
+            }
+
+            // 3. Refresh state
+            await Promise.all([
+                get().fetchTaskGroups(projectId),
+                get().fetchTasks(projectId)
+            ]);
+        } catch (err: any) {
+            console.error("Duplicate Group Error:", err);
+            set({ error: err.message });
+        }
     },
 
     reorderTaskGroup: async (id, projectId, newPosition) => {
