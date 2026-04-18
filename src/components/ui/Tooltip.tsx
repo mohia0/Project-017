@@ -8,7 +8,7 @@ import { useUIStore } from '@/store/useUIStore';
 
 interface TooltipProps {
     children: React.ReactNode;
-    content: string;
+    content: React.ReactNode;
     delay?: number;
     side?: 'top' | 'bottom' | 'left' | 'right';
     className?: string;

@@ -105,10 +105,7 @@ export async function POST(req: Request) {
         }
 
         // 3. Create notification
-        let notificationTitle = `New Form Submission`;
-        if (visitor) {
-            notificationTitle = `New Form Submission from ${visitor.country} ${visitor.flag}`;
-        }
+        const notificationTitle = `New Form Submission`;
         
         const notificationMessage = `${respondentName} just submitted a response to "${form_title || 'Untitled Form'}".`;
 

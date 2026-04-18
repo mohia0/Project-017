@@ -96,7 +96,11 @@ export const useFormStore = create<FormState>((set) => ({
         const { data, error } = await supabase.from('forms').insert(payload).select().single();
 
         if (error) { set({ error: error.message }); return null; }
-        if (data) { set((state) => ({ forms: [data, ...state.forms] })); return data; }
+        if (data) { 
+            const newForm = { ...data, responses_count: 0 };
+            set((state) => ({ forms: [newForm, ...state.forms] })); 
+            return data; 
+        }
         return null;
     },
 
@@ -106,7 +110,9 @@ export const useFormStore = create<FormState>((set) => ({
         }));
         const { data, error } = await supabase.from('forms').update(updates).eq('id', id).select().single();
         if (error) set({ error: error.message });
-        else if (data) set((state) => ({ forms: state.forms.map((f) => (f.id === id ? data : f)) }));
+        else if (data) set((state) => ({ 
+            forms: state.forms.map((f) => (f.id === id ? { ...data, responses_count: f.responses_count } : f)) 
+        }));
     },
 
     deleteForm: async (id) => {

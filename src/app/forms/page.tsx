@@ -151,12 +151,12 @@ function TbBtn({ label, icon, active, hasArrow, onClick, isDark }: {
 /* ─── Checkbox ──────────────────────────────────────────────────── */
 function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
     return (
-        <div className={cn("w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center transition-all shrink-0",
-            checked ? "bg-primary border-primary shadow-sm"
+        <div className={cn("w-[16px] h-[16px] rounded-[5px] border flex items-center justify-center transition-all duration-200 shrink-0",
+            checked ? "bg-primary border-primary shadow-[0_2px_4px_rgba(77,191,57,0.2)]"
                 : indeterminate ? "bg-primary/40 border-primary/60"
-                    : isDark ? "border-white/10 bg-white/5" : "border-[#d0d0d0] bg-white")}>
+                    : isDark ? "border-white/15 bg-white/5" : "border-[#d8d8d8] bg-white")}>
             {(checked || indeterminate) && (
-                <Check size={11} strokeWidth={checked ? 4 : 2.5} className="text-black" />
+                <Check size={11} strokeWidth={4.5} className="text-black" />
             )}
         </div>
     );
@@ -187,8 +187,8 @@ function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }:
                     <div className="flex items-start gap-1.5 min-w-0 -ml-2">
                         <div
                             onClick={(e) => { e.stopPropagation(); onToggle(); }}
-                            className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-all cursor-pointer",
-                                isDark ? "hover:bg-white/5" : "hover:bg-black/5")}>
+                            className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 cursor-pointer",
+                                isDark ? "hover:bg-white/10 active:scale-90" : "hover:bg-black/5 active:scale-90")}>
                             <Chk checked={isSelected} isDark={isDark} />
                         </div>
                         <div className="min-w-0 pt-1.5">

@@ -91,10 +91,7 @@ export async function POST(req: Request) {
         const visitor = await getGeoIntelligence(req);
         
         // 2. Create notification
-        let notificationTitle = `New Meeting Booked`;
-        if (visitor) {
-            notificationTitle = `New Meeting Booked from ${visitor.country} ${visitor.flag}`;
-        }
+        const notificationTitle = `New Meeting Booked`;
         const notificationMessage = `${booker_name} just booked a session for ${booked_date} at ${booked_time} on "${scheduler_title || 'Untitled Scheduler'}".`;
 
         await supabaseService

@@ -13,7 +13,8 @@ export type RightPanelState =
     | { type: 'notifications' }
     | { type: 'contact'; id: string }
     | { type: 'company'; id: string }
-    | { type: 'hook'; id: string; editing?: boolean };
+    | { type: 'hook'; id: string; editing?: boolean }
+    | { type: 'form_response'; id: string; formId: string };
 
 interface UIState {
     activeWorkspaceId: string | null;

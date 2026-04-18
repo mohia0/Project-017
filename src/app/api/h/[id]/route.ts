@@ -32,10 +32,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                     user_agent: ua,
                 });
 
-                let notificationTitle = hook.title || `Someone opened "${hook.name}"`;
-                if (visitor) {
-                    notificationTitle = `Someone from ${visitor.country} ${visitor.flag} opened "${hook.name}"`;
-                }
+                const notificationTitle = hook.title || `Someone opened "${hook.name}"`;
 
                 await supabaseService.from('notifications').insert({
                     workspace_id: hook.workspace_id,

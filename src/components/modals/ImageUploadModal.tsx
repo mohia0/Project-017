@@ -9,16 +9,20 @@ interface FileUploadModalProps {
     isOpen: boolean;
     onClose: () => void;
     onUpload: (url: string) => void;
+    onUploadMultiple?: (urls: string[]) => void;
     title?: string;
     fileType?: 'image' | 'all';
+    multiple?: boolean;
 }
 
 export default function FileUploadModal({ 
     isOpen, 
     onClose, 
     onUpload, 
+    onUploadMultiple,
     title = "Upload File",
-    fileType = 'image'
+    fileType = 'image',
+    multiple = false
 }: FileUploadModalProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
@@ -34,13 +38,10 @@ export default function FileUploadModal({
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const handleFiles = useCallback(async (files: FileList | File[]) => {
-        const file = files[0];
-        if (!file) return;
-
-        if (fileType === 'image' && !file.type.startsWith('image/')) {
-            setError("Please upload an image file");
-            return;
-        }
+        const filesArray = Array.from(files);
+        if (filesArray.length === 0) return;
+        
+        const filesToUpload = multiple ? filesArray : [filesArray[0]];
 
         setUploading(true);
         setError(null);
@@ -50,45 +51,66 @@ export default function FileUploadModal({
         setIsProcessing(false);
 
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const data = await new Promise<any>((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                
-                xhr.upload.addEventListener('progress', (event) => {
-                    if (event.lengthComputable) {
-                        const percentComplete = Math.round((event.loaded / event.total) * 100);
-                        if (percentComplete >= 100) {
-                            setUploadProgress(100);
-                            setIsProcessing(true);
-                        } else {
-                            setUploadProgress(percentComplete);
-                        }
-                    }
-                });
-                
-                xhr.addEventListener('load', () => {
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve(response);
-                        } else {
-                            reject(new Error(response.details || response.error || 'Upload failed'));
-                        }
-                    } catch (e) {
-                        reject(new Error('Invalid response from server'));
-                    }
-                });
-                
-                xhr.addEventListener('error', () => {
-                    reject(new Error('Network error occurred during upload.'));
-                });
-                
-                xhr.open('POST', '/api/upload');
-                xhr.send(formData);
-            });
+            const uploadedUrls: string[] = [];
             
+            for (let i = 0; i < filesToUpload.length; i++) {
+                const file = filesToUpload[i];
+                
+                if (fileType === 'image' && !file.type.startsWith('image/')) {
+                    setError(`File "${file.name}" is not an image`);
+                    continue;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const data = await new Promise<any>((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    
+                    xhr.upload.addEventListener('progress', (event) => {
+                        if (event.lengthComputable) {
+                            // Calculate total progress across all files
+                            const fileWeight = 100 / filesToUpload.length;
+                            const currentFileProgress = (event.loaded / event.total) * fileWeight;
+                            const totalProgress = Math.round((i * fileWeight) + currentFileProgress);
+                            
+                            if (totalProgress >= 100) {
+                                setUploadProgress(100);
+                                if (i === filesToUpload.length - 1) setIsProcessing(true);
+                            } else {
+                                setUploadProgress(totalProgress);
+                            }
+                        }
+                    });
+                    
+                    xhr.addEventListener('load', () => {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                resolve(response);
+                            } else {
+                                reject(new Error(response.details || response.error || 'Upload failed'));
+                            }
+                        } catch (e) {
+                            reject(new Error('Invalid response from server'));
+                        }
+                    });
+                    
+                    xhr.addEventListener('error', () => {
+                        reject(new Error('Network error occurred during upload.'));
+                    });
+                    
+                    xhr.open('POST', '/api/upload');
+                    xhr.send(formData);
+                });
+                
+                uploadedUrls.push(data.url);
+            }
+            
+            if (uploadedUrls.length === 0 && filesToUpload.length > 0) {
+                throw new Error("No files were successfully uploaded");
+            }
+
             // All good!
             setUploadProgress(100);
             setIsProcessing(false);
@@ -96,7 +118,11 @@ export default function FileUploadModal({
             
             // Wait 800ms so they see the 100% and success state
             setTimeout(() => {
-                onUpload(data.url);
+                if (multiple && onUploadMultiple) {
+                    onUploadMultiple(uploadedUrls);
+                } else if (uploadedUrls.length > 0) {
+                    onUpload(uploadedUrls[0]);
+                }
                 setUploading(false);
                 setUploadProgress(0);
                 setIsFinished(false);
@@ -111,7 +137,7 @@ export default function FileUploadModal({
             setIsFinished(false);
             setIsProcessing(false);
         }
-    }, [onUpload, onClose]);
+    }, [onUpload, onUploadMultiple, onClose, multiple, fileType]);
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
@@ -249,6 +275,7 @@ export default function FileUploadModal({
                                     ref={fileInputRef}
                                     type="file" 
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    multiple={multiple}
                                     accept={fileType === 'image' ? "image/*" : "*"}
                                     onChange={(e) => e.target.files && handleFiles(e.target.files)}
                                 />

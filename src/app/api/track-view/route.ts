@@ -14,10 +14,7 @@ export async function POST(req: Request) {
         const visitor = await getGeoIntelligence(req);
 
         // Message format matches the design: `Someone opened "Title"`
-        let notificationTitle = `Someone opened "${docTitle}"`;
-        if (visitor) {
-            notificationTitle = `Someone from ${visitor.country} ${visitor.flag} opened "${docTitle}"`;
-        }
+        const notificationTitle = `Someone opened "${docTitle}"`;
 
         const notificationMessage =
             type === 'proposal'

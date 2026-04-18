@@ -19,6 +19,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { CountryPicker } from '@/components/ui/CountryPicker';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useHookStore, Hook } from '@/store/useHookStore';
+import { useFormStore } from '@/store/useFormStore';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter, usePathname } from 'next/navigation';
 import { Radio, Copy } from 'lucide-react';
@@ -240,7 +241,52 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                             </p>
                                             {notif.metadata?.visitor && (
                                                 <Tooltip 
-                                                    content={`${notif.metadata.visitor.flag} ${notif.metadata.visitor.country}, ${notif.metadata.visitor.city} (IP: ${notif.metadata.visitor.ip})`} 
+                                                    className="whitespace-normal font-sans"
+                                                    content={
+                                                        <div className="flex flex-col gap-1 w-[160px]">
+                                                            <div className="flex items-center gap-2 border-b border-inherit pb-1.5 mb-0.5">
+                                                                {!notif.metadata.visitor.countryCode || notif.metadata.visitor.countryCode === 'local' || notif.metadata.visitor.countryCode === 'unknown' ? (
+                                                                    <span className="text-[13px] leading-none">{notif.metadata.visitor.flag}</span>
+                                                                ) : (
+                                                                    <img 
+                                                                        src={`https://flagcdn.com/w20/${notif.metadata.visitor.countryCode.toLowerCase()}.png`} 
+                                                                        alt={notif.metadata.visitor.country}
+                                                                        className="w-4 h-3 object-cover rounded-[1px] shadow-sm"
+                                                                        onError={(e) => {
+                                                                            // Fallback to emoji if image fails
+                                                                            e.currentTarget.style.display = 'none';
+                                                                            const span = e.currentTarget.parentElement?.querySelector('.flag-emoji-fallback') as HTMLElement;
+                                                                            if (span) span.style.display = 'inline';
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                                {notif.metadata.visitor.countryCode && notif.metadata.visitor.countryCode !== 'local' && notif.metadata.visitor.countryCode !== 'unknown' && (
+                                                                    <span className="flag-emoji-fallback text-[13px] leading-none" style={{ display: 'none' }}>
+                                                                        {notif.metadata.visitor.flag}
+                                                                    </span>
+                                                                )}
+                                                                <span className="text-[10px] uppercase tracking-wider font-bold truncate leading-none">
+                                                                    {notif.metadata.visitor.country}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between text-[9px] leading-tight">
+                                                                <span className="opacity-50 font-medium">IP</span>
+                                                                <span className="font-mono">{notif.metadata.visitor.ip}</span>
+                                                            </div>
+                                                            {notif.metadata.visitor.isp && (
+                                                                <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
+                                                                    <span className="opacity-50 font-medium mr-2">ISP</span>
+                                                                    <span className="font-semibold text-right truncate flex-1">{notif.metadata.visitor.isp}</span>
+                                                                </div>
+                                                            )}
+                                                            {(notif.metadata.visitor.region || notif.metadata.visitor.timezone) && (
+                                                                <div className="flex flex-col gap-0.5 mt-0.5 pt-1.5 border-t border-inherit text-[8px] opacity-70 font-medium">
+                                                                    {notif.metadata.visitor.region && <div>{notif.metadata.visitor.city}, {notif.metadata.visitor.region}</div>}
+                                                                    {notif.metadata.visitor.timezone && <div>{notif.metadata.visitor.timezone}</div>}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    } 
                                                     side="left"
                                                 >
                                                     <div className="shrink-0 flex items-center justify-center cursor-help">
@@ -1134,6 +1180,86 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
     );
 }
 
+/* ─── Form Response Detail Panel ─── */
+function FormResponsePanel({ id, formId, isDark }: { id: string; formId: string; isDark: boolean }) {
+    const { forms, responses, fetchResponses } = useFormStore();
+    const form = forms.find(f => f.id === formId);
+    const response = responses.find(r => r.id === id);
+
+    useEffect(() => {
+        if (!response) {
+            fetchResponses(formId);
+        }
+    }, [formId, response, fetchResponses]);
+
+    if (!form || !response) {
+        return (
+            <div className={cn("flex-1 flex flex-col items-center justify-center p-8 text-center", isDark ? "text-white/20" : "text-black/20")}>
+                <div className="animate-spin mb-4"><Zap size={20} /></div>
+                <div className="text-[12px] font-medium">Loading response...</div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-6 py-8">
+                <div className="mb-10">
+                    <div className={cn("text-[9px] font-bold uppercase tracking-widest opacity-30 mb-1.5", isDark ? "text-white" : "text-black")}>
+                        Submitted on
+                    </div>
+                    <div className={cn("text-[15px] font-bold tracking-tight", isDark ? "text-white" : "text-black")}>
+                        {new Date(response.created_at).toLocaleString(undefined, { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric',
+                            hour: '2-digit', 
+                            minute: '2-digit'
+                        })}
+                    </div>
+                </div>
+
+                <div className="space-y-8">
+                    {form.fields.map(field => {
+                        const value = response.data?.[field.id];
+                        const isEmpty = value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0);
+                        
+                        return (
+                            <div key={field.id} className="group flex flex-col gap-1.5">
+                                <div className={cn("text-[9px] font-bold uppercase tracking-widest opacity-30 transition-opacity group-hover:opacity-100", isDark ? "text-white" : "text-black")}>
+                                    {field.label}
+                                </div>
+                                <div className={cn("text-[13px] leading-relaxed break-words font-medium", 
+                                    isEmpty ? "italic opacity-20" : (isDark ? "text-[#eee]" : "text-[#222]")
+                                )}>
+                                    {isEmpty ? 'No answer' : (Array.isArray(value) ? value.join(', ') : String(value))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Response Footer */}
+            <div className={cn("px-6 py-4 border-t shrink-0 flex items-center justify-between", isDark ? "border-[#222]" : "border-[#f0f0f0]")}>
+                 <button 
+                    onClick={() => {
+                        const text = form.fields.map(f => `${f.label}: ${response.data?.[f.id] || 'N/A'}`).join('\n');
+                        navigator.clipboard.writeText(text);
+                        appToast.success("Copied", "Response details copied to clipboard");
+                    }}
+                    className={cn("flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-bold transition-all",
+                        isDark ? "bg-white/5 hover:bg-white/10 text-white" : "bg-black/5 hover:bg-black/10 text-black")}
+                >
+                    <Copy size={12} />
+                    Copy Details
+                </button>
+            </div>
+        </div>
+    );
+}
+
 /* ─── Main RightPanel export ─── */
 export default function RightPanel({ mobileMode = false }: { mobileMode?: boolean }) {
     const { rightPanel, closeRightPanel, theme, rightPanelWidth, setRightPanelWidth } = useUIStore();
@@ -1179,6 +1305,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
         contact: 'Contact',
         company: 'Company',
         hook: 'Hook Details',
+        form_response: 'Response Details',
     };
 
     const panelIcons: Record<string, any> = {
@@ -1186,6 +1313,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
         contact: Users,
         company: Building2,
         hook: Zap,
+        form_response: ClipboardList,
     };
 
     /* Mobile: render panel content directly (drawer handles the container) */
@@ -1205,6 +1333,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                 {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
                 {rightPanel.type === 'company' && <CompanyPanel id={rightPanel.id} isDark={isDark} />}
                 {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} initialEditing={rightPanel.editing} isDark={isDark} />}
+                {rightPanel.type === 'form_response' && <FormResponsePanel id={rightPanel.id} formId={rightPanel.formId} isDark={isDark} />}
             </div>
         );
     }
@@ -1260,6 +1389,7 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                         {rightPanel.type === 'contact' && <ContactPanel id={rightPanel.id} isDark={isDark} />}
                         {rightPanel.type === 'company' && <CompanyPanel id={rightPanel.id} isDark={isDark} />}
                         {rightPanel.type === 'hook' && <HookPanel id={rightPanel.id} initialEditing={rightPanel.editing} isDark={isDark} />}
+                        {rightPanel.type === 'form_response' && <FormResponsePanel id={rightPanel.id} formId={rightPanel.formId} isDark={isDark} />}
                     </div>
                 </motion.div>
             )}

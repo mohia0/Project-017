@@ -3,6 +3,10 @@ export interface GeoIntelligence {
     country: string;
     city: string;
     flag: string;
+    countryCode: string;
+    region?: string;
+    timezone?: string;
+    isp?: string;
 }
 
 export function getFlagEmoji(countryCode: string) {
@@ -21,38 +25,49 @@ export async function getGeoIntelligence(req: Request): Promise<GeoIntelligence 
             || 'unknown';
 
         if (!ip || ip === 'unknown' || ip === '127.0.0.1' || ip === '::1') {
-            // For local development testing, return a mock payload instead of null 
-            // so the icon appears when previewing on localhost.
             return {
                 ip: '127.0.0.1 (Local)',
                 country: 'Localhost',
                 city: 'Dev Environment',
-                flag: '💻'
+                flag: '💻',
+                countryCode: 'local',
+                region: 'Local Subnet',
+                timezone: 'Local Time',
+                isp: 'Loopback Provider'
             };
         }
 
-        // Try using Vercel/Cloudflare headers first if available
         const countryHeader = req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry');
         const cityHeader = req.headers.get('x-vercel-ip-city') || req.headers.get('cf-ipcity');
+        const regionHeader = req.headers.get('x-vercel-ip-country-region');
+        const tzHeader = req.headers.get('x-vercel-ip-timezone');
 
+        let countryCode = countryHeader ? countryHeader.toLowerCase() : 'unknown';
         let country = countryHeader || 'Unknown';
         let city = cityHeader ? decodeURIComponent(cityHeader) : 'Unknown';
         let flag = countryHeader ? getFlagEmoji(countryHeader) : '🌐';
+        let region = regionHeader ? decodeURIComponent(regionHeader) : undefined;
+        let timezone = tzHeader ? decodeURIComponent(tzHeader) : undefined;
+        let isp = undefined;
 
-        // If no Vercel/Cloudflare headers, fallback to geojs
-        if (country === 'Unknown') {
-            const geoRes = await fetch(`https://get.geojs.io/v1/ip/geo/${ip}.json`);
-            if (geoRes.ok) {
-                const geo = await geoRes.json();
-                country = geo.country || 'Unknown';
-                city = geo.city || 'Unknown';
-                flag = geo.country_code ? getFlagEmoji(geo.country_code) : '🌐';
+        // Fetch advanced data from geojs fallback
+        const geoRes = await fetch(`https://get.geojs.io/v1/ip/geo/${ip}.json`);
+        if (geoRes.ok) {
+            const geo = await geoRes.json();
+            country = geo.country || country;
+            city = geo.city || city;
+            // Ensure we get the 2-letter country code for things like flagcdn
+            if (geo.country_code) {
+                countryCode = geo.country_code.toLowerCase();
+                flag = getFlagEmoji(geo.country_code);
             }
+            region = geo.region || region;
+            timezone = geo.timezone || timezone;
+            isp = geo.organization_name || geo.organization || isp;
         }
 
-        return { ip, country, city, flag };
+        return { ip, country, city, flag, countryCode, region, timezone, isp };
     } catch (e) {
-        // Silently fail
-        return null;
+        return null; // Silently fail
     }
 }

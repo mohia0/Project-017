@@ -461,7 +461,7 @@ function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, i
 ══════════════════════════════════════════════════════════ */
 export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate?: boolean }) {
     const router = useRouter();
-    const { theme } = useUIStore();
+    const { theme, openRightPanel } = useUIStore();
     const isDark = theme === 'dark';
     const { 
         forms, updateForm, deleteForm, fetchForms, 
@@ -716,6 +716,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
         return true;
     });
 
+
     // --- Shared UI Helpers for Responses Tab ---
     function ResponseCardRow({ label, value, isDark }: { label: string; value?: string | null; isDark: boolean }) {
         if (!value) return null;
@@ -752,8 +753,8 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
     }
 
     function ResponseDropdown({ open, onClose, isDark, children }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode }) {
-        const ref = React.useRef<HTMLDivElement>(null);
-        React.useEffect(() => {
+        const ref = useRef<HTMLDivElement>(null);
+        useEffect(() => {
             if (!open) return;
             const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
             document.addEventListener('mousedown', h);
@@ -1380,56 +1381,45 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                 <label className={cn("block text-[10px] font-bold uppercase tracking-widest",
                                                                     isDark ? "text-[#555]" : "text-[#bbb]")}>Picture Options</label>
                                                                 <div className="space-y-3">
-                                                                    {(selectedField.options || []).map((opt, idx) => (
-                                                                        <div key={idx} className={cn("group flex items-center gap-3 p-3 rounded-2xl border transition-all", isDark ? "bg-[#1c1c1c] border-[#2a2a2a] hover:border-[#3a3a3a]" : "bg-white border-[#e5e5e5] hover:border-[#d5d5d5]")}>
-                                                                            <div 
-                                                                                onClick={() => {
-                                                                                    setLastFieldForUpload(selectedField.id);
-                                                                                    setLastIndexForUpload(idx);
-                                                                                    setIsUploadModalOpen(true);
-                                                                                }}
-                                                                                className={cn("w-14 h-14 rounded-xl flex-shrink-0 cursor-pointer overflow-hidden border-2 border-dashed transition-all flex items-center justify-center group/img", isDark ? "border-[#444] hover:border-primary/50 bg-black/20" : "border-[#ccc] hover:border-primary/50 bg-black/5")}
-                                                                            >
-                                                                                {opt ? (
-                                                                                    <img src={opt} className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity" />
-                                                                                ) : (
-                                                                                    <Image size={18} className={isDark ? "text-[#555] group-hover/img:text-primary" : "text-[#aaa] group-hover/img:text-primary"} />
-                                                                                )}
-                                                                            </div>
-                                                                            <div className="flex-1 min-w-0 space-y-1">
-                                                                                {/* Label Input */}
-                                                                                <input 
-                                                                                    value={opt.split('|')[1] !== undefined ? opt.split('|')[1] : ''} 
-                                                                                    onChange={e => {
-                                                                                        const newOpts = [...(selectedField.options || [])];
-                                                                                        const currentUrl = opt.split('|')[0];
-                                                                                        newOpts[idx] = `${currentUrl}|${e.target.value}`;
-                                                                                        updateField(selectedField.id, { options: newOpts });
+                                                                    {(selectedField.options || []).map((opt, idx) => {
+                                                                        const [url, label] = opt.includes('|') ? opt.split('|') : [opt, ''];
+                                                                        return (
+                                                                            <div key={idx} className={cn("group flex items-center gap-3 p-3 rounded-2xl border transition-all", isDark ? "bg-[#1c1c1c] border-[#2a2a2a] hover:border-[#3a3a3a]" : "bg-white border-[#e5e5e5] hover:border-[#d5d5d5]")}>
+                                                                                <div 
+                                                                                    onClick={() => {
+                                                                                        setLastFieldForUpload(selectedField.id);
+                                                                                        setLastIndexForUpload(idx);
+                                                                                        setIsUploadModalOpen(true);
                                                                                     }}
-                                                                                    placeholder="Label (optional)"
-                                                                                    className={cn("w-full bg-transparent border-none text-[13px] outline-none font-bold", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
-                                                                                />
-                                                                                {/* URL Input (Small) */}
-                                                                                <input 
-                                                                                    value={opt.split('|')[0]} 
-                                                                                    onChange={e => {
-                                                                                        const newOpts = [...(selectedField.options || [])];
-                                                                                        const currentLabel = opt.split('|')[1];
-                                                                                        newOpts[idx] = currentLabel !== undefined ? `${e.target.value}|${currentLabel}` : e.target.value;
-                                                                                        updateField(selectedField.id, { options: newOpts });
-                                                                                    }}
-                                                                                    placeholder="Image URL"
-                                                                                    className={cn("w-full bg-transparent border-none text-[10px] outline-none opacity-40 hover:opacity-100 transition-opacity truncate", isDark ? "text-white" : "text-black")}
-                                                                                />
+                                                                                    className={cn("w-14 h-14 rounded-xl flex-shrink-0 cursor-pointer overflow-hidden border-2 border-dashed transition-all flex items-center justify-center group/img", isDark ? "border-[#444] hover:border-primary/50 bg-black/20" : "border-[#ccc] hover:border-primary/50 bg-black/5")}
+                                                                                >
+                                                                                    {url ? (
+                                                                                        <img src={url} className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity" />
+                                                                                    ) : (
+                                                                                        <Image size={18} className={isDark ? "text-[#555] group-hover/img:text-primary" : "text-[#aaa] group-hover/img:text-primary"} />
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="flex-1 min-w-0 space-y-1">
+                                                                                    <input 
+                                                                                        value={label} 
+                                                                                        onChange={e => {
+                                                                                            const newOpts = [...(selectedField.options || [])];
+                                                                                            newOpts[idx] = `${url}|${e.target.value}`;
+                                                                                            updateField(selectedField.id, { options: newOpts });
+                                                                                        }}
+                                                                                        placeholder="Label (optional)"
+                                                                                        className={cn("w-full bg-transparent border-none text-[13px] outline-none font-bold", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
+                                                                                    />
+                                                                                </div>
+                                                                                <button onClick={() => {
+                                                                                    const newOpts = (selectedField.options || []).filter((_, i) => i !== idx);
+                                                                                    updateField(selectedField.id, { options: newOpts });
+                                                                                }} className={cn("p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100", isDark ? "hover:bg-red-500/10 text-red-500/70 hover:text-red-500" : "hover:bg-red-50 text-red-500/70 hover:text-red-500")}>
+                                                                                    <Trash2 size={15} />
+                                                                                </button>
                                                                             </div>
-                                                                            <button onClick={() => {
-                                                                                const newOpts = (selectedField.options || []).filter((_, i) => i !== idx);
-                                                                                updateField(selectedField.id, { options: newOpts });
-                                                                            }} className={cn("p-2 rounded-xl transition-all opacity-0 group-hover:opacity-100", isDark ? "hover:bg-red-500/10 text-red-500/70 hover:text-red-500" : "hover:bg-red-50 text-red-500/70 hover:text-red-500")}>
-                                                                                <Trash2 size={15} />
-                                                                            </button>
-                                                                        </div>
-                                                                    ))}
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                                 <button
                                                                     onClick={() => {
@@ -1766,7 +1756,6 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                             return (
                                                 <div 
                                                     key={r.id} 
-                                                    onClick={() => toggleResponseSelection(r.id)}
                                                     className={cn(
                                                         "flex flex-col rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden group select-none relative",
                                                         isSelected 
@@ -1774,10 +1763,11 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                             : isDark ? "bg-[#1a1a1a] border-[#252525] hover:border-[#333]" : "bg-white border-[#ebebeb] hover:border-black/10 hover:shadow-sm"
                                                     )}
                                                 >
-
-
                                                     {/* Card Header (Contact Style) */}
-                                                    <div className="flex items-center gap-3 px-4 py-3.5 relative">
+                                                    <div 
+                                                        onClick={() => openRightPanel({ type: 'form_response', id: r.id, formId: id || '' })}
+                                                        className="flex items-center gap-3 px-4 py-3.5 relative"
+                                                    >
                                                         <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold uppercase",
                                                             isDark ? "bg-white/5 text-white/40" : "bg-black/5 text-black/40")}>
                                                             {primaryIdentity[0]}
@@ -1819,28 +1809,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                 </div>
                                                             </div>
                                                         </div>
-
                                                     </div>
-
-                                                    {/* Rows (CardRow Style) */}
-                                                    <div className="flex-1">
-                                                        {fields.slice(0, 6).map(f => {
-                                                            const val = r.data?.[f.id];
-                                                            const displayVal = Array.isArray(val) ? val.join(', ') : String(val || '');
-                                                            if (!displayVal) return null;
-                                                            return (
-                                                                <div key={f.id} className="group/row">
-                                                                    <ResponseCardRow label={f.label} value={displayVal} isDark={isDark} />
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {fields.length > 6 && (
-                                                            <div className={cn("px-4 py-2 text-[10px] font-bold uppercase tracking-wider opacity-40 border-t", isDark ? "border-white/5" : "border-dashed border-[#e8e8e8]")}>
-                                                                + {fields.length - 6} more fields
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {/* Card Actions Removed - Moved to Header */}
                                                 </div>
                                             );
                                         })}
@@ -1861,11 +1830,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                     </div>
                                                 </th>
                                                 <th className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px]", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>Submission Date</th>
-                                                {fields.map(f => (
-                                                    <th key={f.id} className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px] whitespace-nowrap", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>
-                                                        {f.label}
-                                                    </th>
-                                                ))}
+                                                <th className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px]", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>Identity</th>
                                                 <th className={cn("px-4 py-2 border-b rounded-tr-xl", isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]")} />
                                             </tr>
                                         </thead>
@@ -1875,41 +1840,38 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                 return (
                                                     <tr 
                                                         key={r.id} 
-                                                        onClick={() => toggleResponseSelection(r.id)}
                                                         className={cn(
                                                             "transition-colors cursor-pointer group",
-                                                            isSelected ? isDark ? "bg-primary/5" : "bg-primary/5" : isDark ? "hover:bg-white/[0.02]" : "hover:bg-black/[0.02]",
+                                                            isSelected ? (isDark ? "bg-primary/5" : "bg-primary/5") : (isDark ? "hover:bg-white/[0.02]" : "hover:bg-black/[0.02]"),
                                                             isDark ? "border-[#222]" : "border-[#f5f5f5]",
                                                             i !== filteredResponses.length - 1 && "border-b"
                                                         )}
                                                     >
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-4 py-3" onClick={() => toggleResponseSelection(r.id)}>
                                                             <div className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all",
                                                                 isSelected ? "bg-primary border-primary" : isDark ? "border-white/10 opacity-0 group-hover:opacity-100" : "border-[#ccc] opacity-0 group-hover:opacity-100")}>
                                                                 {isSelected && <Check size={10} strokeWidth={4} className="text-black" />}
                                                             </div>
                                                         </td>
-                                                        <td className={cn("px-4 py-3 whitespace-nowrap font-medium", isDark ? "text-[#888]" : "text-[#666]")}>
-                                                            {new Date(r.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                                        <td 
+                                                            onClick={() => openRightPanel({ type: 'form_response', id: r.id, formId: id || '' })}
+                                                            className={cn("px-4 py-3 whitespace-nowrap font-medium", isDark ? "text-[#888]" : "text-[#666]")}
+                                                        >
+                                                            {new Date(r.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                                         </td>
-                                                        {fields.map(f => {
-                                                            const val = r.data?.[f.id];
-                                                            const displayVal = Array.isArray(val) ? val.join(', ') : String(val || '-');
-                                                            return (
-                                                                <td key={f.id} className="px-4 py-3 group/td">
-                                                                    <div className="flex items-center justify-between gap-2 max-w-[240px]">
-                                                                        <span className={cn("truncate", isDark ? "text-[#aaa]" : "text-[#444]")}>{displayVal}</span>
-                                                                        <button 
-                                                                            onClick={(e) => { e.stopPropagation(); handleCopyValue(displayVal); }}
-                                                                            className="p-1 opacity-0 group-hover/td:opacity-100 transition-all text-primary"
-                                                                        >
-                                                                            <Copy size={9} />
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            );
-                                                        })}
-                                                        <td className="px-4 py-3">
+                                                        <td 
+                                                            onClick={() => openRightPanel({ type: 'form_response', id: r.id, formId: id || '' })}
+                                                            className="px-4 py-3"
+                                                        >
+                                                            {(() => {
+                                                                const primaryIdentity = Object.entries(r.data).find(([qid]) => {
+                                                                    const f = fields.find(field => field.id === qid);
+                                                                    return f?.type === 'full_name' || f?.type === 'email' || f?.label?.toLowerCase().includes('name');
+                                                                })?.[1] as string || 'Respondent';
+                                                                return <span className={cn("font-bold", isDark ? "text-white" : "text-black")}>{primaryIdentity}</span>;
+                                                            })()}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); handleCopyAll(r.data); }}
                                                                 className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all", isDark ? "text-[#444] hover:text-white" : "text-[#ccc] hover:text-black")}
@@ -1946,6 +1908,22 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                 <FileUploadModal
                     isOpen={isUploadModalOpen}
                     onClose={() => setIsUploadModalOpen(false)}
+                    multiple={true}
+                    onUploadMultiple={(urls: string[]) => {
+                        if (lastFieldForUpload) {
+                            const f = fields.find(f => f.id === lastFieldForUpload);
+                            if (f) {
+                                const newOpts = [...(f.options || [])];
+                                if (lastIndexForUpload !== null && urls.length === 1) {
+                                    newOpts[lastIndexForUpload] = urls[0];
+                                } else {
+                                    newOpts.push(...urls);
+                                }
+                                updateField(f.id, { options: newOpts });
+                            }
+                        }
+                        setIsUploadModalOpen(false);
+                    }}
                     onUpload={(url: string) => {
                         if (lastFieldForUpload) {
                             const f = fields.find(f => f.id === lastFieldForUpload);
