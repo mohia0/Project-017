@@ -291,14 +291,11 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                                     <span className="font-semibold text-right truncate flex-1">{notif.metadata.visitor.isp}</span>
                                                                 </div>
                                                             )}
-                                                            {notif.type === 'hook' && notif.metadata?.visitor && (
+                                                            {notif.metadata?.visitor?.deviceType && (
                                                                 <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
                                                                     <span className="opacity-50 font-medium mr-2">Device</span>
                                                                     <span className="font-semibold">
-                                                                        {(() => {
-                                                                            const dt = notif.metadata.visitor.deviceType || 'Desktop';
-                                                                            return dt === 'Mobile' ? '📱 Mobile' : dt === 'Tablet' ? '📟 Tablet' : '🖥️ Desktop';
-                                                                        })()}
+                                                                        {notif.metadata.visitor.deviceType === 'Mobile' ? '📱 Mobile' : notif.metadata.visitor.deviceType === 'Tablet' ? '📟 Tablet' : '🖥️ Desktop'}
                                                                     </span>
                                                                 </div>
                                                             )}

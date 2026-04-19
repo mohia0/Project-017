@@ -7,6 +7,16 @@ export interface GeoIntelligence {
     region?: string;
     timezone?: string;
     isp?: string;
+    deviceType?: 'Mobile' | 'Tablet' | 'Desktop';
+}
+
+// Silently derive device category from User-Agent string
+export function getDeviceType(ua: string | null): 'Mobile' | 'Tablet' | 'Desktop' {
+    if (!ua || ua === 'unknown') return 'Desktop';
+    const u = ua.toLowerCase();
+    if (/ipad|tablet|kindle|silk|playbook|nexus 7|nexus 10/.test(u)) return 'Tablet';
+    if (/mobi|android|iphone|ipod|blackberry|windows phone|opera mini|opera mobi|iemobile|mobile/.test(u)) return 'Mobile';
+    return 'Desktop';
 }
 
 export function getFlagEmoji(countryCode: string) {

@@ -922,6 +922,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 id: data.id,
                 workspace_id: data.workspace_id,
                 title: data.title || data.meta?.projectName || data.client_name,
+                userAgent: navigator.userAgent
             }),
         }).catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
