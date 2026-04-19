@@ -53,7 +53,7 @@ function getBrightness(hex: string) {
 
 export function BrandingProvider({ children }: { children: React.ReactNode }) {
     const { activeWorkspaceId } = useUIStore();
-    const { branding, fetchBranding } = useSettingsStore();
+    const { branding, fetchBranding, hasFetched } = useSettingsStore();
 
     useEffect(() => {
         if (activeWorkspaceId) {
@@ -62,6 +62,9 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     }, [activeWorkspaceId, fetchBranding]);
 
     useEffect(() => {
+        // Do not jump to conclusions and apply default CRM 17 styling while branding is still fetching from Supabase.
+        if (activeWorkspaceId && !hasFetched.branding) return;
+
         const root = document.documentElement;
         if (branding) {
             const primary = branding.primary_color || '#4dbf39';
@@ -94,10 +97,13 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--primary-dark', darkenColor(defaultPrimary, 0.2));
             root.style.setProperty('--primary-light', darkenColor(defaultPrimary, -0.2));
         }
-    }, [branding]);
+    }, [branding, hasFetched.branding, activeWorkspaceId]);
     
     // Update favicon dynamically
     useEffect(() => {
+        // Do not overwrite Next.js SSR favicon with default while branding is loading
+        if (activeWorkspaceId && !hasFetched.branding) return;
+
         const setFavicon = (url: string) => {
             // Find or create the primary favicon link
             let icon: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
@@ -128,10 +134,10 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
         if (branding?.favicon_url) {
             setFavicon(branding.favicon_url);
         } else {
-            // Fallback to default system favicon
+            // Fallback to default system favicon ONLY if branding is actually fetched and empty
             setFavicon('/favicon.svg');
         }
-    }, [branding?.favicon_url]);
+    }, [branding?.favicon_url, hasFetched.branding, activeWorkspaceId]);
 
     return <>{children}</>;
 }
