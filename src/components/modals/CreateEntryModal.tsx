@@ -395,9 +395,19 @@ export default function CreateEntryModal() {
                 }
             } else if (tab === 'Hook') {
                 if (!hName.trim()) return;
-                const h = await addHook({ name: hName.trim(), title: hTitle.trim() || null, link: hLink.trim() || null, color: hColor });
-                if (h) { setCreateModalOpen(false); openRightPanel({ type: 'hook', id: h.id }); appToast.success('Hook created'); }
-            } else if (tab === 'Scheduler') {
+                const h = await addHook({ 
+                    name: hName.trim(), 
+                    title: hTitle.trim() || hName.trim(), 
+                    link: hLink.trim() || null, 
+                    color: hColor 
+                });
+                if (h) { 
+                    setCreateModalOpen(false); 
+                    openRightPanel({ type: 'hook', id: h.id }); 
+                    appToast.success('Hook created'); 
+                }
+            }
+ else if (tab === 'Scheduler') {
                 if (!sTitle.trim()) return;
                 const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
                 const format24to12 = (time24: string) => {

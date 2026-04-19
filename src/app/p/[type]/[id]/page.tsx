@@ -2,38 +2,59 @@ import { supabaseService } from '@/lib/supabase-service';
 import PreviewClient from './PreviewClient';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
 
-export default async function PublicPreviewPage({ params }: { params: Promise<{ type: string, id: string }> }) {
-    const { type, id } = await params;
-    
+async function getDocumentData(type: string, id: string) {
     let table = '';
     if (type === 'proposal') table = 'proposals';
     else if (type === 'invoice') table = 'invoices';
     else if (type === 'project') table = 'projects';
     else if (type === 'form' || type === 'forms') table = 'forms';
     else if (type === 'scheduler' || type === 'schedulers') table = 'schedulers';
-    else {
-        console.warn('[PreviewPage] Invalid type:', type);
-        return notFound();
-    }
+    else return null;
 
-    const cleanId = id.trim();
-    console.log(`[PreviewPage] Fetching [${type}] with id [${cleanId}]`);
-
-    // Fetch the document
-    const { data: document, error } = await supabaseService
+    const { data, error } = await supabaseService
         .from(table)
-        .select('*')
-        .eq('id', cleanId)
+        .select('*, workspace_id, title, name')
+        .eq('id', id.trim())
         .single();
+    
+    if (error || !data) return null;
+    return data;
+}
 
-    if (error) {
-        console.error(`[PreviewPage] Error fetching from ${table}:`, error.message);
-        return notFound();
+export async function generateMetadata({ params }: { params: Promise<{ type: string, id: string }> }): Promise<Metadata> {
+    const { type, id } = await params;
+    const document = await getDocumentData(type, id);
+    
+    if (!document) return { title: 'Not Found' };
+
+    const title = document.title || document.name || 'Untitled';
+    let faviconUrl = '/favicon.svg';
+
+    if (document.workspace_id) {
+        const { data: branding } = await supabaseService
+            .from('workspace_branding')
+            .select('favicon_url')
+            .eq('workspace_id', document.workspace_id)
+            .single();
+        if (branding?.favicon_url) faviconUrl = branding.favicon_url;
     }
+
+    return {
+        title: `${title} | CRM 17`,
+        icons: {
+            icon: faviconUrl,
+        },
+    };
+}
+
+export default async function PublicPreviewPage({ params }: { params: Promise<{ type: string, id: string }> }) {
+    const { type, id } = await params;
+    const document = await getDocumentData(type, id);
 
     if (!document) {
-        console.warn(`[PreviewPage] No document found in ${table} for id ${cleanId}`);
+        console.warn(`[PreviewPage] No document found for id ${id}`);
         return notFound();
     }
 
@@ -41,17 +62,17 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
     // Exception: Allow forms in draft status for previewing
     const status = (document.status || '').toLowerCase();
     if (status === 'draft' && type !== 'form' && type !== 'forms' && type !== 'scheduler' && type !== 'schedulers') {
-        console.warn(`[PreviewPage] Document ${cleanId} is in Draft status, blocking access.`);
+        console.warn(`[PreviewPage] Document ${id} is in Draft status, blocking access.`);
         return notFound();
     }
-
-    console.log(`[PreviewPage] Success! Found ${table} [${document.id}] with status [${document.status}]`);
 
     // If it's a project, fetch tasks and groups
     let projectTasks = [];
     let projectGroups = [];
     let submissionCount = 0;
     let schedulerBookings: any[] = [];
+
+    const cleanId = id.trim();
 
     if (type === 'project') {
         const [tasksRes, groupsRes] = await Promise.all([
@@ -101,8 +122,9 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
     };
 
     return (
-        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-white"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-white"><div className="w-6 h-6 border-2 border-black/5 border-t-black/20 rounded-full animate-spin" /></div>}>
             <PreviewClient type={type as any} data={safeData} />
         </Suspense>
     );
 }
+

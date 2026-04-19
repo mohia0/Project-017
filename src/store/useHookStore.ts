@@ -110,6 +110,8 @@ export const useHookStore = create<HookState>((set) => ({
         const payload = { ...hook, workspace_id: workspaceId, status: 'Active' };
         const { data, error } = await supabase.from('hooks').insert(payload).select().single();
         if (error) {
+            console.error('addHook failed:', error);
+            appToast.error('Hook creation failed', error.message);
             set({ error: error.message });
             return null;
         }
