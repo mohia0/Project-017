@@ -8,6 +8,15 @@ const TRANSPARENT_PNG = Buffer.from(
     'base64'
 );
 
+// Silently derive device category from User-Agent string
+function getDeviceType(ua: string): 'Mobile' | 'Tablet' | 'Desktop' {
+    if (!ua || ua === 'unknown') return 'Desktop';
+    const u = ua.toLowerCase();
+    if (/ipad|tablet|kindle|silk|playbook|nexus 7|nexus 10/.test(u)) return 'Tablet';
+    if (/mobi|android|iphone|ipod|blackberry|windows phone|opera mini|opera mobi|iemobile|mobile/.test(u)) return 'Mobile';
+    return 'Desktop';
+}
+
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
 
@@ -23,12 +32,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             const visitor = await getGeoIntelligence(req);
             const ip = visitor?.ip || 'unknown';
             const ua = req.headers.get('user-agent') || 'unknown';
+            const deviceType = getDeviceType(ua);
 
             // Log the view asynchronously — don't block the pixel response
             (async () => {
-                const thresholdDate = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+                const thresholdDate = new Date(Date.now() - 30 * 1000).toISOString();
                 
-                // Group by IP and User-Agent within a 2-minute window
+                // Group by IP and User-Agent within a 30-second window
                 const { data: recentEvent } = await supabaseService
                     .from('hook_events')
                     .select('id')
@@ -46,24 +56,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                         user_agent: ua,
                     });
 
-                    const notificationTitle = `Someone viewed "${hook.name}"`;
-                    const messageParts = [];
-                    // Case-insensitive check for default value
-                    if (hook.title && !hook.title.toLowerCase().includes('webhook endpoint')) {
-                        messageParts.push(hook.title);
-                    }
-                    if (messageParts.length === 0) messageParts.push(`Pixel tracking event recorded.`);
-
+                    const notificationTitle = `Someone opened "${hook.name}"`;
 
                     await supabaseService.from('notifications').insert({
                         workspace_id: hook.workspace_id,
                         title: notificationTitle,
-                        message: messageParts.join(' • '),
+                        message: '',
                         link: `/hooks`,
                         read: false,
                         type: 'hook',
                         metadata: { 
-                            visitor, 
+                            visitor: { ...visitor, deviceType }, 
                             color: hook.color 
                         }
                     });

@@ -14,8 +14,8 @@ export async function POST(req: Request) {
         const visitor = await getGeoIntelligence(req);
         const ip = visitor?.ip || 'unknown';
 
-        // Session Grouping: Check if we've notified about this view from this IP in the last 2 mins
-        const thresholdDate = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+        // Session Grouping: Check if we've notified about this view from this IP in the last 30 sec
+        const thresholdDate = new Date(Date.now() - 30 * 1000).toISOString();
         const { data: recentNotification } = await supabaseService
             .from('notifications')
             .select('id')

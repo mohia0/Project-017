@@ -15,7 +15,7 @@ async function getDocumentData(type: string, id: string) {
 
     const { data, error } = await supabaseService
         .from(table)
-        .select('*, workspace_id, title, name')
+        .select('*')
         .eq('id', id.trim())
         .single();
     

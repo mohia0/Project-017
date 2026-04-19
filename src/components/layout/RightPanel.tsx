@@ -23,7 +23,7 @@ import { useHookStore, Hook } from '@/store/useHookStore';
 import { useFormStore } from '@/store/useFormStore';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter, usePathname } from 'next/navigation';
-import { Radio, Copy } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { appToast } from '@/lib/toast';
 import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -181,7 +181,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                     )}>
                                         {(() => {
                                             const isLimitReached = notif.type === 'limit_reached' || notif.title?.toLowerCase().includes('limit');
-                                            const isView = notif.type === 'view' || notif.title?.toLowerCase().includes('opened');
+                                            const isView = notif.type === 'view' || notif.title?.toLowerCase().includes('opened') || notif.title?.toLowerCase().includes('viewed');
                                             const isReceiptPending = notif.type === 'receipt_pending';
                                             const isFormResponse = !isView && !isLimitReached && !isReceiptPending && (
                                                 notif.link?.includes('/forms') || 
@@ -217,6 +217,13 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
 
                                             const iconClass = isDark ? "text-[#888]" : "text-[#999]";
 
+                                            if (isHook) return (
+                                                <Zap 
+                                                    size={12} 
+                                                    style={{ color: notif.metadata?.color || 'var(--primary)' }} 
+                                                    fill="currentColor" 
+                                                />
+                                            );
                                             if (isLimitReached) return <AlertCircle size={12} className="text-amber-500" />;
                                             if (isReceiptPending) return <Receipt size={12} className="text-emerald-500" />;
                                             if (isSuccess) {
@@ -228,13 +235,6 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                             if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
                                             if (isProposal) return <FileText size={12} className={iconClass} />;
                                             if (isInvoice) return <Receipt size={12} className={iconClass} />;
-                                            if (isHook) return (
-                                                <Zap 
-                                                    size={12} 
-                                                    style={{ color: notif.metadata?.color || 'var(--primary)' }} 
-                                                    fill="currentColor" 
-                                                />
-                                            );
                                             return <Eye size={12} className={iconClass} />;
                                         })()}
                                     </div>
@@ -242,9 +242,11 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                         <p className={cn("text-[12px] font-medium leading-tight", isDark ? "text-[#eee]" : "text-[#222]")}>
                                             {notif.title}
                                         </p>
-                                        <p className={cn("text-[10px] mt-0.5 leading-tight opacity-70", isDark ? "text-[#888]" : "text-[#666]")}>
-                                            {notif.message}
-                                        </p>
+                                        {notif.message && notif.type !== 'hook' && !notif.link?.includes('/hooks') && !notif.title?.toLowerCase().includes('hook') && (
+                                            <p className={cn("text-[10px] mt-0.5 leading-tight opacity-70 break-all", isDark ? "text-[#888]" : "text-[#666]")}>
+                                                {notif.message}
+                                            </p>
+                                        )}
                                         <div className="flex items-center justify-between mt-1">
                                             <p className={cn("text-[9px] font-medium", isDark ? "text-[#444]" : "text-[#aaa]")}>
                                                 {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
@@ -287,6 +289,14 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                                 <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
                                                                     <span className="opacity-50 font-medium mr-2">ISP</span>
                                                                     <span className="font-semibold text-right truncate flex-1">{notif.metadata.visitor.isp}</span>
+                                                                </div>
+                                                            )}
+                                                            {notif.metadata.visitor.deviceType && (
+                                                                <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
+                                                                    <span className="opacity-50 font-medium mr-2">Device</span>
+                                                                    <span className="font-semibold">
+                                                                        {notif.metadata.visitor.deviceType === 'Mobile' ? '📱' : notif.metadata.visitor.deviceType === 'Tablet' ? '📟' : '🖥️'} {notif.metadata.visitor.deviceType}
+                                                                    </span>
                                                                 </div>
                                                             )}
                                                             {(notif.metadata.visitor.region || notif.metadata.visitor.timezone) && (
