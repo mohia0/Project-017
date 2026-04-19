@@ -72,6 +72,17 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: favicon,
     },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      siteName: title,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
   };
 }
 

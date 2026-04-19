@@ -32,6 +32,8 @@ export async function generateMetadata({ params }: { params: Promise<{ type: str
     const title = document.title || document.name || 'Untitled';
     let faviconUrl = '/favicon.svg';
 
+    let workspaceName = 'CRM 17';
+
     if (document.workspace_id) {
         const { data: branding } = await supabaseService
             .from('workspace_branding')
@@ -39,13 +41,31 @@ export async function generateMetadata({ params }: { params: Promise<{ type: str
             .eq('workspace_id', document.workspace_id)
             .single();
         if (branding?.favicon_url) faviconUrl = branding.favicon_url;
+
+        const { data: workspace } = await supabaseService
+            .from('workspaces')
+            .select('name')
+            .eq('id', document.workspace_id)
+            .single();
+        if (workspace?.name) workspaceName = workspace.name;
     }
 
+    const fullTitle = `${title} | ${workspaceName}`;
+
     return {
-        title: `${title} | CRM 17`,
+        title: fullTitle,
         icons: {
             icon: faviconUrl,
         },
+        openGraph: {
+            title: fullTitle,
+            type: 'website',
+            siteName: workspaceName,
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: fullTitle,
+        }
     };
 }
 
