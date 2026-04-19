@@ -68,23 +68,29 @@ export const useFormStore = create<FormState>((set) => ({
         const hasData = useFormStore.getState().forms.length > 0;
         if (!hasData) set({ isLoading: true, error: null });
 
-        const { data, error } = await supabase
-            .from('forms')
-            .select('*, responses_count:form_responses(count)')
-            .eq('workspace_id', workspaceId)
-            .order('created_at', { ascending: false });
+        try {
+            const { data, error } = await supabase
+                .from('forms')
+                .select('*, responses_count:form_responses(count)')
+                .eq('workspace_id', workspaceId)
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error('[useFormStore] Error fetching forms:', error.message);
-            set({ error: error.message, isLoading: false });
-        } else {
-            // Ensure fields is always an array to prevent "0 fields" loading issues
-            const formsWithFields = (data || []).map(f => ({
-                ...f,
-                fields: Array.isArray(f.fields) ? f.fields : [],
-                responses_count: f.responses_count?.[0]?.count || 0
-            }));
-            set({ forms: formsWithFields, isLoading: false });
+            if (error) {
+                if (error.message?.includes('Lock broken') || error.message?.includes('AbortError')) return;
+                console.error('[useFormStore] Error fetching forms:', error.message);
+                set({ error: error.message, isLoading: false });
+            } else {
+                const formsWithFields = (data || []).map(f => ({
+                    ...f,
+                    fields: Array.isArray(f.fields) ? f.fields : [],
+                    responses_count: f.responses_count?.[0]?.count || 0
+                }));
+                set({ forms: formsWithFields, isLoading: false });
+            }
+        } catch (err: any) {
+            if (err.message?.includes('Lock broken') || err.message?.includes('AbortError')) return;
+            console.error('[useFormStore] Exception fetching forms:', err);
+            set({ error: err.message, isLoading: false });
         }
     },
 
