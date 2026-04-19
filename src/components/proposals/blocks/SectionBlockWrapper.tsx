@@ -3,10 +3,11 @@
 import React, { ReactNode, useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2, Copy, Palette, X, LayoutPanelTop } from 'lucide-react';
+import { GripVertical, Trash2, Copy, Palette, X, LayoutPanelTop, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { ColorisInput } from '@/components/ui/ColorisInput';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 interface SectionBlockWrapperProps {
     id: string;
@@ -192,13 +193,34 @@ export function SectionBlockWrapper({
                             top: isFirst ? 'calc(100% + 14px)' : '-46px'
                         }}
                     >
-                        {/* Drag handle */}
-                        <div
-                            {...attributes}
-                            {...listeners}
-                            className="p-1.5 rounded-lg cursor-grab active:cursor-grabbing hover:text-white hover:bg-white/5 transition-colors"
-                        >
-                            <GripVertical size={13} strokeWidth={2.5} />
+                        {/* Move Up/Down buttons */}
+                        <div className="flex flex-col">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onMoveUp?.();
+                                }}
+                                disabled={isFirst}
+                                className={cn(
+                                    "p-1 rounded transition-all",
+                                    isFirst ? "opacity-20 cursor-not-allowed" : isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
+                                )}
+                            >
+                                <ChevronUp size={12} strokeWidth={3} />
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onMoveDown?.();
+                                }}
+                                disabled={isLast}
+                                className={cn(
+                                    "p-1 rounded transition-all",
+                                    isLast ? "opacity-20 cursor-not-allowed" : isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
+                                )}
+                            >
+                                <ChevronDown size={12} strokeWidth={3} />
+                            </button>
                         </div>
 
                         <span className="w-px h-3 bg-white/10 mx-1" />
@@ -206,21 +228,22 @@ export function SectionBlockWrapper({
                         {/* Section background colour picker */}
                         {onBackgroundColorChange && (
                             <div className="relative" ref={paletteRef}>
-                                <button
-                                    onClick={() => setShowPalette(s => !s)}
-                                    title="Section background color"
-                                    className={cn(
-                                        'p-1.5 rounded-lg transition-all flex items-center gap-1',
-                                        isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
-                                        showPalette && (isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-black'),
-                                    )}
-                                >
-                                    <div
-                                        className="w-3 h-3 rounded-sm border border-black/10"
-                                        style={{ backgroundColor: backgroundColor || '#ffffff' }}
-                                    />
-                                    <Palette size={11} />
-                                </button>
+                                <Tooltip content="Section Style" side={isFirst ? "bottom" : "top"}>
+                                    <button
+                                        onClick={() => setShowPalette(s => !s)}
+                                        className={cn(
+                                            'p-1.5 rounded-lg transition-all flex items-center gap-1',
+                                            isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
+                                            showPalette && (isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-black'),
+                                        )}
+                                    >
+                                        <div
+                                            className="w-3 h-3 rounded-sm border border-black/10"
+                                            style={{ backgroundColor: backgroundColor || '#ffffff' }}
+                                        />
+                                        <Palette size={11} />
+                                    </button>
+                                </Tooltip>
 
                                 {showPalette && (
                                     <div className={cn(
@@ -269,27 +292,30 @@ export function SectionBlockWrapper({
                             </div>
                         )}
 
-                        <button
-                            onClick={() => onDuplicate?.(id)}
-                            className={cn(
-                                'p-2 rounded-lg transition-all',
-                                isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
-                            )}
-                        >
-                            <Copy size={13} />
-                        </button>
-
-                        {onSaveAsTemplate && (
+                        <Tooltip content="Duplicate Section" side={isFirst ? "bottom" : "top"}>
                             <button
-                                onClick={() => onSaveAsTemplate(id)}
+                                onClick={() => onDuplicate?.(id)}
                                 className={cn(
                                     'p-2 rounded-lg transition-all',
                                     isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
                                 )}
-                                title="Save section as template"
                             >
-                                <LayoutPanelTop size={13} />
+                                <Copy size={13} />
                             </button>
+                        </Tooltip>
+
+                        {onSaveAsTemplate && (
+                            <Tooltip content="Save as Template" side={isFirst ? "bottom" : "top"}>
+                                <button
+                                    onClick={() => onSaveAsTemplate(id)}
+                                    className={cn(
+                                        'p-2 rounded-lg transition-all',
+                                        isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
+                                    )}
+                                >
+                                    <LayoutPanelTop size={13} />
+                                </button>
+                            </Tooltip>
                         )}
                         <button
                             onClick={() => {

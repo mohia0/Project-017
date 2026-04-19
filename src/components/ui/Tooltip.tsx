@@ -19,29 +19,73 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
     const [isVisible, setIsVisible] = useState(false);
     const [coords, setCoords] = useState({ x: 0, y: 0, width: 0, height: 0 });
     const triggerRef = useRef<HTMLDivElement>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
     const timeoutRef = useRef<NodeJS.Timeout>(null);
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
 
+    const updateCoords = () => {
+        if (triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            setCoords({
+                x: rect.left + rect.width / 2,
+                y: rect.top,
+                width: rect.width,
+                height: rect.height
+            } as any);
+        }
+    };
+
     const handleMouseEnter = () => {
+        // Don't use hover logic if we are on a touch device to avoid sticky tooltips
+        if (window.matchMedia('(pointer: coarse)').matches) return;
+
         timeoutRef.current = setTimeout(() => {
-            if (triggerRef.current) {
-                const rect = triggerRef.current.getBoundingClientRect();
-                setCoords({
-                    x: rect.left + rect.width / 2,
-                    y: rect.top,
-                    width: rect.width,
-                    height: rect.height
-                } as any);
-                setIsVisible(true);
-            }
+            updateCoords();
+            setIsVisible(true);
         }, delay * 1000);
     };
 
     const handleMouseLeave = () => {
+        if (window.matchMedia('(pointer: coarse)').matches) return;
+
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         setIsVisible(false);
     };
+
+    const handleClick = (e: React.MouseEvent) => {
+        // Only handle clicks for touch devices to open/close
+        if (window.matchMedia('(pointer: coarse)').matches) {
+            e.stopPropagation();
+            if (!isVisible) {
+                updateCoords();
+                setIsVisible(true);
+            } else {
+                setIsVisible(false);
+            }
+        }
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event: Event) => {
+            if (isVisible && 
+                window.matchMedia('(pointer: coarse)').matches &&
+                triggerRef.current && !triggerRef.current.contains(event.target as Node) &&
+                tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
+                setIsVisible(false);
+            }
+        };
+
+        if (isVisible) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('touchstart', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, [isVisible]);
 
     // Calculate position based on side
     const getPosStyles = () => {
@@ -82,6 +126,7 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
                 ref={triggerRef}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
+                onClick={handleClick}
                 className={cn("inline-block", triggerClassName)}
             >
                 {children}
@@ -91,6 +136,7 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
                 <AnimatePresence>
                     {isVisible && (
                         <motion.div
+                            ref={tooltipRef}
                             initial={{ 
                                 opacity: 0, 
                                 scale: 0.95, 
@@ -110,7 +156,7 @@ export function Tooltip({ children, content, delay = 0.2, side = 'top', classNam
                                 top: (posStyles as any).top,
                                 left: (posStyles as any).left,
                                 zIndex: 9999,
-                                pointerEvents: 'none'
+                                pointerEvents: isVisible && window.matchMedia('(pointer: coarse)').matches ? 'auto' : 'none'
                             }}
                             className={cn(
                                 "px-2 py-1.5 rounded-lg text-[10px] font-bold tracking-tight whitespace-nowrap shadow-2xl border",

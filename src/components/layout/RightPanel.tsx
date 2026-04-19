@@ -21,7 +21,7 @@ import { CountryPicker } from '@/components/ui/CountryPicker';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useHookStore, Hook } from '@/store/useHookStore';
 import { useFormStore } from '@/store/useFormStore';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { useRouter, usePathname } from 'next/navigation';
 import { Copy } from 'lucide-react';
 import { appToast } from '@/lib/toast';
@@ -305,12 +305,16 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                                     </span>
                                                                 </div>
                                                             )}
-                                                            {(notif.metadata.visitor.region || notif.metadata.visitor.timezone) && (
-                                                                <div className="flex flex-col gap-0.5 mt-0.5 pt-1.5 border-t border-inherit text-[8px] opacity-70 font-medium">
+                                                            <div className="flex items-end justify-between mt-0.5 pt-1.5 border-t border-inherit text-[8px] opacity-70 font-medium whitespace-nowrap">
+                                                                <div className="flex flex-col gap-0.5">
                                                                     {notif.metadata.visitor.region && <div>{notif.metadata.visitor.city}, {notif.metadata.visitor.region}</div>}
                                                                     {notif.metadata.visitor.timezone && <div>{notif.metadata.visitor.timezone}</div>}
                                                                 </div>
-                                                            )}
+                                                                <div className="flex flex-col text-right pl-3 opacity-90 tracking-tight leading-[1.1]">
+                                                                    <div>{format(new Date(notif.created_at), "h:mm a")}</div>
+                                                                    <div>{format(new Date(notif.created_at), "MMM d, yyyy")}</div>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     } 
                                                     side="left"

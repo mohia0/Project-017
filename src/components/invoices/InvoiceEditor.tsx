@@ -1563,6 +1563,20 @@ export function InvoiceDocument({
                                     isFirst={idx === 0}
                                     isLast={idx === blocks.length - 1}
                                     isMobile={isMobile}
+                                    onDuplicate={() => {
+                                        const nb = { ...block, id: uuidv4() };
+                                        const nbx = [...blocks];
+                                        nbx.splice(idx + 1, 0, nb);
+                                        setBlocks(nbx);
+                                    }}
+                                    onMoveUp={() => {
+                                        if (idx === 0) return;
+                                        setBlocks(arrayMove(blocks, idx, idx - 1));
+                                    }}
+                                    onMoveDown={() => {
+                                        if (idx === blocks.length - 1) return;
+                                        setBlocks(arrayMove(blocks, idx, idx + 1));
+                                    }}
                                     onSaveAsTemplate={(blockId) => setSavingSectionId(blockId)}
                                 />
                                 {!isPreview && <InsertZone idx={idx} isDark={false} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} isLast={idx === blocks.length - 1} /> }
@@ -1602,7 +1616,7 @@ export function InvoiceDocument({
     );
 }
 
-function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, meta, updateMeta, isFirst, isLast, isMobile, onSaveAsTemplate }: {
+function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, addBlock, currency, meta, updateMeta, isFirst, isLast, isMobile, onMoveUp, onMoveDown, onDuplicate, onSaveAsTemplate }: {
     block: BlockData;
     isDark: boolean;
     isPreview: boolean;
@@ -1615,6 +1629,9 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
     isFirst?: boolean;
     isLast?: boolean;
     isMobile?: boolean;
+    onMoveUp?: () => void;
+    onMoveDown?: () => void;
+    onDuplicate?: () => void;
     onSaveAsTemplate?: (id: string) => void;
 }) {
     const { setNodeRef, transform, transition } = useSortable({ id: block.id });
@@ -1628,6 +1645,9 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
             isLast={isLast}
             backgroundColor={block.backgroundColor}
             onBackgroundColorChange={(color) => updateBlock(block.id, { backgroundColor: color })}
+            onDuplicate={onDuplicate}
+            onMoveUp={onMoveUp}
+            onMoveDown={onMoveDown}
             onSaveAsTemplate={onSaveAsTemplate}
         >
             <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
