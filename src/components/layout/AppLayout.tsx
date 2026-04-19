@@ -34,9 +34,15 @@ const CSVImportModal   = dynamic(() => import('@/components/modals/CSVImportModa
 function DocumentTitleSetter() {
     const pathname = usePathname();
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
-    const workspaces = useWorkspaceStore(s => s.workspaces);
+    const { workspaces, hasFetched } = useWorkspaceStore();
     
     useEffect(() => {
+        // Do not touch document title on public previews, Next.js metadata handles it correctly
+        if (pathname?.startsWith('/p/')) return;
+        
+        // Wait until workspaces finish fetching
+        if (!hasFetched) return;
+
         const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
         const workspaceName = activeWorkspace?.name || 'CRM 17';
         
@@ -64,7 +70,7 @@ function DocumentTitleSetter() {
         }
 
         document.title = `${workspaceName} - ${pageTitle}`;
-    }, [pathname, activeWorkspaceId, workspaces]);
+    }, [pathname, activeWorkspaceId, workspaces, hasFetched]);
 
     return null;
 }
