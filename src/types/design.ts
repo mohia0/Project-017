@@ -9,6 +9,11 @@ export interface DocumentDesign {
     backgroundImageOpacity?: number;
     fontFamily: string;
     tableBorderRadius?: number;
+    tableBorderRadiusTL?: number;
+    tableBorderRadiusTR?: number;
+    tableBorderRadiusBR?: number;
+    tableBorderRadiusBL?: number;
+    tableBorderRadiusLinked?: boolean;
     tableHeaderBg?: string;
     tableBorderColor?: string;
     tableStrokeWidth?: number;

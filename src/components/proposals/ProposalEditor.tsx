@@ -1569,6 +1569,10 @@ export function ProposalDocument({
         '--sign-bar-color': design.signBarColor || '#000000',
         '--sign-bar-thick': `${design.signBarThickness ?? 1}px`,
         '--table-border-radius': `${design.tableBorderRadius ?? 8}px`,
+        '--table-radius-tl': `${design.tableBorderRadiusTL ?? design.tableBorderRadius ?? 8}px`,
+        '--table-radius-tr': `${design.tableBorderRadiusTR ?? design.tableBorderRadius ?? 8}px`,
+        '--table-radius-br': `${design.tableBorderRadiusBR ?? design.tableBorderRadius ?? 8}px`,
+        '--table-radius-bl': `${design.tableBorderRadiusBL ?? design.tableBorderRadius ?? 8}px`,
         '--table-header-bg': design.tableHeaderBg || '#f9f9f9',
         '--table-header-text': isDarkColor(design.tableHeaderBg || '#f9f9f9') ? '#ffffff' : '#000000',
         '--table-border-color': design.tableBorderColor || '#ebebeb',
@@ -1576,6 +1580,7 @@ export function ProposalDocument({
         '--table-font-size': `${design.tableFontSize ?? 12}px`,
         '--table-cell-padding': `${design.tableCellPadding ?? 12}px`,
         '--table-row-bg': design.tableRowBg || 'transparent',
+        '--table-row-text': isDarkColor(design.tableRowBg && design.tableRowBg !== 'transparent' ? design.tableRowBg : (design.blockBackgroundColor || '#ffffff')) ? '#ffffff' : '#000000',
         '--table-row-border-width': design.tableShowRowBorders === false ? '0px' : `${design.tableStrokeWidth ?? 1}px`,
         '--primary-color': design.primaryColor || 'var(--brand-primary)',
         '--primary': design.primaryColor || 'var(--brand-primary)',
@@ -2102,7 +2107,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
         }
     };
 
-    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left opacity-90", "text-[inherit]");
+    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", "text-[inherit]");
     const td = cn("py-2", "text-[inherit]");
 
     return (
@@ -2128,13 +2133,14 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
             <div 
                 className={cn("transition-all duration-300 text-[inherit]")} 
                 style={{ 
-                    borderRadius: 'var(--table-border-radius)', 
+                    borderTopLeftRadius: 'var(--table-radius-tl)',
+                    borderTopRightRadius: 'var(--table-radius-tr)',
+                    borderBottomRightRadius: 'var(--table-radius-br)',
+                    borderBottomLeftRadius: 'var(--table-radius-bl)',
                     borderColor: 'var(--table-border-color)',
                     borderWidth: 'var(--table-stroke-width)',
                     borderStyle: 'solid',
                     fontSize: 'var(--table-font-size)',
-                    borderCollapse: 'separate',
-                    borderSpacing: 0,
                     color: 'inherit'
                 }}
             >
@@ -2168,14 +2174,14 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                         </div>
                     ) : (
                         <table className="w-full relative pricing-table-root" style={{ borderCollapse: 'separate', borderSpacing: 0, border: 'none' }}>
-                            <thead style={{ backgroundColor: 'var(--table-header-bg)', color: 'var(--table-header-text, inherit)' }}>
+                            <thead style={{ color: 'var(--table-header-text, inherit)' }}>
                                 <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                    <th className="w-0 relative" style={{ borderTopLeftRadius: 'var(--table-border-radius)' }} />
-                                    <th className={cn(th, "pl-5 pr-2 py-2 w-full")}>Item</th>
-                                    {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
-                                    <th className={cn(th, "px-3 py-2 text-right w-24", hideQty && "pr-5")} style={hideQty ? { borderTopRightRadius: 'var(--table-border-radius)' } : {}}>Amount</th>
-                                    {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24")} style={{ borderTopRightRadius: 'var(--table-border-radius)' }}>Total</th>}
-                                    {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
+                                    <th className={cn(th, "w-0 relative pl-5")} style={{ borderTopLeftRadius: 'var(--table-radius-tl)', backgroundColor: 'var(--table-header-bg)' }} />
+                                    <th className={cn(th, "pr-2 py-2 w-full")} style={{ backgroundColor: 'var(--table-header-bg)' }}></th>
+                                    {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")} style={{ backgroundColor: 'var(--table-header-bg)' }}>Qty</th>}
+                                    <th className={cn(th, "px-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: (hideQty && isPreview) ? 'var(--table-radius-tr)' : '0', paddingRight: (hideQty && isPreview) ? '1.25rem' : '0.75rem' }}>Amount</th>
+                                    {!hideQty && <th className={cn(th, "pl-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: isPreview ? 'var(--table-radius-tr)' : '0', paddingRight: isPreview ? '1.25rem' : '0.75rem' }}>Total</th>}
+                                    {!isPreview && <th className={cn(th, "w-0 pr-5")} style={{ borderTopRightRadius: 'var(--table-radius-tr)', backgroundColor: 'var(--table-header-bg)' }} />}
                                 </tr>
                             </thead>
                             <tbody className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
@@ -2184,6 +2190,12 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                                         border-top-width: var(--table-row-border-width) !important;
                                         border-top-style: solid !important;
                                         border-top-color: var(--table-border-color) !important;
+                                    }
+                                    .pricing-table-root tbody tr:last-child td:first-child {
+                                        border-bottom-left-radius: var(--table-radius-bl);
+                                    }
+                                    .pricing-table-root tbody tr:last-child td:last-child {
+                                        border-bottom-right-radius: var(--table-radius-br);
                                     }
                                 ` }} />
                                 <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
@@ -2304,7 +2316,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     "flex flex-col p-4 gap-3 relative transition-colors pricing-mobile-row",
                     isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.02]" : "hover:bg-black/[0.02]")
                 )}
-                style={{ ...style, backgroundColor: 'var(--table-row-bg, transparent)' }}
+                style={{ ...style, backgroundColor: 'var(--table-row-bg, transparent)', color: 'var(--table-row-text, inherit)' }}
             >
                 {!isPreview && (
                     <div className="absolute right-3 top-3 flex gap-1">
@@ -2410,9 +2422,9 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                 "group/row transition-colors relative", 
                 isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.01]" : "hover:bg-black/[0.01]")
             )}
-            style={{ ...style, backgroundColor: 'var(--table-row-bg, transparent)' }}
+            style={{ ...style, backgroundColor: 'var(--table-row-bg, transparent)', color: 'var(--table-row-text, inherit)' }}
         >
-            <td className="w-0 relative">
+            <td className="w-0 relative pl-5">
                 {!isPreview && (
                     <div className={cn(
                         "absolute right-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pr-3",
@@ -2432,7 +2444,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     </div>
                 )}
             </td>
-            <td className={cn(td, "pl-5 pr-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
+            <td className={cn(td, "pr-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
                 {isPreview ? (
                     <div className="flex flex-col">
                         <div className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || row.description || 'Item'}</div>
@@ -2480,7 +2492,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     )}
                 </td>
             )}
-            <td className={cn(td, "px-3 text-right align-top", hideQty ? "pr-5" : "")} style={{ paddingTop: 'var(--table-cell-padding)' }}>
+            <td className={cn(td, "px-3 text-right align-top")} style={{ paddingTop: 'var(--table-cell-padding)', paddingRight: (hideQty && isPreview) ? '1.25rem' : '0.75rem' }}>
                 {isPreview ? <span className={cn(hideQty && "font-bold")}><MoneyAmount amount={row.rate} currency={currency} forceOriginal={isPreview} /></span> : (
                     <input
                         type="number"
@@ -2491,9 +2503,9 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     />
                 )}
             </td>
-            {!hideQty && <td className={cn(td, "pl-3 pr-5 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)' }}><MoneyAmount amount={row.qty * row.rate} currency={currency} forceOriginal={isPreview} /></td>}
+            {!hideQty && <td className={cn(td, "pl-3 text-right font-bold align-top")} style={{ paddingTop: 'var(--table-cell-padding)', fontSize: 'calc(var(--table-font-size) + 1px)', paddingRight: isPreview ? '1.25rem' : '0.75rem' }}><MoneyAmount amount={row.qty * row.rate} currency={currency} forceOriginal={isPreview} /></td>}
             {!isPreview && (
-                <td className="w-0 relative">
+                <td className={cn(td, "w-0 relative pr-5")}>
                     <div className={cn(
                         "absolute left-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pl-3",
                         "opacity-0 invisible pointer-events-none group-hover/row:opacity-100 group-hover/row:visible group-hover/row:pointer-events-auto"
@@ -2532,13 +2544,13 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
     return (
         <tr 
             ref={setNodeRef} 
-            style={{ ...style, backgroundColor: 'var(--table-row-bg, transparent)' }} 
+            style={{ ...style, backgroundColor: 'var(--table-row-bg, transparent)', color: 'var(--table-row-text, inherit)' }} 
             className={cn(
                 "group/row transition-colors relative", 
                 isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.01]" : "hover:bg-black/[0.01]")
             )}
         >
-            <td className="w-0 relative">
+            <td className="w-0 relative pl-5">
                 {!isPreview && (
                     <div className={cn(
                         "absolute right-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pr-3",
@@ -2558,7 +2570,7 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                     </div>
                 )}
             </td>
-            <td className={cn(td, "pl-5 pr-2")}>
+            <td className={cn(td, "pr-2")}>
                 {isPreview ? (
                     <div className="flex flex-col">
                         <div className="font-bold">{row.label || 'Item'}</div>
@@ -2599,9 +2611,9 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                     </div>
                 )}
             </td>
-            <td className={cn(td, "pl-3 pr-5 text-right font-bold")}><MoneyAmount amount={totalAbove * (row.percentage / 100)} currency={currency} forceOriginal={isPreview} /></td>
+            <td className={cn(td, "pl-3 text-right font-bold")} style={{ paddingRight: isPreview ? '1.25rem' : '0.75rem' }}><MoneyAmount amount={totalAbove * (row.percentage / 100)} currency={currency} forceOriginal={isPreview} /></td>
             {!isPreview && (
-                <td className="w-0 relative">
+                <td className={cn(td, "w-0 relative pr-5")}>
                     <div className={cn(
                         "absolute left-full top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-50 transition-all duration-200 pl-3",
                         "opacity-0 invisible pointer-events-none group-hover/row:opacity-100 group-hover/row:visible group-hover/row:pointer-events-auto"
@@ -2712,7 +2724,7 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
         }
     };
 
-    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left opacity-90", "text-[inherit]");
+    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", "text-[inherit]");
     const td = cn("py-1.5", "text-[inherit]");
 
     return (
@@ -2752,7 +2764,10 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
             <div 
                 className={cn("transition-all duration-300 text-[inherit]")} 
                 style={{ 
-                    borderRadius: 'var(--table-border-radius)', 
+                    borderTopLeftRadius: 'var(--table-radius-tl)',
+                    borderTopRightRadius: 'var(--table-radius-tr)',
+                    borderBottomRightRadius: 'var(--table-radius-br)',
+                    borderBottomLeftRadius: 'var(--table-radius-bl)',
                     borderColor: 'var(--table-border-color)',
                     borderWidth: 'var(--table-stroke-width)',
                     borderStyle: 'solid',
@@ -2763,13 +2778,13 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <table className="w-full relative pricing-breakdown-table" style={{ borderCollapse: 'separate', borderSpacing: 0, border: 'none' }}>
 
-                        <thead style={{ backgroundColor: 'var(--table-header-bg)', color: 'var(--table-header-text, inherit)' }}>
+                        <thead style={{ color: 'var(--table-header-text, inherit)' }}>
                             <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                <th className="w-0 relative" style={{ borderTopLeftRadius: 'var(--table-border-radius)' }} />
-                                <th className={cn(th, "pl-5 pr-2 py-2 w-full")}>Description</th>
-                                <th className={cn(th, "px-3 py-2 text-right w-24")}>Percentage</th>
-                                <th className={cn(th, "pl-3 pr-5 py-2 text-right w-32")} style={isPreview ? { borderTopRightRadius: 'var(--table-border-radius)' } : {}}>Amount</th>
-                                {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
+                                <th className={cn(th, "w-0 relative pl-5")} style={{ borderTopLeftRadius: 'var(--table-radius-tl)', backgroundColor: 'var(--table-header-bg)' }} />
+                                <th className={cn(th, "pr-2 py-2 w-full")} style={{ backgroundColor: 'var(--table-header-bg)' }}></th>
+                                <th className={cn(th, "px-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)' }}>Percentage</th>
+                                <th className={cn(th, "pl-3 py-2 text-right w-32")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: isPreview ? 'var(--table-radius-tr)' : '0', paddingRight: isPreview ? '1.25rem' : '0.75rem' }}>Amount</th>
+                                {!isPreview && <th className={cn(th, "w-0 pr-5")} style={{ borderTopRightRadius: 'var(--table-radius-tr)', backgroundColor: 'var(--table-header-bg)' }} />}
                             </tr>
                         </thead>
                         <tbody className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
@@ -2778,6 +2793,12 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                                     border-top-width: var(--table-row-border-width, var(--table-stroke-width)) !important;
                                     border-top-style: solid !important;
                                     border-top-color: var(--table-border-color) !important;
+                                }
+                                .pricing-breakdown-table tbody tr:last-child td:first-child {
+                                    border-bottom-left-radius: calc(var(--table-radius-bl) - 1px);
+                                }
+                                .pricing-breakdown-table tbody tr:last-child td:last-child {
+                                    border-bottom-right-radius: calc(var(--table-radius-br) - 1px);
                                 }
                             ` }} />
                             <SortableContext items={rows.map((r: any) => r.id)} strategy={verticalListSortingStrategy}>

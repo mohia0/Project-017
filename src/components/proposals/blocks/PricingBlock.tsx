@@ -101,7 +101,10 @@ export function PricingBlock({
                     isDark ? "bg-[#1a1a1a]" : "bg-white"
                 )}
                 style={{ 
-                    borderRadius: 'var(--table-border-radius)',
+                    borderTopLeftRadius: 'var(--table-radius-tl)',
+                    borderTopRightRadius: 'var(--table-radius-tr)',
+                    borderBottomRightRadius: 'var(--table-radius-br)',
+                    borderBottomLeftRadius: 'var(--table-radius-bl)',
                     borderColor: 'var(--table-border-color)',
                     borderWidth: 'var(--table-stroke-width)',
                     borderStyle: 'solid',
@@ -116,8 +119,8 @@ export function PricingBlock({
                         color: 'var(--table-header-text, inherit)',
                         borderColor: 'var(--table-border-color)',
                         borderBottomWidth: 'var(--table-stroke-width)',
-                        borderTopLeftRadius: 'calc(var(--table-border-radius) - 1px)',
-                        borderTopRightRadius: 'calc(var(--table-border-radius) - 1px)'
+                        borderTopLeftRadius: 'calc(var(--table-radius-tl) - 1px)',
+                        borderTopRightRadius: 'calc(var(--table-radius-tr) - 1px)'
                     }}
                 >
                     <div className="flex-1" />

@@ -453,16 +453,75 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                         <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                             <MetaField 
                                 label="Border Radius"
-                                valueLabel={`${design.tableBorderRadius ?? 8}px`}
                                 isDark={isDark}
-                                onReset={() => updateDesign({ tableBorderRadius: DEFAULT_DOCUMENT_DESIGN.tableBorderRadius })}
+                                onReset={() => updateDesign({ 
+                                    tableBorderRadius: DEFAULT_DOCUMENT_DESIGN.tableBorderRadius,
+                                    tableBorderRadiusTL: undefined,
+                                    tableBorderRadiusTR: undefined,
+                                    tableBorderRadiusBR: undefined,
+                                    tableBorderRadiusBL: undefined,
+                                    tableBorderRadiusLinked: true,
+                                })}
                             >
-                                <input 
-                                    type="range" min="0" max="32" 
-                                    value={design.tableBorderRadius ?? 8} 
-                                    onChange={e => updateDesign({ tableBorderRadius: Number(e.target.value) })}
-                                    className="w-full cursor-pointer" 
-                                />
+                                {(() => {
+                                    const linked = design.tableBorderRadiusLinked !== false;
+                                    const base = design.tableBorderRadius ?? 8;
+                                    const tl = design.tableBorderRadiusTL ?? base;
+                                    const tr = design.tableBorderRadiusTR ?? base;
+                                    const br = design.tableBorderRadiusBR ?? base;
+                                    const bl = design.tableBorderRadiusBL ?? base;
+
+                                    const setCorner = (corner: string, val: number) => {
+                                        if (linked) {
+                                            updateDesign({ tableBorderRadius: val, tableBorderRadiusTL: val, tableBorderRadiusTR: val, tableBorderRadiusBR: val, tableBorderRadiusBL: val });
+                                        } else {
+                                            updateDesign({ [`tableBorderRadius${corner}`]: val });
+                                        }
+                                    };
+
+                                    const cornerInput = (corner: string, val: number) => (
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={25}
+                                            value={val}
+                                            onChange={e => setCorner(corner, Number(e.target.value))}
+                                            className={cn(
+                                                "w-9 h-7 text-center text-[11px] font-mono rounded-md border outline-none transition-all",
+                                                isDark ? "bg-[#141414] border-[#303030] text-[#ccc] focus:border-white/20" : "bg-[#f5f5f5] border-[#e0e0e0] text-[#333] focus:border-black/20"
+                                            )}
+                                        />
+                                    );
+
+                                    return (
+                                        <div className="flex items-center gap-1.5">
+                                            {cornerInput('TL', tl)}
+                                            {cornerInput('TR', tr)}
+                                            {cornerInput('BR', br)}
+                                            {cornerInput('BL', bl)}
+                                            <button
+                                                title={linked ? "Unlink corners" : "Link all corners"}
+                                                onClick={() => {
+                                                    if (!linked) {
+                                                        updateDesign({ tableBorderRadiusLinked: true });
+                                                    } else {
+                                                        updateDesign({ tableBorderRadiusLinked: false, tableBorderRadiusTL: tl, tableBorderRadiusTR: tr, tableBorderRadiusBR: br, tableBorderRadiusBL: bl });
+                                                    }
+                                                }}
+                                                className={cn(
+                                                    "p-1.5 rounded-md border transition-all",
+                                                    linked
+                                                        ? (isDark ? "border-white/20 bg-white/10 text-white" : "border-black/20 bg-black/5 text-black")
+                                                        : (isDark ? "border-[#303030] text-[#555] hover:text-white" : "border-[#e0e0e0] text-[#bbb] hover:text-black")
+                                                )}
+                                            >
+                                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                                    <path d="M1 4V2a1 1 0 0 1 1-1h2M11 4V2a1 1 0 0 0-1-1H8M1 8v2a1 1 0 0 0 1 1h2M11 8v2a1 1 0 0 1-1 1H8" strokeLinecap="round"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    );
+                                })()}
                             </MetaField>
 
                             <MetaField 
