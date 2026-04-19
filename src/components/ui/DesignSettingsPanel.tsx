@@ -478,6 +478,18 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             </MetaField>
 
                             <MetaField 
+                                label="Row Background" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ tableRowBg: DEFAULT_DOCUMENT_DESIGN.tableRowBg })}
+                            >
+                                <ColorisInput 
+                                    value={design.tableRowBg || (isDark ? '#1a1a1a' : '#ffffff')} 
+                                    onChange={val => updateDesign({ tableRowBg: val })}
+                                    className="w-fit min-w-[120px]"
+                                />
+                            </MetaField>
+
+                            <MetaField 
                                 label="Border Color" 
                                 isDark={isDark}
                                 onReset={() => updateDesign({ tableBorderColor: DEFAULT_DOCUMENT_DESIGN.tableBorderColor })}
@@ -487,6 +499,26 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                     onChange={val => updateDesign({ tableBorderColor: val })}
                                     className="w-fit min-w-[120px]"
                                 />
+                            </MetaField>
+
+                            <MetaField 
+                                label="Row Borders" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ tableShowRowBorders: DEFAULT_DOCUMENT_DESIGN.tableShowRowBorders })}
+                            >
+                                <button
+                                    onClick={() => updateDesign({ tableShowRowBorders: design.tableShowRowBorders === false ? true : false })}
+                                    className={cn(
+                                        "w-10 h-5 rounded-full relative transition-all duration-200",
+                                        design.tableShowRowBorders === false ? (isDark ? "bg-[#333]" : "bg-[#e5e5e5]") : ""
+                                    )}
+                                    style={{ backgroundColor: design.tableShowRowBorders !== false ? (design.primaryColor || '#4dbf39') : undefined }}
+                                >
+                                    <div className={cn(
+                                        "absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-200",
+                                        design.tableShowRowBorders !== false ? "left-6" : "left-1"
+                                    )} />
+                                </button>
                             </MetaField>
 
                             <MetaField 

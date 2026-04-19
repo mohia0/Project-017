@@ -13,12 +13,11 @@ import {
     ArrowUpDown, Archive, ArrowRightLeft, Download, Upload, Plus, User, Filter,
     Calendar, Check, X, ArchiveRestore, Receipt, ChevronsUpDown,
     Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
-    FileJson, FileSpreadsheet, Link2, ExternalLink, Send
+    FileJson, FileSpreadsheet, Link2, ExternalLink
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { useRouter } from 'next/navigation';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
-import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { appToast } from '@/lib/toast';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -237,8 +236,8 @@ function SortableHeader({ id, children, onResizeStart, isDark, width }: {
     );
 }
 
-function InvoiceCard({ i, onOpen, onArchive, onSendEmail, isDark, onStatusChange, isSelected, onToggle, onClientChange, customStatuses = [] }: {
-    i: Invoice; onOpen: () => void; onArchive: () => void; onSendEmail?: () => void; isDark: boolean;
+function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onClientChange, customStatuses = [] }: {
+    i: Invoice; onOpen: () => void; onArchive: () => void; isDark: boolean;
     onStatusChange: (s: InvoiceStatus) => void; isSelected: boolean; onToggle: () => void;
     onClientChange: (clientId: string, clientName: string) => void;
     customStatuses: any[];
@@ -354,18 +353,7 @@ function InvoiceCard({ i, onOpen, onArchive, onSendEmail, isDark, onStatusChange
 
             {/* Quick actions */}
             <div className="absolute top-2.5 right-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                {(i.status === 'Pending' || i.status === 'Overdue') && onSendEmail && (
-                    <button
-                        onClick={e => { e.stopPropagation(); onSendEmail(); }}
-                        title={i.status === 'Overdue' ? "Send Reminder" : "Send Email"}
-                        className={cn(
-                            "w-6 h-6 rounded flex items-center justify-center transition-all",
-                            isDark ? "bg-[#2a2a2a] text-[#aaa] hover:text-[#eee]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#888] hover:bg-[#fafafa]"
-                        )}
-                    >
-                        <Send size={11} />
-                    </button>
-                )}
+
                 <button
                     onClick={e => { 
                         e.stopPropagation(); 
@@ -682,7 +670,6 @@ export default function InvoicesPage() {
     const isMobile = useIsMobile();
     const [view, setView] = useState<'table' | 'cards'>('table');
     const [importExportOpen, setImportExportOpen] = useState(false);
-    const [sendInvoiceData, setSendInvoiceData] = useState<Invoice | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     /* ... existing state ... */
     const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
@@ -1370,13 +1357,7 @@ export default function InvoicesPage() {
                                                 <MoneyAmount amount={Number(inv.amount || 0)} currency={inv.meta?.currency} />
                                             </span>
                                             <div className="absolute right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
-                                                {(inv.status === 'Pending' || inv.status === 'Overdue') && (
-                                                    <button onClick={e => { e.stopPropagation(); setSendInvoiceData(inv); }} title={inv.status === 'Overdue' ? "Send Reminder" : "Send Email"}
-                                                        className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
-                                                            isDark ? "text-[#888] hover:text-[#ccc] hover:bg-white/8" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]")}>
-                                                        <Send size={11} />
-                                                    </button>
-                                                )}
+
                                                 <button onClick={e => { 
                                                         e.stopPropagation(); 
                                                         window.open(window.location.origin + '/p/invoice/' + inv.id, '_blank');
@@ -1474,7 +1455,6 @@ export default function InvoicesPage() {
                                 <InvoiceCard key={inv.id} i={inv}
                                     onOpen={() => router.push(`/invoices/${inv.id}`)}
                                     onArchive={() => handleArchive(inv.id)}
-                                    onSendEmail={() => setSendInvoiceData(inv)}
                                     onStatusChange={(s) => updateInvoice(inv.id, { status: s })}
                                     onClientChange={(id, name) => updateInvoice(inv.id, { client_id: id, client_name: name })}
                                     isSelected={selectedIds.has(inv.id)}
@@ -1514,25 +1494,7 @@ export default function InvoicesPage() {
                 }}
             />
 
-            {sendInvoiceData && (
-                <SendEmailModal
-                    isOpen={!!sendInvoiceData}
-                    onClose={() => setSendInvoiceData(null)}
-                    templateKey={sendInvoiceData.status === 'Overdue' ? 'overdue_remind' : 'invoice'}
-                    to={sendInvoiceData.meta?.clientEmail || ''}
-                    variables={{
-                        client_name: sendInvoiceData.client_name || '',
-                        invoice_number: sendInvoiceData.title || sendInvoiceData.id.slice(-6).toUpperCase() || '',
-                        amount_due: convertAmount(Number(sendInvoiceData.amount || 0), sendInvoiceData.meta?.currency),
-                        amount_paid: convertAmount(Number(sendInvoiceData.amount || 0), sendInvoiceData.meta?.currency),
-                        due_date: sendInvoiceData.due_date || '',
-                        document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${sendInvoiceData.id}` : '',
-                        days_overdue: sendInvoiceData.due_date ? String(Math.max(0, Math.floor((new Date().getTime() - new Date(sendInvoiceData.due_date).getTime()) / (1000 * 3600 * 24)))) : '0',
-                    }}
-                    workspaceId={activeWorkspaceId || ''}
-                    documentTitle={sendInvoiceData.title || 'Invoice'}
-                />
-            )}
+
         </div>
     );
 }

@@ -76,7 +76,23 @@ export function PricingBlock({
 
     return (
         <div className="w-full relative">
-
+            {/* Title Section */}
+            {(!isPreview || (data.title !== undefined ? data.title : 'CREATIVE SERVICES PRICING')) && (
+                <div className="mb-10 w-full relative">
+                    <input
+                        value={data.title !== undefined ? data.title : 'CREATIVE SERVICES PRICING'}
+                        onChange={(e) => updateData(id, { ...data, title: e.target.value })}
+                        className={cn(
+                            "w-full text-center font-bold bg-transparent border-none p-0 focus:ring-0 outline-none transition-all",
+                            isDark ? "text-white" : "text-[#222222]",
+                            isPreview ? "pointer-events-none" : "hover:opacity-80 focus:opacity-100 placeholder:opacity-30"
+                        )}
+                        style={{ fontSize: 'var(--pricing-title-size, 42px)', fontWeight: '800', letterSpacing: '-0.01em' }}
+                        placeholder={isPreview ? "" : "Optional Pricing Title..."}
+                        readOnly={isPreview}
+                    />
+                </div>
+            )}
 
             {/* Main Table Design from Screenshot 2 */}
             <div 
@@ -89,40 +105,47 @@ export function PricingBlock({
                     borderColor: 'var(--table-border-color)',
                     borderWidth: 'var(--table-stroke-width)',
                     borderStyle: 'solid',
-                    fontSize: 'var(--table-font-size)'
+                    fontSize: 'var(--table-font-size)',
+                    color: 'inherit'
                 }}
             >
                 <div 
                     className="flex px-6 py-4 border-b transition-all"
                     style={{ 
                         backgroundColor: 'var(--table-header-bg)',
+                        color: 'var(--table-header-text, inherit)',
                         borderColor: 'var(--table-border-color)',
-                        borderBottomWidth: 'var(--table-stroke-width)'
+                        borderBottomWidth: 'var(--table-stroke-width)',
+                        borderTopLeftRadius: 'calc(var(--table-border-radius) - 1px)',
+                        borderTopRightRadius: 'calc(var(--table-border-radius) - 1px)'
                     }}
                 >
                     <div className="flex-1" />
-                    <div className="flex items-center gap-8 text-[11px] font-bold text-[#999] uppercase tracking-wider" style={{ opacity: 0.6 }}>
+                    <div className="flex items-center gap-8 text-[11px] font-bold text-[inherit] uppercase tracking-wider" style={{ opacity: 0.9 }}>
                         <div className="w-12 text-center">Tax</div>
                         <div className="w-16 text-center">Discount</div>
                         <div className="w-24 text-right pr-2">Total</div>
                     </div>
                 </div>
 
-                <div className="divide-y" style={{ borderColor: 'var(--table-border-color)' }}>
+                <div className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
                     <style dangerouslySetInnerHTML={{ __html: `
-                        .divide-y > * + * {
-                            border-top-width: var(--table-stroke-width) !important;
-                            border-color: var(--table-border-color) !important;
+                        .pricing-standalone-row {
+                            border-top-width: var(--table-row-border-width, var(--table-stroke-width)) !important;
+                            border-top-style: solid !important;
+                            border-top-color: var(--table-border-color) !important;
                         }
                     ` }} />
                     {items.map((item) => (
                         <div 
                             key={item.id} 
-                            className="group/item flex items-center gap-4 px-4 py-5 transition-colors relative"
+                            className="group/item flex items-center gap-4 px-4 py-5 transition-colors relative pricing-standalone-row"
                             style={{ 
                                 paddingTop: 'var(--table-cell-padding)', 
                                 paddingBottom: 'var(--table-cell-padding)',
-                                backgroundColor: hovered === item.id ? (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)') : 'transparent'
+                                backgroundColor: hovered === item.id 
+                                    ? (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)') 
+                                    : 'var(--table-row-bg, transparent)'
                             }}
                             onMouseEnter={() => setHovered(item.id)}
                             onMouseLeave={() => setHovered('')}
@@ -141,14 +164,14 @@ export function PricingBlock({
                                 <input
                                     value={item.name}
                                     onChange={(e) => updateItem(item.id, 'name', e.target.value)}
-                                    className={cn("w-full font-bold bg-transparent border-none p-0 focus:ring-0", isDark ? "text-white" : "text-[#111]")}
+                                    className={cn("w-full font-bold bg-transparent border-none p-0 focus:ring-0", isDark ? "text-[inherit]" : "text-[inherit]")}
                                     style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}
                                     placeholder="Item Title"
                                 />
                                 <input
                                     value={item.description}
                                     onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                                    className={cn("w-full bg-transparent border-none p-0 focus:ring-0", isDark ? "text-white/60" : "text-[#666]")}
+                                    className={cn("w-full bg-transparent border-none p-0 focus:ring-0", isDark ? "text-[inherit] opacity-70" : "text-[inherit] opacity-70")}
                                     style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
                                     placeholder="Add a description..."
                                 />
@@ -160,7 +183,7 @@ export function PricingBlock({
                                         type="number"
                                         value={item.tax}
                                         onChange={(e) => updateItem(item.id, 'tax', parseFloat(e.target.value) || 0)}
-                                        className={cn("w-full text-center font-medium bg-transparent border-none p-0 focus:ring-0", isDark ? "text-white" : "text-[#111]")}
+                                        className={cn("w-full text-center font-medium bg-transparent border-none p-0 focus:ring-0", isDark ? "text-[inherit]" : "text-[inherit]")}
                                     />
                                     <span className="text-[12px] opacity-40">%</span>
                                 </div>
@@ -169,12 +192,12 @@ export function PricingBlock({
                                         type="number"
                                         value={item.discount}
                                         onChange={(e) => updateItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
-                                        className={cn("w-full text-center font-medium bg-transparent border-none p-0 focus:ring-0", isDark ? "text-white" : "text-[#111]")}
+                                        className={cn("w-full text-center font-medium bg-transparent border-none p-0 focus:ring-0", isDark ? "text-[inherit]" : "text-[inherit]")}
                                     />
                                 </div>
                                 <div className={cn(
                                     "w-24 text-right pr-2 transition-all font-black",
-                                    isDark ? "text-white" : "text-black"
+                                    isDark ? "text-[inherit]" : "text-[inherit]"
                                 )} style={{ fontSize: 'calc(var(--table-font-size) + 1px)' }}>
                                     {formatCurrency(item.qty * item.rate)}
                                 </div>
@@ -186,14 +209,14 @@ export function PricingBlock({
                 <div 
                     className="p-4 border-t transition-all"
                     style={{ 
-                        backgroundColor: 'var(--table-header-bg)', 
+                        backgroundColor: 'transparent', 
                         borderColor: 'var(--table-border-color)',
                         borderTopWidth: 'var(--table-stroke-width)'
                     }}
                 >
                     <button
                         onClick={addItem}
-                        className={cn("flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all rounded-lg", isDark ? "text-white/40 hover:text-white hover:bg-white/5" : "text-black/40 hover:text-black hover:bg-black/5")}
+                        className={cn("flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition-all rounded-lg text-[inherit] opacity-40 hover:opacity-90 hover:bg-black/5")}
                     >
                         <div className={cn("w-5 h-5 rounded-md border flex items-center justify-center", isDark ? "border-white/10" : "border-black/10")}>
                             <Plus size={12} />

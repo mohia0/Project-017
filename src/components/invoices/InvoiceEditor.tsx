@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
-import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity, isDarkColor } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { CURRENCIES, getCurrency } from '@/lib/currencies';
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
@@ -739,21 +739,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         <Printer size={14} />
                     </button>
 
-                    {/* Send — active only when Pending or Overdue */}
-                    <Tooltip content={meta.status === 'Pending' ? 'Send invoice to client' : meta.status === 'Overdue' ? 'Send reminder to client' : 'Set status to Pending or Overdue to send'} side="bottom">
-                        <button
-                            onClick={() => (meta.status === 'Pending' || meta.status === 'Overdue') && setIsSendModalOpen(true)}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
-                                (meta.status === 'Pending' || meta.status === 'Overdue')
-                                    ? "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.35)]"
-                                    : isDark ? "bg-[#2a2a2a] text-white/20 cursor-not-allowed" : "bg-[#f0f0f0] text-black/20 cursor-not-allowed"
-                            )}
-                        >
-                            <Send size={14} />
-                            <span className="hidden md:inline">{meta.status === 'Overdue' ? 'Reminder' : 'Send'}</span>
-                        </button>
-                    </Tooltip>
+
 
                     <div className="relative ml-1" ref={actionsRef}>
                         <button
@@ -941,7 +927,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 </div>
                             ) : (
                                 <div 
-                                    className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
+                                    className="w-full max-w-[850px] overflow-visible transition-all duration-300"
                                     style={{ 
                                         borderRadius: `${meta.design?.borderRadius ?? DEFAULT_DOCUMENT_DESIGN.borderRadius}px`,
                                         backgroundColor: (meta.design?.blockBackgroundColor) || DEFAULT_DOCUMENT_DESIGN.blockBackgroundColor,
@@ -1524,10 +1510,13 @@ export function InvoiceDocument({
         '--block-button-radius': `${Math.max(0, (design.borderRadius ?? 16) - 4)}px`,
         '--table-border-radius': `${design.tableBorderRadius ?? 8}px`,
         '--table-header-bg': design.tableHeaderBg || '#f9f9f9',
+        '--table-header-text': isDarkColor(design.tableHeaderBg || '#f9f9f9') ? '#ffffff' : '#000000',
         '--table-border-color': design.tableBorderColor || '#ebebeb',
         '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
         '--table-font-size': `${design.tableFontSize ?? 12}px`,
         '--table-cell-padding': `${design.tableCellPadding ?? 12}px`,
+        '--table-row-bg': design.tableRowBg || 'transparent',
+        '--table-row-border-width': design.tableShowRowBorders === false ? '0px' : `${design.tableStrokeWidth ?? 1}px`,
         '--primary-color': design.primaryColor || 'var(--brand-primary)',
         '--primary': design.primaryColor || 'var(--brand-primary)',
         '--sign-bar-color': design.signBarColor || '#000000',
@@ -1830,8 +1819,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             borderWidth: 'var(--table-stroke-width)', 
                             borderStyle: 'solid', 
                             borderColor: 'var(--table-border-color)',
-                            backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-                            overflow: 'hidden'
+                            backgroundColor: isDark ? '#1a1a1a' : '#ffffff'
                         }}
                     >
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -1863,13 +1851,13 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 </div>
                             ) : (
                                 <table className="w-full relative" style={{ borderRadius: 'var(--table-border-radius)', borderCollapse: 'separate', borderSpacing: 0 }}>
-                                    <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
+                                    <thead style={{ backgroundColor: 'var(--table-header-bg)', color: 'var(--table-header-text, inherit)' }}>
                                         <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                            <th className="w-0 relative" />
-                                            <th className={cn(th, "pl-5 pr-2 py-2 w-full text-left")} style={{ borderTopLeftRadius: 'var(--table-border-radius)' }}>Item</th>
+                                            <th className="w-0 relative" style={{ borderTopLeftRadius: 'var(--table-border-radius)' }} />
+                                            <th className={cn(th, "pl-5 pr-2 py-2 w-full text-left")}>Item</th>
                                             {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
-                                            <th className={cn(th, "px-3 py-2 text-right w-24", hideQty ? "pr-5 rounded-tr-[var(--table-border-radius)]" : "")}>Amount</th>
-                                            {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
+                                            <th className={cn(th, "px-3 py-2 text-right w-24", hideQty && "pr-5")} style={hideQty ? { borderTopRightRadius: 'var(--table-border-radius)' } : {}}>Amount</th>
+                                            {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24")} style={{ borderTopRightRadius: 'var(--table-border-radius)' }}>Total</th>}
                                             {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
                                         </tr>
                                     </thead>
@@ -1903,7 +1891,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                     </div>
 
                     {/* Summary Card */}
-                    <div className="px-5 py-3" style={{ backgroundColor: isPreview ? 'transparent' : 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)', borderWidth: 'var(--table-stroke-width)', borderStyle: 'solid' }}>
+                    <div className="px-5 py-3" style={{ backgroundColor: isPreview ? 'transparent' : 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)', borderWidth: isPreview ? 0 : 'var(--table-stroke-width)', borderStyle: isPreview ? 'none' : 'solid' }}>
                         {!isPreview && (
                             <div className="flex justify-between items-center mb-4">
                                 <button
@@ -1927,10 +1915,12 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         
                         <div className="flex flex-col items-end">
                             <div className="w-full max-w-[180px] space-y-1.5">
-                                <div className={cn("flex justify-between text-[12px] font-medium", isDark ? "opacity-50" : "text-black")}>
-                                    <span>Subtotal</span>
-                                    <span><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
-                                </div>
+                                {rows.length > 1 && (
+                                    <div className={cn("flex justify-between text-[12px] font-medium", isDark ? "opacity-50" : "text-black")}>
+                                        <span>Subtotal</span>
+                                        <span><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
+                                    </div>
+                                )}
                                 {(!isPreview || (block.discountRate || 0) > 0) && (
                                     <div className={cn("flex justify-between items-center text-[12px] font-medium", isDark ? "opacity-50" : "text-black")}>
                                         <div className="flex items-center gap-2">

@@ -322,7 +322,15 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
                                 <input 
                                     className={cn("bg-transparent text-[10px] font-sans font-medium outline-none w-full", isDark ? "text-white" : "text-black")}
                                     value={value}
-                                    onChange={(e) => onChange(e.target.value)}
+                                    onChange={(e) => {
+                                        let v = e.target.value;
+                                        if (v && !v.startsWith('#') && !v.startsWith('rgb') && !v.startsWith('hsl')) {
+                                            if (/^[0-9a-fA-F]+$/.test(v)) {
+                                                v = '#' + v;
+                                            }
+                                        }
+                                        onChange(v);
+                                    }}
                                     placeholder="#HEX"
                                 />
                             </div>

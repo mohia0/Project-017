@@ -183,18 +183,18 @@ export function SectionBlockWrapper({
                 {hovered && (
                     <div
                         className={cn(
-                            'absolute right-0 flex items-center gap-0.5 z-[9990]',
-                            'rounded-xl border px-2 py-1 transition-all animate-in fade-in zoom-in-95 duration-200',
+                            'absolute right-0 flex items-center gap-0 z-[9990]',
+                            'rounded-lg border px-1.5 py-0.5 transition-all animate-in fade-in zoom-in-95 duration-200',
                             isDark
                                 ? 'bg-[#1a1a1a] border-white/[0.1] text-[#999]'
                                 : 'bg-white border-[#e2e2e2] text-[#888]',
                         )}
                         style={{ 
-                            top: isFirst ? 'calc(100% + 14px)' : '-46px'
+                            top: isFirst ? 'calc(100% + 7px)' : '-36px'
                         }}
                     >
                         {/* Move Up/Down buttons */}
-                        <div className="flex flex-col">
+                        <div className="flex items-center gap-0.5">
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -202,7 +202,7 @@ export function SectionBlockWrapper({
                                 }}
                                 disabled={isFirst}
                                 className={cn(
-                                    "p-1 rounded transition-all",
+                                    "p-0.5 rounded transition-all",
                                     isFirst ? "opacity-20 cursor-not-allowed" : isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
                                 )}
                             >
@@ -232,7 +232,7 @@ export function SectionBlockWrapper({
                                     <button
                                         onClick={() => setShowPalette(s => !s)}
                                         className={cn(
-                                            'p-1.5 rounded-lg transition-all flex items-center gap-1',
+                                            'p-1 rounded-md transition-all flex items-center gap-1',
                                             isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
                                             showPalette && (isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-black'),
                                         )}
@@ -296,7 +296,7 @@ export function SectionBlockWrapper({
                             <button
                                 onClick={() => onDuplicate?.(id)}
                                 className={cn(
-                                    'p-2 rounded-lg transition-all',
+                                    'p-1 rounded-md transition-all',
                                     isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
                                 )}
                             >
@@ -309,7 +309,7 @@ export function SectionBlockWrapper({
                                 <button
                                     onClick={() => onSaveAsTemplate(id)}
                                     className={cn(
-                                        'p-2 rounded-lg transition-all',
+                                        'p-1 rounded-md transition-all',
                                         isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
                                     )}
                                 >
@@ -330,7 +330,7 @@ export function SectionBlockWrapper({
                                 deleteResetTimerRef.current = setTimeout(() => setIsConfirmingDelete(false), 3000);
                             }}
                             className={cn(
-                                'px-2 py-1.5 rounded-lg transition-all text-[11px] font-bold flex items-center gap-1.5 min-w-[32px] justify-center',
+                                'px-1.5 py-1 rounded-md transition-all text-[11px] font-bold flex items-center gap-1 min-w-[28px] justify-center',
                                 isConfirmingDelete 
                                     ? 'bg-red-500 text-white shadow-lg' 
                                     : isDark ? 'hover:bg-red-500/20 text-red-400' : 'hover:bg-red-50 text-red-500'

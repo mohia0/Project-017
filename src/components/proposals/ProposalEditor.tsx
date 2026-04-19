@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
-import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity, isDarkColor } from '@/lib/utils';
 import { CURRENCIES, getCurrency } from '@/lib/currencies';
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
 import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
@@ -743,21 +743,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         {copied ? <Check size={14} className="text-primary" /> : <Link2 size={14} />}
                     </button>
 
-                    {/* Send — active only when Pending */}
-                    <Tooltip content={meta.status === 'Pending' ? 'Send proposal to client' : 'Set status to Pending to send'} side="bottom">
-                        <button
-                            onClick={() => meta.status === 'Pending' && setIsSendModalOpen(true)}
-                            className={cn(
-                                "flex items-center gap-1.5 px-3 h-[32px] rounded-[8px] text-[12px] font-bold transition-all",
-                                meta.status === 'Pending'
-                                    ? "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.35)]"
-                                    : isDark ? "bg-[#2a2a2a] text-white/20 cursor-not-allowed" : "bg-[#f0f0f0] text-black/20 cursor-not-allowed"
-                            )}
-                        >
-                            <Send size={14} />
-                            <span className="hidden md:inline">Send</span>
-                        </button>
-                    </Tooltip>
+
 
                     {/* Actions dropdown */}
                     <div className="relative" ref={actionsRef}>
@@ -1584,10 +1570,13 @@ export function ProposalDocument({
         '--sign-bar-thick': `${design.signBarThickness ?? 1}px`,
         '--table-border-radius': `${design.tableBorderRadius ?? 8}px`,
         '--table-header-bg': design.tableHeaderBg || '#f9f9f9',
+        '--table-header-text': isDarkColor(design.tableHeaderBg || '#f9f9f9') ? '#ffffff' : '#000000',
         '--table-border-color': design.tableBorderColor || '#ebebeb',
         '--table-stroke-width': `${design.tableStrokeWidth ?? 1}px`,
         '--table-font-size': `${design.tableFontSize ?? 12}px`,
         '--table-cell-padding': `${design.tableCellPadding ?? 12}px`,
+        '--table-row-bg': design.tableRowBg || 'transparent',
+        '--table-row-border-width': design.tableShowRowBorders === false ? '0px' : `${design.tableStrokeWidth ?? 1}px`,
         '--primary-color': design.primaryColor || 'var(--brand-primary)',
         '--primary': design.primaryColor || 'var(--brand-primary)',
     } as React.CSSProperties), [design]);
@@ -2113,13 +2102,31 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
         }
     };
 
-    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black");
-    const td = cn("py-2", isDark ? "text-white/80" : "text-black");
+    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left opacity-90", "text-[inherit]");
+    const td = cn("py-2", "text-[inherit]");
 
     return (
         <div className="flex flex-col gap-2">
+            {/* Title Section */}
+            {(!isPreview || (block.title !== undefined ? block.title : 'CREATIVE SERVICES PRICING')) && (
+                <div className="mb-8 w-full relative">
+                    <input
+                        value={block.title !== undefined ? block.title : 'CREATIVE SERVICES PRICING'}
+                        onChange={(e) => updateBlock(block.id, { title: e.target.value })}
+                        className={cn(
+                            "w-full text-center font-bold bg-transparent border-none p-0 focus:ring-0 outline-none transition-all",
+                            isDark ? "text-white" : "text-[#222222]",
+                            isPreview ? "pointer-events-none" : "hover:opacity-80 focus:opacity-100 placeholder:opacity-30"
+                        )}
+                        style={{ fontSize: 'var(--pricing-title-size, 42px)', fontWeight: '800', letterSpacing: '-0.01em' }}
+                        placeholder={isPreview ? "" : "Optional Pricing Title..."}
+                        readOnly={isPreview}
+                    />
+                </div>
+            )}
+
             <div 
-                className={cn("overflow-visible transition-all duration-300", isDark ? "bg-transparent text-white/90" : "bg-white text-black")} 
+                className={cn("transition-all duration-300 text-[inherit]")} 
                 style={{ 
                     borderRadius: 'var(--table-border-radius)', 
                     borderColor: 'var(--table-border-color)',
@@ -2128,15 +2135,17 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                     fontSize: 'var(--table-font-size)',
                     borderCollapse: 'separate',
                     borderSpacing: 0,
+                    color: 'inherit'
                 }}
             >
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     {isMobile ? (
-                        <div className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                        <div className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
                             <style dangerouslySetInnerHTML={{ __html: `
-                                .divide-y > * + * {
-                                    border-top-width: var(--table-stroke-width) !important;
-                                    border-color: var(--table-border-color) !important;
+                                .pricing-mobile-row {
+                                    border-top-width: var(--table-row-border-width) !important;
+                                    border-top-style: solid !important;
+                                    border-top-color: var(--table-border-color) !important;
                                 }
                             ` }} />
                             <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
@@ -2158,22 +2167,23 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                             </SortableContext>
                         </div>
                     ) : (
-                        <table className="w-full relative" style={{ borderRadius: 'var(--table-border-radius)', borderCollapse: 'separate', borderSpacing: 0 }}>
-                            <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
+                        <table className="w-full relative pricing-table-root" style={{ borderCollapse: 'separate', borderSpacing: 0, border: 'none' }}>
+                            <thead style={{ backgroundColor: 'var(--table-header-bg)', color: 'var(--table-header-text, inherit)' }}>
                                 <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                    <th className="w-0 relative" />
-                                    <th className={cn(th, "pl-5 pr-2 py-2 w-full")} style={{ borderTopLeftRadius: 'var(--table-border-radius)' }}>Item</th>
+                                    <th className="w-0 relative" style={{ borderTopLeftRadius: 'var(--table-border-radius)' }} />
+                                    <th className={cn(th, "pl-5 pr-2 py-2 w-full")}>Item</th>
                                     {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")}>Qty</th>}
-                                    <th className={cn(th, "px-3 py-2 text-right w-24", hideQty ? "pr-5 rounded-tr-[var(--table-border-radius)]" : "")}>Amount</th>
-                                    {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24", "rounded-tr-[var(--table-border-radius)]")}>Total</th>}
+                                    <th className={cn(th, "px-3 py-2 text-right w-24", hideQty && "pr-5")} style={hideQty ? { borderTopRightRadius: 'var(--table-border-radius)' } : {}}>Amount</th>
+                                    {!hideQty && <th className={cn(th, "pl-3 pr-5 py-2 text-right w-24")} style={{ borderTopRightRadius: 'var(--table-border-radius)' }}>Total</th>}
                                     {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                            <tbody className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
                                 <style dangerouslySetInnerHTML={{ __html: `
-                                    .divide-y > * + * {
-                                        border-top-width: var(--table-stroke-width) !important;
-                                        border-color: var(--table-border-color) !important;
+                                    .pricing-table-root tbody tr td {
+                                        border-top-width: var(--table-row-border-width) !important;
+                                        border-top-style: solid !important;
+                                        border-top-color: var(--table-border-color) !important;
                                     }
                                 ` }} />
                                 <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
@@ -2199,7 +2209,10 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
             </div>
 
             {/* Totals Section */}
-            <div className="px-5 py-3" style={{ backgroundColor: isPreview ? 'transparent' : 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)' }}>
+            <div className="px-5 py-3 mt-4" style={{ 
+                backgroundColor: 'transparent', 
+                color: 'var(--table-text-color, inherit)' 
+            }}>
                 {!isPreview && (
                     <div className="flex justify-between items-center mb-4">
                         <button
@@ -2223,15 +2236,16 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                 
                 <div className="flex flex-col items-end">
                     <div className="w-full max-w-[180px] space-y-1.5">
+                        {/* Subtotal row */}
                         {(!isPreview || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
-                            <div className={cn("flex justify-between font-medium", isDark ? "opacity-50" : "text-black")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                            <div className={cn("flex justify-between font-medium text-[inherit] opacity-60")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
                                 <span>Subtotal</span>
                                 <span><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
                             </div>
                         )}
                         {/* Discount row */}
                         {(!isPreview || (block.discountRate || 0) > 0) && (
-                            <div className={cn("flex justify-between items-center font-medium", isDark ? "opacity-50" : "text-black")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                            <div className={cn("flex justify-between items-center font-medium text-[inherit] opacity-60")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
                                 <div className="flex items-center gap-2">
                                     <span>Discount{isPreview && <span className="ml-1 opacity-70">({block.discountRate}%)</span>}</span>
                                     {!isPreview && (
@@ -2286,11 +2300,11 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
         return (
             <div 
                 ref={setNodeRef} 
-                style={style} 
                 className={cn(
-                    "flex flex-col p-4 gap-3 relative transition-colors",
+                    "flex flex-col p-4 gap-3 relative transition-colors pricing-mobile-row",
                     isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.02]" : "hover:bg-black/[0.02]")
                 )}
+                style={{ ...style, backgroundColor: 'var(--table-row-bg, transparent)' }}
             >
                 {!isPreview && (
                     <div className="absolute right-3 top-3 flex gap-1">
@@ -2330,7 +2344,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                 value={row.title || ''}
                                 onChange={e => updateRow(row.id, { title: e.target.value })}
                                 placeholder="Item Name..."
-                                className={cn("w-full bg-transparent outline-none font-bold text-[14px] p-0 border-none", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
+                                className={cn("w-full bg-transparent outline-none font-bold text-[14px] p-0 border-none", isDark ? "text-[inherit] placeholder:opacity-20" : "text-[inherit] placeholder:opacity-20")}
                             />
                             <div
                                 contentEditable={!isPreview}
@@ -2339,7 +2353,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                 dangerouslySetInnerHTML={{ __html: row.description || '' }}
                                 className={cn(
                                     "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] empty:before:content-[attr(data-placeholder)] empty:before:opacity-30", 
-                                    isDark ? "text-white opacity-60" : "text-black"
+                                    isDark ? "text-[inherit] opacity-60" : "text-[inherit] opacity-60"
                                 )}
                                 data-placeholder="Description (optional)..."
                             />
@@ -2351,7 +2365,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     <div className="flex items-center gap-4">
                         {!hideQty && (
                             <div className="flex flex-col">
-                                <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Qty</span>
+                                <span className={cn("text-[9px] font-bold uppercase tracking-wider text-[inherit] opacity-40")}>Qty</span>
                                 {isPreview ? (
                                     <span className="text-[13px] font-bold">{row.qty}</span>
                                 ) : (
@@ -2359,13 +2373,13 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                         type="number"
                                         value={row.qty}
                                         onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
-                                        className={cn("w-10 bg-transparent outline-none font-bold text-[13px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                        className={cn("w-10 bg-transparent outline-none font-bold text-[13px] text-[inherit]")}
                                     />
                                 )}
                             </div>
                         )}
                         <div className="flex flex-col">
-                            <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Rate</span>
+                            <span className={cn("text-[9px] font-bold uppercase tracking-wider text-[inherit] opacity-40")}>Rate</span>
                             {isPreview ? (
                                 <span className="text-[13px] font-bold"><MoneyAmount amount={row.rate} currency={currency} forceOriginal={true} /></span>
                             ) : (
@@ -2392,11 +2406,11 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
     return (
         <tr 
             ref={setNodeRef} 
-            style={style} 
             className={cn(
                 "group/row transition-colors relative", 
                 isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.01]" : "hover:bg-black/[0.01]")
             )}
+            style={{ ...style, backgroundColor: 'var(--table-row-bg, transparent)' }}
         >
             <td className="w-0 relative">
                 {!isPreview && (
@@ -2436,7 +2450,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             value={row.title || ''}
                             onChange={e => updateRow(row.id, { title: e.target.value })}
                             placeholder={row.description ? "Item title..." : "Item Name..."}
-                            className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight", isDark ? "text-white placeholder:text-white/20" : "text-black placeholder:text-black/20")}
+                            className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight", isDark ? "text-[inherit] placeholder:opacity-20" : "text-[inherit] placeholder:opacity-20")}
                             style={{ fontSize: 'calc(var(--table-font-size) + 2px)', fontWeight: 700 }}
                         />
                         <div
@@ -2446,7 +2460,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             dangerouslySetInnerHTML={{ __html: row.description || '' }}
                             className={cn(
                                 "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-10", 
-                                isDark ? "text-white" : "text-black"
+                                isDark ? "text-[inherit]" : "text-[inherit]"
                             )}
                             data-placeholder="Description (optional)..."
                             style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
@@ -2518,7 +2532,7 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
     return (
         <tr 
             ref={setNodeRef} 
-            style={style} 
+            style={{ ...style, backgroundColor: 'var(--table-row-bg, transparent)' }} 
             className={cn(
                 "group/row transition-colors relative", 
                 isDragging ? (isDark ? "bg-[#222]" : "bg-gray-50") : (isDark ? "hover:bg-white/[0.01]" : "hover:bg-black/[0.01]")
@@ -2561,7 +2575,7 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                             value={row.label || ''} 
                             onChange={e => updateRow(row.id, { label: e.target.value })} 
                             placeholder="Label..." 
-                            className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight placeholder:opacity-30", isDark ? "text-white" : "text-black")} 
+                            className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight placeholder:opacity-30 text-[inherit]")} 
                             style={{ fontWeight: 700 }}
                         />
                         <div 
@@ -2570,8 +2584,7 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                             onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
                             dangerouslySetInnerHTML={{ __html: row.description || '' }}
                             className={cn(
-                                "w-full bg-transparent outline-none text-[11px] opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-30", 
-                                isDark ? "text-white" : "text-black"
+                                "w-full bg-transparent outline-none text-[11px] opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-30 text-[inherit]"
                             )} 
                             data-placeholder="Description..."
                         />
@@ -2699,8 +2712,8 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
         }
     };
 
-    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left", isDark ? "text-white/40" : "text-black");
-    const td = cn("py-1.5", isDark ? "text-white/80" : "text-black/80");
+    const th = cn("text-[10px] font-bold uppercase tracking-wider pb-2 text-left opacity-90", "text-[inherit]");
+    const td = cn("py-1.5", "text-[inherit]");
 
     return (
         <div className="flex flex-col gap-3">
@@ -2737,33 +2750,34 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                 )}
             </div>
             <div 
-                className={cn("overflow-visible transition-all duration-300", isDark ? "bg-transparent text-white/90" : "bg-white text-black")} 
+                className={cn("transition-all duration-300 text-[inherit]")} 
                 style={{ 
                     borderRadius: 'var(--table-border-radius)', 
                     borderColor: 'var(--table-border-color)',
                     borderWidth: 'var(--table-stroke-width)',
                     borderStyle: 'solid',
                     fontSize: 'var(--table-font-size)',
-                    borderCollapse: 'separate',
-                    borderSpacing: 0,
+                    color: 'inherit'
                 }}
             >
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <table className="w-full relative" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-                        <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
+                    <table className="w-full relative pricing-breakdown-table" style={{ borderCollapse: 'separate', borderSpacing: 0, border: 'none' }}>
+
+                        <thead style={{ backgroundColor: 'var(--table-header-bg)', color: 'var(--table-header-text, inherit)' }}>
                             <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                <th className="w-0 relative" />
+                                <th className="w-0 relative" style={{ borderTopLeftRadius: 'var(--table-border-radius)' }} />
                                 <th className={cn(th, "pl-5 pr-2 py-2 w-full")}>Description</th>
                                 <th className={cn(th, "px-3 py-2 text-right w-24")}>Percentage</th>
-                                <th className={cn(th, "pl-3 pr-5 py-2 text-right w-32")}>Amount</th>
-                                {!isPreview && <th className="w-0" />}
+                                <th className={cn(th, "pl-3 pr-5 py-2 text-right w-32")} style={isPreview ? { borderTopRightRadius: 'var(--table-border-radius)' } : {}}>Amount</th>
+                                {!isPreview && <th className="w-0" style={{ borderTopRightRadius: 'var(--table-border-radius)' }} />}
                             </tr>
                         </thead>
-                        <tbody className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
+                        <tbody className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
                             <style dangerouslySetInnerHTML={{ __html: `
-                                .divide-y > * + * {
-                                    border-top-width: var(--table-stroke-width) !important;
-                                    border-color: var(--table-border-color) !important;
+                                .pricing-breakdown-table tbody tr td {
+                                    border-top-width: var(--table-row-border-width, var(--table-stroke-width)) !important;
+                                    border-top-style: solid !important;
+                                    border-top-color: var(--table-border-color) !important;
                                 }
                             ` }} />
                             <SortableContext items={rows.map((r: any) => r.id)} strategy={verticalListSortingStrategy}>

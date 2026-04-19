@@ -25,6 +25,8 @@ export interface DocumentDesign {
     topBlurTheme?: 'light' | 'dark';
     signTheme?: 'light' | 'dark';
     documentTitle?: string;
+    tableRowBg?: string;
+    tableShowRowBorders?: boolean;
 }
 
 export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
@@ -53,4 +55,6 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     actionTheme: 'light',
     topBlurTheme: 'light',
     signTheme: 'light',
+    tableRowBg: '',
+    tableShowRowBorders: true,
 };
