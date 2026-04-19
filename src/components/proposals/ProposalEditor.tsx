@@ -947,7 +947,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         ) : (
                             /* Desktop canvas */
                             <div 
-                                className="w-full max-w-[850px] overflow-hidden transition-all duration-300"
+                                className="w-full max-w-[850px] overflow-visible transition-all duration-300"
                                 style={{ 
                                     borderRadius: `${meta.design?.borderRadius ?? DEFAULT_DOCUMENT_DESIGN.borderRadius}px`,
                                     backgroundColor: (meta.design?.blockBackgroundColor) || DEFAULT_DOCUMENT_DESIGN.blockBackgroundColor,
@@ -2128,7 +2128,6 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                     fontSize: 'var(--table-font-size)',
                     borderCollapse: 'separate',
                     borderSpacing: 0,
-                    overflow: 'hidden'
                 }}
             >
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -2747,7 +2746,6 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                     fontSize: 'var(--table-font-size)',
                     borderCollapse: 'separate',
                     borderSpacing: 0,
-                    overflow: 'hidden'
                 }}
             >
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
