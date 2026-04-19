@@ -257,8 +257,8 @@ function ProposalCard({ p, onOpen, onArchive, isDark, onStatusChange, isSelected
         >
             {/* Header */}
             <div className={cn("flex items-center justify-between px-4 py-3 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
-                <div className={cn("font-bold text-[14px] tracking-tight", isDark ? "text-white" : "text-black")}>
-                    {p.id?.slice(-6).toUpperCase() ?? '—'}
+                <div className={cn("font-bold text-[14px] tracking-tight text-primary uppercase", isDark ? "text-primary" : "text-primary")}>
+                    {p.proposal_number || p.id?.slice(-6).toUpperCase() || '—'}
                 </div>
                 <div
                     onClick={(e) => { e.stopPropagation(); onToggle(); }}
@@ -808,7 +808,8 @@ export default function ProposalsPage() {
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 const idMatch = p.id?.toLowerCase().slice(-6).includes(q);
-                if (!p.title?.toLowerCase().includes(q) && !p.client_name?.toLowerCase().includes(q) && !idMatch) return false;
+                const numMatch = p.proposal_number?.toLowerCase().includes(q);
+                if (!p.title?.toLowerCase().includes(q) && !p.client_name?.toLowerCase().includes(q) && !idMatch && !numMatch) return false;
             }
             if (dateFilter === 'month' && !isThisMonth(p.issue_date)) return false;
             if (dateFilter === 'year' && !isThisYear(p.issue_date)) return false;

@@ -83,6 +83,7 @@ export const useProposalStore = create<ProposalState>((set) => ({
         try {
             const payload = {
                 ...proposal,
+                proposal_number: proposal.proposal_number || proposalNumber,
                 client_id: proposal.client_id || null,
                 due_date: proposal.due_date || null,
                 issue_date: proposal.issue_date || null,

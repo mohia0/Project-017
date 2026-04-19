@@ -38,6 +38,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ type: st
             paid_at: data.paid_at,
         };
 
+        if (safeData.status === 'Pending' && safeData.due_date) {
+            const currentDate = new Date();
+            currentDate.setHours(0, 0, 0, 0);
+            const dueDate = new Date(safeData.due_date);
+            dueDate.setHours(0, 0, 0, 0);
+            
+            if (currentDate > dueDate) {
+                safeData.status = 'Overdue';
+            }
+        }
+
         return NextResponse.json(safeData);
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });

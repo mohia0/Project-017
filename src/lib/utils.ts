@@ -55,3 +55,14 @@ export function detectCreateModalTab(pathname: string): CreateModalTab {
     if (pathname.startsWith('/hooks')) return 'Hook';
     return 'Contact';
 }
+
+/**
+ * Replaces dynamic variables in a string.
+ * Currently supports:
+ * - {{year}} : The current year
+ */
+export function replaceVariables(text: string): string {
+    if (!text) return text;
+    const currentYear = new Date().getFullYear().toString();
+    return text.replace(/{{year}}/g, currentYear);
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ChevronRight, CreditCard, Landmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -119,10 +120,13 @@ export function PaymentMethodSelectorModal({
         // I'll show it for now, but I can optimize it.
     }
 
-    if (!isOpen) return null;
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => { setMounted(true); }, []);
 
-    return (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    if (!isOpen || !mounted) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className={cn(
                 "relative w-full max-w-[440px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200",
                 isDark ? "bg-[#1c1c1e] text-white" : "bg-white text-[#111]"
@@ -192,6 +196,7 @@ export function PaymentMethodSelectorModal({
                     </p>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

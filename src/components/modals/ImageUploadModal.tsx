@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Upload, Link as LinkIcon, Image as ImageIcon, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -177,10 +178,13 @@ export default function FileUploadModal({
         return () => window.removeEventListener('paste', handlePaste);
     }, [handlePaste]);
 
-    if (!isOpen) return null;
+    const [mounted, setMounted] = React.useState(false);
+    useEffect(() => { setMounted(true); }, []);
 
-    return (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+    if (!isOpen || !mounted) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4">
             <div 
                 className="absolute inset-0 bg-black/[0.15] backdrop-blur-[2px] transition-opacity" 
                 onClick={onClose} 
@@ -419,6 +423,7 @@ export default function FileUploadModal({
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

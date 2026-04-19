@@ -35,6 +35,7 @@ export function CreateProposalModal({ open, onClose }: Props) {
     const [selectedClient, setSelectedClient] = useState<string>('');
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [showClientDrop, setShowClientDrop] = useState(false);
+    const [generatedId, setGeneratedId] = useState('');
     
     // Project state
     const [projectQuery, setProjectQuery] = useState('');
@@ -69,8 +70,10 @@ export function CreateProposalModal({ open, onClose }: Props) {
             });
             const initTitle = (settings: any) => {
                 const assignToDraft = settings?.assign_to_draft ?? true;
+                const nextId = useSettingsStore.getState().generateNextId('proposals');
+                setGeneratedId(nextId);
                 if (assignToDraft) {
-                    setTitle(useSettingsStore.getState().generateNextId('proposals'));
+                    setTitle(nextId);
                 } else {
                     setTitle('New Proposal');
                 }
@@ -117,7 +120,8 @@ export function CreateProposalModal({ open, onClose }: Props) {
             const blocks = templateToUse?.blocks || [];
 
             const newProposal = await addProposal({
-                title: title || useSettingsStore.getState().generateNextId('proposals'),
+                title: title || generatedId || useSettingsStore.getState().generateNextId('proposals'),
+                proposal_number: generatedId || title, // Fallback to title if generatedId is somehow empty
                 client_id: selectedClientId,
                 client_name: selectedClient || clientQuery,
                 status: 'Draft',

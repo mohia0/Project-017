@@ -83,6 +83,7 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
         try {
             const payload = {
                 ...invoice,
+                invoice_number: invoice.invoice_number || invoiceNumber,
                 client_id: invoice.client_id || null,
                 due_date: invoice.due_date || null,
                 issue_date: invoice.issue_date || null,

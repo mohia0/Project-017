@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Send, Mail, User, ChevronDown, Check, Loader2, AlertCircle, Sparkles, Settings2, FileText, Receipt, FileCheck, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -139,10 +140,13 @@ export function SendEmailModal({
     const info = TEMPLATE_INFO[templateKey];
     const hasSmtp = !!emailConfig?.smtp_host;
 
-    if (!isOpen) return null;
+    const [mounted, setMounted] = React.useState(false);
+    useEffect(() => { setMounted(true); }, []);
 
-    return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    if (!isOpen || !mounted) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
@@ -380,6 +384,7 @@ export function SendEmailModal({
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

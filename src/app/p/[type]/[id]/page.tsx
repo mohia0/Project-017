@@ -80,10 +80,23 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
 
     // Status check - allow anything that isn't explicitly 'Draft' (case-insensitive)
     // Exception: Allow forms in draft status for previewing
-    const status = (document.status || '').toLowerCase();
+    let status = (document.status || '').toLowerCase();
     if (status === 'draft' && type !== 'form' && type !== 'forms' && type !== 'scheduler' && type !== 'schedulers') {
         console.warn(`[PreviewPage] Document ${id} is in Draft status, blocking access.`);
         return notFound();
+    }
+
+    // Dynmically transition to 'Overdue' if the due_date has passed and status is 'Pending'
+    if (status === 'pending' && document.due_date) {
+        const currentDate = new Date();
+        currentDate.setHours(0, 0, 0, 0); // Ignore exact time, use date
+        const dueDate = new Date(document.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        
+        if (currentDate > dueDate) {
+            document.status = 'Overdue';
+            status = 'overdue';
+        }
     }
 
     // If it's a project, fetch tasks and groups

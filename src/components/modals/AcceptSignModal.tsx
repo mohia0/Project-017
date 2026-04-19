@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, PenLine, Upload, Type, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DocumentDesign } from '@/types/design';
@@ -140,10 +141,13 @@ export function AcceptSignModal({
         onClose();
     };
 
-    if (!isOpen) return null;
+    const [mounted, setMounted] = React.useState(false);
+    useEffect(() => { setMounted(true); }, []);
 
-    return (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    if (!isOpen || !mounted) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div
                 className={cn(
                     "relative w-full max-w-[500px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200",
@@ -368,6 +372,7 @@ export function AcceptSignModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

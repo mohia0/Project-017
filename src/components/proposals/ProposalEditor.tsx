@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
-import { cn, getBackgroundImageWithOpacity, isDarkColor } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity, isDarkColor, replaceVariables } from '@/lib/utils';
 import { CURRENCIES, getCurrency } from '@/lib/currencies';
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
 import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
@@ -374,7 +374,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 issueDate: proposal.issue_date ? proposal.issue_date.split('T')[0] : prev.issueDate,
                 expirationDate: proposal.due_date ? proposal.due_date.split('T')[0] : prev.expirationDate,
                 status: proposal.status as any,
-                proposalNumber: proposal.id.slice(0, 8).toUpperCase(),
+                proposalNumber: proposal.proposal_number || proposal.id.slice(0, 8).toUpperCase(),
                 ...((proposal.meta as any) || {})
             }));
             if (proposal.blocks && Array.isArray(proposal.blocks) && proposal.blocks.length > 0) {
@@ -2045,7 +2045,7 @@ function TextBlock({ block, isDark, isPreview, updateBlock, meta }: any) {
                     "py-1 text-[13px] leading-relaxed prose prose-p:my-1 prose-headings:my-2 max-w-none prose-h1:text-3xl prose-h2:text-xl prose-h3:text-lg",
                     isDark ? "text-[#aaa] prose-invert" : "text-[#000]"
                 )}
-                dangerouslySetInnerHTML={{ __html: block.content || '' }}
+                dangerouslySetInnerHTML={{ __html: replaceVariables(block.content || '') }}
             />
         );
     }
@@ -2366,7 +2366,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             {row.description && row.title && (
                                 <div 
                                     className="text-[12px] opacity-60 mt-1 leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: row.description }}
+                                    dangerouslySetInnerHTML={{ __html: replaceVariables(row.description) }}
                                 />
                             )}
                         </>
@@ -2382,7 +2382,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                 contentEditable={!isPreview}
                                 suppressContentEditableWarning
                                 onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
-                                dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                                dangerouslySetInnerHTML={{ __html: replaceVariables(row.description || '') }}
                                 className={cn(
                                     "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] empty:before:content-[attr(data-placeholder)] empty:before:opacity-30", 
                                     isDark ? "text-[inherit] opacity-60" : "text-[inherit] opacity-60"
@@ -2472,7 +2472,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             <div 
                                 className={cn("mt-0.5 opacity-60")} 
                                 style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
-                                dangerouslySetInnerHTML={{ __html: row.description }}
+                                dangerouslySetInnerHTML={{ __html: replaceVariables(row.description) }}
                             />
                         )}
                     </div>
@@ -2489,7 +2489,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             contentEditable={!isPreview}
                             suppressContentEditableWarning
                             onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
-                            dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                            dangerouslySetInnerHTML={{ __html: replaceVariables(row.description || '') }}
                             className={cn(
                                 "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-10", 
                                 isDark ? "text-[inherit]" : "text-[inherit]"
@@ -2597,7 +2597,7 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                         {row.description && (
                             <div 
                                 className={cn("text-[11px] opacity-60 mt-0.5")}
-                                dangerouslySetInnerHTML={{ __html: row.description }}
+                                dangerouslySetInnerHTML={{ __html: replaceVariables(row.description) }}
                             />
                         )}
                     </div>
@@ -2614,7 +2614,7 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                             contentEditable={!isPreview}
                             suppressContentEditableWarning
                             onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
-                            dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                            dangerouslySetInnerHTML={{ __html: replaceVariables(row.description || '') }}
                             className={cn(
                                 "w-full bg-transparent outline-none text-[11px] opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-30 text-[inherit]"
                             )} 

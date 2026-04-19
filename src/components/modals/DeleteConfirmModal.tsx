@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, X } from 'lucide-react';
 
@@ -23,10 +24,13 @@ export function DeleteConfirmModal({
     actionLabel = "Delete",
     isDark = false
 }: DeleteConfirmModalProps) {
-    if (!open) return null;
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => { setMounted(true); }, []);
 
-    return (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
+    if (!open || !mounted) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
             <div className={cn(
                 "w-full max-w-[400px] rounded-2xl shadow-2xl overflow-hidden border animate-in fade-in zoom-in duration-200",
                 isDark ? "bg-[#1a1a1a] border-[#2e2e2e] text-[#eee]" : "bg-white border-[#f0f0f0] text-[#111]"
@@ -69,6 +73,7 @@ export function DeleteConfirmModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

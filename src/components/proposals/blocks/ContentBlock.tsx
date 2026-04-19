@@ -235,7 +235,7 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                 background: "transparent",
             },
             ...(!isDarkBg ? {
-                sideMenu: "#000000",
+                sideMenu: "#888888", // Using UI grey for + and handler
                 highlightColors: {
                     ...(baseTheme.colors as any).highlightColors,
                 }
@@ -263,11 +263,18 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
         <div className={cn("w-full max-w-full relative blocknote-editor", !isDarkBg && "force-black-text")}>
             {!isDarkBg && (
                 <style dangerouslySetInnerHTML={{ __html: `
-                    .force-black-text .bn-editor, 
-                    .force-black-text .bn-editor *,
-                    .force-black-text .bn-editor [data-placeholder]::before {
+                    /* Force main text to black in light mode */
+                    .force-black-text .bn-editor [data-content-type] {
                         color: #000000 !important;
-                        opacity: 1 !important;
+                    }
+                    /* Make placeholder (lines of informing) grey */
+                    .force-black-text .bn-editor [data-placeholder]::before {
+                        color: #999999 !important;
+                        opacity: 0.8 !important;
+                    }
+                    /* Ensure side menu buttons (plus and handler) are grey */
+                    .force-black-text .bn-side-menu {
+                        color: #888888 !important;
                     }
                 ` }} />
             )}

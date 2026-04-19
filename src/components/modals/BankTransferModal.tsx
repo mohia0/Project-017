@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, ArrowRight, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -35,7 +36,10 @@ export function BankTransferModal({
         }
     }, [isOpen, activeWorkspaceId, fetchPayments, hasFetched.payments]);
 
-    if (!isOpen) return null;
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => { setMounted(true); }, []);
+
+    if (!isOpen || !mounted) return null;
 
     // Get the specific bank account or fall back to default
     const targetAccount = accountId 
@@ -61,8 +65,8 @@ export function BankTransferModal({
 
     const isLoading = isOpen && activeWorkspaceId && !hasFetched.payments;
 
-    return (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className={cn(
                 "relative w-full max-w-[500px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200",
                 isDark ? "bg-[#1c1c1e] text-white" : "bg-white text-[#111]"
@@ -163,6 +167,7 @@ export function BankTransferModal({
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

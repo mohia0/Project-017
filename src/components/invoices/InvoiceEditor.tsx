@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
-import { cn, getBackgroundImageWithOpacity, isDarkColor } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity, isDarkColor, replaceVariables } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { CURRENCIES, getCurrency } from '@/lib/currencies';
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
@@ -352,7 +352,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 issueDate: invoice.issue_date ? invoice.issue_date.split('T')[0] : prev.issueDate,
                 dueDate: invoice.due_date ? invoice.due_date.split('T')[0] : prev.dueDate,
                 status: invoice.status as any,
-                invoiceNumber: invoice.title || invoice.id.slice(0, 8).toUpperCase(),
+                invoiceNumber: invoice.invoice_number || invoice.id.slice(0, 8).toUpperCase(),
                 ...((invoice.meta as any) || {})
             }));
             if (invoice.blocks && Array.isArray(invoice.blocks) && invoice.blocks.length > 0) {
@@ -1358,6 +1358,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
 
 
+            </div>
+            </div>
 
             <DeleteConfirmModal 
                 open={!!pendingStatusChange}
@@ -1443,8 +1445,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 invoice={{ ...meta, amount: totals.total, id: id }}
                 onMarkAsPaid={() => handleStatusChange('Paid')}
             />
-            </div>
-            </div>
 
             <SendEmailModal
                 isOpen={isSendModalOpen}
@@ -2031,7 +2031,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             "py-1 text-[13px] leading-relaxed prose prose-p:my-1 prose-headings:my-2 max-w-none",
                             isDark ? "text-[#aaa] prose-invert" : "text-[#555]"
                         )}
-                        dangerouslySetInnerHTML={{ __html: block.content || '' }}
+                        dangerouslySetInnerHTML={{ __html: replaceVariables(block.content || '') }}
                     />
                 );
             }
@@ -2268,7 +2268,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             {row.description && row.title && (
                                 <div 
                                     className="text-[12px] opacity-60 mt-1 leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: row.description }}
+                                    dangerouslySetInnerHTML={{ __html: replaceVariables(row.description) }}
                                 />
                             )}
                         </>
@@ -2284,7 +2284,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                 contentEditable={!isPreview}
                                 suppressContentEditableWarning
                                 onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
-                                dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                                dangerouslySetInnerHTML={{ __html: replaceVariables(row.description || '') }}
                                 className={cn(
                                     "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] empty:before:content-[attr(data-placeholder)] empty:before:opacity-30 text-[inherit] opacity-60"
                                 )}
@@ -2373,7 +2373,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             <div 
                                 className={cn("mt-0.5 opacity-60")} 
                                 style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
-                                dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                                dangerouslySetInnerHTML={{ __html: replaceVariables(row.description || '') }}
                             />
                         )}
                     </div>

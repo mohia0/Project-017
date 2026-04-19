@@ -43,6 +43,7 @@ export function CreateInvoiceModal({ open, onClose }: Props) {
     const [selectedClient, setSelectedClient] = useState<string>('');
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [showClientDrop, setShowClientDrop] = useState(false);
+    const [generatedId, setGeneratedId] = useState('');
     
     // Project state
     const [projectQuery, setProjectQuery] = useState('');
@@ -74,8 +75,10 @@ export function CreateInvoiceModal({ open, onClose }: Props) {
             });
             const initTitle = (settings: any) => {
                 const assignToDraft = settings?.assign_to_draft ?? true;
+                const nextId = useSettingsStore.getState().generateNextId('invoices');
+                setGeneratedId(nextId);
                 if (assignToDraft) {
-                    setTitle(useSettingsStore.getState().generateNextId('invoices'));
+                    setTitle(nextId);
                 } else {
                     setTitle('New Invoice');
                 }
@@ -126,7 +129,8 @@ export function CreateInvoiceModal({ open, onClose }: Props) {
             const blocks = templateToUse?.blocks || [];
 
             const newInvoice = await addInvoice({
-                title: title || useSettingsStore.getState().generateNextId('invoices'),
+                title: title || generatedId || useSettingsStore.getState().generateNextId('invoices'),
+                invoice_number: generatedId || title,
                 client_id: selectedClientId,
                 client_name: selectedClient || clientQuery,
                 status: 'Draft',

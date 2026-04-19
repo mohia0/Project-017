@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, LayoutTemplate } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -30,7 +31,10 @@ export function SaveTemplateModal({ open, onClose, onSave, defaultName, entityTy
         }
     }, [open, defaultName]);
 
-    if (!open) return null;
+    const [mounted, setMounted] = React.useState(false);
+    React.useEffect(() => { setMounted(true); }, []);
+
+    if (!open || !mounted) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -48,8 +52,8 @@ export function SaveTemplateModal({ open, onClose, onSave, defaultName, entityTy
             : "bg-[#f5f5f5] border-[#e5e5e5] text-black focus:bg-white focus:border-[#d0d0d0] focus:shadow-sm placeholder:text-black/30"
     );
 
-    return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4">
             <div 
                 className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
                 onClick={onClose} 
@@ -146,6 +150,7 @@ export function SaveTemplateModal({ open, onClose, onSave, defaultName, entityTy
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

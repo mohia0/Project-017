@@ -9,7 +9,7 @@ import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSelectorModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
-import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity, replaceVariables } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import FieldPreview from '@/components/forms/FieldPreview';
 import { Check, Clock, Calendar as CalendarIcon, MapPin, ChevronRight, User, Mail, Phone, ExternalLink } from 'lucide-react';
@@ -284,7 +284,7 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                                                 <div 
                                                     className="text-[15px] leading-relaxed opacity-70 animate-in fade-in slide-in-from-bottom-2 duration-700"
                                                     style={{ color: isFormDark ? '#ccc' : '#444' }}
-                                                    dangerouslySetInnerHTML={{ __html: block.content }}
+                                                    dangerouslySetInnerHTML={{ __html: replaceVariables(block.content) }}
                                                 />
                                             </div>
                                         )}
@@ -1059,6 +1059,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
             issueDate:       liveData.issue_date   || '',
             expirationDate:  liveData.due_date     || '',
             status:          liveData.status       || 'Draft',
+            proposalNumber:  liveData.proposal_number || liveData.meta?.proposalNumber || '',
         };
 
         const signatureBlock = (liveData.blocks || []).find((b: any) => b.type === 'signature' && b.signed);
@@ -1209,6 +1210,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
             dueDate:     liveData.due_date        || '',
             status:      liveData.status          || 'Draft',
             currency:    liveData.meta?.currency  || 'USD',
+            invoiceNumber: liveData.invoice_number || liveData.meta?.invoiceNumber || '',
         };
 
         const paidBy = invoiceMeta.clientName || 'Client';

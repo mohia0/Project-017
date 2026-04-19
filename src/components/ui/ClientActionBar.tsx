@@ -6,7 +6,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { DocumentDesign } from '@/types/design';
 
 export type DocumentType = 'proposal' | 'invoice' | 'document';
-export type DocumentStatus = 'Draft' | 'Pending' | 'Accepted' | 'Declined' | 'Paid';
+export type DocumentStatus = 'Draft' | 'Pending' | 'Accepted' | 'Declined' | 'Paid' | 'Overdue' | 'Cancelled';
 
 interface ClientActionBarProps {
     type?: DocumentType;
@@ -123,6 +123,38 @@ export function ClientActionBar({
                     <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                         <Printer size={isMobile ? 13 : 15} />
                     </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (status === 'Cancelled') {
+        return (
+            <div 
+                className={cn(
+                    "relative w-full max-w-[850px] mx-auto z-10 flex justify-center transition-all no-print ClientActionBar",
+                    inline 
+                        ? (isMobile ? "px-6 items-center" : "")
+                        : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
+                           isMobile ? "top-14 px-6" : "top-6 justify-center px-4"),
+                    className
+                )}
+                style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
+            >
+                {/* Status Pill */}
+                <div 
+                    className={cn(
+                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
+                        isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
+                        !inline && "pointer-events-auto",
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
+                    )}
+                    style={parentRadiusStyle}
+                >
+                    <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-gray-500" />
+                    <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
+                        The owner has cancelled this {type}. It is no longer available.
+                    </span>
                 </div>
             </div>
         );
@@ -276,6 +308,38 @@ export function ClientActionBar({
         return (
             <div 
                 className={cn(
+                    "relative w-full max-w-[850px] mx-auto z-10 flex justify-center transition-all no-print ClientActionBar",
+                    inline 
+                        ? (isMobile ? "px-6 items-center" : "")
+                        : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
+                           isMobile ? "top-14 px-6" : "top-6 justify-center px-4"),
+                    className
+                )}
+                style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
+            >
+                {/* Status Pill */}
+                <div 
+                    className={cn(
+                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
+                        isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
+                        !inline && "pointer-events-auto",
+                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
+                    )}
+                    style={parentRadiusStyle}
+                >
+                    <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-red-500" />
+                    <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
+                        This {type} has been declined
+                    </span>
+                </div>
+            </div>
+        );
+    }
+
+    if (status === 'Overdue') {
+        return (
+            <div 
+                className={cn(
                     "relative w-full max-w-[850px] mx-auto z-10 flex transition-all no-print ClientActionBar",
                     inline 
                         ? (isMobile ? "flex-row justify-between px-6 items-center" : "justify-between")
@@ -295,9 +359,9 @@ export function ClientActionBar({
                     )}
                     style={parentRadiusStyle}
                 >
-                    <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-red-500" />
+                    <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-amber-500" />
                     <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
-                        This {type} has been declined
+                        This {type} is overdue
                     </span>
                 </div>
 
