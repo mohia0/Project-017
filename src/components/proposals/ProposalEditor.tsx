@@ -2126,7 +2126,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                             "w-full text-center font-bold bg-transparent outline-none transition-all px-1 whitespace-pre-wrap",
                             isDark ? "text-white" : "text-[#222222]",
                             isPreview ? "pointer-events-none" : "hover:bg-black/5 dark:hover:bg-white/5 rounded min-h-[1.2rem] cursor-text",
-                            !block.title && !isPreview ? "before:content-[attr(data-placeholder)] before:opacity-30 before:pointer-events-none" : ""
+                            !(block.title !== undefined ? block.title : 'CREATIVE SERVICES PRICING') && !isPreview ? "before:content-[attr(data-placeholder)] before:opacity-30 before:pointer-events-none" : ""
                         )}
                         style={{ 
                             fontSize: isMobile ? '24px' : 'var(--pricing-title-size, 42px)', 

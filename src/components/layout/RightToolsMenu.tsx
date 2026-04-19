@@ -226,7 +226,7 @@ export default function RightToolsMenu() {
     return (
         <nav className={cn(
             "h-full w-[44px] flex flex-col items-center shrink-0 transition-colors duration-300 z-10",
-            rightPanel && (isDark ? "border-l border-[#222]" : "border-l border-[#e4e4e4]")
+            ""
         )}>
             {/* Top: Create button */}
             <div className="flex flex-col items-center pt-1.5 pb-3 w-full px-1 gap-2">

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { ProposalDocument } from '@/components/proposals/ProposalEditor';
 import { InvoiceDocument } from '@/components/invoices/InvoiceEditor';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
@@ -402,10 +403,7 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                                         }}
                                     >
                                         {isSubmitting ? (
-                                            <>
-                                                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                                                Submitting…
-                                            </>
+                                            <AppLoader size="xs" color="black" />
                                         ) : 'Submit'}
                                     </button>
                                     {submitError && (
@@ -803,7 +801,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                         className="flex-[2] py-3.5 rounded-xl font-bold text-[14px] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                                         style={{ background: primaryColor, color: isColorDark(primaryColor) ? '#fff' : '#000', borderRadius: `${Math.max(0, (design.borderRadius ?? 16) - 4)}px` }}
                                     >
-                                        {isSubmitting ? 'Booking...' : 'Schedule Meeting'}
+                                        {isSubmitting ? <AppLoader size="xs" color={isColorDark(primaryColor) ? 'white' : 'black'} /> : 'Schedule Meeting'}
                                     </button>
                                 </div>
                             </div>
@@ -1342,7 +1340,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 <div className="flex-1 min-h-0 bg-[#f7f7f7]">
                     {isProjectLoading ? (
                         <div className="flex h-full items-center justify-center">
-                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <AppLoader size="md" color={projectColor} />
                         </div>
                     ) : (
                         <KanbanBoard

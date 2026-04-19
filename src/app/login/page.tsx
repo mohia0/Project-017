@@ -7,6 +7,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { Loader2, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -239,7 +240,7 @@ export default function LoginPage() {
                             )}
                         >
                             {loading ? (
-                                <Loader2 size={18} className="animate-spin" />
+                                <AppLoader size="xs" color="currentColor" />
                             ) : (
                                 <>
                                     {mode === 'signin' ? 'Sign in securely' : 'Create account'}

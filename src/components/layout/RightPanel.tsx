@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { SectionTemplateBrowser } from '@/components/templates/SectionTemplateBrowser';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
@@ -1279,9 +1280,9 @@ function FormResponsePanel({ id, formId, isDark }: { id: string; formId: string;
 
     if (!form || !response) {
         return (
-            <div className={cn("flex-1 flex flex-col items-center justify-center p-8 text-center", isDark ? "text-white/20" : "text-black/20")}>
-                <div className="animate-spin mb-4"><Zap size={20} /></div>
-                <div className="text-[12px] font-medium">Loading response...</div>
+            <div className="flex-1 flex flex-col items-center justify-center p-8">
+                <AppLoader size="md" />
+                <div className={cn("text-[12px] font-medium mt-4", isDark ? "text-white/20" : "text-black/20")}>Loading response...</div>
             </div>
         );
     }
@@ -1442,7 +1443,10 @@ export default function RightPanel({ mobileMode = false }: { mobileMode?: boolea
                         type: "tween",
                         duration: 0.2
                     }}
-                    className="h-full shrink-0 flex flex-row overflow-hidden relative"
+                    className={cn(
+                        "h-full shrink-0 flex flex-row overflow-hidden relative",
+                        isDark ? "border-r border-[#222]" : "border-r border-[#e4e4e4]"
+                    )}
                 >
                     {/* Resize handle */}
                     {rightPanel.type !== 'notifications' && (

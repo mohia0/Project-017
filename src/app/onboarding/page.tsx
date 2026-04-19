@@ -7,6 +7,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { cn } from '@/lib/utils';
 import { Loader2, ArrowRight, Building, Sparkles, AlertCircle } from 'lucide-react';
+import { FullScreenLoader, AppLoader } from '@/components/ui/AppLoader';
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -47,14 +48,7 @@ export default function OnboardingPage() {
     };
 
     if (authLoading || !wsFetched || (user && workspaces.length > 0)) {
-        return (
-            <div className={cn(
-                "flex h-screen w-full items-center justify-center",
-                isDark ? "bg-[#0a0a0a]" : "bg-[#f0f0f0]"
-            )}>
-                <Loader2 size={32} className="animate-spin text-[#4dbf39]" />
-            </div>
-        );
+        return <FullScreenLoader isDark={isDark} />;
     }
 
     return (
@@ -134,7 +128,7 @@ export default function OnboardingPage() {
                             )}
                         >
                             {isCreating ? (
-                                <Loader2 size={20} className="animate-spin" />
+                                <AppLoader size="xs" color="currentColor" />
                             ) : (
                                 <>
                                     Launch Workspace

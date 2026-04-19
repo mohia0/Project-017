@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useUIStore } from '@/store/useUIStore';
+import { FullScreenLoader } from '@/components/ui/AppLoader';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
@@ -171,14 +172,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const isRedirectingToOnboarding = user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview;
 
     if ((isLoading && !isAuthRoute) || isRedirectingToLogin || isRedirectingToOnboarding) {
-        return (
-            <div className={cn(
-                "flex h-screen w-full items-center justify-center",
-                isDark ? "bg-[#000000]" : "bg-[#e2e2e2]"
-            )}>
-                <div className="w-8 h-8 rounded-full border-2 border-[#4dbf39] border-t-transparent animate-spin" />
-            </div>
-        );
+        return <FullScreenLoader isDark={isDark} />;
     }
 
     if (isAuthRoute || isPublicPreview || isOnboarding) {
