@@ -7,16 +7,32 @@ export interface GeoIntelligence {
     region?: string;
     timezone?: string;
     isp?: string;
-    deviceType?: 'Mobile' | 'Tablet' | 'Desktop';
+    deviceType?: 'Mobile' | 'Tablet' | 'Desktop' | 'Bot';
+    os?: string;
 }
 
 // Silently derive device category from User-Agent string
-export function getDeviceType(ua: string | null): 'Mobile' | 'Tablet' | 'Desktop' {
+export function getDeviceType(ua: string | null): 'Mobile' | 'Tablet' | 'Desktop' | 'Bot' {
     if (!ua || ua === 'unknown') return 'Desktop';
     const u = ua.toLowerCase();
+    if (/bot|crawler|spider|crawling|googlebot|bingbot|yandexbot|slurp|duckduckbot|baiduspider/.test(u)) return 'Bot';
     if (/ipad|tablet|kindle|silk|playbook|nexus 7|nexus 10/.test(u)) return 'Tablet';
     if (/mobi|android|iphone|ipod|blackberry|windows phone|opera mini|opera mobi|iemobile|mobile/.test(u)) return 'Mobile';
     return 'Desktop';
+}
+
+export function getOS(ua: string | null): string {
+    if (!ua || ua === 'unknown') return 'Unknown OS';
+    const u = ua.toLowerCase();
+    
+    if (u.includes('windows')) return 'Windows';
+    if (u.includes('mac os') || u.includes('macintosh')) return 'macOS';
+    if (u.includes('android')) return 'Android';
+    if (u.includes('ios') || u.includes('iphone') || u.includes('ipad')) return 'iOS';
+    if (u.includes('linux')) return 'Linux';
+    if (u.includes('chrome os') || u.includes('cros')) return 'ChromeOS';
+    
+    return 'Unknown OS';
 }
 
 export function getFlagEmoji(countryCode: string) {

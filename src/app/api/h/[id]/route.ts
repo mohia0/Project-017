@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseService } from '@/lib/supabase-service';
-import { getGeoIntelligence, getDeviceType } from '@/lib/geo';
+import { getGeoIntelligence, getDeviceType, getOS } from '@/lib/geo';
 
 // 1x1 transparent PNG (base64 decoded at runtime)
 const TRANSPARENT_PNG = Buffer.from(
@@ -24,6 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             const ip = visitor?.ip || 'unknown';
             const ua = req.headers.get('user-agent') || 'unknown';
             const deviceType = getDeviceType(ua);
+            const os = getOS(ua);
 
             // Log the view asynchronously — don't block the pixel response
             (async () => {
@@ -43,7 +44,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                         read: false,
                         type: 'hook',
                         metadata: { 
-                            visitor: visitor ? { ...visitor, deviceType } : { deviceType }, 
+                            visitor: visitor ? { ...visitor, deviceType, os } : { deviceType, os }, 
                             color: hook.color 
                         }
                     });

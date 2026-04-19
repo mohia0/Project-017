@@ -291,11 +291,17 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                                     <span className="font-semibold text-right truncate flex-1">{notif.metadata.visitor.isp}</span>
                                                                 </div>
                                                             )}
-                                                            {notif.metadata?.visitor?.deviceType && (
+                                                            {(notif.metadata?.visitor?.deviceType || notif.metadata?.visitor?.os) && (
                                                                 <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
-                                                                    <span className="opacity-50 font-medium mr-2">Device</span>
-                                                                    <span className="font-semibold">
-                                                                        {notif.metadata.visitor.deviceType === 'Mobile' ? '📱 Mobile' : notif.metadata.visitor.deviceType === 'Tablet' ? '📟 Tablet' : '🖥️ Desktop'}
+                                                                    <span className="opacity-50 font-medium mr-2">System</span>
+                                                                    <span className="font-semibold text-right">
+                                                                        {notif.metadata.visitor.deviceType === 'Bot' ? '🤖' : 
+                                                                         notif.metadata.visitor.deviceType === 'Mobile' ? '📱' : 
+                                                                         notif.metadata.visitor.deviceType === 'Tablet' ? '📟' : '🖥️'}
+                                                                        {' '}
+                                                                        {notif.metadata.visitor.os && notif.metadata.visitor.os !== 'Unknown OS' 
+                                                                            ? `${notif.metadata.visitor.os} ${notif.metadata.visitor.deviceType !== 'Desktop' && notif.metadata.visitor.deviceType !== 'Bot' ? `(${notif.metadata.visitor.deviceType})` : ''}`
+                                                                            : notif.metadata.visitor.deviceType}
                                                                     </span>
                                                                 </div>
                                                             )}

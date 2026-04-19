@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseService } from '@/lib/supabase-service';
-import { getGeoIntelligence, getDeviceType } from '@/lib/geo';
+import { getGeoIntelligence, getDeviceType, getOS } from '@/lib/geo';
 
 export async function POST(req: Request) {
     try {
@@ -17,7 +17,8 @@ export async function POST(req: Request) {
         
         const ua = userAgent || req.headers.get('user-agent') || 'unknown';
         const deviceType = getDeviceType(ua);
-        const visitorWithDevice = visitor ? { ...visitor, deviceType } : { deviceType };
+        const os = getOS(ua);
+        const visitorWithDevice = visitor ? { ...visitor, deviceType, os } : { deviceType, os };
 
         // Message format matches the design: `Someone opened "Title"`
         const notificationTitle = `Someone opened "${docTitle}"`;
