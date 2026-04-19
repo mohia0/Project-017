@@ -48,10 +48,10 @@ export const useHookStore = create<HookState>((set) => ({
         const hasData = useHookStore.getState().hooks.length > 0;
         if (!hasData) set({ isLoading: true, error: null });
 
-        // Fetch hooks with event counts + latest event timestamp via a join
+        // Fetch hooks with all events to derive count and timestamps
         const { data, error } = await supabase
             .from('hooks')
-            .select('*, hook_events(count, created_at)')
+            .select('*, hook_events(created_at)')
             .eq('workspace_id', workspaceId)
             .order('created_at', { ascending: false });
 
@@ -60,8 +60,8 @@ export const useHookStore = create<HookState>((set) => ({
         } else {
             const enriched: Hook[] = (data || []).map((h: any) => {
                 const events: any[] = h.hook_events || [];
-                const count = events[0]?.count ?? 0;
-                // Find most recent event timestamp across the joined rows
+                const count = events.length;
+                // Find most recent event timestamp
                 const lastFiredAt = events
                     .map((e: any) => e.created_at)
                     .filter(Boolean)
