@@ -19,11 +19,13 @@ import { DateTime } from 'luxon';
 import { useSearchParams } from 'next/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Google Font loader — injects a <link> for the document's chosen font family
+// Google Font loader — injects a <link> for the document's chosen font family.
+// NOTE: We always load from Google Fonts, including Inter, because it is NOT
+// a system font on Windows or Android and must be fetched explicitly.
 // ─────────────────────────────────────────────────────────────────────────────
 const LOADED_FONTS = new Set<string>();
 function loadGoogleFont(family: string) {
-    if (!family || family === 'Inter' || LOADED_FONTS.has(family)) return;
+    if (!family || LOADED_FONTS.has(family)) return;
     LOADED_FONTS.add(family);
     const encoded = encodeURIComponent(family);
     const id = `gfont-${encoded}`;
@@ -31,7 +33,7 @@ function loadGoogleFont(family: string) {
     const link = document.createElement('link');
     link.id = id;
     link.rel = 'stylesheet';
-    link.href = `https://fonts.googleapis.com/css2?family=${encoded}:wght@400;500;600;700;800;900&display=swap`;
+    link.href = `https://fonts.googleapis.com/css2?family=${encoded}:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap`;
     document.head.appendChild(link);
 }
 
@@ -891,10 +893,14 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Load the document's chosen Google Font so public pages match the editor
+    // Load the document's chosen Google Font so public pages match the editor.
+    // Always load Inter as the default fallback — it's not a system font on
+    // Windows or Android, so it must be fetched from Google Fonts explicitly.
     useEffect(() => {
-        const family = liveData?.meta?.design?.fontFamily;
-        if (family) loadGoogleFont(family);
+        const family = liveData?.meta?.design?.fontFamily || 'Inter';
+        loadGoogleFont(family);
+        // Always ensure Inter is available as a base fallback
+        if (family !== 'Inter') loadGoogleFont('Inter');
     }, [liveData?.meta?.design?.fontFamily]);
     
     // Project specific state
