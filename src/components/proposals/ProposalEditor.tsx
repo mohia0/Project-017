@@ -1281,7 +1281,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 <DesignSettingsPanel 
                                     isDark={isDark} 
                                     meta={meta} 
-                                    updateMeta={updateMeta} 
+                                    updateMeta={updateMeta}
+                                    storageKey="proposal_design"
                                     onUploadLogo={() => {
                                         setUploadTarget({ type: 'logo' });
                                         setImageUploadOpen(true);
@@ -1347,6 +1348,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     )}
                                     {rightTab === 'appearance' && (
                                         <DesignSettingsPanel isDark={isDark} meta={meta} updateMeta={updateMeta}
+                                            storageKey="proposal_design"
                                             onUploadLogo={() => { setUploadTarget({ type: 'logo' }); setImageUploadOpen(true); }}
                                             onUploadBackground={() => { setUploadTarget({ type: 'background' }); setImageUploadOpen(true); }}
                                         />
@@ -2114,19 +2116,28 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
         <div className="flex flex-col gap-2">
             {/* Title Section */}
             {(!isPreview || (block.title !== undefined ? block.title : 'CREATIVE SERVICES PRICING')) && (
-                <div className="mb-8 w-full relative">
-                    <input
-                        value={block.title !== undefined ? block.title : 'CREATIVE SERVICES PRICING'}
-                        onChange={(e) => updateBlock(block.id, { title: e.target.value })}
+                <div className={cn("w-full relative", isMobile ? "mb-6" : "mb-8")}>
+                    <div
+                        contentEditable={!isPreview}
+                        suppressContentEditableWarning
+                        onBlur={e => updateBlock(block.id, { title: e.currentTarget.innerText || '' })}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
                         className={cn(
-                            "w-full text-center font-bold bg-transparent border-none p-0 focus:ring-0 outline-none transition-all",
+                            "w-full text-center font-bold bg-transparent outline-none transition-all px-1 whitespace-pre-wrap",
                             isDark ? "text-white" : "text-[#222222]",
-                            isPreview ? "pointer-events-none" : "hover:opacity-80 focus:opacity-100 placeholder:opacity-30"
+                            isPreview ? "pointer-events-none" : "hover:bg-black/5 dark:hover:bg-white/5 rounded min-h-[1.2rem] cursor-text",
+                            !block.title && !isPreview ? "before:content-[attr(data-placeholder)] before:opacity-30 before:pointer-events-none" : ""
                         )}
-                        style={{ fontSize: 'var(--pricing-title-size, 42px)', fontWeight: '800', letterSpacing: '-0.01em' }}
-                        placeholder={isPreview ? "" : "Optional Pricing Title..."}
-                        readOnly={isPreview}
-                    />
+                        style={{ 
+                            fontSize: isMobile ? '24px' : 'var(--pricing-title-size, 42px)', 
+                            fontWeight: '800', 
+                            letterSpacing: '-0.01em',
+                            lineHeight: '1.1'
+                        }}
+                        data-placeholder="Optional Pricing Title..."
+                    >
+                        {block.title !== undefined ? block.title : 'CREATIVE SERVICES PRICING'}
+                    </div>
                 </div>
             )}
 
@@ -2153,6 +2164,15 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                                     border-top-style: solid !important;
                                     border-top-color: var(--table-border-color) !important;
                                 }
+                                .pricing-mobile-row:first-of-type {
+                                    border-top-left-radius: calc(var(--table-radius-tl) - var(--table-stroke-width));
+                                    border-top-right-radius: calc(var(--table-radius-tr) - var(--table-stroke-width));
+                                    border-top-width: 0 !important;
+                                }
+                                .pricing-mobile-row:last-of-type {
+                                    border-bottom-left-radius: calc(var(--table-radius-bl) - var(--table-stroke-width));
+                                    border-bottom-right-radius: calc(var(--table-radius-br) - var(--table-stroke-width));
+                                }
                             ` }} />
                             <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
                                 {rows.map((row: PricingRow) => (
@@ -2176,12 +2196,12 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                         <table className="w-full relative pricing-table-root" style={{ borderCollapse: 'separate', borderSpacing: 0, border: 'none' }}>
                             <thead style={{ color: 'var(--table-header-text, inherit)' }}>
                                 <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                    <th className={cn(th, "w-0 relative pl-5")} style={{ borderTopLeftRadius: 'var(--table-radius-tl)', backgroundColor: 'var(--table-header-bg)' }} />
+                                    <th className={cn(th, "w-0 relative pl-5")} style={{ borderTopLeftRadius: 'calc(var(--table-radius-tl) - var(--table-stroke-width))', backgroundColor: 'var(--table-header-bg)' }} />
                                     <th className={cn(th, "pr-2 py-2 w-full")} style={{ backgroundColor: 'var(--table-header-bg)' }}></th>
                                     {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")} style={{ backgroundColor: 'var(--table-header-bg)' }}>Qty</th>}
-                                    <th className={cn(th, "px-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: (hideQty && isPreview) ? 'var(--table-radius-tr)' : '0', paddingRight: (hideQty && isPreview) ? '1.25rem' : '0.75rem' }}>Amount</th>
-                                    {!hideQty && <th className={cn(th, "pl-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: isPreview ? 'var(--table-radius-tr)' : '0', paddingRight: isPreview ? '1.25rem' : '0.75rem' }}>Total</th>}
-                                    {!isPreview && <th className={cn(th, "w-0 pr-5")} style={{ borderTopRightRadius: 'var(--table-radius-tr)', backgroundColor: 'var(--table-header-bg)' }} />}
+                                    <th className={cn(th, "px-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: (hideQty && isPreview) ? 'calc(var(--table-radius-tr) - var(--table-stroke-width))' : '0', paddingRight: (hideQty && isPreview) ? '1.25rem' : '0.75rem' }}>Amount</th>
+                                    {!hideQty && <th className={cn(th, "pl-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: isPreview ? 'calc(var(--table-radius-tr) - var(--table-stroke-width))' : '0', paddingRight: isPreview ? '1.25rem' : '0.75rem' }}>Total</th>}
+                                    {!isPreview && <th className={cn(th, "w-0 pr-5")} style={{ borderTopRightRadius: 'calc(var(--table-radius-tr) - var(--table-stroke-width))', backgroundColor: 'var(--table-header-bg)' }} />}
                                 </tr>
                             </thead>
                             <tbody className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
@@ -2192,10 +2212,10 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                                         border-top-color: var(--table-border-color) !important;
                                     }
                                     .pricing-table-root tbody tr:last-child td:first-child {
-                                        border-bottom-left-radius: var(--table-radius-bl);
+                                        border-bottom-left-radius: calc(var(--table-radius-bl) - var(--table-stroke-width));
                                     }
                                     .pricing-table-root tbody tr:last-child td:last-child {
-                                        border-bottom-right-radius: var(--table-radius-br);
+                                        border-bottom-right-radius: calc(var(--table-radius-br) - var(--table-stroke-width));
                                     }
                                 ` }} />
                                 <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
@@ -2780,11 +2800,11 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
 
                         <thead style={{ color: 'var(--table-header-text, inherit)' }}>
                             <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                <th className={cn(th, "w-0 relative pl-5")} style={{ borderTopLeftRadius: 'var(--table-radius-tl)', backgroundColor: 'var(--table-header-bg)' }} />
+                                <th className={cn(th, "w-0 relative pl-5")} style={{ borderTopLeftRadius: 'calc(var(--table-radius-tl) - var(--table-stroke-width))', backgroundColor: 'var(--table-header-bg)' }} />
                                 <th className={cn(th, "pr-2 py-2 w-full")} style={{ backgroundColor: 'var(--table-header-bg)' }}></th>
                                 <th className={cn(th, "px-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)' }}>Percentage</th>
-                                <th className={cn(th, "pl-3 py-2 text-right w-32")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: isPreview ? 'var(--table-radius-tr)' : '0', paddingRight: isPreview ? '1.25rem' : '0.75rem' }}>Amount</th>
-                                {!isPreview && <th className={cn(th, "w-0 pr-5")} style={{ borderTopRightRadius: 'var(--table-radius-tr)', backgroundColor: 'var(--table-header-bg)' }} />}
+                                <th className={cn(th, "pl-3 py-2 text-right w-32")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: isPreview ? 'calc(var(--table-radius-tr) - var(--table-stroke-width))' : '0', paddingRight: isPreview ? '1.25rem' : '0.75rem' }}>Amount</th>
+                                {!isPreview && <th className={cn(th, "w-0 pr-5")} style={{ borderTopRightRadius: 'calc(var(--table-radius-tr) - var(--table-stroke-width))', backgroundColor: 'var(--table-header-bg)' }} />}
                             </tr>
                         </thead>
                         <tbody className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
@@ -2795,10 +2815,10 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                                     border-top-color: var(--table-border-color) !important;
                                 }
                                 .pricing-breakdown-table tbody tr:last-child td:first-child {
-                                    border-bottom-left-radius: calc(var(--table-radius-bl) - 1px);
+                                    border-bottom-left-radius: calc(var(--table-radius-bl) - var(--table-stroke-width));
                                 }
                                 .pricing-breakdown-table tbody tr:last-child td:last-child {
-                                    border-bottom-right-radius: calc(var(--table-radius-br) - 1px);
+                                    border-bottom-right-radius: calc(var(--table-radius-br) - var(--table-stroke-width));
                                 }
                             ` }} />
                             <SortableContext items={rows.map((r: any) => r.id)} strategy={verticalListSortingStrategy}>

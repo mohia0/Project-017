@@ -33,20 +33,22 @@ interface DesignSettingsPanelProps {
     hideSignature?: boolean;
     hideTable?: boolean;
     hideActionBar?: boolean;
+    /** Key used to persist collapsed state in localStorage. Defaults to 'design_panel'. */
+    storageKey?: string;
 }
 
 export function MetaField({ label, children, isDark, icon, onReset, valueLabel }: any) {
     return (
-        <div className={cn("rounded-lg border px-3 py-2.5 shadow-sm group/field", isDark ? "border-[#252525] bg-[#1f1f1f]" : "border-[#ebebeb] bg-white")}>
+        <div className={cn("rounded-lg border px-2.5 py-1.5 shadow-sm group/field", isDark ? "border-[#252525] bg-[#1f1f1f]" : "border-[#ebebeb] bg-white")}>
             {(label || valueLabel) && (
-                <div className="flex items-center justify-between mb-1">
-                    <div className={cn("flex items-center gap-1.5 text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                <div className="flex items-center justify-between mb-0.5">
+                    <div className={cn("flex items-center gap-1 text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>
                         {icon}
                         {label}
                     </div>
                     <div className="flex items-center gap-2">
                         {valueLabel && (
-                            <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>
+                            <span className={cn("text-[9.5px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>
                                 {valueLabel}
                             </span>
                         )}
@@ -58,7 +60,7 @@ export function MetaField({ label, children, isDark, icon, onReset, valueLabel }
                                     isDark ? "hover:bg-white/10 text-white" : "hover:bg-black/5 text-black"
                                 )}
                             >
-                                <RotateCcw size={10} />
+                                <RotateCcw size={9} />
                             </button>
                         )}
                     </div>
@@ -139,7 +141,7 @@ export function ShadowPicker({ value, onChange, isDark }: any) {
     return <ShadowSelect options={options} value={value} onChange={onChange} isDark={isDark} />;
 }
 
-export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadBackground, hideSignature, hideTable, hideActionBar }: DesignSettingsPanelProps) {
+export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadBackground, hideSignature, hideTable, hideActionBar, storageKey = 'design_panel' }: DesignSettingsPanelProps) {
     // Always read latest design so we don't get stale closures on rapid changes
     const metaRef = React.useRef(meta);
     React.useEffect(() => { metaRef.current = meta; }, [meta]);
@@ -163,15 +165,25 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
         updateDesign({ fontFamily: family });
     }, [updateDesign]);
 
-    const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
-    const toggle = (section: string) => setCollapsed(prev => ({ ...prev, [section]: !prev[section] }));
+    // Persist collapsed state per storageKey
+    const lsKey = `${storageKey}_collapsed`;
+    const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>(() => {
+        try {
+            const stored = localStorage.getItem(lsKey);
+            return stored ? JSON.parse(stored) : {};
+        } catch { return {}; }
+    });
+    const toggle = (section: string) => setCollapsed(prev => {
+        const next = { ...prev, [section]: !prev[section] };
+        try { localStorage.setItem(lsKey, JSON.stringify(next)); } catch {}
+        return next;
+    });
 
     const SectionHeader = ({ id, label }: { id: string, label: string }) => (
-
         <button 
             onClick={() => toggle(id)}
             className={cn(
-                "w-full flex items-center justify-between py-1 mb-2 pl-1 transition-all group",
+                "w-full flex items-center justify-between py-0.5 mb-1 pl-0.5 transition-all group",
                 isDark ? "hover:text-white" : "hover:text-black"
             )}
         >
@@ -179,18 +191,18 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 {label}
             </span>
             <div className={cn("transition-transform duration-200", collapsed[id] ? "-rotate-90" : "rotate-0")}>
-                <ChevronDown size={11} className={isDark ? "text-white/20 group-hover:text-white/40" : "text-black/20 group-hover:text-black/40"} />
+                <ChevronDown size={10} className={isDark ? "text-white/20 group-hover:text-white/40" : "text-black/20 group-hover:text-black/40"} />
             </div>
         </button>
     );
 
     return (
-        <div className="space-y-4 pt-2">
+        <div className="space-y-2.5 pt-1">
             {/* ── BRANDING ── */}
             <div>
                 <SectionHeader id="branding" label="Branding" />
                 {!collapsed['branding'] && (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
                         <MetaField 
                             label="Logo" 
                             isDark={isDark}
@@ -217,10 +229,10 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 )}
                                 
                                 {meta.logoUrl && (
-                                    <div className="space-y-1.5 px-0.5">
-                                        <div className="flex items-center justify-between mb-1 px-0.5">
-                                            <span className={cn("text-[10.5px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Size</span>
-                                            <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.logoSize ?? 48}px</span>
+                                    <div className="space-y-1 px-0.5">
+                                        <div className="flex items-center justify-between mb-0.5 px-0.5">
+                                            <span className={cn("text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Size</span>
+                                            <span className={cn("text-[9.5px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.logoSize ?? 48}px</span>
                                         </div>
                                         <input 
                                             type="range" min="20" max="150" step="2" 
@@ -234,12 +246,12 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <button 
                                     onClick={onUploadLogo}
                                     className={cn(
-                                        "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed transition-all",
+                                        "w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border-2 border-dashed transition-all",
                                         isDark ? "border-white/5 hover:border-[#4dbf39]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[#4dbf39]/30 hover:bg-gray-50 text-gray-500"
                                     )}
                                 >
-                                    <Upload size={14} />
-                                    <span className="text-[12px] font-medium">
+                                    <Upload size={12} />
+                                    <span className="text-[11px] font-medium">
                                         {meta.logoUrl ? "Change Logo" : "Upload Logo"}
                                     </span>
                                 </button>
@@ -400,7 +412,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                         >
                             <div className="flex flex-col gap-2">
                                 {design.backgroundImage && (
-                                    <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col gap-2">
                                         <div className="relative group/bgimg w-full">
                                             <div 
                                                 className="h-20 w-full rounded-xl border border-white/10 bg-cover bg-center" 
@@ -413,10 +425,10 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                                 <X size={12} />
                                             </button>
                                         </div>
-                                        <div className="space-y-1.5 px-0.5">
-                                            <div className="flex items-center justify-between mb-1 px-0.5">
+                                        <div className="space-y-1 px-0.5">
+                                            <div className="flex items-center justify-between mb-0.5 px-0.5">
                                                 <span className={cn("text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Image Opacity</span>
-                                                <span className={cn("text-[10px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{Math.round((design.backgroundImageOpacity ?? 1) * 100)}%</span>
+                                                <span className={cn("text-[9.5px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{Math.round((design.backgroundImageOpacity ?? 1) * 100)}%</span>
                                             </div>
                                             <input 
                                                 type="range" min="0" max="1" step="0.05" 
@@ -430,12 +442,12 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <button 
                                     onClick={onUploadBackground}
                                     className={cn(
-                                        "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed transition-all",
+                                        "w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border-2 border-dashed transition-all",
                                         isDark ? "border-white/5 hover:border-[#4dbf39]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[#4dbf39]/30 hover:bg-gray-50 text-gray-500"
                                     )}
                                 >
-                                    <Upload size={14} />
-                                    <span className="text-[12px] font-medium">
+                                    <Upload size={12} />
+                                    <span className="text-[11px] font-medium">
                                         {design.backgroundImage ? "Change Background" : "Upload Image/GIF"}
                                     </span>
                                 </button>
@@ -806,7 +818,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 </div>
             )}
 
-            <div className="h-10" />
+            <div className="h-6" />
         </div>
     );
 }

@@ -1341,6 +1341,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     meta={meta} 
                                     updateMeta={updateMeta} 
                                     hideSignature={true}
+                                    storageKey="invoice_design"
                                     onUploadLogo={() => {
                                         setUploadTarget({ type: 'logo' });
                                         setImageUploadOpen(true);
@@ -1838,6 +1839,14 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                             border-top-width: var(--table-stroke-width) !important;
                                             border-color: var(--table-border-color) !important;
                                         }
+                                        .pricing-mobile-row:first-of-type {
+                                            border-top-left-radius: calc(var(--table-radius-tl) - var(--table-stroke-width));
+                                            border-top-right-radius: calc(var(--table-radius-tr) - var(--table-stroke-width));
+                                        }
+                                        .pricing-mobile-row:last-of-type {
+                                            border-bottom-left-radius: calc(var(--table-radius-bl) - var(--table-stroke-width));
+                                            border-bottom-right-radius: calc(var(--table-radius-br) - var(--table-stroke-width));
+                                        }
                                     ` }} />
                                     <SortableContext items={rows.map((r: any) => r.id)} strategy={verticalListSortingStrategy}>
                                         {rows.map((row: PricingRow) => (
@@ -1861,12 +1870,12 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 <table className="w-full relative" style={{ borderTopLeftRadius: 'var(--table-radius-tl)', borderTopRightRadius: 'var(--table-radius-tr)', borderBottomRightRadius: 'var(--table-radius-br)', borderBottomLeftRadius: 'var(--table-radius-bl)', borderCollapse: 'separate', borderSpacing: 0 }}>
                                     <thead style={{ color: 'var(--table-header-text, inherit)' }}>
                                         <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
-                                            <th className="w-0 relative pl-5" style={{ borderTopLeftRadius: 'var(--table-radius-tl)', backgroundColor: 'var(--table-header-bg)' }} />
+                                            <th className="w-0 relative pl-5" style={{ borderTopLeftRadius: 'calc(var(--table-radius-tl) - var(--table-stroke-width))', backgroundColor: 'var(--table-header-bg)' }} />
                                             <th className={cn(th, "pr-2 py-2 w-full text-left")} style={{ backgroundColor: 'var(--table-header-bg)' }}>Item</th>
                                             {!hideQty && <th className={cn(th, "px-3 py-2 text-right w-16")} style={{ backgroundColor: 'var(--table-header-bg)' }}>Qty</th>}
-                                            <th className={cn(th, "px-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: (hideQty && isPreview) ? 'var(--table-radius-tr)' : '0', paddingRight: (hideQty && isPreview) ? '1.25rem' : '0.75rem' }}>Amount</th>
-                                            {!hideQty && <th className={cn(th, "pl-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: isPreview ? 'var(--table-radius-tr)' : '0', paddingRight: isPreview ? '1.25rem' : '0.75rem' }}>Total</th>}
-                                            {!isPreview && <th className="w-0 pr-5" style={{ borderTopRightRadius: 'var(--table-radius-tr)', backgroundColor: 'var(--table-header-bg)' }} />}
+                                            <th className={cn(th, "px-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: (hideQty && isPreview) ? 'calc(var(--table-radius-tr) - var(--table-stroke-width))' : '0', paddingRight: (hideQty && isPreview) ? '1.25rem' : '0.75rem' }}>Amount</th>
+                                            {!hideQty && <th className={cn(th, "pl-3 py-2 text-right w-24")} style={{ backgroundColor: 'var(--table-header-bg)', borderTopRightRadius: isPreview ? 'calc(var(--table-radius-tr) - var(--table-stroke-width))' : '0', paddingRight: isPreview ? '1.25rem' : '0.75rem' }}>Total</th>}
+                                            {!isPreview && <th className="w-0 pr-5" style={{ borderTopRightRadius: 'calc(var(--table-radius-tr) - var(--table-stroke-width))', backgroundColor: 'var(--table-header-bg)' }} />}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y relative pricing-table-root" style={{ borderColor: 'var(--table-border-color)' }}>
@@ -1876,10 +1885,10 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                                 border-color: var(--table-border-color) !important;
                                             }
                                             .pricing-table-root > tr:last-child td:first-child {
-                                                border-bottom-left-radius: var(--table-radius-bl);
+                                                border-bottom-left-radius: calc(var(--table-radius-bl) - var(--table-stroke-width));
                                             }
                                             .pricing-table-root > tr:last-child td:last-child {
-                                                border-bottom-right-radius: var(--table-radius-br);
+                                                border-bottom-right-radius: calc(var(--table-radius-br) - var(--table-stroke-width));
                                             }
                                         ` }} />
                                         <SortableContext items={rows.map((r: any) => r.id)} strategy={verticalListSortingStrategy}>

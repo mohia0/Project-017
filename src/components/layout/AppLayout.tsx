@@ -1,11 +1,6 @@
 "use client";
-
 import React, { useEffect } from 'react';
-import LeftSystemMenu from './LeftSystemMenu';
-import RightToolsMenu from './RightToolsMenu';
-import RightPanel from './RightPanel';
-import CreateEntryModal from '@/components/modals/CreateEntryModal';
-import CSVImportModal from '@/components/modals/CSVImportModal';
+import dynamic from 'next/dynamic';
 import { useUIStore } from '@/store/useUIStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useProposalStore } from '@/store/useProposalStore';
@@ -24,7 +19,16 @@ import { useFileStore } from '@/store/useFileStore';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { MobileNavBar, MobileRightPanelDrawer } from './MobileNav';
+
+// Lazy-load heavy layout panels — they will be compiled once on first render
+// instead of eagerly on every route, dramatically reducing initial compile time.
+const LeftSystemMenu   = dynamic(() => import('./LeftSystemMenu'),   { ssr: false });
+const RightPanel       = dynamic(() => import('./RightPanel'),       { ssr: false });
+const RightToolsMenu   = dynamic(() => import('./RightToolsMenu'),   { ssr: false });
+const MobileNavBar          = dynamic(() => import('./MobileNav').then(m => ({ default: m.MobileNavBar })),          { ssr: false });
+const MobileRightPanelDrawer = dynamic(() => import('./MobileNav').then(m => ({ default: m.MobileRightPanelDrawer })), { ssr: false });
+const CreateEntryModal = dynamic(() => import('@/components/modals/CreateEntryModal'), { ssr: false });
+const CSVImportModal   = dynamic(() => import('@/components/modals/CSVImportModal'),   { ssr: false });
 
 function DocumentTitleSetter() {
     const pathname = usePathname();
