@@ -36,6 +36,7 @@ export default function WorkspaceSettingsPage() {
     
     // General State
     const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     const [timezone, setTimezone] = useState('UTC');
     const [weekStartDay, setWeekStartDay] = useState('Saturday');
@@ -78,6 +79,7 @@ export default function WorkspaceSettingsPage() {
     useEffect(() => {
         if (activeWorkspace) {
             setName(activeWorkspace.name || '');
+            setDescription(activeWorkspace.description || '');
             setLogoUrl(activeWorkspace.logo_url || '');
             setTimezone(activeWorkspace.timezone || 'UTC');
             setWeekStartDay(activeWorkspace.week_start_day || 'Saturday');
@@ -143,7 +145,7 @@ export default function WorkspaceSettingsPage() {
         if (!activeWorkspace) return false;
         switch (section) {
             case 'general':
-                return name !== (activeWorkspace.name || '') || logoUrl !== (activeWorkspace.logo_url || '');
+                return name !== (activeWorkspace.name || '') || description !== (activeWorkspace.description || '') || logoUrl !== (activeWorkspace.logo_url || '');
             case 'regional':
                 return timezone !== (activeWorkspace.timezone || 'UTC') || weekStartDay !== (activeWorkspace.week_start_day || 'Saturday');
             case 'contact':
@@ -197,7 +199,7 @@ export default function WorkspaceSettingsPage() {
             <SettingsCard
                 title="Workspace General"
                 description="The core identity and primary access point for your workspace."
-                onSave={() => handleSaveSection('general', { name, logo_url: logoUrl })}
+                onSave={() => handleSaveSection('general', { name, description, logo_url: logoUrl })}
                 isSaving={isSaving['general']}
                 unsavedChanges={hasChanged('general')}
             >
@@ -264,6 +266,14 @@ export default function WorkspaceSettingsPage() {
                             </div>
                         </SettingsField>
                     </div>
+
+                    <SettingsField label="Workspace Description" description="This will appear as the site description for clients visiting your dashboard via custom domains.">
+                        <SettingsTextarea 
+                            value={description} 
+                            onChange={e => setDescription(e.target.value)}
+                            placeholder="A premium CRM solution for scaling operations."
+                        />
+                    </SettingsField>
                 </div>
             </SettingsCard>
 

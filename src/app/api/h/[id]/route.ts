@@ -52,8 +52,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                     if (hook.title && !hook.title.toLowerCase().includes('webhook endpoint')) {
                         messageParts.push(hook.title);
                     }
-                    if (hook.link) messageParts.push(`Source: ${hook.link}`);
                     if (messageParts.length === 0) messageParts.push(`Pixel tracking event recorded.`);
+
 
                     await supabaseService.from('notifications').insert({
                         workspace_id: hook.workspace_id,

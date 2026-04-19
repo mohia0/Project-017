@@ -1132,17 +1132,46 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
                         {hook.link && (
                             <div>
                                 <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Currently tracking</p>
-                                <a
-                                    href={hook.link.startsWith('http') ? hook.link : `https://${hook.link}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={cn('flex items-center gap-2 text-[11px] hover:underline', isDark ? 'text-primary' : 'text-primary')}
-                                >
-                                    <ExternalLink size={10} />
-                                    {hook.link}
-                                </a>
+                                <div className="relative group/link overflow-hidden flex items-center">
+                                    <div 
+                                        className="w-full overflow-hidden" 
+                                        style={{ 
+                                            WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)',
+                                            maskImage: 'linear-gradient(to right, black calc(100% - 40px), transparent 100%)'
+                                        }}
+                                    >
+                                        <motion.a
+                                            href={hook.link.startsWith('http') ? hook.link : `https://${hook.link}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={cn('inline-block whitespace-nowrap gap-2 text-[11px] hover:underline transition-colors', isDark ? 'text-primary' : 'text-primary')}
+                                            whileHover={{ x: [0, -20, 0] }} // Subtle wiggle or we could do a full scroll if we had widths
+                                            // Since we don't have widths, let's just make it auto-scroll on hover if it overflows
+                                            onMouseEnter={(e) => {
+                                                const target = e.currentTarget;
+                                                const parent = target.parentElement;
+                                                if (parent && target.scrollWidth > parent.clientWidth) {
+                                                    const diff = target.scrollWidth - parent.clientWidth + 40;
+                                                    target.style.transition = `transform ${diff / 30}s linear`;
+                                                    target.style.transform = `translateX(-${diff}px)`;
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                const target = e.currentTarget;
+                                                target.style.transition = 'transform 0.3s ease-out';
+                                                target.style.transform = 'translateX(0)';
+                                            }}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <ExternalLink size={10} className="shrink-0" />
+                                                {hook.link}
+                                            </span>
+                                        </motion.a>
+                                    </div>
+                                </div>
                             </div>
                         )}
+
 
                         {/* Pixel URL */}
                         <div>

@@ -5,6 +5,7 @@ import { useUIStore } from './useUIStore';
 export interface Workspace {
     id: string;
     name: string;
+    description?: string;
     logo_url: string | null;
     plan: string;
     owner_id: string;
