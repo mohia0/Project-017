@@ -148,19 +148,19 @@ export default function InvoicesSettingsPage() {
                             placeholder="Prefix"
                             value={form.prefix}
                             onChange={e => setForm(f => ({ ...f, prefix: e.target.value }))}
-                            className="font-mono"
+                            className="font-mono flex-1"
                         />
                         <SettingsInput
                             placeholder="0001"
                             value={form.counter}
                             onChange={e => setForm(f => ({ ...f, counter: e.target.value }))}
-                            className="font-mono text-center flex-[0.6]"
+                            className="font-mono text-center flex-1"
                         />
                         <SettingsInput
                             placeholder="Suffix"
                             value={form.suffix}
                             onChange={e => setForm(f => ({ ...f, suffix: e.target.value }))}
-                            className="font-mono"
+                            className="font-mono flex-1"
                         />
                     </div>
                     <p className={cn('text-xs mt-1.5', isDark ? 'text-white/30' : 'text-black/30')}>
@@ -269,7 +269,7 @@ export default function InvoicesSettingsPage() {
 
                     <div className="flex gap-2 mb-4">
                         <div className={cn('flex-1 h-10 rounded-xl border', isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5')} />
-                        <div className={cn('flex-[0.6] h-10 rounded-xl border', isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5')} />
+                        <div className={cn('flex-1 h-10 rounded-xl border', isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5')} />
                         <div className={cn('flex-1 h-10 rounded-xl border', isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-black/5')} />
                     </div>
 

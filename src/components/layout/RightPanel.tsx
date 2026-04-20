@@ -95,7 +95,7 @@ function PanelHeader({ title, icon: Icon, isDark, onClose, onAction, actionIcon:
 function NotificationsPanel({ isDark }: { isDark: boolean }) {
     const router = useRouter();
     const { toggleNotifications } = useUIStore();
-    const { notifications, fetchNotifications, subscribe, unsubscribe, markAsRead, markAllAsRead, updateNotification } = useNotificationStore();
+    const { notifications, fetchNotifications, subscribe, unsubscribe, markAsRead, markAllAsRead, updateNotification, deleteNotification } = useNotificationStore();
     const [filterUnread, setFilterUnread] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [receiptModal, setReceiptModal] = useState<{ isOpen: boolean; metadata?: Record<string, any>; notificationId?: string }>({ isOpen: false });
@@ -154,16 +154,117 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                     </div>
                 ) : (
                     <div className="flex flex-col">
-                        {filteredNotifications.map((notif, index) => (
-                            <div 
-                                key={`${notif.id}-${index}`}
-                                className={cn(
-                                    "flex flex-col gap-0 border-b last:border-0 transition-colors relative",
-                                    isDark ? "border-[#252525]" : "border-[#f0f0f0]",
-                                    !notif.read && notif.type === 'receipt_pending' && "animate-soft-blink",
-                                    !notif.read && notif.type !== 'receipt_pending' && (isDark ? "bg-white/[0.08]" : "bg-blue-500/[0.05]")
-                                )}
-                            >
+                        <AnimatePresence initial={false} mode="popLayout">
+                            {filteredNotifications.map((notif, index) => (
+                                <motion.div 
+                                    key={notif.id}
+                                    layout
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
+                                    transition={{
+                                        layout: { type: "spring", stiffness: 500, damping: 40 },
+                                        opacity: { duration: 0.2 }
+                                    }}
+                                    className={cn(
+                                        "flex flex-col gap-0 border-b last:border-0 transition-colors relative group",
+                                        isDark ? "border-[#252525]" : "border-[#f0f0f0]",
+                                        !notif.read && notif.type === 'receipt_pending' && "animate-soft-blink",
+                                        !notif.read && notif.type !== 'receipt_pending' && (isDark ? "bg-white/[0.08]" : "bg-blue-500/[0.05]")
+                                    )}
+                                >
+                                {/* Actions Column */}
+                                <div className="absolute top-2.5 right-2.5 flex flex-col items-center gap-2 z-10">
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteNotification(notif.id);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 transition-all active:scale-95"
+                                    >
+                                        <X 
+                                            size={10} 
+                                            className={cn(
+                                                "transition-colors",
+                                                isDark ? "text-[#444] hover:text-[#888]" : "text-[#ccc] hover:text-[#888]"
+                                            )} 
+                                        />
+                                    </button>
+
+                                    {notif.metadata?.visitor && (
+                                        <Tooltip 
+                                            className="whitespace-normal font-sans"
+                                            content={
+                                                <div className="flex flex-col gap-1 w-[160px]">
+                                                    <div className="flex items-center gap-2 border-b border-inherit pb-1.5 mb-0.5">
+                                                        {!notif.metadata.visitor.countryCode || notif.metadata.visitor.countryCode === 'local' || notif.metadata.visitor.countryCode === 'unknown' ? (
+                                                            <span className="text-[13px] leading-none">{notif.metadata.visitor.flag}</span>
+                                                        ) : (
+                                                            <img 
+                                                                src={`https://flagcdn.com/w20/${notif.metadata.visitor.countryCode.toLowerCase()}.png`} 
+                                                                alt={notif.metadata.visitor.country}
+                                                                className="w-4 h-3 object-cover rounded-[1px] shadow-sm"
+                                                                onError={(e) => {
+                                                                    // Fallback to emoji if image fails
+                                                                    e.currentTarget.style.display = 'none';
+                                                                    const span = e.currentTarget.parentElement?.querySelector('.flag-emoji-fallback') as HTMLElement;
+                                                                    if (span) span.style.display = 'inline';
+                                                                }}
+                                                            />
+                                                        )}
+                                                        {notif.metadata.visitor.countryCode && notif.metadata.visitor.countryCode !== 'local' && notif.metadata.visitor.countryCode !== 'unknown' && (
+                                                            <span className="flag-emoji-fallback text-[13px] leading-none" style={{ display: 'none' }}>
+                                                                {notif.metadata.visitor.flag}
+                                                            </span>
+                                                        )}
+                                                        <span className="text-[10px] uppercase tracking-wider font-bold truncate leading-none">
+                                                            {notif.metadata.visitor.country}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[9px] leading-tight">
+                                                        <span className="opacity-50 font-medium">IP</span>
+                                                        <span className="font-mono">{notif.metadata.visitor.ip}</span>
+                                                    </div>
+                                                    {notif.metadata.visitor.isp && (
+                                                        <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
+                                                            <span className="opacity-50 font-medium mr-2">ISP</span>
+                                                            <span className="font-semibold text-right truncate flex-1">{notif.metadata.visitor.isp}</span>
+                                                        </div>
+                                                    )}
+                                                    {(notif.metadata?.visitor?.deviceType || notif.metadata?.visitor?.os) && (
+                                                        <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
+                                                            <span className="opacity-50 font-medium mr-2">System</span>
+                                                            <span className="font-semibold text-right">
+                                                                {notif.metadata.visitor.deviceType === 'Bot' ? '🤖' : 
+                                                                 notif.metadata.visitor.deviceType === 'Mobile' ? '📱' : 
+                                                                 notif.metadata.visitor.deviceType === 'Tablet' ? '📟' : '🖥️'}
+                                                                {' '}
+                                                                {notif.metadata.visitor.os && notif.metadata.visitor.os !== 'Unknown OS' 
+                                                                    ? `${notif.metadata.visitor.os} ${notif.metadata.visitor.deviceType !== 'Desktop' && notif.metadata.visitor.deviceType !== 'Bot' ? `(${notif.metadata.visitor.deviceType})` : ''}`
+                                                                    : notif.metadata.visitor.deviceType}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-end justify-between mt-0.5 pt-1.5 border-t border-inherit text-[8px] opacity-70 font-medium whitespace-nowrap">
+                                                        <div className="flex flex-col gap-0.5">
+                                                            {notif.metadata.visitor.region && <div>{notif.metadata.visitor.city}, {notif.metadata.visitor.region}</div>}
+                                                            {notif.metadata.visitor.timezone && <div>{notif.metadata.visitor.timezone}</div>}
+                                                        </div>
+                                                        <div className="flex flex-col text-right pl-3 opacity-90 tracking-tight leading-[1.1]">
+                                                            <div>{format(new Date(notif.created_at), "h:mm a")}</div>
+                                                            <div>{format(new Date(notif.created_at), "MMM d, yyyy")}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            } 
+                                            side="left"
+                                        >
+                                            <div className="shrink-0 flex items-center justify-center cursor-help">
+                                                <AlertCircle size={10} className="text-primary/70 hover:text-primary transition-colors" />
+                                            </div>
+                                        </Tooltip>
+                                    )}
+                                </div>
                                 <div
                                     onClick={() => {
                                         if (!notif.read) markAsRead(notif.id);
@@ -252,79 +353,6 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                             <p className={cn("text-[9px] font-medium", isDark ? "text-[#444]" : "text-[#aaa]")}>
                                                 {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
                                             </p>
-                                            {notif.metadata?.visitor && (
-                                                <Tooltip 
-                                                    className="whitespace-normal font-sans"
-                                                    content={
-                                                        <div className="flex flex-col gap-1 w-[160px]">
-                                                            <div className="flex items-center gap-2 border-b border-inherit pb-1.5 mb-0.5">
-                                                                {!notif.metadata.visitor.countryCode || notif.metadata.visitor.countryCode === 'local' || notif.metadata.visitor.countryCode === 'unknown' ? (
-                                                                    <span className="text-[13px] leading-none">{notif.metadata.visitor.flag}</span>
-                                                                ) : (
-                                                                    <img 
-                                                                        src={`https://flagcdn.com/w20/${notif.metadata.visitor.countryCode.toLowerCase()}.png`} 
-                                                                        alt={notif.metadata.visitor.country}
-                                                                        className="w-4 h-3 object-cover rounded-[1px] shadow-sm"
-                                                                        onError={(e) => {
-                                                                            // Fallback to emoji if image fails
-                                                                            e.currentTarget.style.display = 'none';
-                                                                            const span = e.currentTarget.parentElement?.querySelector('.flag-emoji-fallback') as HTMLElement;
-                                                                            if (span) span.style.display = 'inline';
-                                                                        }}
-                                                                    />
-                                                                )}
-                                                                {notif.metadata.visitor.countryCode && notif.metadata.visitor.countryCode !== 'local' && notif.metadata.visitor.countryCode !== 'unknown' && (
-                                                                    <span className="flag-emoji-fallback text-[13px] leading-none" style={{ display: 'none' }}>
-                                                                        {notif.metadata.visitor.flag}
-                                                                    </span>
-                                                                )}
-                                                                <span className="text-[10px] uppercase tracking-wider font-bold truncate leading-none">
-                                                                    {notif.metadata.visitor.country}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center justify-between text-[9px] leading-tight">
-                                                                <span className="opacity-50 font-medium">IP</span>
-                                                                <span className="font-mono">{notif.metadata.visitor.ip}</span>
-                                                            </div>
-                                                            {notif.metadata.visitor.isp && (
-                                                                <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
-                                                                    <span className="opacity-50 font-medium mr-2">ISP</span>
-                                                                    <span className="font-semibold text-right truncate flex-1">{notif.metadata.visitor.isp}</span>
-                                                                </div>
-                                                            )}
-                                                            {(notif.metadata?.visitor?.deviceType || notif.metadata?.visitor?.os) && (
-                                                                <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
-                                                                    <span className="opacity-50 font-medium mr-2">System</span>
-                                                                    <span className="font-semibold text-right">
-                                                                        {notif.metadata.visitor.deviceType === 'Bot' ? '🤖' : 
-                                                                         notif.metadata.visitor.deviceType === 'Mobile' ? '📱' : 
-                                                                         notif.metadata.visitor.deviceType === 'Tablet' ? '📟' : '🖥️'}
-                                                                        {' '}
-                                                                        {notif.metadata.visitor.os && notif.metadata.visitor.os !== 'Unknown OS' 
-                                                                            ? `${notif.metadata.visitor.os} ${notif.metadata.visitor.deviceType !== 'Desktop' && notif.metadata.visitor.deviceType !== 'Bot' ? `(${notif.metadata.visitor.deviceType})` : ''}`
-                                                                            : notif.metadata.visitor.deviceType}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            <div className="flex items-end justify-between mt-0.5 pt-1.5 border-t border-inherit text-[8px] opacity-70 font-medium whitespace-nowrap">
-                                                                <div className="flex flex-col gap-0.5">
-                                                                    {notif.metadata.visitor.region && <div>{notif.metadata.visitor.city}, {notif.metadata.visitor.region}</div>}
-                                                                    {notif.metadata.visitor.timezone && <div>{notif.metadata.visitor.timezone}</div>}
-                                                                </div>
-                                                                <div className="flex flex-col text-right pl-3 opacity-90 tracking-tight leading-[1.1]">
-                                                                    <div>{format(new Date(notif.created_at), "h:mm a")}</div>
-                                                                    <div>{format(new Date(notif.created_at), "MMM d, yyyy")}</div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    } 
-                                                    side="left"
-                                                >
-                                                    <div className="shrink-0 flex items-center justify-center cursor-help">
-                                                        <AlertCircle size={10} className="text-primary/70 hover:text-primary transition-colors" />
-                                                    </div>
-                                                </Tooltip>
-                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -364,8 +392,9 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                         </button>
                                     </div>
                                 )}
-                            </div>
+                            </motion.div>
                         ))}
+                        </AnimatePresence>
                     </div>
                 )}
             </div>

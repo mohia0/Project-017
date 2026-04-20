@@ -25,6 +25,7 @@ interface NotificationState {
     subscribe: () => void;
     unsubscribe: () => void;
     clearAll: () => Promise<void>;
+    deleteNotification: (id: string) => Promise<void>;
     updateNotification: (id: string, updates: Partial<AppNotification>) => Promise<void>;
 }
 
@@ -175,6 +176,21 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             appToast.success('Notifications cleared');
         } else {
             appToast.error('Failed to clear notifications');
+        }
+    },
+
+    deleteNotification: async (id: string) => {
+        const { error } = await supabase
+            .from('notifications')
+            .delete()
+            .eq('id', id);
+
+        if (!error) {
+            set(state => ({
+                notifications: state.notifications.filter(n => n.id !== id)
+            }));
+        } else {
+            appToast.error('Failed to delete notification');
         }
     }
 }));
