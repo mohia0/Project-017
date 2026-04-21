@@ -383,7 +383,8 @@ export default function CreateEntryModal() {
                                             priority: t.priority || 'medium',
                                             position: t.position || 0,
                                             is_archived: false,
-                                            custom_fields: []
+                                            is_private: false,
+                                            custom_fields: {}
                                         });
                                     }
                                 }

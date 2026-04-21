@@ -12,6 +12,7 @@ interface SelectInputProps {
     placeholder?: string;
     isDark: boolean;
     borderRadius: number;
+    multiple?: boolean;
 }
 
 export const SelectInput = ({ 
@@ -20,10 +21,32 @@ export const SelectInput = ({
     options, 
     placeholder,
     isDark, 
-    borderRadius 
+    borderRadius,
+    multiple 
 }: SelectInputProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    const values = multiple ? (() => {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [value].filter(Boolean);
+        } catch {
+            return value ? [value] : [];
+        }
+    })() : [value];
+
+    const toggleOption = (opt: string) => {
+        if (multiple) {
+            const next = values.includes(opt) 
+                ? values.filter(v => v !== opt)
+                : [...values, opt];
+            onChange(JSON.stringify(next));
+        } else {
+            onChange(opt);
+            setIsOpen(false);
+        }
+    };
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -35,7 +58,9 @@ export const SelectInput = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const selectedOption = options.find(opt => opt === value);
+    const displayText = multiple 
+        ? (values.length > 0 ? `${values.length} selected` : placeholder || "Select options")
+        : (options.find(opt => opt === value) || placeholder || "Select an option");
 
     return (
         <div className="relative w-full" ref={containerRef}>
@@ -52,9 +77,9 @@ export const SelectInput = ({
             >
                 <span className={cn(
                     "truncate",
-                    !selectedOption && (isDark ? "text-white/30" : "text-black/30")
+                    values.length === 0 && (isDark ? "text-white/30" : "text-black/30")
                 )}>
-                    {selectedOption || placeholder || "Select an option"}
+                    {displayText}
                 </span>
                 <ChevronDown 
                     size={16} 
@@ -84,26 +109,26 @@ export const SelectInput = ({
                                     No options available
                                 </div>
                             ) : (
-                                options.map((opt, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={() => {
-                                            onChange(opt);
-                                            setIsOpen(false);
-                                        }}
-                                        className={cn(
-                                            "flex items-center justify-between px-3 py-2.5 text-[13px] rounded-lg transition-all cursor-pointer mb-0.5 last:mb-0",
-                                            value === opt 
-                                                ? (isDark ? "bg-primary/10 text-primary" : "bg-primary/5 text-primary")
-                                                : (isDark ? "text-[#999] hover:bg-white/5 hover:text-white" : "text-[#555] hover:bg-black/5 hover:text-black")
-                                        )}
-                                    >
-                                        <span className="truncate flex-1">{opt}</span>
-                                        {value === opt && (
-                                            <Check size={14} className="ml-2 animate-in zoom-in-50 duration-300" />
-                                        )}
-                                    </div>
-                                ))
+                                options.map((opt, i) => {
+                                    const isSelected = values.includes(opt);
+                                    return (
+                                        <div
+                                            key={i}
+                                            onClick={() => toggleOption(opt)}
+                                            className={cn(
+                                                "flex items-center justify-between px-3 py-2.5 text-[13px] rounded-lg transition-all cursor-pointer mb-0.5 last:mb-0",
+                                                isSelected 
+                                                    ? (isDark ? "bg-primary/10 text-primary" : "bg-primary/5 text-primary")
+                                                    : (isDark ? "text-[#999] hover:bg-white/5 hover:text-white" : "text-[#555] hover:bg-black/5 hover:text-black")
+                                            )}
+                                        >
+                                            <span className="truncate flex-1">{opt}</span>
+                                            {isSelected && (
+                                                <Check size={14} className="ml-2 animate-in zoom-in-50 duration-300" />
+                                            )}
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
                     </motion.div>

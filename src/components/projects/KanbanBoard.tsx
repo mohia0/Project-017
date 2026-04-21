@@ -10,7 +10,7 @@ import {
     Briefcase, Ticket, Tags, Smile, User, Users, Home, Globe, Map, Compass,
     Bell, Mail, Smartphone, Laptop, Cpu, Layers, Hammer, Rocket, Plane, 
     Anchor, Coffee, Music, Lock, ShieldCheck, Key, Cloud, Umbrella, Sun, 
-    Moon, Flame, Droplet, Leaf, Flower2, Search, Settings, Share, Download
+    Moon, Flame, Droplet, Leaf, Flower2, Search, Settings, Share, Download, Paperclip
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -95,7 +95,7 @@ function GroupIcon({ name, size = 10, className = "" }: { name?: string, size?: 
 
 const DEFAULT_PALETTE = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316'];
 
-function shortId(id: string) { return `#${id.slice(-3).toUpperCase()}`; }
+function shortId(id: string) { return `#${id.slice(-5).toUpperCase()}`; }
 function fmtDate(d: string | null | undefined) {
     if (!d) return null;
     const dt = new Date(d);
@@ -263,7 +263,17 @@ function ContextMenu({ menu, isDark, onAction, onClose, tasks, groups, projectId
             {menu.type === 'task' && (
                 <>
                     <Item label="Open details" icon={<Eye size={12} />}    action="open" />
-                    <Item label="Edit task"    icon={<Edit3 size={12} />}   action="edit" />
+                    {(() => {
+                        const task = tasks.find(t => t.id === menu.id);
+                        const isPrivate = task?.is_private;
+                        return (
+                            <Item 
+                                label={isPrivate ? "Privacy: Only Me" : "Privacy: Public"} 
+                                icon={isPrivate ? <Lock size={12} className="text-amber-500" /> : <Globe size={12} className="text-blue-500" />} 
+                                action="toggle-privacy" 
+                            />
+                        );
+                    })()}
                     <Item label="Duplicate task" icon={<Copy size={12} />} action="duplicate" />
                     <Item label="Archive task" icon={<Archive size={12} />} action="archive" />
                     <Divider />
@@ -428,8 +438,10 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
     const checklists = (task.custom_fields?.checklists as { id: string; completed: boolean }[] | undefined) ?? [];
     const totalChecks = checklists.length;
     const completedChecks = checklists.filter(c => c.completed).length;
+    const attachments = (task.custom_fields?.attachments as any[] | undefined) ?? [];
+    const totalAttachments = attachments.length;
 
-    const hasMeta = task.due_date || task.priority !== 'none' || tags.length > 0 || totalChecks > 0;
+    const hasMeta = task.due_date || task.priority !== 'none' || tags.length > 0 || totalChecks > 0 || totalAttachments > 0;
 
     return (
         <div
@@ -532,12 +544,15 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
 
                     {/* Title */}
                     <p className={cn(
-                        'flex-1 text-[12.5px] font-semibold leading-snug min-w-0',
+                        'flex-1 text-[13.5px] font-semibold leading-snug min-w-0',
                         isDone
-                            ? isDark ? 'line-through text-[#383838]' : 'line-through text-[#c0c0c0]'
+                            ? isDark ? 'text-[#383838]' : 'text-[#c0c0c0]'
                             : isDark ? 'text-[#e0e0e0]' : 'text-[#1a1a1a]'
                     )}>
                         {task.title}
+                        {task.is_private && !isPreview && (
+                            <LucideIcons.EyeOff size={10} className="inline-block ml-1.5 opacity-30 text-amber-500" />
+                        )}
                     </p>
 
                     {/* Hover actions - absolute overlay so title doesn't shrink */}
@@ -573,9 +588,9 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
                                     {showSure ? (
                                         <motion.button
                                             key="sure"
-                                            initial={{ opacity: 0, scale: 0.8, x: 5 }}
-                                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                                            exit={{ opacity: 0, scale: 0.8, x: 5 }}
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.8 }}
                                             onClick={async (e) => {
                                                 e.stopPropagation();
                                                 if (isSelectionMode && onToggleSelect) {
@@ -585,7 +600,7 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
                                                     await deleteTask(task.id, task.project_id);
                                                 }
                                             }}
-                                            className="px-2 py-1 rounded-md bg-red-500 text-white text-[9px] font-bold shadow-sm active:scale-95"
+                                            className="px-1.5 h-5 flex items-center justify-center rounded-md bg-red-500 text-white text-[8.5px] font-bold shadow-sm active:scale-95"
                                         >
                                             {isDeleting ? '...' : 'Sure?'}
                                         </motion.button>
@@ -642,8 +657,8 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
                     <div className="flex flex-wrap items-center gap-1.5 pl-[23px]">
                         {/* Short ID */}
                         <span className={cn(
-                            'text-[9px] font-bold tabular-nums',
-                            isDark ? 'text-[#2e2e2e]' : 'text-[#d8d8d8]'
+                            'h-5 px-1.5 flex items-center rounded-[4px] text-[11.5px] font-normal tabular-nums transition-colors',
+                            isDark ? 'bg-white/[0.04] text-[#555]' : 'bg-black/[0.03] text-[#bbb]'
                         )}>
                             {shortId(task.id)}
                         </span>
@@ -651,10 +666,10 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
                         {/* Priority pill (skip 'none') */}
                         {task.priority !== 'none' && (
                             <span
-                                className="inline-flex items-center gap-[3px] px-1.5 py-[1.5px] rounded-[4px] text-[8.5px] font-bold"
+                                className="h-5 inline-flex items-center gap-1 px-1.5 rounded-[5px] text-[11.5px] font-bold"
                                 style={{ backgroundColor: `${pri.color}18`, color: pri.color }}
                             >
-                                <Flag size={7} strokeWidth={2.5} />
+                                <Flag size={11} strokeWidth={2.5} />
                                 {pri.label}
                             </span>
                         )}
@@ -663,7 +678,7 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
                         {tags.map((t, i) => (
                             <span
                                 key={i}
-                                className="px-1.5 py-[1.5px] rounded-[4px] text-[8.5px] font-bold"
+                                className="h-5 px-1.5 flex items-center rounded-[5px] text-[11.5px] font-bold"
                                 style={{ backgroundColor: `${t.color}15`, color: t.color }}
                             >
                                 {t.label}
@@ -673,10 +688,10 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
                         {/* Due date */}
                         {task.due_date && (
                             <span className={cn(
-                                'inline-flex items-center gap-[3px] text-[9px] font-bold',
-                                isDark ? 'text-[#3a3a3a]' : 'text-[#bbb]'
+                                'h-5 inline-flex items-center gap-1 px-1.5 rounded-[4px] text-[11.5px] font-normal transition-colors',
+                                isDark ? 'bg-white/[0.06] text-[#999]' : 'bg-black/[0.04] text-[#666]'
                             )}>
-                                <Calendar size={7} strokeWidth={2.5} />
+                                <Calendar size={11} strokeWidth={2.4} />
                                 {fmtDate(task.due_date)}
                             </span>
                         )}
@@ -684,11 +699,22 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
                         {/* Subtasks Progress */}
                         {totalChecks > 0 && (
                             <span className={cn(
-                                'inline-flex items-center gap-[3px] text-[9px] font-bold',
-                                completedChecks === totalChecks ? 'text-emerald-500' : isDark ? 'text-[#3a3a3a]' : 'text-[#bbb]'
+                                'h-5 flex items-center gap-1 px-1.5 rounded-[4px] text-[11.5px] font-normal transition-colors',
+                                completedChecks === totalChecks ? 'bg-emerald-500/10 text-emerald-500' : isDark ? 'bg-white/[0.06] text-[#999]' : 'bg-black/[0.04] text-[#666]'
                             )}>
-                                <CheckSquare size={7} strokeWidth={2.5} />
+                                <CheckSquare size={11} strokeWidth={2.4} />
                                 {completedChecks}/{totalChecks}
+                            </span>
+                        )}
+
+                        {/* Attachments */}
+                        {totalAttachments > 0 && (
+                            <span className={cn(
+                                'h-5 flex items-center gap-1 px-1.5 rounded-[4px] text-[11.5px] font-normal transition-colors',
+                                isDark ? 'bg-white/[0.06] text-[#999]' : 'bg-black/[0.04] text-[#666]'
+                            )}>
+                                <Paperclip size={11} strokeWidth={2.4} />
+                                {totalAttachments}
                             </span>
                         )}
                     </div>
@@ -735,6 +761,18 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
     const [editing,  setEditing]  = useState(false);
     const [draft,    setDraft]    = useState(group.name);
     const addFormRef = useRef<HTMLDivElement>(null);
+    const nameRef = useRef<HTMLSpanElement>(null);
+
+    useEffect(() => {
+        if (editing && nameRef.current && document.activeElement !== nameRef.current) {
+            nameRef.current.focus();
+            const range = document.createRange();
+            range.selectNodeContents(nameRef.current);
+            const sel = window.getSelection();
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+        }
+    }, [editing]);
 
     useEffect(() => {
         if (forceEditing) { setEditing(true); setDraft(group.name); }
@@ -787,6 +825,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                     position:      tasks.length + i,
                     custom_fields: {},
                     is_archived:   false,
+                    is_private:    false,
                 });
             }
         } else {
@@ -799,6 +838,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
                 position:      tasks.length,
                 custom_fields: {},
                 is_archived:   false,
+                is_private:    false
             });
         }
 
@@ -870,34 +910,38 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
 
                     {/* Name */}
                     <div className="flex-1 min-w-0 relative z-10">
-                        {editing && !isPreview ? (
-                            <input
-                                autoFocus
-                                value={draft}
-                                onChange={e => setDraft(e.target.value)}
-                                onBlur={commitRename}
-                                onClick={e => e.stopPropagation()}
-                                onKeyDown={e => {
-                                    e.stopPropagation();
-                                    if (e.key === 'Enter')  commitRename();
-                                    if (e.key === 'Escape') { setDraft(group.name); setEditing(false); }
-                                }}
-                                className={cn(
-                                    'w-full text-[12.5px] font-bold bg-transparent outline-none border-b pb-px relative z-20',
-                                    isDark ? 'text-white border-white/20' : 'text-[#111] border-black/15'
-                                )}
-                            />
-                        ) : (
-                            <span
-                                onDoubleClick={() => !isPreview && setEditing(true)}
-                                className={cn(
-                                    'block text-[12.5px] font-bold truncate leading-tight',
-                                    isDark ? 'text-[#e0e0e0]' : 'text-[#111]'
-                                )}
-                            >
-                                {group.name}
-                            </span>
-                        )}
+                        <span
+                            ref={nameRef}
+                            contentEditable={!isPreview}
+                            suppressContentEditableWarning
+                            onFocus={() => { if (!isPreview) setEditing(true); }}
+                            onBlur={e => {
+                                setEditing(false);
+                                const val = e.currentTarget.innerText.trim();
+                                if (val && val !== group.name) {
+                                    updateTaskGroup(group.id, projectId, { name: val });
+                                } else {
+                                    e.currentTarget.innerText = group.name;
+                                }
+                            }}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    e.currentTarget.blur();
+                                }
+                                if (e.key === 'Escape') {
+                                    e.currentTarget.innerText = group.name;
+                                    e.currentTarget.blur();
+                                }
+                            }}
+                            className={cn(
+                                'block text-[12.5px] font-bold truncate leading-tight outline-none focus:caret-primary transition-colors',
+                                isDark ? 'text-[#e0e0e0]' : 'text-[#111]',
+                                !isPreview && 'cursor-text'
+                            )}
+                        >
+                            {group.name}
+                        </span>
                     </div>
 
                     <div className="shrink-0 relative z-10 w-6 h-6 ml-2">
@@ -1222,8 +1266,13 @@ export default function KanbanBoard({
         setSelectedIds(new Set());
     };
 
+    const isDraggingRef = React.useRef(false);
+
     useEffect(() => {
-        setLocalTasks([...tasks].sort((a, b) => a.position - b.position));
+        // Only sync local state when not in the middle of a drag
+        if (!isDraggingRef.current) {
+            setLocalTasks([...tasks].sort((a, b) => a.position - b.position));
+        }
     }, [tasks]);
 
     useEffect(() => {
@@ -1241,6 +1290,7 @@ export default function KanbanBoard({
     const handleDragStart = (e: DragStartEvent) => {
         setActiveId(e.active.id as string);
         setActiveType(e.active.data.current?.type ?? null);
+        isDraggingRef.current = true;
     };
 
     const handleDragOver = (event: DragOverEvent) => {
@@ -1250,51 +1300,63 @@ export default function KanbanBoard({
         const activeData = active.data.current;
         const overData = over.data.current;
 
-        if (activeData?.type === 'task') {
-            const activeId = active.id as string;
-            const overId = over.id as string;
+        if (activeData?.type !== 'task') return;
 
-            setLocalTasks(prev => {
-                const activeIndex = prev.findIndex(t => t.id === activeId);
-                const overIndex = prev.findIndex(t => t.id === overId);
+        const activeId = active.id as string;
+        const overId = over.id as string;
 
-                if (activeIndex !== -1) {
-                    // 1. Moving over another task
-                    if (overIndex !== -1) {
-                        const activeTask = prev[activeIndex];
-                        const overTask = prev[overIndex];
+        setLocalTasks(prev => {
+            const activeIndex = prev.findIndex(t => t.id === activeId);
+            if (activeIndex === -1) return prev;
 
-                        if (activeTask.task_group_id !== overTask.task_group_id) {
-                            // Cross-group reorder
-                            const newItems = [...prev];
-                            newItems[activeIndex] = { ...activeTask, task_group_id: overTask.task_group_id };
-                            return arrayMove(newItems, activeIndex, overIndex);
-                        } else {
-                            // Same-group reorder
-                            return arrayMove(prev, activeIndex, overIndex);
-                        }
-                    } 
-                    // 2. Moving over an empty group/column
-                    else if (overData?.type === 'group') {
-                        const activeTask = prev[activeIndex];
-                        if (activeTask.task_group_id !== overId) {
-                            const newItems = [...prev];
-                            newItems[activeIndex] = { ...activeTask, task_group_id: overId };
-                            return arrayMove(newItems, activeIndex, 0);
-                        }
-                    }
+            const activeTask = prev[activeIndex];
+
+            // Determine destination group
+            let destGroupId: string | null | undefined;
+            const overTaskIndex = prev.findIndex(t => t.id === overId);
+
+            if (overTaskIndex !== -1) {
+                // Dragging over another task
+                destGroupId = prev[overTaskIndex].task_group_id;
+            } else if (overData?.type === 'group') {
+                // Dragging over a group header/column (empty group)
+                destGroupId = overId;
+            } else {
+                return prev;
+            }
+
+            if (destGroupId === undefined) return prev;
+
+            if (activeTask.task_group_id !== destGroupId) {
+                // Cross-group: change the group id first, then reorder
+                const updatedTask = { ...activeTask, task_group_id: destGroupId };
+                const newItems = prev.map(t => t.id === activeId ? updatedTask : t);
+
+                if (overTaskIndex !== -1) {
+                    // Place next to the target task
+                    const finalActiveIdx = newItems.findIndex(t => t.id === activeId);
+                    return arrayMove(newItems, finalActiveIdx, overTaskIndex);
+                }
+                return newItems;
+            } else {
+                // Same-group: just reorder
+                if (overTaskIndex !== -1) {
+                    return arrayMove(prev, activeIndex, overTaskIndex);
                 }
                 return prev;
-            });
-        }
+            }
+        });
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
+        isDraggingRef.current = false;
         setActiveId(null);
         setActiveType(null);
+
         if (!over) {
-            setLocalTasks(tasksByProject[projectId] || []);
+            // Revert to server state on cancelled drag
+            setLocalTasks([...tasks].sort((a, b) => a.position - b.position));
             return;
         }
 
@@ -1319,7 +1381,7 @@ export default function KanbanBoard({
             const task = localTasks.find(t => t.id === active.id);
             if (task) {
                 const destGroupId = task.task_group_id;
-                // Calculate position based on final localTasks order
+                // Calculate position based on final localTasks order within the destination group
                 const colTasks = localTasks.filter(t => t.task_group_id === destGroupId);
                 const finalPos = colTasks.findIndex(t => t.id === task.id);
 
@@ -1356,7 +1418,8 @@ export default function KanbanBoard({
             priority: 'none',
             position: tasks.length,
             custom_fields: {},
-            is_archived: false
+            is_archived: false,
+            is_private: false
         });
     };
 
@@ -1377,9 +1440,14 @@ export default function KanbanBoard({
                 addTask({
                     ...rest,
                     title: `${t.title} (copy)`,
-                    position: t.position + 1
+                    position: t.position + 1,
+                    is_private: t.is_private
                 });
                 appToast.success('Duplicated', 'Task cloned successfully');
+            }
+            if (action === 'toggle-privacy') {
+                updateTask(id, projectId, { is_private: !t.is_private });
+                appToast.success('Privacy Updated', `Task is now ${!t.is_private ? 'private (Only Me)' : 'public'}`);
             }
             if (action === 'open') onTaskClick(t);
         } else if (type === 'group') {
@@ -1416,7 +1484,7 @@ export default function KanbanBoard({
         <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden" style={{ zoom: 0.9 }}>
             <DndContext
                 sensors={sensors}
-                collisionDetection={closestCorners}
+                collisionDetection={closestCenter}
                 onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}

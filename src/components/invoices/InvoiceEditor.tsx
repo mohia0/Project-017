@@ -658,7 +658,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         )}
                     </div>
 
-                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-1" />
+                    <div className={cn("w-px h-5 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />
 
                     <button
                         onClick={() => {
@@ -1541,7 +1541,7 @@ export function InvoiceDocument({
         )}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blocks.map((b: any) => b.id)} strategy={verticalListSortingStrategy}>
-                    {!isPreview && <InsertZone idx={-1} isDark={false} isOpen={openInsertMenu === -1} onOpen={() => setOpenInsertMenu(-1)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} isFirst={true} /> }
+                    {!isPreview && <InsertZone idx={-1} isDark={false} isOpen={openInsertMenu === -1} onOpen={() => setOpenInsertMenu(-1)} onClose={() => setOpenInsertMenu(null)} onAdd={(type) => addBlock(type)} isFirst={true} /> }
                     <div>
                         {blocks.map((block: any, idx: number) => (
                             <React.Fragment key={block.id}>
@@ -1574,7 +1574,7 @@ export function InvoiceDocument({
                                     }}
                                     onSaveAsTemplate={(blockId) => setSavingSectionId(blockId)}
                                 />
-                                {!isPreview && <InsertZone idx={idx} isDark={false} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={addBlock} isLast={idx === blocks.length - 1} /> }
+                                {!isPreview && <InsertZone idx={idx} isDark={false} isOpen={openInsertMenu === idx} onOpen={() => setOpenInsertMenu(idx)} onClose={() => setOpenInsertMenu(null)} onAdd={(type) => addBlock(type, block.id)} isLast={idx === blocks.length - 1} /> }
                             </React.Fragment>
                         ))}
                     </div>

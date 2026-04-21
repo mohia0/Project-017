@@ -160,9 +160,10 @@ function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, i
     );
 }
 
-function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryColor, borderRadius, isReadOnly }: {
+function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryColor, borderRadius, isReadOnly, marginTop, marginBottom }: {
     field: FormField; isDark: boolean; isSelected: boolean; onClick: (e: React.MouseEvent) => void;
     onRemove: () => void; primaryColor: string; borderRadius: number; isReadOnly?: boolean;
+    marginTop?: number; marginBottom?: number;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
 
@@ -261,7 +262,13 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
     return (
         <div
             ref={setNodeRef}
-            style={{ ...style, borderRadius: `${borderRadius}px`, backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)' }}
+            style={{ 
+                ...style, 
+                borderRadius: `${borderRadius}px`, 
+                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                marginTop: `${marginTop || 0}px`,
+                marginBottom: `${marginBottom || 0}px`
+            }}
             onClick={(e) => {
                 e.stopPropagation();
                 onClick(e);
@@ -414,6 +421,8 @@ export function SchedulerFormBuilder({ isDark, design, fields, updateFields, sel
                                         primaryColor={design.primaryColor || '#4dbf39'}
                                         borderRadius={design.borderRadius || 16}
                                         isReadOnly={isReadOnly}
+                                        marginTop={design.marginTop}
+                                        marginBottom={design.marginBottom}
                                     />
                                 </React.Fragment>
                             ))}

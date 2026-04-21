@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Image as ImageIcon, CheckCircle2 } from 'lucide-react';
+import { Image as ImageIcon, Check } from 'lucide-react';
 
 interface PictureChoiceInputProps {
     value: string;
@@ -11,6 +11,7 @@ interface PictureChoiceInputProps {
     isDark: boolean;
     borderRadius: number;
     primaryColor: string;
+    multiple?: boolean;
 }
 
 /** Parses an option string that may contain a label (format: "url|label") */
@@ -69,20 +70,41 @@ export const PictureChoiceInput = ({
     options, 
     isDark, 
     borderRadius,
-    primaryColor
+    primaryColor,
+    multiple
 }: PictureChoiceInputProps) => {
+    const values = multiple ? (() => {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [value].filter(Boolean);
+        } catch {
+            return value ? [value] : [];
+        }
+    })() : [value];
+
+    const toggleOption = (opt: string) => {
+        if (multiple) {
+            const next = values.includes(opt) 
+                ? values.filter(v => v !== opt)
+                : [...values, opt];
+            onChange(JSON.stringify(next));
+        } else {
+            onChange(opt);
+        }
+    };
+
     return (
         <div className="grid grid-cols-2 gap-4">
             {options.map((opt, i) => {
                 const { url, label } = parseOption(opt);
-                const isSelected = value === opt;
+                const isSelected = values.includes(opt);
                 const hasImage = isImageSrc(url);
                 const displayName = getDisplayName(url, i, label);
 
                 return (
                     <div 
                         key={i} 
-                        onClick={() => onChange(opt)}
+                        onClick={() => toggleOption(opt)}
                         className={cn(
                             "group relative flex flex-col items-center gap-3 p-4 border-2 transition-all duration-300 cursor-pointer overflow-hidden",
                             isSelected 
@@ -97,8 +119,11 @@ export const PictureChoiceInput = ({
                     >
                         {/* Selected Indicator */}
                         {isSelected && (
-                            <div className="absolute top-2 right-2 text-primary animate-in zoom-in-50 duration-300">
-                                <CheckCircle2 size={16} fill="white" />
+                            <div 
+                                className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 rounded-full animate-in zoom-in-50 duration-300 z-10 shadow-sm"
+                                style={{ backgroundColor: primaryColor }}
+                            >
+                                <Check size={12} className="text-white" strokeWidth={4} />
                             </div>
                         )}
 

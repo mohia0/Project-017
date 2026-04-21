@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Calendar as CalendarIcon, Palette
+    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Info, Calendar as CalendarIcon, Palette
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
@@ -167,233 +167,239 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                         opacity: { duration: 0.2 }
                                     }}
                                     className={cn(
-                                        "flex flex-col gap-0 border-b last:border-0 transition-colors relative group",
+                                        "flex flex-col gap-0 border-b last:border-0 transition-colors relative group/row",
                                         isDark ? "border-[#252525]" : "border-[#f0f0f0]",
                                         !notif.read && notif.type === 'receipt_pending' && "animate-soft-blink",
                                         !notif.read && notif.type !== 'receipt_pending' && (isDark ? "bg-white/[0.08]" : "bg-blue-500/[0.05]")
                                     )}
                                 >
-                                {/* Actions Column */}
-                                <div className="absolute top-2.5 right-2.5 flex flex-col items-center gap-2 z-10">
-                                    <button 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteNotification(notif.id);
-                                        }}
-                                        className="opacity-0 group-hover:opacity-100 transition-all active:scale-95"
-                                    >
-                                        <X 
-                                            size={10} 
+                                        <div
+                                            onClick={() => {
+                                                if (!notif.read) markAsRead(notif.id);
+                                                if (notif.link && notif.type !== 'receipt_pending') {
+                                                    router.push(notif.link);
+                                                    toggleNotifications();
+                                                }
+                                            }}
                                             className={cn(
-                                                "transition-colors",
-                                                isDark ? "text-[#444] hover:text-[#888]" : "text-[#ccc] hover:text-[#888]"
-                                            )} 
-                                        />
-                                    </button>
-
-                                    {notif.metadata?.visitor && (
-                                        <Tooltip 
-                                            className="whitespace-normal font-sans"
-                                            content={
-                                                <div className="flex flex-col gap-1 w-[160px]">
-                                                    <div className="flex items-center gap-2 border-b border-inherit pb-1.5 mb-0.5">
-                                                        {!notif.metadata.visitor.countryCode || notif.metadata.visitor.countryCode === 'local' || notif.metadata.visitor.countryCode === 'unknown' ? (
-                                                            <span className="text-[13px] leading-none">{notif.metadata.visitor.flag}</span>
-                                                        ) : (
-                                                            <img 
-                                                                src={`https://flagcdn.com/w20/${notif.metadata.visitor.countryCode.toLowerCase()}.png`} 
-                                                                alt={notif.metadata.visitor.country}
-                                                                className="w-4 h-3 object-cover rounded-[1px] shadow-sm"
-                                                                onError={(e) => {
-                                                                    // Fallback to emoji if image fails
-                                                                    e.currentTarget.style.display = 'none';
-                                                                    const span = e.currentTarget.parentElement?.querySelector('.flag-emoji-fallback') as HTMLElement;
-                                                                    if (span) span.style.display = 'inline';
-                                                                }}
-                                                            />
-                                                        )}
-                                                        {notif.metadata.visitor.countryCode && notif.metadata.visitor.countryCode !== 'local' && notif.metadata.visitor.countryCode !== 'unknown' && (
-                                                            <span className="flag-emoji-fallback text-[13px] leading-none" style={{ display: 'none' }}>
-                                                                {notif.metadata.visitor.flag}
-                                                            </span>
-                                                        )}
-                                                        <span className="text-[10px] uppercase tracking-wider font-bold truncate leading-none">
-                                                            {notif.metadata.visitor.country}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between text-[9px] leading-tight">
-                                                        <span className="opacity-50 font-medium">IP</span>
-                                                        <span className="font-mono">{notif.metadata.visitor.ip}</span>
-                                                    </div>
-                                                    {notif.metadata.visitor.isp && (
-                                                        <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
-                                                            <span className="opacity-50 font-medium mr-2">ISP</span>
-                                                            <span className="font-semibold text-right truncate flex-1">{notif.metadata.visitor.isp}</span>
-                                                        </div>
-                                                    )}
-                                                    {(notif.metadata?.visitor?.deviceType || notif.metadata?.visitor?.os) && (
-                                                        <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
-                                                            <span className="opacity-50 font-medium mr-2">System</span>
-                                                            <span className="font-semibold text-right">
-                                                                {notif.metadata.visitor.deviceType === 'Bot' ? '🤖' : 
-                                                                 notif.metadata.visitor.deviceType === 'Mobile' ? '📱' : 
-                                                                 notif.metadata.visitor.deviceType === 'Tablet' ? '📟' : '🖥️'}
-                                                                {' '}
-                                                                {notif.metadata.visitor.os && notif.metadata.visitor.os !== 'Unknown OS' 
-                                                                    ? `${notif.metadata.visitor.os} ${notif.metadata.visitor.deviceType !== 'Desktop' && notif.metadata.visitor.deviceType !== 'Bot' ? `(${notif.metadata.visitor.deviceType})` : ''}`
-                                                                    : notif.metadata.visitor.deviceType}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex items-end justify-between mt-0.5 pt-1.5 border-t border-inherit text-[8px] opacity-70 font-medium whitespace-nowrap">
-                                                        <div className="flex flex-col gap-0.5">
-                                                            {notif.metadata.visitor.region && <div>{notif.metadata.visitor.city}, {notif.metadata.visitor.region}</div>}
-                                                            {notif.metadata.visitor.timezone && <div>{notif.metadata.visitor.timezone}</div>}
-                                                        </div>
-                                                        <div className="flex flex-col text-right pl-3 opacity-90 tracking-tight leading-[1.1]">
-                                                            <div>{format(new Date(notif.created_at), "h:mm a")}</div>
-                                                            <div>{format(new Date(notif.created_at), "MMM d, yyyy")}</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            } 
-                                            side="left"
+                                                "flex items-start gap-1.5 pl-2 pr-1.5 py-2.5 cursor-pointer relative",
+                                                notif.type !== 'receipt_pending' && (isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#f9f9f9]")
+                                            )}
                                         >
-                                            <div className="shrink-0 flex items-center justify-center cursor-help">
-                                                <AlertCircle size={10} className="text-primary/70 hover:text-primary transition-colors" />
+                                            <div className={cn("w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5", 
+                                                isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
+                                            )}>
+                                                {(() => {
+                                                    const titleLower = notif.title?.toLowerCase() || '';
+                                                    const messageLower = notif.message?.toLowerCase() || '';
+                                                    
+                                                    const isLimitReached = notif.type === 'limit_reached' || titleLower.includes('limit');
+                                                    const isView = notif.type === 'view' || titleLower.includes('opened') || titleLower.includes('viewed');
+                                                    const isReceiptPending = notif.type === 'receipt_pending';
+                                                    
+                                                    const isFormResponse = !isView && !isLimitReached && !isReceiptPending && (
+                                                        notif.link?.includes('/forms') || 
+                                                        titleLower.includes('form') || 
+                                                        messageLower.includes('form')
+                                                    );
+                                                    const isScheduler = !isView && !isLimitReached && !isFormResponse && !isReceiptPending && (
+                                                        notif.link?.includes('/schedulers') || 
+                                                        titleLower.includes('scheduler') || 
+                                                        titleLower.includes('booking') ||
+                                                        titleLower.includes('meeting')
+                                                    );
+                                                    const isProposal = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isReceiptPending && (
+                                                        notif.link?.includes('proposal') || 
+                                                        titleLower.includes('proposal') || 
+                                                        messageLower.includes('proposal')
+                                                    );
+                                                    const isInvoice = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isProposal && !isReceiptPending && (
+                                                        notif.link?.includes('invoice') || 
+                                                        titleLower.includes('invoice') || 
+                                                        messageLower.includes('invoice')
+                                                    );
+                                                    const isHook = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isProposal && !isInvoice && !isReceiptPending && (
+                                                        notif.type === 'hook' ||
+                                                        notif.link?.includes('/hooks') ||
+                                                        titleLower.includes('hook')
+                                                    );
+
+                                                    const isSuccess = notif.type === 'success' || 
+                                                        titleLower.includes('signed') || 
+                                                        titleLower.includes('accepted') || 
+                                                        titleLower.includes('paid');
+
+                                                    const iconClass = isDark ? "text-[#888]" : "text-[#999]";
+
+                                                    if (isHook) return (
+                                                        <Zap 
+                                                            size={12} 
+                                                            style={{ color: notif.metadata?.color || 'var(--primary)' }} 
+                                                            fill="currentColor" 
+                                                        />
+                                                    );
+                                                    if (isLimitReached) return <AlertCircle size={12} className="text-amber-500" />;
+                                                    if (isReceiptPending) return <Receipt size={12} className="text-emerald-500" />;
+                                                    if (isSuccess) {
+                                                        if (isProposal) return <FileText size={12} className="text-emerald-500" />;
+                                                        if (isInvoice) return <Receipt size={12} className="text-emerald-500" />;
+                                                        return <Check size={12} className="text-emerald-500" />;
+                                                    }
+                                                    if (isFormResponse) return <ClipboardList size={12} className={iconClass} />;
+                                                    if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
+                                                    if (isProposal) return <FileText size={12} className={iconClass} />;
+                                                    if (isInvoice) return <Receipt size={12} className={iconClass} />;
+                                                    return <Eye size={12} className={iconClass} />;
+                                                })()}
                                             </div>
-                                        </Tooltip>
-                                    )}
-                                </div>
-                                <div
-                                    onClick={() => {
-                                        if (!notif.read) markAsRead(notif.id);
-                                        if (notif.link && notif.type !== 'receipt_pending') {
-                                            router.push(notif.link);
-                                            toggleNotifications();
-                                        }
-                                    }}
-                                    className={cn(
-                                        "flex items-start gap-2.5 px-4 py-2 cursor-pointer",
-                                        notif.type !== 'receipt_pending' && (isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#f9f9f9]")
-                                    )}
-                                >
-                                    <div className={cn("w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 mt-0.5", 
-                                        isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
-                                    )}>
-                                        {(() => {
-                                            const isLimitReached = notif.type === 'limit_reached' || notif.title?.toLowerCase().includes('limit');
-                                            const isView = notif.type === 'view' || notif.title?.toLowerCase().includes('opened') || notif.title?.toLowerCase().includes('viewed');
-                                            const isReceiptPending = notif.type === 'receipt_pending';
-                                            const isFormResponse = !isView && !isLimitReached && !isReceiptPending && (
-                                                notif.link?.includes('/forms') || 
-                                                notif.title?.toLowerCase().includes('form') || 
-                                                notif.message?.toLowerCase().includes('form')
-                                            );
-                                            const isScheduler = !isView && !isLimitReached && !isFormResponse && !isReceiptPending && (
-                                                notif.link?.includes('/schedulers') || 
-                                                notif.title?.toLowerCase().includes('scheduler') || 
-                                                notif.message?.toLowerCase().includes('booking') ||
-                                                notif.message?.toLowerCase().includes('meeting')
-                                            );
-                                            const isProposal = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isReceiptPending && (
-                                                notif.link?.includes('proposal') || 
-                                                notif.title?.toLowerCase().includes('proposal') || 
-                                                notif.message?.toLowerCase().includes('proposal')
-                                            );
-                                            const isInvoice = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isProposal && !isReceiptPending && (
-                                                notif.link?.includes('invoice') || 
-                                                notif.title?.toLowerCase().includes('invoice') || 
-                                                notif.message?.toLowerCase().includes('invoice')
-                                            );
-                                            const isHook = !isView && !isLimitReached && !isFormResponse && !isScheduler && !isProposal && !isInvoice && !isReceiptPending && (
-                                                notif.type === 'hook' ||
-                                                notif.link?.includes('/hooks') ||
-                                                notif.title?.toLowerCase().includes('hook')
-                                            );
+                                            
+                                            <div className="flex-1 min-w-0">
+                                                <p className={cn("text-[12px] font-medium leading-tight mb-0.5 truncate", isDark ? "text-[#eee]" : "text-[#222]")}>
+                                                    {notif.title}
+                                                </p>
+                                                {notif.message && (
+                                                    <p className={cn("text-[10px] leading-tight opacity-70 truncate", isDark ? "text-[#888]" : "text-[#666]")}>
+                                                        {notif.message}
+                                                    </p>
+                                                )}
+                                                <div className="flex items-center justify-between mt-1">
+                                                    <p className={cn("text-[9px] font-medium", isDark ? "text-[#444]" : "text-[#aaa]")}>
+                                                        {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                                            const isSuccess = notif.type === 'success' || 
-                                                notif.title?.toLowerCase().includes('signed') || 
-                                                notif.title?.toLowerCase().includes('accepted') || 
-                                                notif.title?.toLowerCase().includes('paid');
-
-                                            const iconClass = isDark ? "text-[#888]" : "text-[#999]";
-
-                                            if (isHook) return (
-                                                <Zap 
-                                                    size={12} 
-                                                    style={{ color: notif.metadata?.color || 'var(--primary)' }} 
-                                                    fill="currentColor" 
+                                        {/* Actions Column */}
+                                        <div className="flex flex-col items-center gap-1.5 shrink-0 w-3.5">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteNotification(notif.id);
+                                                }}
+                                                className="flex items-center justify-center w-3.5 h-3.5 opacity-0 group-hover/row:opacity-100 transition-all active:scale-95"
+                                            >
+                                                <X 
+                                                    size={10} 
+                                                    className={cn(
+                                                        "transition-colors",
+                                                        isDark ? "text-[#444] hover:text-[#888]" : "text-[#ccc] hover:text-[#888]"
+                                                    )} 
                                                 />
-                                            );
-                                            if (isLimitReached) return <AlertCircle size={12} className="text-amber-500" />;
-                                            if (isReceiptPending) return <Receipt size={12} className="text-emerald-500" />;
-                                            if (isSuccess) {
-                                                if (isProposal) return <FileText size={12} className="text-emerald-500" />;
-                                                if (isInvoice) return <Receipt size={12} className="text-emerald-500" />;
-                                                return <Check size={12} className="text-emerald-500" />;
-                                            }
-                                            if (isFormResponse) return <ClipboardList size={12} className={iconClass} />;
-                                            if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
-                                            if (isProposal) return <FileText size={12} className={iconClass} />;
-                                            if (isInvoice) return <Receipt size={12} className={iconClass} />;
-                                            return <Eye size={12} className={iconClass} />;
-                                        })()}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={cn("text-[12px] font-medium leading-tight", isDark ? "text-[#eee]" : "text-[#222]")}>
-                                            {notif.title}
-                                        </p>
-                                        {notif.message && notif.type !== 'hook' && !notif.link?.includes('/hooks') && !notif.title?.toLowerCase().includes('hook') && (
-                                            <p className={cn("text-[10px] mt-0.5 leading-tight opacity-70 break-all", isDark ? "text-[#888]" : "text-[#666]")}>
-                                                {notif.message}
-                                            </p>
-                                        )}
-                                        <div className="flex items-center justify-between mt-1">
-                                            <p className={cn("text-[9px] font-medium", isDark ? "text-[#444]" : "text-[#aaa]")}>
-                                                {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
-                                            </p>
+                                            </button>
+
+                                            {notif.metadata?.visitor && (
+                                                <Tooltip 
+                                                    className="whitespace-normal font-sans"
+                                                    content={
+                                                        <div className="flex flex-col gap-1 w-[160px]">
+                                                            <div className="flex items-center gap-2 border-b border-inherit pb-1.5 mb-0.5">
+                                                                {!notif.metadata.visitor.countryCode || notif.metadata.visitor.countryCode === 'local' || notif.metadata.visitor.countryCode === 'unknown' ? (
+                                                                    <span className="text-[13px] leading-none">{notif.metadata.visitor.flag}</span>
+                                                                ) : (
+                                                                    <img 
+                                                                        src={`https://flagcdn.com/w20/${notif.metadata.visitor.countryCode.toLowerCase()}.png`} 
+                                                                        alt={notif.metadata.visitor.country}
+                                                                        className="w-4 h-3 object-cover rounded-[1px] shadow-sm"
+                                                                        onError={(e) => {
+                                                                            // Fallback to emoji if image fails
+                                                                            e.currentTarget.style.display = 'none';
+                                                                            const span = e.currentTarget.parentElement?.querySelector('.flag-emoji-fallback') as HTMLElement;
+                                                                            if (span) span.style.display = 'inline';
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                                {notif.metadata.visitor.countryCode && notif.metadata.visitor.countryCode !== 'local' && notif.metadata.visitor.countryCode !== 'unknown' && (
+                                                                    <span className="flag-emoji-fallback text-[13px] leading-none" style={{ display: 'none' }}>
+                                                                        {notif.metadata.visitor.flag}
+                                                                    </span>
+                                                                )}
+                                                                <span className="text-[10px] uppercase tracking-wider font-bold truncate leading-none">
+                                                                    {notif.metadata.visitor.country}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center justify-between text-[9px] leading-tight">
+                                                                <span className="opacity-50 font-medium">IP</span>
+                                                                <span className="font-mono">{notif.metadata.visitor.ip}</span>
+                                                            </div>
+                                                            {notif.metadata.visitor.isp && (
+                                                                <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
+                                                                    <span className="opacity-50 font-medium mr-2">ISP</span>
+                                                                    <span className="font-semibold text-right truncate flex-1">{notif.metadata.visitor.isp}</span>
+                                                                </div>
+                                                            )}
+                                                            {(notif.metadata?.visitor?.deviceType || notif.metadata?.visitor?.os) && (
+                                                                <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
+                                                                    <span className="opacity-50 font-medium mr-2">System</span>
+                                                                    <span className="font-semibold text-right">
+                                                                        {notif.metadata.visitor.deviceType === 'Bot' ? '🤖' : 
+                                                                         notif.metadata.visitor.deviceType === 'Mobile' ? '📱' : 
+                                                                         notif.metadata.visitor.deviceType === 'Tablet' ? '📟' : '🖥️'}
+                                                                        {' '}
+                                                                        {notif.metadata.visitor.os && notif.metadata.visitor.os !== 'Unknown OS' 
+                                                                            ? `${notif.metadata.visitor.os} ${notif.metadata.visitor.deviceType !== 'Desktop' && notif.metadata.visitor.deviceType !== 'Bot' ? `(${notif.metadata.visitor.deviceType})` : ''}`
+                                                                            : notif.metadata.visitor.deviceType}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            <div className="flex items-end justify-between mt-0.5 pt-1.5 border-t border-inherit text-[8px] opacity-70 font-medium whitespace-nowrap">
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    {notif.metadata.visitor.region && <div>{notif.metadata.visitor.city}, {notif.metadata.visitor.region}</div>}
+                                                                    {notif.metadata.visitor.timezone && <div>{notif.metadata.visitor.timezone}</div>}
+                                                                </div>
+                                                                <div className="flex flex-col text-right pl-3 opacity-90 tracking-tight leading-[1.1]">
+                                                                    <div>{format(new Date(notif.created_at), "h:mm a")}</div>
+                                                                    <div>{format(new Date(notif.created_at), "MMM d, yyyy")}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    } 
+                                                    side="left"
+                                                >
+                                                    <div className="flex items-center justify-center w-3.5 h-3.5 cursor-help">
+                                                        <AlertCircle size={10} className="text-primary/70 hover:text-primary transition-colors" />
+                                                    </div>
+                                                </Tooltip>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Receipt pending CTA */}
-                                {notif.type === 'receipt_pending' && !notif.read && (
-                                    <div className="flex items-center gap-2 px-4 pb-3">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                markAsRead(notif.id);
-                                            }}
-                                            className={cn(
-                                                "flex-1 flex items-center justify-center py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95",
-                                                isDark
-                                                    ? "bg-white/5 hover:bg-white/10 text-[#aaa] border border-white/5"
-                                                    : "bg-black/5 hover:bg-black/10 text-[#555] border border-black/5"
-                                            )}
-                                        >
-                                            Dismiss
-                                        </button>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                markAsRead(notif.id);
-                                                setReceiptModal({ isOpen: true, metadata: notif.metadata, notificationId: notif.id });
-                                            }}
-                                            className={cn(
-                                                "flex-[2] flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95",
-                                                isDark
-                                                    ? "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20"
-                                                    : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
-                                            )}
-                                        >
-                                            <Mail size={11} />
-                                            Send Receipt
-                                        </button>
-                                    </div>
-                                )}
-                            </motion.div>
-                        ))}
+                                    {/* Receipt pending CTA */}
+                                    {notif.type === 'receipt_pending' && !notif.read && (
+                                        <div className="flex items-center gap-2 px-4 pb-3">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    markAsRead(notif.id);
+                                                }}
+                                                className={cn(
+                                                    "flex-1 flex items-center justify-center py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95",
+                                                    isDark
+                                                        ? "bg-white/5 hover:bg-white/10 text-[#aaa] border border-white/5"
+                                                        : "bg-black/5 hover:bg-black/10 text-[#555] border border-black/5"
+                                                )}
+                                            >
+                                                Dismiss
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    markAsRead(notif.id);
+                                                    setReceiptModal({ isOpen: true, metadata: notif.metadata, notificationId: notif.id });
+                                                }}
+                                                className={cn(
+                                                    "flex-[2] flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95",
+                                                    isDark
+                                                        ? "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20"
+                                                        : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                                )}
+                                            >
+                                                <Mail size={11} />
+                                                Send Receipt
+                                            </button>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            ))}
                         </AnimatePresence>
                     </div>
                 )}
@@ -1316,14 +1322,57 @@ function FormResponsePanel({ id, formId, isDark }: { id: string; formId: string;
         );
     }
 
+    const primaryIdentity = (() => {
+        if (!response?.data) return 'Respondent';
+        const fds = form.fields || [];
+        
+        let match = fds.find(f => f.type === 'full_name' && response.data[f.id]);
+        if (match) return String(response.data[match.id]);
+        
+        match = fds.find(f => (f.label?.toLowerCase().includes('name') || f.label?.toLowerCase().includes('identity')) && response.data[f.id]);
+        if (match) return String(response.data[match.id]);
+        
+        match = fds.find(f => f.type === 'email' && response.data[f.id]);
+        if (match) return String(response.data[match.id]);
+
+        match = fds.find(f => f.type === 'short_text' && response.data[f.id]);
+        if (match) return String(response.data[match.id]);
+        
+        // Fallback to first non-empty field
+        const firstVal = Object.values(response.data).find(v => v && typeof v === 'string' && v.length < 50);
+        if (firstVal) return String(firstVal);
+
+        return 'Respondent';
+    })();
+
+    const isImageUrl = (url: any) => {
+        if (typeof url !== 'string') return false;
+        return url.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) != null || url.includes('supabase.co/storage/v1/object/public/');
+    };
+
     return (
         <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto px-6 py-8">
                 <div className="mb-10">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold uppercase",
+                            isDark ? "bg-white/5 text-white/40" : "bg-black/5 text-black/40")}>
+                            {primaryIdentity[0]}
+                        </div>
+                        <div className="flex flex-col">
+                            <h2 className={cn("text-[18px] font-bold tracking-tight leading-none", isDark ? "text-white" : "text-black")}>
+                                {primaryIdentity}
+                            </h2>
+                            <div className={cn("text-[11px] font-medium mt-1 opacity-40", isDark ? "text-white" : "text-black")}>
+                                Form Respondent
+                            </div>
+                        </div>
+                    </div>
+
                     <div className={cn("text-[9px] font-bold uppercase tracking-widest opacity-30 mb-1.5", isDark ? "text-white" : "text-black")}>
                         Submitted on
                     </div>
-                    <div className={cn("text-[15px] font-bold tracking-tight", isDark ? "text-white" : "text-black")}>
+                    <div className={cn("text-[13px] font-bold tracking-tight opacity-60", isDark ? "text-white" : "text-black")}>
                         {new Date(response.created_at).toLocaleString(undefined, { 
                             weekday: 'long', 
                             year: 'numeric', 
@@ -1337,18 +1386,70 @@ function FormResponsePanel({ id, formId, isDark }: { id: string; formId: string;
 
                 <div className="space-y-8">
                     {form.fields.map(field => {
-                        const value = response.data?.[field.id];
+                        let rawValue = response.data?.[field.id];
+                        
+                        // Parse JSON if it looks like an array (from multi-select)
+                        let value = rawValue;
+                        if (typeof rawValue === 'string' && rawValue.startsWith('[') && rawValue.endsWith(']')) {
+                            try {
+                                const parsed = JSON.parse(rawValue);
+                                if (Array.isArray(parsed)) value = parsed;
+                            } catch (e) {
+                                // Not a valid JSON array, keep as string
+                            }
+                        }
+
                         const isEmpty = value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0);
                         
                         return (
-                            <div key={field.id} className="group flex flex-col gap-1.5">
-                                <div className={cn("text-[9px] font-bold uppercase tracking-widest opacity-30 transition-opacity group-hover:opacity-100", isDark ? "text-white" : "text-black")}>
-                                    {field.label}
+                            <div key={field.id} className="group flex flex-col gap-1.5 relative">
+                                <div className="flex items-center justify-between">
+                                    <div className={cn("text-[9px] font-bold uppercase tracking-widest opacity-30 transition-opacity group-hover:opacity-100", isDark ? "text-white" : "text-black")}>
+                                        {field.label}
+                                    </div>
+                                    {!isEmpty && (
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const text = Array.isArray(value) ? value.join(', ') : String(value);
+                                                navigator.clipboard.writeText(text);
+                                                appToast.success("Copied to clipboard");
+                                            }}
+                                            className={cn("p-1 rounded-md opacity-0 group-hover:opacity-100 transition-all", isDark ? "bg-white/10 hover:bg-white/20 text-white" : "bg-black/5 hover:bg-black/10 text-black")}
+                                            title="Copy value"
+                                        >
+                                            <Copy size={10} />
+                                        </button>
+                                    )}
                                 </div>
-                                <div className={cn("text-[13px] leading-relaxed break-words font-medium", 
+                                <div className={cn("text-[14px] leading-relaxed break-words font-medium", 
                                     isEmpty ? "italic opacity-20" : (isDark ? "text-[#eee]" : "text-[#222]")
                                 )}>
-                                    {isEmpty ? 'No answer' : (Array.isArray(value) ? value.join(', ') : String(value))}
+                                    {isEmpty ? 'No answer' : (() => {
+                                        if (Array.isArray(value)) {
+                                            return (
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                    {value.map((v, i) => (
+                                                        isImageUrl(v) ? (
+                                                            <a key={i} href={v} target="_blank" rel="noopener noreferrer" className="block">
+                                                                <img src={v} alt="" className="max-w-full h-auto rounded-lg border border-black/5 dark:border-white/5 max-h-[200px] object-contain bg-black/5" />
+                                                            </a>
+                                                        ) : (
+                                                            <span key={i} className={cn("px-2 py-1 rounded bg-black/5 dark:bg-white/5 text-[12px]")}>{String(v)}</span>
+                                                        )
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        if (isImageUrl(value)) {
+                                            return (
+                                                <a href={value} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                                                    <img src={value} alt="" className="max-w-full h-auto rounded-lg border border-black/5 dark:border-white/5 max-h-[300px] object-contain bg-black/5" />
+                                                </a>
+                                            );
+                                        }
+                                        return String(value);
+                                    })()}
                                 </div>
                             </div>
                         );

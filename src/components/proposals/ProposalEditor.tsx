@@ -668,7 +668,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         )}
                     </div>
 
-                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />
+                    <div className={cn("w-px h-5 mx-0.5 hidden md:block", isDark ? "bg-white/10" : "bg-black/10")} />
 
                     {/* Preview toggle */}
                     <button
@@ -797,6 +797,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
             <div className="flex-1 flex flex-col overflow-hidden relative z-0 isolate">
                 <div className="flex-1 flex overflow-hidden relative">
                     {/* ── LEFT: CANVAS ── */}
+                    {id && !isLoaded ? (
+                        <div className="flex-1 flex items-center justify-center bg-[var(--color-bg-secondary)]">
+                            <span className="text-[13px] opacity-40 font-medium">Loading document...</span>
+                        </div>
+                    ) : (
                     <div 
                         className="flex-1 overflow-auto relative w-full pb-11 md:pb-0"
                         style={{ 
@@ -965,6 +970,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         )}
                     </div>
                 </div>
+                )}
+
 
                 {/* ── RIGHT: METADATA PANEL (desktop only) ── */}
                 {!isPreview && (

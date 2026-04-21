@@ -84,14 +84,14 @@ export function SectionTemplateBrowser({ onInsert }: { onInsert: (blockData: any
     }, [closeRightPanel]);
 
     const [search, setSearch] = useState('');
-    const [activeType, setActiveType] = useState('all');
+    const [activeEntity, setActiveEntity] = useState('all');
 
-    const blockTypes = ['all', ...Array.from(new Set(templates.map(t => t.block_type)))];
+    const entities = ['all', 'proposal', 'invoice'];
 
     const filtered = templates.filter(t => {
-        const matchesType = activeType === 'all' || t.block_type === activeType;
+        const matchesEntity = activeEntity === 'all' || t.source_entity === activeEntity;
         const matchesSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || (t.description?.toLowerCase().includes(search.toLowerCase()));
-        return matchesType && matchesSearch;
+        return matchesEntity && matchesSearch;
     });
 
     return (
@@ -134,20 +134,19 @@ export function SectionTemplateBrowser({ onInsert }: { onInsert: (blockData: any
                 </div>
             </div>
 
-            {/* Type filter pills */}
             <div className="px-3 pb-2.5 flex items-center gap-1.5 flex-wrap shrink-0">
-                {blockTypes.map(type => (
+                {entities.map(entity => (
                     <button
-                        key={type}
-                        onClick={() => setActiveType(type)}
+                        key={entity}
+                        onClick={() => setActiveEntity(entity)}
                         className={cn(
-                            'px-2.5 py-1 rounded-lg text-[11px] font-semibold capitalize transition-all border',
-                            activeType === type
+                            'px-3 py-1 rounded-lg text-[11px] font-semibold transition-all border',
+                            activeEntity === entity
                                 ? isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-black text-white border-black'
                                 : isDark ? 'border-white/5 text-white/40 hover:border-white/15 hover:text-white/70' : 'border-[#e8e8e8] text-black/40 hover:border-[#ccc] hover:text-black/70'
                         )}
                     >
-                        {type === 'all' ? 'All' : `${BLOCK_TYPE_ICONS[type] || ''} ${type}`}
+                        {entity === 'all' ? 'All' : entity === 'proposal' ? 'Proposals' : 'Invoices'}
                     </button>
                 ))}
             </div>

@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     X, Calendar, Flag, User, ChevronDown,
     MessageSquare, Paperclip, Activity, Trash2, Check,
-    AlignLeft, Link2, Play, PanelRight, Maximize,
+    AlignLeft, Play, PanelRight, Maximize,
     MoreHorizontal, Repeat, HelpCircle, GripVertical,
     Eye, Tag, Plus, CheckCircle2, Clock, Zap,
-    Hash, ArrowUpRight, Circle, Inbox, TrendingUp,
+    Hash, ArrowUpRight, Circle, Inbox, TrendingUp, Link2,
+    FileImage, FileVideo, FileAudio, FileText, FileCode, FileArchive, File,
+    Download, ZoomIn, ZoomOut, RotateCw, Music,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useProjectStore, ProjectTask, TaskStatus, TaskPriority, ProjectTaskGroup } from '@/store/useProjectStore';
@@ -47,6 +49,335 @@ const STATUS_META: Record<TaskStatus, { label: string; color: string; bg: string
     review: { label: 'Review',  color: '#f97316', bg: 'rgba(249,115,22,0.1)', icon: <Eye size={12} />               },
     done:   { label: 'Done',    color: '#10b981', bg: 'rgba(16,185,129,0.1)', icon: <CheckCircle2 size={12} />      },
 };
+
+// ─── File type helpers (mirrored from file manager) ──────────────────────────
+
+type FileKind = 'image' | 'video' | 'audio' | 'doc' | 'code' | 'archive' | 'file';
+
+function detectFileKind(name: string): FileKind {
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    if (['jpg','jpeg','png','gif','webp','svg','ico','bmp','avif'].includes(ext)) return 'image';
+    if (['mp4','mov','avi','mkv','webm','flv'].includes(ext)) return 'video';
+    if (['mp3','wav','ogg','aac','flac','m4a'].includes(ext)) return 'audio';
+    if (['pdf','doc','docx','xls','xlsx','ppt','pptx','odt','txt','md','rtf'].includes(ext)) return 'doc';
+    if (['ts','tsx','js','jsx','py','rs','go','rb','php','java','cs','cpp','c','html','css','json','yaml','yml','sh'].includes(ext)) return 'code';
+    if (['zip','rar','7z','tar','gz','bz2'].includes(ext)) return 'archive';
+    return 'file';
+}
+
+function FileKindIcon({ kind, size = 16 }: { kind: FileKind; size?: number }) {
+    const s = size;
+    switch (kind) {
+        case 'image':   return <FileImage   size={s} className="shrink-0" style={{ color: '#ec4899' }} />;
+        case 'video':   return <FileVideo   size={s} className="shrink-0" style={{ color: '#3b82f6' }} />;
+        case 'audio':   return <FileAudio   size={s} className="shrink-0" style={{ color: '#8b5cf6' }} />;
+        case 'doc':     return <FileText    size={s} className="shrink-0" style={{ color: '#f97316' }} />;
+        case 'code':    return <FileCode    size={s} className="shrink-0" style={{ color: '#10b981' }} />;
+        case 'archive': return <FileArchive size={s} className="shrink-0" style={{ color: '#6b7280' }} />;
+        default:        return <File        size={s} className="shrink-0" style={{ color: '#9ca3af' }} />;
+    }
+}
+
+function fmtBytes(b: number) {
+    if (b < 1024) return `${b} B`;
+    if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+    return `${(b/1048576).toFixed(1)} MB`;
+}
+
+function downloadFile(url: string, name: string) {
+    const link = document.createElement('a');
+    // Append a query parameter to hint backend storage (like Supabase/S3) to force Content-Disposition attachment
+    link.href = url + (url.includes('?') ? '&' : '?') + 'download=1';
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// ─── Attachment Preview Lightbox ──────────────────────────────────────────────
+
+type AttachmentFile = { id: string; name: string; url: string; size: number; type: string };
+
+function AttachmentPreview({ file, isDark, onClose, onDelete }: {
+    file: AttachmentFile;
+    isDark: boolean;
+    onClose: () => void;
+    onDelete: () => void;
+}) {
+    const kind = detectFileKind(file.name);
+    const [zoom, setZoom]     = useState(1);
+    const [rotate, setRotate] = useState(0);
+    const [imgLoading, setImgLoading] = useState(true);
+    const [confirmDel, setConfirmDel] = useState(false);
+
+    useEffect(() => {
+        const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('keydown', h);
+        return () => document.removeEventListener('keydown', h);
+    }, [onClose]);
+
+    const panelBg = isDark ? 'bg-[#141414] border-[#222]' : 'bg-white border-[#e8e8e8]';
+    const muted   = isDark ? 'text-[#555]' : 'text-[#aaa]';
+
+    const renderContent = () => {
+        if (kind === 'image') {
+            return (
+                <div className="flex-1 flex items-center justify-center overflow-hidden relative p-6">
+                    {imgLoading && <div className={cn('absolute inset-0 z-10 animate-pulse', isDark ? 'bg-white/[0.03]' : 'bg-black/[0.02]')} />}
+                    <div style={{ transform: `scale(${zoom}) rotate(${rotate}deg)`, transition: 'transform 0.25s ease' }}>
+                        <img
+                            src={file.url}
+                            alt={file.name}
+                            className={cn('max-w-full max-h-[55vh] object-contain rounded-xl shadow-2xl transition-opacity duration-300', imgLoading ? 'opacity-0' : 'opacity-100')}
+                            onLoad={() => setImgLoading(false)}
+                            onError={() => setImgLoading(false)}
+                        />
+                    </div>
+                    {/* Zoom/rotate sidebar */}
+                    <div className={cn('absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 px-1.5 py-3 rounded-full border shadow-xl backdrop-blur-md', isDark ? 'bg-[#1a1a1a]/90 border-[#333]' : 'bg-white/90 border-[#e5e5e5]')}>
+                        <button onClick={() => setZoom(z => Math.min(4, z + 0.25))} title="Zoom in" className={cn('w-8 h-8 flex items-center justify-center rounded-xl transition-colors', isDark ? 'hover:bg-white/10 text-[#888] hover:text-primary' : 'hover:bg-[#f0f0f0] text-[#666] hover:text-primary')}><ZoomIn size={14}/></button>
+                        <span className={cn('text-[9px] font-black tabular-nums h-6 flex items-center', isDark ? 'text-[#444]' : 'text-[#bbb]')}>{Math.round(zoom * 100)}%</span>
+                        <button onClick={() => setZoom(z => Math.max(0.25, z - 0.25))} title="Zoom out" className={cn('w-8 h-8 flex items-center justify-center rounded-xl transition-colors', isDark ? 'hover:bg-white/10 text-[#888] hover:text-red-400' : 'hover:bg-[#f0f0f0] text-[#666] hover:text-red-400')}><ZoomOut size={14}/></button>
+                        <div className={cn('w-4 h-px my-1', isDark ? 'bg-[#333]' : 'bg-[#e0e0e0]')}/>
+                        <button onClick={() => setRotate(r => r + 90)} title="Rotate" className={cn('w-8 h-8 flex items-center justify-center rounded-xl transition-colors', isDark ? 'hover:bg-white/10 text-[#888] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#666]')}><RotateCw size={14}/></button>
+                        <button onClick={() => { setZoom(1); setRotate(0); }} title="Reset" className={cn('w-8 h-8 flex items-center justify-center rounded-xl text-[8px] font-black uppercase transition-colors', isDark ? 'hover:bg-white/10 text-[#444] hover:text-white' : 'hover:bg-[#f0f0f0] text-[#ccc]')}>RST</button>
+                    </div>
+                </div>
+            );
+        }
+        if (kind === 'video') {
+            return (
+                <div className="flex-1 flex items-center justify-center p-6">
+                    <video controls className="max-w-full max-h-[56vh] rounded-2xl shadow-2xl" src={file.url} />
+                </div>
+            );
+        }
+        if (kind === 'audio') {
+            return (
+                <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
+                    <div className="w-24 h-24 rounded-[2rem] flex items-center justify-center shadow-2xl" style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)' }}>
+                        <Music size={40} className="text-white/90" />
+                    </div>
+                    <p className={cn('text-[15px] font-bold', isDark ? 'text-white' : 'text-[#111]')}>{file.name.replace(/\.[^.]+$/, '')}</p>
+                    <audio controls className="w-full max-w-sm" src={file.url} />
+                </div>
+            );
+        }
+        // Generic / doc / archive
+        return (
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 p-8">
+                <div className={cn('w-20 h-20 rounded-3xl flex items-center justify-center shadow-xl', isDark ? 'bg-white/5' : 'bg-[#f5f5f5]')}>
+                    <FileKindIcon kind={kind} size={36} />
+                </div>
+                <div className="text-center">
+                    <p className={cn('text-[14px] font-bold', isDark ? 'text-[#ccc]' : 'text-[#444]')}>{file.name}</p>
+                    <p className={cn('text-[11px] mt-1', muted)}>{fmtBytes(file.size)}</p>
+                    <p className={cn('text-[10px] mt-2 opacity-60', muted)}>Download to open this file</p>
+                </div>
+                <button
+                    onClick={() => downloadFile(file.url, file.name)}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-[12px] font-bold transition-all hover:bg-primary/90 active:scale-95 shadow-lg shadow-primary/20"
+                >
+                    <Download size={13} /> Download
+                </button>
+            </div>
+        );
+    };
+
+    return (
+        <div
+            className="fixed inset-0 z-[300] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)' }}
+            onClick={onClose}
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 10 }}
+                transition={{ duration: 0.18, ease: [0.22,1,0.36,1] }}
+                className={cn('relative flex flex-col rounded-2xl border shadow-2xl overflow-hidden w-full max-w-3xl max-h-[90vh]', panelBg)}
+                style={{ boxShadow: isDark ? '0 40px 80px rgba(0,0,0,0.8)' : '0 40px 80px rgba(0,0,0,0.15)' }}
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className={cn('flex items-center gap-3 px-5 py-3.5 border-b shrink-0', isDark ? 'border-[#1e1e1e]' : 'border-[#f0f0f0]')}>
+                    <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center shrink-0', isDark ? 'bg-white/5' : 'bg-[#f5f5f5]')}>
+                        <FileKindIcon kind={kind} size={15} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className={cn('text-[13px] font-bold truncate', isDark ? 'text-white' : 'text-[#111]')}>{file.name}</p>
+                        <p className={cn('text-[10px]', muted)}>{fmtBytes(file.size)}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                        <button
+                            onClick={() => downloadFile(file.url, file.name)}
+                            className={cn('h-8 px-3 gap-1.5 flex items-center justify-center rounded-lg transition-colors text-[11px] font-bold', isDark ? 'text-[#ccc] hover:text-white hover:bg-white/5' : 'text-[#666] hover:text-[#111] hover:bg-[#f5f5f5]')}
+                            title="Download">
+                            <Download size={13} />
+                            Download
+                        </button>
+                        <button
+                            onClick={() => {
+                                const fullUrl = `${window.location.origin}${file.url}`;
+                                navigator.clipboard.writeText(fullUrl);
+                                appToast.success('Link copied', 'Download link copied to clipboard');
+                            }}
+                            className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-colors', isDark ? 'text-[#ccc] hover:text-white hover:bg-white/5' : 'text-[#666] hover:text-[#111] hover:bg-[#f5f5f5]')}
+                            title="Copy Link">
+                            <Link2 size={14} />
+                        </button>
+                        <div className={cn('w-px h-5 mx-1', isDark ? 'bg-[#2a2a2a]' : 'bg-[#e8e8e8]')} />
+                        <AnimatePresence mode="wait">
+                            {confirmDel ? (
+                                <motion.button key="sure" initial={{ opacity:0,scale:0.8 }} animate={{ opacity:1,scale:1 }} exit={{ opacity:0,scale:0.8 }}
+                                    onClick={() => { onDelete(); onClose(); }}
+                                    className="px-3 h-8 flex items-center gap-1.5 rounded-lg bg-red-500 text-white text-[11px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all">
+                                    <Trash2 size={12} /> Delete
+                                </motion.button>
+                            ) : (
+                                <motion.button key="del" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                                    onClick={() => { setConfirmDel(true); setTimeout(() => setConfirmDel(false), 3000); }}
+                                    className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-red-400/50 hover:text-red-500', isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50')}>
+                                    <Trash2 size={14} />
+                                </motion.button>
+                            )}
+                        </AnimatePresence>
+                        <div className={cn('w-px h-5 mx-1', isDark ? 'bg-[#2a2a2a]' : 'bg-[#e8e8e8]')} />
+                        <button onClick={onClose} className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]')}>
+                            <X size={14} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className={cn('flex-1 overflow-hidden flex flex-col min-h-0', isDark ? 'bg-[#0e0e0e]' : 'bg-[#f8f8f8]')}>
+                    {renderContent()}
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
+// ─── Attachment Card ──────────────────────────────────────────────────────────
+
+function AttachmentCard({ file, isDark, readOnly, onClick, onDelete }: {
+    file: AttachmentFile;
+    isDark: boolean;
+    readOnly?: boolean;
+    onClick: () => void;
+    onDelete: () => void;
+}) {
+    const kind = detectFileKind(file.name);
+    const isImg = kind === 'image';
+    const [confirmDel, setConfirmDel] = useState(false);
+
+    return (
+        <div
+            onClick={onClick}
+            className={cn(
+                'group/afile relative flex flex-col items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 select-none',
+                isDark ? 'bg-[#1a1a1a] border-[#242424] hover:border-[#2e2e2e] hover:bg-[#1d1d1d]' 
+                       : 'bg-white border-[#f0f0f0] hover:border-[#d8d8d8] hover:shadow-sm hover:shadow-black/5'
+            )}
+        >
+            {/* Thumbnail area */}
+            <div className="relative w-full aspect-square flex items-center justify-center py-1 min-h-[80px]">
+                {isImg ? (
+                    <div
+                        className="w-full h-full rounded-xl overflow-hidden flex items-center justify-center relative p-1.5"
+                        style={{
+                            background: isDark
+                                ? 'linear-gradient(45deg,#161616 25%,#1a1a1a 25%,#1a1a1a 50%,#161616 50%,#161616 75%,#1a1a1a 75%)'
+                                : '#f9f9f9',
+                            backgroundSize: '10px 10px'
+                        }}
+                    >
+                        <img
+                            src={file.url}
+                            alt={file.name}
+                            loading="lazy"
+                            className="max-w-full max-h-full object-contain select-none pointer-events-none drop-shadow-sm transition-transform duration-300 group-hover/afile:scale-105"
+                        />
+                    </div>
+                ) : (
+                    <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover/afile:scale-105', isDark ? 'bg-white/[0.03]' : 'bg-[#f8f8f8]')}>
+                        <FileKindIcon kind={kind} size={42} />
+                    </div>
+                )}
+            </div>
+
+            {/* Info bar */}
+            <div className="w-full text-center px-1 space-y-0.5">
+                <p className={cn('text-[11px] font-semibold truncate transition-colors', isDark ? 'text-[#ddd]' : 'text-[#444] group-hover/afile:text-primary')}>
+                    {file.name}
+                </p>
+                <div className="flex items-center justify-center gap-1.5 opacity-40 group-hover/afile:opacity-70 transition-opacity">
+                    <span className={cn('text-[9px] font-medium uppercase tracking-wider', isDark ? 'text-white' : 'text-black')}>
+                        {fmtBytes(file.size)}
+                    </span>
+                    <div className={cn('w-[2px] h-[2px] rounded-full', isDark ? 'bg-white' : 'bg-black')} />
+                    <span className={cn('text-[9px] font-medium uppercase tracking-wider', isDark ? 'text-white' : 'text-black')}>
+                        {kind}
+                    </span>
+                </div>
+            </div>
+
+            {/* Floating Bottom actions */}
+            <div className={cn(
+                "absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 p-1 rounded-xl opacity-0 group-hover/afile:opacity-100 transition-all translate-y-1 group-hover/afile:translate-y-0 shadow-xl border",
+                isDark ? "bg-[#1a1a1a]/95 border-[#333] backdrop-blur-md" : "bg-white border-[#ececec] shadow-black/5"
+            )}>
+                <button
+                    onClick={e => { e.stopPropagation(); downloadFile(file.url, file.name); }}
+                    className={cn(
+                        'w-7 h-7 rounded-lg flex items-center justify-center transition-all',
+                        isDark ? 'text-[#aaa] hover:text-white hover:bg-white/10' : 'text-[#666] hover:text-[#111] hover:bg-black/5'
+                    )}
+                    title="Download"
+                >
+                    <Download size={13} />
+                </button>
+
+                <button
+                    onClick={e => {
+                        e.stopPropagation();
+                        const fullUrl = `${window.location.origin}${file.url}`;
+                        navigator.clipboard.writeText(fullUrl);
+                        appToast.success('Link copied', 'Download link copied to clipboard');
+                    }}
+                    className={cn(
+                        'w-7 h-7 rounded-lg flex items-center justify-center transition-all',
+                        isDark ? 'text-[#aaa] hover:text-white hover:bg-white/10' : 'text-[#666] hover:text-[#111] hover:bg-black/5'
+                    )}
+                    title="Copy Link"
+                >
+                    <Link2 size={13} />
+                </button>
+
+                {!readOnly && (
+                    <AnimatePresence mode="wait">
+                        {confirmDel ? (
+                            <motion.button key="sure" initial={{ opacity:0,scale:0.8 }} animate={{ opacity:1,scale:1 }} exit={{ opacity:0,scale:0.8 }}
+                                onClick={e => { e.stopPropagation(); onDelete(); }}
+                                className="px-2 h-7 flex items-center justify-center rounded-lg bg-red-500 text-white text-[9px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all">
+                                Sure?
+                            </motion.button>
+                        ) : (
+                            <motion.button key="del" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                                onClick={e => { e.stopPropagation(); setConfirmDel(true); setTimeout(() => setConfirmDel(false), 3000); }}
+                                className={cn(
+                                    'w-7 h-7 rounded-lg flex items-center justify-center transition-all',
+                                    isDark ? 'text-red-400 opacity-60 hover:opacity-100 hover:bg-red-500/10' : 'text-red-400 hover:bg-red-50'
+                                )}>
+                                <Trash2 size={13} />
+                            </motion.button>
+                        )}
+                    </AnimatePresence>
+                )}
+            </div>
+        </div>
+    );
+}
 
 // ─── Shared UI Primitives ──────────────────────────────────────────────────────
 
@@ -148,6 +479,66 @@ function InlineSelect<T extends string>({ value, options, onChange, isDark, rend
     );
 }
 
+function ChecklistItemRow({ item, isDark, onToggle, onDelete }: {
+    item: { id: string; label: string; completed: boolean };
+    isDark: boolean;
+    onToggle: () => void;
+    onDelete: () => void;
+}) {
+    const [confirmDel, setConfirmDel] = useState(false);
+
+    return (
+        <div className="flex items-center gap-3 group/item py-1">
+            <button 
+                onClick={onToggle}
+                className={cn(
+                    "w-4 h-4 rounded border transition-all flex items-center justify-center",
+                    item.completed 
+                        ? "bg-primary border-primary text-primary-foreground" 
+                        : isDark ? "border-[#333] hover:border-[#555]" : "border-[#ccc] hover:border-[#aaa]"
+                )}
+            >
+                {item.completed && <Check size={10} strokeWidth={4} />}
+            </button>
+            <span className={cn(
+                "flex-1 text-[12.5px] transition-all",
+                item.completed ? "line-through opacity-40" : isDark ? "text-[#ddd]" : "text-[#333]"
+            )}>
+                {item.label}
+            </span>
+            
+            <AnimatePresence mode="wait">
+                {confirmDel ? (
+                    <motion.button 
+                        key="sure" 
+                        initial={{ opacity: 0, scale: 0.8 }} 
+                        animate={{ opacity: 1, scale: 1 }} 
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        onClick={onDelete}
+                        className="opacity-100 px-1.5 h-[22px] flex items-center justify-center rounded bg-red-500 text-white text-[8.5px] font-bold shadow-sm active:scale-95 transition-all"
+                    >
+                        Sure?
+                    </motion.button>
+                ) : (
+                    <motion.button 
+                        key="del" 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }}
+                        onClick={() => { setConfirmDel(true); setTimeout(() => setConfirmDel(false), 3000); }}
+                        className={cn(
+                            "opacity-0 group-hover/item:opacity-40 hover:!opacity-100 transition-all p-1 rounded flex items-center justify-center h-[22px]",
+                            isDark ? "text-[#555] hover:text-red-400 hover:bg-red-500/10" : "text-[#999] hover:text-red-500 hover:bg-red-50"
+                        )}
+                    >
+                        <Trash2 size={12} />
+                    </motion.button>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
 // ─── Task Detail Panel ─────────────────────────────────────────────────────────
 
 interface Props {
@@ -181,7 +572,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     const [priority, setPriority] = useState<TaskPriority>(task.priority);
     const [dueDate, setDueDate]   = useState(task.due_date || '');
     const [startDate, setStartDate] = useState(task.start_date || '');
-    const [activeTab, setActiveTab] = useState<'comments' | 'checklists' | 'attachments' | 'links'>('checklists');
+    const [activeTab, setActiveTab] = useState<'comments' | 'checklists' | 'attachments'>('checklists');
     const [deleting, setDeleting] = useState(false);
     const [comment, setComment]   = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -206,9 +597,28 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
     // Attachments
     const [attachments, setAttachments] = useState<{id: string, name: string, url: string, size: number, type: string}[]>(task.custom_fields?.attachments || []);
-    const [isUploading, setIsUploading] = useState(false);
+    const [isUploading, setIsUploading]   = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [previewingFile, setPreviewingFile] = useState<{id: string, name: string, url: string, size: number, type: string} | null>(null);
+
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const dropzoneRef = React.useRef<HTMLDivElement>(null);
+    const wasFocusedRef = React.useRef(false);
+    const [isDropzoneFocused, setIsDropzoneFocused] = useState(false);
 
     const [viewMode, setViewMode] = useState<'right' | 'center'>('right');
+    const tagPickerRef = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!showTagPicker) return;
+        const h = (e: MouseEvent) => {
+            if (tagPickerRef.current && !tagPickerRef.current.contains(e.target as Node)) {
+                setShowTagPicker(false);
+            }
+        };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [showTagPicker]);
 
     // Get all unique tags in the project
     const allTasks = tasksByProject[task.project_id] || [];
@@ -265,8 +675,77 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
         { id: 'checklists' as const,  icon: <Check size={13} />,           label: 'Checklist'   },
         { id: 'comments' as const,    icon: <MessageSquare size={13} />,  label: 'Comments'    },
         { id: 'attachments' as const, icon: <Paperclip size={13} />,       label: 'Files'       },
-        { id: 'links' as const,       icon: <Link2 size={13} />,           label: 'Links'       },
     ] as const;
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        await uploadFiles(files);
+        e.target.value = '';
+    };
+
+    const handlePaste = (e: React.ClipboardEvent) => {
+        if (e.clipboardData.files.length > 0) {
+            e.preventDefault();
+            uploadFiles(Array.from(e.clipboardData.files));
+        }
+    };
+
+    const uploadFiles = async (files: File[]) => {
+        if (!files.length) return;
+        setIsUploading(true);
+        setUploadProgress(0);
+        try {
+            const uploaded: {id: string, name: string, url: string, size: number, type: string}[] = [];
+            let totalBytes = files.reduce((acc, f) => acc + f.size, 0);
+            let uploadedBytes = 0;
+
+            for (const file of files) {
+                const fd = new FormData();
+                fd.append('file', file);
+                
+                const json = await new Promise<any>((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/upload');
+                    let fileUploaded = 0;
+                    xhr.upload.onprogress = (ev) => {
+                        if (ev.lengthComputable) {
+                            const newTotal = uploadedBytes + ev.loaded - fileUploaded;
+                            fileUploaded = ev.loaded;
+                            const progress = Math.min(100, Math.round((newTotal / totalBytes) * 100));
+                            setUploadProgress(progress);
+                        }
+                    };
+                    xhr.onload = () => {
+                        uploadedBytes += file.size; // finalize this file's bytes length
+                        try {
+                            resolve(JSON.parse(xhr.responseText));
+                        } catch(err) {
+                            reject(err);
+                        }
+                    };
+                    xhr.onerror = () => reject(new Error('Network Error'));
+                    xhr.send(fd);
+                });
+
+                if (json.url) {
+                    uploaded.push({ id: crypto.randomUUID(), name: file.name, url: json.url, size: file.size, type: file.type });
+                } else {
+                    appToast.error('Upload failed', json.details || 'Unknown error');
+                }
+            }
+            if (uploaded.length) {
+                const next = [...attachments, ...uploaded];
+                setAttachments(next);
+                save({ custom_fields: { ...task.custom_fields, attachments: next } });
+                appToast.success(`${uploaded.length} file${uploaded.length > 1 ? 's' : ''} uploaded`);
+            }
+        } catch (err: any) {
+            appToast.error('Upload failed', err.message);
+        } finally {
+            setIsUploading(false);
+            setUploadProgress(0);
+        }
+    };
 
     // Snappy ease curve: custom cubic-bezier for fast open, quick close
     const EASE_OUT: [number,number,number,number] = [0.22, 1, 0.36, 1];
@@ -275,6 +754,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     const isRight = viewMode === 'right';
 
     return (
+        <>
         <div className={cn(
             "fixed inset-0 z-[100] flex p-0 sm:p-2.5 overflow-hidden pointer-events-none",
             isRight ? "items-stretch justify-end" : "items-center justify-center"
@@ -357,7 +837,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                             "flex-1 text-[15px] font-bold bg-transparent outline-none truncate",
                             readOnly && "cursor-default",
                             isDark ? "text-white placeholder:text-[#333]" : "text-[#111] placeholder:text-[#ccc]",
-                            status === 'done' && (isDark ? "line-through text-[#555]" : "line-through text-[#aaa]")
+                            status === 'done' && (isDark ? "text-[#555]" : "text-[#aaa]")
                         )}
                         placeholder="Task title"
                     />
@@ -572,48 +1052,49 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
                                     {/* Tags */}
                                      <FieldRow label="Tags" icon={<Tag size={13} />} isDark={isDark}>
-                                         <div className="flex flex-wrap gap-1.5 min-h-[22px]">
-                                             {tags.map((t, i) => (
-                                                 <span 
-                                                     key={i} 
-                                                     className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-[5px] text-[9.5px] font-bold transition-all group/tag"
-                                                     style={{ backgroundColor: `${t.color}15`, color: t.color }}
-                                                 >
-                                                     
-                                                     <span className="truncate">{t.label}</span>
-                                                     {!readOnly && (
-                                                         <button 
-                                                             onClick={() => {
-                                                                 const next = tags.filter((_, idx) => idx !== i);
-                                                                 setTags(next);
-                                                                 save({ custom_fields: { ...task.custom_fields, tags: next } });
-                                                             }}
-                                                             className={cn(
-                                                                 "w-3.5 h-3.5 flex items-center justify-center rounded-full transition-colors",
-                                                                 isDark ? "hover:bg-white/10" : "hover:bg-black/5"
-                                                             )}
-                                                         >
-                                                             <X size={8} />
-                                                         </button>
-                                                     )}
-                                                 </span>
-                                             ))}
+                                         <div className="flex flex-wrap items-center gap-1.5 w-full min-h-[26px]">
+                                                 {tags.map((t, i) => (
+                                                     <span 
+                                                         key={i} 
+                                                         className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-[5px] text-[9.5px] font-bold transition-all group/tag"
+                                                         style={{ backgroundColor: `${t.color}15`, color: t.color }}
+                                                     >
+                                                         
+                                                         <span className="truncate">{t.label}</span>
+                                                         {!readOnly && (
+                                                             <button 
+                                                                 onClick={() => {
+                                                                     const next = tags.filter((_, idx) => idx !== i);
+                                                                     setTags(next);
+                                                                     save({ custom_fields: { ...task.custom_fields, tags: next } });
+                                                                 }}
+                                                                 className={cn(
+                                                                     "w-3.5 h-3.5 flex items-center justify-center rounded-full transition-colors",
+                                                                     isDark ? "hover:bg-white/10" : "hover:bg-black/5"
+                                                                 )}
+                                                             >
+                                                                 <X size={8} />
+                                                             </button>
+                                                         )}
+                                                     </span>
+                                                 ))}
+                                             
                                              {!readOnly && (
-                                                 <div className="relative">
+                                                 <div className="relative" ref={tagPickerRef}>
                                                      <button 
                                                          onClick={() => setShowTagPicker(!showTagPicker)}
                                                          className={cn(
-                                                             "flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-[9px] font-bold transition-all",
+                                                             "flex items-center gap-1.5 px-1.5 py-0.5 rounded-[5px] text-[9.5px] font-bold transition-all",
                                                              isDark ? "bg-white/5 text-[#555] hover:text-white" : "bg-black/5 text-[#aaa] hover:text-[#555]"
                                                          )}
                                                      >
-                                                         <Plus size={9} />
+                                                         <Plus size={8} />
                                                          Add
                                                      </button>
                                                      
                                                      {showTagPicker && (
                                                           <div className={cn(
-                                                              "absolute top-full left-0 mt-2 z-[210] rounded-xl border shadow-2xl overflow-hidden p-1 flex flex-col gap-1",
+                                                              "absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-[210] rounded-xl border shadow-2xl overflow-hidden p-1 flex flex-col gap-1",
                                                               isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
                                                           )} style={{ minWidth: '140px' }}>
                                                               <input 
@@ -853,39 +1334,21 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                     {/* Checklist Items */}
                                     <div className="flex flex-col gap-1">
                                         {checklists.map(item => (
-                                            <div key={item.id} className="flex items-center gap-3 group/item py-1">
-                                                <button 
-                                                    onClick={() => {
-                                                        const next = checklists.map(c => c.id === item.id ? { ...c, completed: !c.completed } : c);
-                                                        setChecklists(next);
-                                                        save({ custom_fields: { ...task.custom_fields, checklists: next } });
-                                                    }}
-                                                    className={cn(
-                                                        "w-4 h-4 rounded border transition-all flex items-center justify-center",
-                                                        item.completed 
-                                                            ? "bg-primary border-primary text-primary-foreground" 
-                                                            : isDark ? "border-[#333] hover:border-[#555]" : "border-[#ccc] hover:border-[#aaa]"
-                                                    )}
-                                                >
-                                                    {item.completed && <Check size={10} strokeWidth={4} />}
-                                                </button>
-                                                <span className={cn(
-                                                    "flex-1 text-[12.5px] transition-all",
-                                                    item.completed ? "line-through opacity-40" : isDark ? "text-[#ddd]" : "text-[#333]"
-                                                )}>
-                                                    {item.label}
-                                                </span>
-                                                <button 
-                                                    onClick={() => {
-                                                        const next = checklists.filter(c => c.id !== item.id);
-                                                        setChecklists(next);
-                                                        save({ custom_fields: { ...task.custom_fields, checklists: next } });
-                                                    }}
-                                                    className="opacity-0 group-hover/item:opacity-40 hover:!opacity-100 transition-opacity p-1 rounded hover:bg-red-500/10 text-red-500"
-                                                >
-                                                    <Trash2 size={12} />
-                                                </button>
-                                            </div>
+                                            <ChecklistItemRow
+                                                key={item.id}
+                                                item={item}
+                                                isDark={isDark}
+                                                onToggle={() => {
+                                                    const next = checklists.map(c => c.id === item.id ? { ...c, completed: !c.completed } : c);
+                                                    setChecklists(next);
+                                                    save({ custom_fields: { ...task.custom_fields, checklists: next } });
+                                                }}
+                                                onDelete={() => {
+                                                    const next = checklists.filter(c => c.id !== item.id);
+                                                    setChecklists(next);
+                                                    save({ custom_fields: { ...task.custom_fields, checklists: next } });
+                                                }}
+                                            />
                                         ))}
 
                                         {checklists.length === 0 && (
@@ -901,72 +1364,97 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                             {activeTab === 'attachments' && (
                                 <div className="flex flex-col gap-4">
                                     {!readOnly && (
-                                        <div className={cn(
-                                            "relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer group/upload",
-                                            isDark ? "border-[#252525] hover:border-[#333] hover:bg-white/[0.02]" : "border-[#e5e5e5] hover:border-[#ccc] hover:bg-black/[0.02]"
-                                        )}>
-                                            <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-1 transition-all group-hover/upload:scale-110", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
-                                                <Paperclip size={20} className={isDark ? "text-[#444]" : "text-[#aaa]"} />
+                                        <div 
+                                            ref={dropzoneRef}
+                                            tabIndex={0}
+                                            onPaste={handlePaste}
+                                            onFocus={() => setIsDropzoneFocused(true)}
+                                            onBlur={() => setIsDropzoneFocused(false)}
+                                            onMouseDown={() => {
+                                                wasFocusedRef.current = (document.activeElement === dropzoneRef.current);
+                                            }}
+                                            onClick={() => {
+                                                if (wasFocusedRef.current) {
+                                                    fileInputRef.current?.click();
+                                                }
+                                            }}
+                                            className={cn(
+                                                "relative border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer group/upload overflow-hidden outline-none",
+                                                isUploading ? (isDark ? "border-primary/60 bg-primary/10" : "border-primary/40 bg-primary/[0.04]") 
+                                                : isDropzoneFocused ? (isDark ? "border-primary bg-primary/10 ring-4 ring-primary/20" : "border-primary bg-primary/5 ring-4 ring-primary/10")
+                                                : isDark ? "border-[#252525] hover:border-[#333] hover:bg-white/[0.02]" 
+                                                : "border-[#e5e5e5] hover:border-[#ccc] hover:bg-black/[0.02]"
+                                            )}
+                                        >
+                                            {isUploading && (
+                                                <div 
+                                                    className="absolute inset-y-0 left-0 bg-primary/10 transition-all duration-300 pointer-events-none" 
+                                                    style={{ width: `${uploadProgress}%` }}
+                                                />
+                                            )}
+                                            <div className="relative z-10 flex flex-col items-center gap-2 pointer-events-none">
+                                                <div className={cn(
+                                                    "w-10 h-10 rounded-2xl flex items-center justify-center transition-all group-hover/upload:scale-110", 
+                                                    (isUploading || isDropzoneFocused) ? "bg-primary text-white shadow-lg shadow-primary/25" : (isDark ? "bg-white/5" : "bg-[#f5f5f5]")
+                                                )}>
+                                                    {isUploading
+                                                        ? <div className="text-[10px] font-bold">{uploadProgress}%</div>
+                                                        : <Paperclip size={17} className={(isUploading || isDropzoneFocused) ? "text-white" : (isDark ? "text-[#444]" : "text-[#aaa]")} />
+                                                    }
+                                                </div>
+                                                <p className={cn(
+                                                    "text-[12.5px] font-bold transition-colors", 
+                                                    (isUploading || isDropzoneFocused) ? "text-primary" : (isDark ? "text-[#ddd]" : "text-[#333]")
+                                                )}>
+                                                    {isUploading ? 'Uploading…' : isDropzoneFocused ? 'Paste Ready!' : 'Attach files'}
+                                                </p>
+                                                {!isUploading && (
+                                                    <p className={cn("text-[10.5px] text-center transition-colors", isDropzoneFocused ? "text-primary/70 font-medium" : isDark ? "text-[#444]" : "text-[#888]")}>
+                                                        {isDropzoneFocused ? 'Press Ctrl + V to paste or click again to upload' : 'Click to focus and paste, or click again to upload files'}
+                                                    </p>
+                                                )}
                                             </div>
-                                            <p className={cn("text-[13px] font-semibold", isDark ? "text-[#ddd]" : "text-[#333]")}>Upload attachments</p>
-                                            <p className={cn("text-[11px] text-center max-w-[200px]", isDark ? "text-[#444]" : "text-[#888]")}>Drag & drop or Click to browse files</p>
-                                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={() => appToast.info('B2 Upload logic active')} />
+                                            <input 
+                                                ref={fileInputRef} 
+                                                type="file" 
+                                                multiple 
+                                                className="hidden" 
+                                                disabled={isUploading} 
+                                                onChange={handleFileUpload} 
+                                            />
                                         </div>
                                     )}
 
-                                    <div className="flex flex-col gap-2">
-                                        {attachments.map(file => (
-                                            <div key={file.id} className={cn(
-                                                "p-3 rounded-xl border flex items-center gap-3 group/file transition-all",
-                                                isDark ? "bg-[#1a1a1a] border-[#252525] hover:bg-[#1f1f1f]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]"
-                                            )}>
-                                                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
-                                                    <Paperclip size={16} className={isDark ? "text-[#444]" : "text-[#aaa]"} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className={cn("text-[12.5px] font-semibold truncate", isDark ? "text-white" : "text-[#111]")}>{file.name}</p>
-                                                    <p className={cn("text-[10px] uppercase font-bold tracking-wider opacity-30 mt-0.5", isDark ? "text-white" : "text-black")}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                                                </div>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover/file:opacity-100 transition-opacity">
-                                                    <a href={file.url} download className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-white/10 text-white/40" : "hover:bg-black/5 text-black/40")}>
-                                                        <ArrowUpRight size={13} />
-                                                    </a>
-                                                    <button className={cn("p-1.5 rounded-lg transition-colors", isDark ? "hover:bg-red-500/10 text-red-500/60" : "hover:bg-red-500/10 text-red-500/60")}>
-                                                        <Trash2 size={13} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-
-                                        {attachments.length === 0 && (
-                                            <div className="py-10 flex flex-col items-center justify-center gap-3 opacity-20">
-                                                <Paperclip size={24} />
-                                                <span className="text-[12px] font-medium">No files attached</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'links' && (
-                                <div className="flex flex-col gap-3">
-                                    {!readOnly && (
-                                        <button className={cn(
-                                            "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[12px] font-semibold transition-all",
-                                            isDark ? "border-[#252525] text-[#555] hover:text-white hover:bg-white/5" : "border-[#e5e5e5] text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]"
-                                        )}>
-                                            <Link2 size={13} /> Add link
-                                        </button>
-                                    )}
-                                    <div className="flex flex-col items-center justify-center py-10 gap-3">
-                                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
-                                            <Link2 size={18} className={isDark ? "text-[#333]" : "text-[#ccc]"} />
+                                    {/* File grid/list */}
+                                    {attachments.length > 0 && (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {attachments.map(file => (
+                                                <AttachmentCard
+                                                    key={file.id}
+                                                    file={file}
+                                                    isDark={isDark}
+                                                    readOnly={readOnly}
+                                                    onClick={() => setPreviewingFile(file)}
+                                                    onDelete={() => {
+                                                        const next = attachments.filter(a => a.id !== file.id);
+                                                        setAttachments(next);
+                                                        save({ custom_fields: { ...task.custom_fields, attachments: next } });
+                                                    }}
+                                                />
+                                            ))}
                                         </div>
-                                        <p className={cn("text-[12px] font-medium", isDark ? "text-[#444]" : "text-[#bbb]")}>No links added</p>
-                                        <p className={cn("text-[11px]", isDark ? "text-[#333]" : "text-[#ccc]")}>Attach relevant URLs to this task</p>
-                                    </div>
+                                    )}
+
+                                    {attachments.length === 0 && (
+                                        <div className="py-10 flex flex-col items-center justify-center gap-3 opacity-20">
+                                            <Paperclip size={24} />
+                                            <span className="text-[12px] font-medium">No files attached</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
+
+
 
                         </div>
 
@@ -985,5 +1473,24 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
 
             </motion.div>
         </div>
+
+        {/* Attachment lightbox — rendered above the panel */}
+        <AnimatePresence>
+            {previewingFile && (
+                <AttachmentPreview
+                    file={previewingFile!}
+                    isDark={isDark}
+                    onClose={() => setPreviewingFile(null)}
+                    onDelete={() => {
+                        const f = previewingFile;
+                        const next = attachments.filter(a => a.id !== f.id);
+                        setAttachments(next);
+                        save({ custom_fields: { ...task.custom_fields, attachments: next } });
+                        setPreviewingFile(null);
+                    }}
+                />
+            )}
+        </AnimatePresence>
+        </>
     );
 }

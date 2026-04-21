@@ -58,6 +58,7 @@ export interface ProjectTask {
     color?: string | null;
     custom_fields: Record<string, any>;
     is_archived: boolean;
+    is_private: boolean;
     created_at: string;
 }
 
@@ -233,7 +234,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             const { data, error } = await supabase.from('project_tasks').insert(payload).select().single();
             if (error) { set({ error: error.message }); return null; }
             if (data) {
-                const t = data as ProjectTask;
+                const t = { ...data, is_private: data.is_private ?? false } as ProjectTask;
                 set((s) => ({
                     tasksByProject: {
                         ...s.tasksByProject,

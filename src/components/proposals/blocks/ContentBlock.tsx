@@ -104,9 +104,22 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
 
     // Sanitize saved blocks before passing as initialContent.
     const safeInitialContent: any = React.useMemo(() => {
-        if (!data.blocks?.length) return [{ type: 'paragraph', content: '' }];
-        const sanitized = sanitizeBlocks(data.blocks);
-        return sanitized ?? [{ type: 'paragraph', content: '' }];
+        if (data.blocks?.length) {
+            const sanitized = sanitizeBlocks(data.blocks);
+            if (sanitized) return sanitized;
+        }
+
+        if (typeof data.content === 'string') {
+            const lines = data.content.split('\n');
+            if (lines.length > 0 && lines.some((l: string) => l.trim() !== '')) {
+                return lines.map((line: string) => ({
+                    type: 'paragraph',
+                    content: line
+                }));
+            }
+        }
+
+        return [{ type: 'paragraph', content: '' }];
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // intentionally empty — initialContent is only read once by BlockNote
 
@@ -224,24 +237,26 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
         updateData(id, { blocks: editorBlocks, content: html });
     }, [editor, id, updateData]);
 
-    const baseTheme = isDarkBg ? darkDefaultTheme : lightDefaultTheme;
-    const customTheme = {
-        ...baseTheme,
-        colors: {
-            ...baseTheme.colors,
-            editor: {
-                ...baseTheme.colors.editor,
-                text: isDarkBg ? "#ffffff" : "#000000",
-                background: "transparent",
+    const customTheme = useMemo(() => {
+        const baseTheme = isDarkBg ? darkDefaultTheme : lightDefaultTheme;
+        return {
+            ...baseTheme,
+            colors: {
+                ...baseTheme.colors,
+                editor: {
+                    ...baseTheme.colors.editor,
+                    text: isDarkBg ? "#ffffff" : "#000000",
+                    background: "transparent",
+                },
+                ...(!isDarkBg ? {
+                    sideMenu: "#888888", // Using UI grey for + and handler
+                    highlightColors: {
+                        ...(baseTheme.colors as any).highlightColors,
+                    }
+                } : {})
             },
-            ...(!isDarkBg ? {
-                sideMenu: "#888888", // Using UI grey for + and handler
-                highlightColors: {
-                    ...(baseTheme.colors as any).highlightColors,
-                }
-            } : {})
-        },
-    };
+        };
+    }, [isDarkBg]);
 
     const handleSaveSnippet = async (name: string, tags: string[]) => {
         const text = extractPlainText(blocksToSave);
@@ -261,6 +276,16 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
 
     return (
         <div className={cn("w-full max-w-full relative blocknote-editor", !isDarkBg && "force-black-text")}>
+            <style dangerouslySetInnerHTML={{ __html: `
+                /* Fix slash menu and popovers overlapping with other blocks */
+                .mantine-Popover-dropdown,
+                .bn-suggestion-menu,
+                .bn-popover,
+                .bn-menu,
+                .bn-menu-dropdown {
+                    z-index: 99999 !important;
+                }
+            ` }} />
             {!isDarkBg && (
                 <style dangerouslySetInnerHTML={{ __html: `
                     /* Force main text to black in light mode */
@@ -306,6 +331,7 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                             <Tooltip content="Save as Snippet" side="top">
                                 <button
                                     type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
                                         const selected = editor.getSelection();
                                         if (selected) {

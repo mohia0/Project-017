@@ -18,12 +18,13 @@ export async function GET(
     try {
         const { key } = await params;
         const decodedKey = decodeURIComponent(key);
+        const isDownload = req.nextUrl.searchParams.get('download') === '1';
 
         const command = new GetObjectCommand({
             Bucket: process.env.B2_BUCKET_NAME,
             Key: decodedKey,
-            // inline = browser renders the file (image/svg) rather than downloading it
-            ResponseContentDisposition: `inline`,
+            // Dynamically set based on request hint
+            ResponseContentDisposition: isDownload ? `attachment` : `inline`,
         });
 
         // Generate a presigned URL valid for 1 hour

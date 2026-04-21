@@ -20,6 +20,7 @@ export interface FormField {
     options?: string[]; // for dropdown, multi_choice, picture_choice
     min?: number;
     max?: number;
+    multiple?: boolean;
 }
 
 export interface FormResponse {

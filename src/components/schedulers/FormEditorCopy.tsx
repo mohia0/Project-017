@@ -865,7 +865,7 @@ export default function FormEditor({ id }: { id?: string }) {
                         )}
                     </div>
 
-                    <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />
+                    <div className={cn("w-px h-5 mx-0.5 hidden md:block", isDark ? "bg-white/10" : "bg-black/10")} />
 
                     <button
                         onClick={() => {

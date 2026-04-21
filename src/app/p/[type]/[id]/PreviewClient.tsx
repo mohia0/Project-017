@@ -635,9 +635,6 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                         className="object-contain" 
                                         style={{ height: `${design.logoSize || 40}px` }} />
                                     <div className="text-right">
-                                        <div className="font-bold text-[14px] opacity-60" style={{ color: isBlockDark ? '#aaa' : '#666' }}>
-                                            {meta.organizer || liveData.title || 'Scheduler Name'}
-                                        </div>
                                         <h1 className="text-[28px] font-black tracking-tight leading-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>
                                             Book a time
                                         </h1>
@@ -645,9 +642,6 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                 </>
                             ) : (
                                 <div className="space-y-1">
-                                    <div className="font-bold text-[14px] opacity-60" style={{ color: isBlockDark ? '#aaa' : '#666' }}>
-                                        {meta.organizer || liveData.title || 'Scheduler Name'}
-                                    </div>
                                     <h1 className="text-[32px] font-black tracking-tight leading-tight" style={{ color: isBlockDark ? '#fff' : '#111' }}>
                                         {step === 'scheduler' ? 'Book a time' : step === 'form' ? 'Confirm Details' : 'Confirmed'}
                                     </h1>
@@ -770,6 +764,8 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                                     isDark={isBlockDark}
                                                     primaryColor={primaryColor}
                                                     borderRadius={design.borderRadius ?? 16}
+                                                    marginTop={design.marginTop}
+                                                    marginBottom={design.marginBottom}
                                                     value={formValues[field.id]}
                                                     onChange={(val) => {
                                                         setFormValues(prev => ({ ...prev, [field.id]: val }));
@@ -958,9 +954,20 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
             channel
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'project_tasks', filter: `project_id=eq.${data.id}` }, (payload) => {
                     if (payload.eventType === 'INSERT') {
-                        setProjectTasks(prev => [...prev.filter(t => t.id !== (payload.new as any).id), payload.new]);
+                        const nt = payload.new as any;
+                        if (nt.is_private) return;
+                        setProjectTasks(prev => [...prev.filter(t => t.id !== nt.id), nt]);
                     } else if (payload.eventType === 'UPDATE') {
-                        setProjectTasks(prev => prev.map(t => t.id === (payload.new as any).id ? { ...t, ...(payload.new as any) } : t));
+                        const nt = payload.new as any;
+                        if (nt.is_private) {
+                            setProjectTasks(prev => prev.filter(t => t.id !== nt.id));
+                        } else {
+                            setProjectTasks(prev => {
+                                const exists = prev.some(t => t.id === nt.id);
+                                if (exists) return prev.map(t => t.id === nt.id ? { ...t, ...nt } : t);
+                                return [...prev, nt].sort((a,b) => (a.position || 0) - (b.position || 0));
+                            });
+                        }
                     } else if (payload.eventType === 'DELETE') {
                         setProjectTasks(prev => prev.filter(t => t.id !== (payload.old as any).id));
                     }
@@ -1300,18 +1307,14 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
         return (
             <div className="flex-1 flex flex-col w-full h-screen overflow-hidden bg-[#f7f7f7]">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 bg-white border-b shrink-0">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 rounded-full" style={{ background: projectColor }} />
-                            <h1 className="text-[16px] font-bold text-[#111]">{liveData.name || liveData.title}</h1>
-                        </div>
-                        {liveData.client_name && (
-                            <>
-                                <div className="w-px h-4 bg-black/10" />
-                                <span className="text-[12px] text-[#888] font-medium">For: {liveData.client_name}</span>
-                            </>
-                        )}
+                <div className="flex items-center justify-between px-6 py-4 bg-white shrink-0 relative z-20 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border-b border-black/[0.02]">
+                    {/* Subtle Branding Accent Glow */}
+                    <div 
+                        className="absolute left-0 top-0 bottom-0 w-[240px] pointer-events-none opacity-[0.05]"
+                        style={{ background: `linear-gradient(to right, ${projectColor}, transparent)` }}
+                    />
+                    <div className="relative z-10 flex items-center gap-4">
+                        <h1 className="text-[16px] font-bold text-[#111] uppercase tracking-tight">{liveData.name || liveData.title}</h1>
                     </div>
                     <div className="flex items-center gap-3">
                         {(() => {

@@ -698,7 +698,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                         </div>
                     )}
 
-                    {!isTemplate && <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />}
+                    {!isTemplate && <div className={cn("w-px h-5 mx-0.5 hidden md:block", isDark ? "bg-white/10" : "bg-black/10")} />}
 
 
                     <button
@@ -880,9 +880,6 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                                             className="object-contain" 
                                                                             style={{ height: `${design.logoSize || 40}px` }} />
                                                                         <div className="text-right">
-                                                                            <div className="font-bold text-[13px] opacity-60" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#666' }}>
-                                                                                {meta.organizer || title || 'Scheduler Name'}
-                                                                            </div>
                                                                             <h1 className="text-[24px] font-black tracking-tight leading-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
                                                                                 Book a time
                                                                             </h1>
@@ -890,9 +887,6 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                                     </>
                                                                 ) : (
                                                                     <div className="space-y-1">
-                                                                        <div className="font-bold text-[13px] opacity-60" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#666' }}>
-                                                                            {meta.organizer || title || 'Scheduler Name'}
-                                                                        </div>
                                                                         <h1 className="text-[28px] font-black tracking-tight leading-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
                                                                             {canvasStep === 'scheduler' ? 'Book a time' : canvasStep === 'form' ? 'Confirm Details' : 'Confirmed'}
                                                                         </h1>
@@ -1045,9 +1039,6 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                             className="object-contain" 
                                                             style={{ height: `${design.logoSize || 40}px` }} />
                                                         <div className="text-right">
-                                                            <div className="font-bold text-[14px] opacity-60" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#666' }}>
-                                                                {meta.organizer || title || 'Scheduler Name'}
-                                                            </div>
                                                             <h1 className="text-[28px] font-black tracking-tight leading-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
                                                                 Book a time
                                                             </h1>
@@ -1055,9 +1046,6 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                     </>
                                                 ) : (
                                                     <div className="space-y-1">
-                                                        <div className="font-bold text-[14px] opacity-60" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#666' }}>
-                                                            {meta.organizer || title || 'Scheduler Name'}
-                                                        </div>
                                                         <h1 className="text-[32px] font-black tracking-tight leading-tight" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
                                                             {canvasStep === 'scheduler' ? 'Book a time' : canvasStep === 'form' ? 'Confirm Details' : 'Confirmed'}
                                                         </h1>

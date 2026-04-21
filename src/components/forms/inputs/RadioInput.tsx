@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 interface RadioInputProps {
     value: string;
@@ -11,6 +12,7 @@ interface RadioInputProps {
     isDark: boolean;
     primaryColor: string;
     borderRadius: number;
+    multiple?: boolean;
 }
 
 export const RadioInput = ({ 
@@ -20,12 +22,33 @@ export const RadioInput = ({
     name,
     isDark, 
     primaryColor,
-    borderRadius
+    borderRadius,
+    multiple
 }: RadioInputProps) => {
+    const values = multiple ? (() => {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [value].filter(Boolean);
+        } catch {
+            return value ? [value] : [];
+        }
+    })() : [value];
+
+    const toggleOption = (opt: string) => {
+        if (multiple) {
+            const next = values.includes(opt) 
+                ? values.filter(v => v !== opt)
+                : [...values, opt];
+            onChange(JSON.stringify(next));
+        } else {
+            onChange(opt);
+        }
+    };
+
     return (
         <div className="space-y-3">
             {options.map((opt, i) => {
-                const isSelected = value === opt;
+                const isSelected = values.includes(opt);
                 return (
                     <label 
                         key={i} 
@@ -40,19 +63,24 @@ export const RadioInput = ({
                             borderColor: isSelected ? primaryColor : undefined,
                             backgroundColor: isSelected ? `${primaryColor}08` : undefined
                         }}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            toggleOption(opt);
+                        }}
                     >
                         <input 
-                            type="radio" 
+                            type={multiple ? "checkbox" : "radio"} 
                             name={name} 
                             className="hidden" 
                             value={opt} 
                             checked={isSelected} 
-                            onChange={(e) => onChange(e.target.value)} 
+                            readOnly
                         />
                         
-                        {/* Custom Radio Circle */}
+                        {/* Custom Indicator */}
                         <div className={cn(
-                            "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-300",
+                            "w-5 h-5 flex items-center justify-center transition-all duration-300 border-2",
+                            multiple ? "rounded-md" : "rounded-full",
                             isSelected 
                                 ? "border-primary bg-primary" 
                                 : (isDark ? "border-[#444] group-hover:border-[#666]" : "border-[#ccc] group-hover:border-[#aaa]")
@@ -61,10 +89,14 @@ export const RadioInput = ({
                             borderColor: isSelected ? primaryColor : undefined,
                             backgroundColor: isSelected ? primaryColor : undefined
                         }}>
-                            <div className={cn(
-                                "w-2 h-2 rounded-full bg-white transition-transform duration-300",
-                                isSelected ? "scale-100" : "scale-0"
-                            )} />
+                            {multiple ? (
+                                <Check size={12} strokeWidth={4} className={cn("text-white transition-transform duration-300", isSelected ? "scale-100" : "scale-0")} />
+                            ) : (
+                                <div className={cn(
+                                    "w-2 h-2 rounded-full bg-white transition-transform duration-300",
+                                    isSelected ? "scale-100" : "scale-0"
+                                )} />
+                            )}
                         </div>
 
                         <span className={cn(

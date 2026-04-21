@@ -109,7 +109,7 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
 
     if (type === 'project') {
         const [tasksRes, groupsRes] = await Promise.all([
-            supabaseService.from('project_tasks').select('*').eq('project_id', cleanId).order('position'),
+            supabaseService.from('project_tasks').select('*').eq('project_id', cleanId).eq('is_private', false).order('position'),
             supabaseService.from('project_task_groups').select('*').eq('project_id', cleanId).order('position')
         ]);
         projectTasks = tasksRes.data || [];

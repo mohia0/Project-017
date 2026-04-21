@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LayoutTemplate, Plus, Trash2, Calendar, FileText as ProposalIcon, Receipt as InvoiceIcon, ChevronRight, LayoutGrid, RotateCcw, BookmarkCheck, ClipboardList, Clock, Briefcase, LayoutPanelTop, Zap, Search, PanelTop, Table, PenLine, FileText, Tag } from 'lucide-react';
+import { LayoutTemplate, Plus, Trash2, Calendar, FileText as ProposalIcon, Receipt as InvoiceIcon, RotateCcw, BookmarkCheck, ClipboardList, Clock, Briefcase, LayoutPanelTop, Zap, Search, PanelTop, Table, PenLine, FileText, Tag } from 'lucide-react';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { appToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -124,14 +124,7 @@ export default function TemplatesPage() {
                 isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white border-b border-[#ebebeb]"
             )}>
                 <div className="flex items-center gap-2">
-                    <div 
-                        onClick={() => router.push('/dashboard')}
-                        className="flex items-center gap-1.5 px-1.5 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-colors"
-                    >
-                        <LayoutGrid size={14} className="opacity-40" />
-                    </div>
-                    <ChevronRight size={12} className="opacity-20" />
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/5 dark:bg-white/5">
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/5 dark:bg-white/5 font-sans">
                         <LayoutTemplate size={14} className="opacity-40" />
                         <span className="text-[13px] font-semibold tracking-tight">Templates</span>
                     </div>

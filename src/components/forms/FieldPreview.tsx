@@ -104,7 +104,8 @@ export default function FieldPreview({
                         options={field.options?.filter(o => o.trim()) || []} 
                         placeholder={field.placeholder}
                         isDark={isDark} 
-                        borderRadius={borderRadius} 
+                        borderRadius={borderRadius}
+                        multiple={field.multiple}
                     />
                 );
             case 'multi_choice':
@@ -116,7 +117,8 @@ export default function FieldPreview({
                         name={field.id}
                         isDark={isDark} 
                         primaryColor={primaryColor}
-                        borderRadius={borderRadius} 
+                        borderRadius={borderRadius}
+                        multiple={field.multiple}
                     />
                 );
             case 'picture_choice':
@@ -128,6 +130,7 @@ export default function FieldPreview({
                         isDark={isDark} 
                         borderRadius={borderRadius} 
                         primaryColor={primaryColor}
+                        multiple={field.multiple}
                     />
                 );
             case 'countries':

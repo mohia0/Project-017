@@ -73,6 +73,8 @@ export function formatAmount(amount: number, currency: string, abbreviate: boole
     }
 }
 
+import { Tooltip } from './Tooltip';
+
 export function MoneyAmount({ amount, currency = 'USD', className, showBadge = false, abbreviate = false, forceOriginal }: MoneyAmountProps) {
     const conversionCurrency = useUIStore(s => s.conversionCurrency);
     const conversionRates = useUIStore(s => s.conversionRates);
@@ -93,11 +95,10 @@ export function MoneyAmount({ amount, currency = 'USD', className, showBadge = f
         displayText = formatAmount(amount, currency, abbreviate);
     }
 
-    return (
+    const content = (
         <span
             data-financial={shouldSkip ? undefined : ""}
             className={className}
-            title={isConverted ? `Original: ${formatAmount(amount, currency)}` : undefined}
         >
             {displayText}
             {isConverted && showBadge && (
@@ -110,6 +111,16 @@ export function MoneyAmount({ amount, currency = 'USD', className, showBadge = f
             )}
         </span>
     );
+
+    if (isConverted) {
+        return (
+            <Tooltip content={`Original: ${formatAmount(amount, currency)}`}>
+                {content}
+            </Tooltip>
+        );
+    }
+
+    return content;
 }
 
 /**

@@ -202,29 +202,32 @@ export default function CSVImportModal() {
         const trimmed = dateStr.trim();
         if (!trimmed) return null;
 
-        // 1. Try standard ISO/Native parsing first
-        const d = new Date(trimmed);
-        if (!isNaN(d.getTime())) {
-            // Check if it's a "real" full date (not just a year or partial)
-            if (trimmed.length >= 8) {
-                return d.toISOString().split('T')[0];
+        // 1. Strict unambiguous formats (YYYY-MM-DD or ISO strings)
+        if (/^\d{4}[\/\-.]\d{2}[\/\-.]\d{2}/.test(trimmed)) {
+            const d = new Date(trimmed);
+            if (!isNaN(d.getTime())) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
             }
         }
 
-        // 2. Try common CSV formats using date-fns
-        // Using common delimiters and orderings
+        // 2. Try common European/International (Day First) formats using date-fns BEFORE native fallback
+        // We prioritize dd/MM over MM/dd because native JS covers MM/dd natively
         const formats = [
             'dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy/MM/dd',
             'dd-MM-yyyy', 'MM-dd-yyyy', 'yyyy-MM-dd',
             'dd.MM.yyyy', 'MM.dd.yyyy', 'yyyy.MM.dd',
-            'd/M/yyyy', 'M/d/yyyy', 'd-M-yyyy', 'M-d-yyyy'
+            'd/M/yyyy', 'M/d/yyyy', 'd-M-yyyy', 'M-d-yyyy',
+            'd/M/yy', 'M/d/yy', 'dd/MM/yy', 'MM/dd/yy'
         ];
 
         for (const f of formats) {
             try {
+                // Must use strict parsing so "12/10/2025" strictly matches the format template
                 const parsed = parse(trimmed, f, new Date());
                 if (isValid(parsed)) {
-                    // Extra safety: ensure it's not a crazy year like 0024
                     if (parsed.getFullYear() > 1900 && parsed.getFullYear() < 2100) {
                         return format(parsed, 'yyyy-MM-dd');
                     }
@@ -232,6 +235,15 @@ export default function CSVImportModal() {
             } catch (e) {
                 // Ignore parsing errors for specific patterns
             }
+        }
+
+        // 3. Fallback native JS parsing
+        const d = new Date(trimmed);
+        if (!isNaN(d.getTime()) && trimmed.length >= 8) {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
         }
 
         return null;
@@ -356,6 +368,14 @@ export default function CSVImportModal() {
                 if (!item.contact_person) {
                     item.contact_person = item.company_name || item.email || 'Unknown Contact';
                 }
+            }
+
+            // Post-processing defaults for Invoice/Proposal statuses
+            if (importType === 'Invoice' && item.status === 'Paid' && !item.paid_at) {
+                item.paid_at = item.issue_date || new Date().toISOString().split('T')[0];
+            }
+            if (importType === 'Proposal' && item.status === 'Accepted' && !item.accepted_at) {
+                item.accepted_at = item.issue_date || new Date().toISOString().split('T')[0];
             }
             
             return item;

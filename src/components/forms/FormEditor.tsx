@@ -15,7 +15,7 @@ import {
 import { SelectInput } from '@/components/forms/inputs/SelectInput';
 import { RadioInput } from '@/components/forms/inputs/RadioInput';
 import { PictureChoiceInput } from '@/components/forms/inputs/PictureChoiceInput';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -158,12 +158,116 @@ const isColorDark = (color: string) => {
     }
     return false;
 };
+/* ── Option Editor Items (to prevent focus loss) ── */
+function OptionEditorItem({ opt, idx, isDark, onUpdate, options, showIndicator }: any) {
+    const controls = useDragControls();
+    return (
+        <Reorder.Item 
+            value={idx} 
+            dragListener={false} 
+            dragControls={controls}
+            className={cn("flex items-center gap-2 p-1.5 rounded-lg border", isDark ? "border-[#333] bg-black/20" : "border-[#e5e5e5] bg-white")}
+        >
+            <div 
+                onPointerDown={(e) => controls.start(e)}
+                className="cursor-grab active:cursor-grabbing opacity-30 hover:opacity-100 transition-opacity"
+            >
+                <GripVertical size={12} />
+            </div>
+            {showIndicator && <div className={cn("w-3.5 h-3.5 rounded-sm border ml-1 flex-shrink-0 transition-opacity", isDark ? "border-[#444]" : "border-[#ccc]")} />}
+            <input 
+                value={opt} 
+                onChange={e => {
+                    if (onUpdate) {
+                        const newOpts = [...options];
+                        newOpts[idx] = e.target.value;
+                        onUpdate({ options: newOpts });
+                    }
+                }} 
+                placeholder="Option label" 
+                className={cn("flex-1 bg-transparent border-none text-[13px] outline-none px-2 py-1", isDark ? "text-white" : "text-black")} 
+            />
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (onUpdate) {
+                        const newOpts = options.filter((_: any, i: number) => i !== idx);
+                        onUpdate({ options: newOpts });
+                    }
+                }} 
+                className="p-1.5 opacity-50 hover:opacity-100 hover:text-red-500 transition-all cursor-pointer"
+            >
+                <Trash2 size={13} />
+            </button>
+        </Reorder.Item>
+    );
+}
+
+function PictureOptionEditorItem({ opt, idx, isDark, onUpdate, onUploadClick, fieldId, borderRadius, options }: any) {
+    const controls = useDragControls();
+    const [url, label] = opt.includes('|') ? opt.split('|') : [opt, ''];
+    return (
+        <Reorder.Item 
+            value={idx} 
+            dragListener={false} 
+            dragControls={controls}
+            className={cn("group flex flex-col gap-2 p-2 rounded-xl border relative w-[130px]", isDark ? "bg-[#1c1c1c] border-[#2a2a2a]" : "bg-white border-[#e5e5e5]")} 
+            style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}
+        >
+            <div 
+                onClick={() => { if (onUploadClick) onUploadClick(fieldId, idx); }}
+                className={cn("w-full h-24 rounded-lg flex-shrink-0 cursor-pointer overflow-hidden border-2 border-dashed flex items-center justify-center transition-all group-hover:border-primary/50 relative", isDark ? "border-[#444] bg-black/20" : "border-[#ccc] bg-black/5")}
+            >
+                {url ? <img src={url} className="w-full h-full object-cover" /> : <Image size={18} className="opacity-50" />}
+                <div 
+                    onPointerDown={(e) => controls.start(e)}
+                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity"
+                >
+                    <div className="cursor-grab active:cursor-grabbing text-white">
+                        <GripVertical size={20} />
+                    </div>
+                </div>
+            </div>
+            <input 
+                value={label}
+                onChange={e => {
+                    if (onUpdate) {
+                        const newOpts = [...options];
+                        newOpts[idx] = `${url}|${e.target.value}`;
+                        onUpdate({ options: newOpts });
+                    }
+                }}
+                placeholder="Label (opt)"
+                className={cn("w-full bg-transparent border-none text-[12px] font-medium outline-none text-center px-1", isDark ? "text-white" : "text-black")}
+            />
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (onUpdate) {
+                        const newOpts = options.filter((_: any, i: number) => i !== idx);
+                        onUpdate({ options: newOpts });
+                    }
+                }} 
+                className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md cursor-pointer hover:bg-red-600"
+            >
+                <X size={12} strokeWidth={3} />
+            </button>
+        </Reorder.Item>
+    );
+}
 
 /* ── Field preview in canvas ── */
-function FieldPreview({ field, isDark, isSelected, onClick, onRemove, onUpdate, onUploadClick, primaryColor, isPreview, borderRadius, marginTop, marginBottom, blockBackgroundColor }: {
+function FieldPreview({ 
+    field, isDark, isSelected, onClick, onRemove, onUpdate, onUploadClick, 
+    primaryColor, isPreview, borderRadius, marginTop, marginBottom, 
+    blockBackgroundColor, testValue, onTestValueChange 
+}: {
     field: FormField; isDark: boolean; isSelected: boolean; onClick: (e: React.MouseEvent) => void;
-    onRemove: () => void; onUpdate?: (patch: Partial<FormField>) => void; onUploadClick?: (fieldId: string, idx: number | null) => void; primaryColor: string; isPreview?: boolean; borderRadius: number;
+    onRemove: () => void; onUpdate?: (patch: Partial<FormField>) => void; 
+    onUploadClick?: (fieldId: string, idx: number | null) => void; primaryColor: string; 
+    isPreview?: boolean; borderRadius: number;
     marginTop?: number; marginBottom?: number; blockBackgroundColor?: string;
+    testValue?: string; onTestValueChange?: (val: string) => void;
 }) {
     const {
         attributes, listeners, setNodeRef,
@@ -197,28 +301,43 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, onUpdate, 
                     {...inputProps} className={cn(inputProps.className, "resize-none")} />;
             case 'dropdown':
                 if (isPreview) {
-                    return <SelectInput value="" onChange={()=>{}} options={field.options?.filter(o => o.trim()) || []} placeholder={field.placeholder} isDark={isDark} borderRadius={borderRadius} />;
+                    return (
+                        <div>
+                            <SelectInput 
+                                value={testValue || ""} 
+                                onChange={onTestValueChange || (()=>{})} 
+                                options={field.options?.filter(o => o.trim()) || []} 
+                                placeholder={field.placeholder} 
+                                isDark={isDark} 
+                                borderRadius={borderRadius} 
+                                multiple={field.multiple}
+                            />
+                        </div>
+                    );
                 }
+                const dropdownOpts = field.options || ['Option 1'];
                 return (
                     <div className="space-y-2 mt-2">
-                        {(field.options || ['Option 1']).map((opt, idx) => (
-                            <div key={idx} className={cn("flex items-center gap-2 p-1.5 rounded-lg border", isDark ? "border-[#333] bg-black/20" : "border-[#e5e5e5] bg-white")}>
-                                <input value={opt} onChange={e => {
-                                    if (onUpdate) {
-                                        const newOpts = [...(field.options || ['Option 1'])];
-                                        newOpts[idx] = e.target.value;
-                                        onUpdate({ options: newOpts });
-                                    }
-                                }} placeholder="Option label" className={cn("flex-1 bg-transparent border-none text-[13px] outline-none px-2 py-1", isDark ? "text-white" : "text-black")} />
-                                <button onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onUpdate) {
-                                        const newOpts = (field.options || ['Option 1']).filter((_, i) => i !== idx);
-                                        onUpdate({ options: newOpts });
-                                    }
-                                }} className="p-1.5 opacity-50 hover:opacity-100 hover:text-red-500 transition-all cursor-pointer"><Trash2 size={13} /></button>
-                            </div>
-                        ))}
+                        <Reorder.Group 
+                            axis="y" 
+                            values={dropdownOpts.map((_, i) => i)} 
+                            onReorder={(newOrder) => {
+                                const next = newOrder.map(idx => dropdownOpts[idx]);
+                                onUpdate?.({ options: next });
+                            }}
+                            className="space-y-2"
+                        >
+                            {dropdownOpts.map((opt, idx) => (
+                                <OptionEditorItem 
+                                    key={idx}
+                                    opt={opt}
+                                    idx={idx}
+                                    isDark={isDark}
+                                    onUpdate={onUpdate}
+                                    options={dropdownOpts}
+                                />
+                            ))}
+                        </Reorder.Group>
                         <button onClick={(e) => {
                             e.stopPropagation();
                             if (onUpdate) onUpdate({ options: [...(field.options || ['Option 1']), `Option ${(field.options?.length || 1) + 1}`] });
@@ -229,29 +348,45 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, onUpdate, 
                 );
             case 'multi_choice':
                 if (isPreview) {
-                    return <RadioInput value="" onChange={()=>{}} options={field.options?.filter(o => o.trim()) || []} name={field.id} isDark={isDark} primaryColor={primaryColor} borderRadius={borderRadius} />;
+                    return (
+                        <div>
+                            <RadioInput 
+                                value={testValue || ""} 
+                                onChange={onTestValueChange || (()=>{})} 
+                                options={field.options?.filter(o => o.trim()) || []} 
+                                name={field.id} 
+                                isDark={isDark} 
+                                primaryColor={primaryColor} 
+                                borderRadius={borderRadius} 
+                                multiple={field.multiple}
+                            />
+                        </div>
+                    );
                 }
+                const radioOpts = field.options || ['Option 1'];
                 return (
                     <div className="space-y-2 mt-2">
-                        {(field.options || ['Option 1']).map((opt, idx) => (
-                            <div key={idx} className={cn("flex items-center gap-2 p-1.5 rounded-lg border", isDark ? "border-[#333] bg-black/20" : "border-[#e5e5e5] bg-white")}>
-                                <div className={cn("w-3.5 h-3.5 rounded-sm border ml-2 flex-shrink-0 transition-opacity", isDark ? "border-[#444]" : "border-[#ccc]")} />
-                                <input value={opt} onChange={e => {
-                                    if (onUpdate) {
-                                        const newOpts = [...(field.options || ['Option 1'])];
-                                        newOpts[idx] = e.target.value;
-                                        onUpdate({ options: newOpts });
-                                    }
-                                }} placeholder="Option label" className={cn("flex-1 bg-transparent border-none text-[13px] outline-none px-1 py-1", isDark ? "text-white" : "text-black")} />
-                                <button onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onUpdate) {
-                                        const newOpts = (field.options || ['Option 1']).filter((_, i) => i !== idx);
-                                        onUpdate({ options: newOpts });
-                                    }
-                                }} className="p-1.5 opacity-50 hover:opacity-100 hover:text-red-500 transition-all cursor-pointer"><Trash2 size={13} /></button>
-                            </div>
-                        ))}
+                        <Reorder.Group 
+                            axis="y" 
+                            values={radioOpts.map((_, i) => i)} 
+                            onReorder={(newOrder) => {
+                                const next = newOrder.map(idx => radioOpts[idx]);
+                                onUpdate?.({ options: next });
+                            }}
+                            className="space-y-2"
+                        >
+                            {radioOpts.map((opt, idx) => (
+                                <OptionEditorItem 
+                                    key={idx}
+                                    opt={opt}
+                                    idx={idx}
+                                    isDark={isDark}
+                                    onUpdate={onUpdate}
+                                    options={radioOpts}
+                                    showIndicator
+                                />
+                            ))}
+                        </Reorder.Group>
                         <button onClick={(e) => {
                             e.stopPropagation();
                             if (onUpdate) onUpdate({ options: [...(field.options || ['Option 1']), `Option ${(field.options?.length || 1) + 1}`] });
@@ -262,44 +397,46 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, onUpdate, 
                 );
             case 'picture_choice':
                 if (isPreview) {
-                    return <PictureChoiceInput value="" onChange={()=>{}} options={field.options?.filter(o => o.trim()) || []} isDark={isDark} primaryColor={primaryColor} borderRadius={borderRadius} />;
+                    return (
+                        <div>
+                            <PictureChoiceInput 
+                                value={testValue || ""} 
+                                onChange={onTestValueChange || (()=>{})} 
+                                options={field.options?.filter(o => o.trim()) || []} 
+                                isDark={isDark} 
+                                borderRadius={borderRadius} 
+                                primaryColor={primaryColor} 
+                                multiple={field.multiple}
+                            />
+                        </div>
+                    );
                 }
+                const pictureOpts = field.options || [];
                 return (
                     <div className={cn("flex flex-wrap gap-3", !isPreview && "mt-3")}>
-                        {(field.options || []).map((opt, idx) => {
-                            const [url, label] = opt.includes('|') ? opt.split('|') : [opt, ''];
-                            return (
-                                <div key={idx} className={cn("group flex flex-col gap-2 p-2 rounded-xl border relative w-[130px]", isDark ? "bg-[#1c1c1c] border-[#2a2a2a]" : "bg-white border-[#e5e5e5]")} style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}>
-                                    <div 
-                                        onClick={(e) => { e.stopPropagation(); if (onUploadClick) onUploadClick(field.id, idx); }}
-                                        className={cn("w-full h-24 rounded-lg flex-shrink-0 cursor-pointer overflow-hidden border-2 border-dashed flex items-center justify-center transition-all group-hover:border-primary/50", isDark ? "border-[#444] bg-black/20" : "border-[#ccc] bg-black/5")}
-                                    >
-                                        {url ? <img src={url} className="w-full h-full object-cover" /> : <Image size={18} className="opacity-50" />}
-                                    </div>
-                                    <input 
-                                        value={label}
-                                        onChange={e => {
-                                            if (onUpdate) {
-                                                const newOpts = [...(field.options || [])];
-                                                newOpts[idx] = `${url}|${e.target.value}`;
-                                                onUpdate({ options: newOpts });
-                                            }
-                                        }}
-                                        placeholder="Label (opt)"
-                                        className={cn("w-full bg-transparent border-none text-[12px] font-medium outline-none text-center px-1", isDark ? "text-white" : "text-black")}
-                                    />
-                                    <button onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (onUpdate) {
-                                            const newOpts = (field.options || []).filter((_, i) => i !== idx);
-                                            onUpdate({ options: newOpts });
-                                        }
-                                    }} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md cursor-pointer hover:bg-red-600">
-                                        <X size={12} strokeWidth={3} />
-                                    </button>
-                                </div>
-                            );
-                        })}
+                        <Reorder.Group 
+                            axis="x" 
+                            values={pictureOpts.map((_, i) => i)} 
+                            onReorder={(newOrder) => {
+                                const next = newOrder.map(idx => pictureOpts[idx]);
+                                onUpdate?.({ options: next });
+                            }}
+                            className="flex flex-wrap gap-3"
+                        >
+                            {pictureOpts.map((opt, idx) => (
+                                <PictureOptionEditorItem 
+                                    key={idx}
+                                    opt={opt}
+                                    idx={idx}
+                                    isDark={isDark}
+                                    onUpdate={onUpdate}
+                                    onUploadClick={onUploadClick}
+                                    fieldId={field.id}
+                                    borderRadius={borderRadius}
+                                    options={pictureOpts}
+                                />
+                            ))}
+                        </Reorder.Group>
                         <button onClick={(e) => {
                             e.stopPropagation();
                             if (onUploadClick) onUploadClick(field.id, null);
@@ -606,6 +743,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [selectedResponseIds, setSelectedResponseIds] = useState<Set<string>>(new Set());
+    const [testValues, setTestValues] = useState<Record<string, string>>({});
 
 
     const sensors = useSensors(
@@ -879,6 +1017,31 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
         );
     }
 
+    const getResponseIdentity = useCallback((r: any) => {
+        if (!r?.data) return 'Respondent';
+        
+        let match = fields.find(f => f.type === 'full_name' && r.data[f.id]);
+        if (match) return String(r.data[match.id]);
+        
+        match = fields.find(f => (f.label.toLowerCase().includes('name') || f.label.toLowerCase().includes('identity')) && r.data[f.id]);
+        if (match) return String(r.data[match.id]);
+        
+        match = fields.find(f => f.type === 'email' && r.data[f.id]);
+        if (match) return String(r.data[match.id]);
+        
+        match = fields.find(f => f.type === 'short_text' && r.data[f.id]);
+        if (match) {
+            const val = String(r.data[match.id]);
+            return val.length > 50 ? val.substring(0, 50) + '...' : val;
+        }
+
+        // Fallback to first non-empty field
+        const firstVal = Object.values(r.data).find(v => v && typeof v === 'string' && v.length < 50);
+        if (firstVal) return String(firstVal);
+        
+        return 'Respondent';
+    }, [fields]);
+
     const filteredResponses = useMemo(() => {
         let items = [...responses];
 
@@ -893,14 +1056,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
         // Sort
         items.sort((a, b) => {
             if (responsesOrderBy === 'name') {
-                const getIdentity = (r: any) => {
-                    const found = Object.entries(r.data).find(([qid]) => {
-                        const f = fields.find(field => field.id === qid);
-                        return f?.type === 'full_name' || f?.label?.toLowerCase().includes('name');
-                    });
-                    return String(found?.[1] || '').toLowerCase();
-                };
-                return getIdentity(a).localeCompare(getIdentity(b));
+                return getResponseIdentity(a).localeCompare(getResponseIdentity(b));
             }
             const timeA = new Date(a.created_at).getTime();
             const timeB = new Date(b.created_at).getTime();
@@ -1030,7 +1186,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                         </div>
                     )}
 
-                    {!isTemplate && <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5 hidden md:block" />}
+                    {!isTemplate && <div className={cn("w-px h-5 mx-0.5 hidden md:block", isDark ? "bg-white/10" : "bg-black/10")} />}
 
 
                     <button
@@ -1323,6 +1479,8 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                                 marginTop={design.marginTop}
                                                                                 marginBottom={design.marginBottom}
                                                                                 blockBackgroundColor={design.blockBackgroundColor}
+                                                                                testValue={testValues[f.id]}
+                                                                                onTestValueChange={(val) => setTestValues(prev => ({ ...prev, [f.id]: val }))}
                                                                             />
                                                                         </React.Fragment>
                                                                     ))}
@@ -1444,15 +1602,39 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                 placeholder="Optional" isDark={isDark} />
                                                         </div>
 
-                                                        <label className="flex items-center gap-3 cursor-pointer group/req py-1"
-                                                            onClick={() => updateField(selectedField.id, { required: !selectedField.required })}>
-                                                            <div className={cn("w-4 h-4 rounded border transition-all flex items-center justify-center",
-                                                                selectedField.required
-                                                                    ? "border-primary bg-primary"
-                                                                    : (isDark ? "border-[#333] bg-[#151515]" : "border-[#ddd] bg-white"))}>
+                                                        <div className="flex items-center justify-between py-1">
+                                                            <span className={cn("text-[12px] font-medium transition-colors", isDark ? "text-[#ccc]" : "text-[#555]")}>Required</span>
+                                                            <div 
+                                                                onClick={() => updateField(selectedField.id, { required: !selectedField.required })}
+                                                                className={cn(
+                                                                    "w-7 h-4 rounded-full relative transition-colors cursor-pointer shrink-0",
+                                                                    selectedField.required ? "bg-primary" : (isDark ? "bg-white/10" : "bg-black/10")
+                                                                )}
+                                                            >
+                                                                <div className={cn(
+                                                                    "absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 shadow-sm",
+                                                                    selectedField.required ? "translate-x-3" : "translate-x-0"
+                                                                )} />
                                                             </div>
-                                                            <span className={cn("text-[12px] font-medium transition-colors", isDark ? "text-[#666]" : "text-[#888]")}>Make this field mandatory</span>
-                                                        </label>
+                                                        </div>
+
+                                                        {['dropdown', 'multi_choice', 'picture_choice'].includes(selectedField.type) && (
+                                                            <div className="flex items-center justify-between py-1">
+                                                                <span className={cn("text-[12px] font-medium transition-colors", isDark ? "text-[#ccc]" : "text-[#555]")}>Multiple selection</span>
+                                                                <div 
+                                                                    onClick={() => updateField(selectedField.id, { multiple: !selectedField.multiple })}
+                                                                    className={cn(
+                                                                        "w-7 h-4 rounded-full relative transition-colors cursor-pointer shrink-0",
+                                                                        selectedField.multiple ? "bg-primary" : (isDark ? "bg-white/10" : "bg-black/10")
+                                                                    )}
+                                                                >
+                                                                    <div className={cn(
+                                                                        "absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform duration-200 shadow-sm",
+                                                                        selectedField.multiple ? "translate-x-3" : "translate-x-0"
+                                                                    )} />
+                                                                </div>
+                                                            </div>
+                                                        )}
 
                                                         {selectedField.type === 'slider' && (
                                                             <div className="grid grid-cols-2 gap-3">
@@ -1777,10 +1959,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 max-w-[1600px] mx-auto">
                                         {filteredResponses.map((r) => {
                                             const isSelected = selectedResponseIds.has(r.id);
-                                            const primaryIdentity = Object.entries(r.data).find(([qid]) => {
-                                                const f = fields.find(field => field.id === qid);
-                                                return f?.type === 'full_name' || f?.type === 'email' || f?.label?.toLowerCase().includes('name');
-                                            })?.[1] as string || 'Respondent';
+                                            const primaryIdentity = getResponseIdentity(r);
 
                                             return (
                                                 <div 
@@ -1893,10 +2072,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                             className="px-4 py-3"
                                                         >
                                                             {(() => {
-                                                                const primaryIdentity = Object.entries(r.data).find(([qid]) => {
-                                                                    const f = fields.find(field => field.id === qid);
-                                                                    return f?.type === 'full_name' || f?.type === 'email' || f?.label?.toLowerCase().includes('name');
-                                                                })?.[1] as string || 'Respondent';
+                                                                const primaryIdentity = getResponseIdentity(r);
                                                                 return <span className={cn("font-bold", isDark ? "text-white" : "text-black")}>{primaryIdentity}</span>;
                                                             })()}
                                                         </td>

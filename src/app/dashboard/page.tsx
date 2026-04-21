@@ -10,9 +10,11 @@ import { cn } from '@/lib/utils';
 import {
     TrendingUp, TrendingDown, FileText, Receipt,
     ChevronLeft, ChevronRight, Minus,
-    AlertCircle, CheckCircle2, Clock, Ban
+    AlertCircle, CheckCircle2, Clock, Ban,
+    BarChart2
 } from 'lucide-react';
 import { MoneyAmount } from '@/components/ui/MoneyAmount';
+import DashboardAnalytics from '@/components/layout/DashboardAnalytics';
 
 // Removed local fmt$ and fmtShort$ to use global MoneyAmount component
 
@@ -408,6 +410,7 @@ export default function DashboardPage() {
     const { profile, fetchProfile } = useSettingsStore();
     const isDark = theme === 'dark';
 
+    const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
     const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
 
     useEffect(() => { fetchInvoices(); }, [fetchInvoices, activeWorkspaceId]);
@@ -565,7 +568,7 @@ export default function DashboardPage() {
             {/* ── Page header — hidden on mobile (MobileTopBar handles it) ── */}
             <div className={cn(
                 "hidden md:flex items-center justify-between px-5 py-3 shrink-0",
-                isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white"
+                isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white border-b border-[#ebebeb]"
             )}>
                 <div>
                     <h1 className="text-[15px] font-semibold tracking-tight">Dashboard</h1>
@@ -578,9 +581,32 @@ export default function DashboardPage() {
                         })()}
                     </p>
                 </div>
+                {/* Tab switcher */}
+                <div className={cn("flex items-center gap-0.5 p-1 rounded-[9px]",
+                    isDark ? "bg-[#1e1e1e]" : "bg-[#f5f5f5]")}>
+                    {(['overview', 'analytics'] as const).map(tab => (
+                        <button key={tab} onClick={() => setActiveTab(tab)}
+                            className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-[7px] text-[11px] font-medium transition-all capitalize",
+                                activeTab === tab
+                                    ? isDark
+                                        ? "bg-[#2a2a2a] text-[#e5e5e5] shadow-sm"
+                                        : "bg-white text-[#111] shadow-sm"
+                                    : isDark
+                                        ? "text-[#555] hover:text-[#888]"
+                                        : "text-[#aaa] hover:text-[#555]"
+                            )}>
+                            {tab === 'analytics' && <BarChart2 size={11} />}
+                            {tab === 'overview' ? 'Overview' : 'Analytics'}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* ── Content ── */}
+            {activeTab === 'analytics' ? (
+                <DashboardAnalytics isDark={isDark} />
+            ) : (
             <div className="flex-1 overflow-auto">
                 <div className="p-3 md:p-4 flex flex-col gap-3">
 
@@ -710,6 +736,7 @@ export default function DashboardPage() {
 
                 </div>
             </div>
+            )}
         </div>
     );
 }
