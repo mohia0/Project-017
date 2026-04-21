@@ -2,9 +2,10 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Upload, Link as LinkIcon, Image as ImageIcon, Check, Loader2 } from 'lucide-react';
+import { X, Upload, Link as LinkIcon, Image as ImageIcon, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 interface FileUploadModalProps {
     isOpen: boolean;
@@ -331,7 +332,7 @@ export default function FileUploadModal({
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Loader2 size={14} className="text-primary animate-spin" />
+                                                    <AppLoader size="xs" />
                                                     <span className={cn("text-[12px] font-bold", isDark ? "text-white/90" : "text-black/90")}>
                                                         {isProcessing ? "Processing..." : `Uploading ${uploadProgress}%`}
                                                     </span>

@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useProjectStore, ProjectTask, TaskStatus, TaskPriority, ProjectTaskGroup } from '@/store/useProjectStore';
 import { KANBAN_COLS } from './KanbanBoard';
 import { appToast } from '@/lib/toast';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { ContentBlock } from '../proposals/blocks/ContentBlock';
 import DatePicker from '../ui/DatePicker';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -869,7 +870,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                                 disabled={deleting}
                                                 className="px-3 h-8 flex items-center gap-1.5 rounded-lg bg-red-500 text-white text-[11px] font-bold shadow-lg shadow-red-500/20 active:scale-95 transition-all whitespace-nowrap"
                                             >
-                                                {deleting ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Trash2 size={12} />}
+                                                {deleting ? <AppLoader size="xs" /> : <Trash2 size={12} />}
                                                 {deleting ? 'Deleting…' : 'Confirm delete'}
                                             </motion.button>
                                         ) : (

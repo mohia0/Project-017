@@ -406,6 +406,23 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                         </MetaField>
 
                         <MetaField 
+                            label="Input Area Color" 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ inputBackgroundColor: '' })}
+                        >
+                            <div className="flex flex-col gap-2">
+                                <ColorisInput 
+                                    value={design.inputBackgroundColor || (isDark ? '#181818' : '#f9f9f9')} 
+                                    onChange={val => updateDesign({ inputBackgroundColor: val })}
+                                    className="w-fit min-w-[120px]"
+                                />
+                                <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
+                                    This sets the background color for all form input areas.
+                                </p>
+                            </div>
+                        </MetaField>
+
+                        <MetaField 
                             label="Background Image / GIF" 
                             isDark={isDark}
                             onReset={() => updateDesign({ backgroundImage: '' })}

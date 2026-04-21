@@ -10,69 +10,107 @@ interface AppLoaderProps {
 }
 
 /**
- * AppLoader — A high-end, minimal modern spinner.
- * It uses a single variable-length arc that speeds up and slows down
- * to create a dynamic, premium "pulse-spin" effect.
+ * AppLoader — A high-end Leap Frog animation.
+ * Ported from the design provided by the user.
  */
 export function AppLoader({
   className,
   size = "md",
-  color = "currentColor",
+  color = "var(--primary)",
 }: AppLoaderProps) {
   const sizeMap = {
-    xs: "w-4 h-4",
-    sm: "w-6 h-6",
-    md: "w-10 h-10",
-    lg: "w-16 h-16",
+    xs: 16,
+    sm: 24,
+    md: 40,
+    lg: 64,
   };
 
-  const strokeWidth = size === "xs" ? 3 : 2.5;
+  const currentSize = sizeMap[size];
 
   return (
-    <div className={cn("relative flex items-center justify-center", sizeMap[size], className)}>
-      <svg
-        viewBox="0 0 50 50"
-        className="w-full h-full animate-loader-rotate"
-      >
-        <circle
-          cx="25"
-          cy="25"
-          r="20"
-          fill="none"
-          stroke={color === "currentColor" ? "var(--primary)" : color}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          className="animate-loader-dash"
-        />
-      </svg>
+    <div 
+      className={cn("relative flex items-center justify-center", className)}
+      style={{ 
+        width: currentSize, 
+        height: currentSize,
+        // @ts-ignore
+        "--uib-size": `${currentSize}px`,
+        "--uib-color": color,
+        "--uib-speed": "2.5s",
+      }}
+    >
+      <div className="leap-frog-container">
+        <div className="dot"></div>
+        <div className="dot"></div>
+        <div className="dot"></div>
+      </div>
 
       <style jsx>{`
-        .animate-loader-rotate {
-          animation: rotate 2s linear infinite;
+        .leap-frog-container {
+          --uib-dot-size: calc(var(--uib-size) * 0.18);
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: var(--uib-size);
+          height: var(--uib-size);
         }
 
-        .animate-loader-dash {
-          stroke-dasharray: 1, 150;
-          stroke-dashoffset: 0;
-          animation: dash 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        .dot {
+          position: absolute;
+          top: 0;
+          left: 0;
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          width: 100%;
+          height: 100%;
         }
 
-        @keyframes rotate {
-          100% { transform: rotate(360deg); }
+        .dot::before {
+          content: '';
+          display: block;
+          height: calc(var(--uib-size) * 0.22);
+          width: calc(var(--uib-size) * 0.22);
+          border-radius: 50%;
+          background-color: var(--uib-color);
+          transition: background-color 0.3s ease;
         }
 
-        @keyframes dash {
+        .dot:nth-child(1) {
+          animation: leapFrog var(--uib-speed) ease infinite;
+        }
+
+        .dot:nth-child(2) {
+          transform: translateX(calc(var(--uib-size) * 0.4));
+          animation: leapFrog var(--uib-speed) ease calc(var(--uib-speed) / -1.5)
+            infinite;
+        }
+
+        .dot:nth-child(3) {
+          transform: translateX(calc(var(--uib-size) * 0.8)) rotate(0deg);
+          animation: leapFrog var(--uib-speed) ease calc(var(--uib-speed) / -3) infinite;
+        }
+
+        @keyframes leapFrog {
           0% {
-            stroke-dasharray: 1, 150;
-            stroke-dashoffset: 0;
+            transform: translateX(0) rotate(0deg);
           }
-          50% {
-            stroke-dasharray: 90, 150;
-            stroke-dashoffset: -35;
+
+          33.333% {
+            transform: translateX(0) rotate(180deg);
           }
+
+          66.666% {
+            transform: translateX(calc(var(--uib-size) * -0.38)) rotate(180deg);
+          }
+
+          99.999% {
+            transform: translateX(calc(var(--uib-size) * -0.78)) rotate(180deg);
+          }
+
           100% {
-            stroke-dasharray: 90, 150;
-            stroke-dashoffset: -124;
+            transform: translateX(0) rotate(0deg);
           }
         }
       `}</style>

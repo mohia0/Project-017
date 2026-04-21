@@ -9,9 +9,10 @@ import { appToast } from '@/lib/toast';
 import {
     Mail, Send, Activity, ShieldCheck, Globe, RotateCcw, CheckCircle2,
     Lightbulb, Receipt, FileText, FileSignature, UserPlus, Eye, EyeOff,
-    Sparkles, Loader2, ChevronDown, Check, AlertCircle, Zap,
+    Sparkles, ChevronDown, Check, AlertCircle, Zap,
     AlertTriangle, CalendarCheck
 } from 'lucide-react';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 /* ─────────────── Constants ─────────────── */
 const TEMPLATE_DEFS = [
@@ -427,7 +428,7 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                             : "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.4)]"
                     )}
                 >
-                    {isSaving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : <CheckCircle2 size={13} />}
+                    {isSaving ? <AppLoader size="xs" /> : saved ? <Check size={13} /> : <CheckCircle2 size={13} />}
                     {saved ? 'Saved!' : 'Save Template'}
                 </button>
             </div>
@@ -741,7 +742,7 @@ export default function EmailsSettingsPage() {
                                         isDark ? "bg-white/8 hover:bg-white/12 text-white/70" : "bg-black/5 hover:bg-black/10 text-black/60"
                                     )}
                                 >
-                                    {isTesting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                                    {isTesting ? <AppLoader size="xs" /> : <Send size={13} />}
                                     Send Test
                                 </button>
                                 <button
@@ -752,7 +753,7 @@ export default function EmailsSettingsPage() {
                                         "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.4)]"
                                     )}
                                 >
-                                    {isSaving ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                                    {isSaving ? <AppLoader size="xs" /> : <CheckCircle2 size={13} />}
                                     Save Config
                                 </button>
                             </div>

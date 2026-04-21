@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Send, Mail, User, ChevronDown, Check, Loader2, AlertCircle, Sparkles, Settings2, FileText, Receipt, FileCheck, Calendar } from 'lucide-react';
+import { X, Send, Mail, User, ChevronDown, Check, AlertCircle, Sparkles, Settings2, FileText, Receipt, FileCheck, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { appToast } from '@/lib/toast';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 interface SendEmailModalProps {
     isOpen: boolean;
@@ -374,7 +375,7 @@ export function SendEmailModal({
                             )}
                         >
                             {isSending ? (
-                                <><Loader2 size={14} className="animate-spin" /> Sending…</>
+                                <><AppLoader size="xs" /> Sending…</>
                             ) : sent ? (
                                 <><Check size={14} /> Sent!</>
                             ) : (

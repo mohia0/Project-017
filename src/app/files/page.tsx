@@ -15,6 +15,7 @@ import {
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, RotateCw, RotateCcw,
     Package, Globe, ExternalLink as OpenExternal, Info,
 } from 'lucide-react';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -44,7 +45,7 @@ const ProgressContent = ({ progress, isDark }: { progress: number; isDark: boole
             <div className="flex justify-between items-center mt-2">
                 <div className="flex items-center gap-1.5">
                     {isComplete ? (
-                        <RefreshCw size={10} className="animate-spin text-primary" />
+                        <AppLoader size="xs" />
                     ) : (
                         <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                     )}
@@ -843,7 +844,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                         >
                             {uploads.some(u => u.status === 'uploading') ? (
                                 <span className="flex items-center justify-center gap-2">
-                                    <RefreshCw size={13} className="animate-spin"/> Uploading…
+                                    <AppLoader size="xs" /> Uploading…
                                 </span>
                             ) : (
                                 `Upload ${uploads.filter(u => u.status === 'pending').length > 0 ? uploads.filter(u => u.status === 'pending').length + ' file' + (uploads.filter(u => u.status === 'pending').length !== 1 ? 's' : '') : 'Files'}`

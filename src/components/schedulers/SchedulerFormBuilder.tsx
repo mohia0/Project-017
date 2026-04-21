@@ -180,7 +180,7 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
             className: cn("w-full px-3 py-2 text-[13px] border outline-none transition-all pointer-events-none",
                 isDark ? "bg-white/[0.03] border-[#333] text-[#ddd]" : "bg-black/[0.02] border-[#e5e5e5] text-[#111]"
             ),
-            style: { borderRadius: `${Math.max(0, borderRadius - 6)}px` }
+            style: { borderRadius: `${borderRadius}px` }
         };
 
         switch (field.type) {
@@ -227,7 +227,7 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 return (
                     <div className={cn("w-full h-20 border-2 border-dashed flex items-center justify-center transition-all opacity-60",
                         isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}
-                        style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}>
+                        style={{ borderRadius: `${borderRadius}px` }}>
                         <span className="text-[12px]">Sign here</span>
                     </div>
                 );
@@ -235,7 +235,7 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 return (
                     <div className={cn("w-full py-6 border-2 border-dashed flex flex-col items-center gap-2 transition-all opacity-60",
                         isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}
-                        style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}>
+                        style={{ borderRadius: `${borderRadius}px` }}>
                         <Upload size={18} />
                         <span className="text-[12px]">Click to upload or drag & drop</span>
                     </div>

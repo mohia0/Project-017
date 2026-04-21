@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutTemplate, Plus, Trash2, Calendar, FileText as ProposalIcon, Receipt as InvoiceIcon, RotateCcw, BookmarkCheck, ClipboardList, Clock, Briefcase, LayoutPanelTop, Zap, Search, PanelTop, Table, PenLine, FileText, Tag } from 'lucide-react';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { appToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -603,7 +604,7 @@ export default function TemplatesPage() {
                                                     isDark ? "bg-primary text-primary-foreground hover:bg-primary-hover" : "bg-black text-white hover:bg-black/80"
                                                 )}
                                             >
-                                                {isCreating ? <RotateCcw size={13} className="animate-spin" /> : <Plus size={13} strokeWidth={2.5} />}
+                                                {isCreating ? <AppLoader size="xs" /> : <Plus size={13} strokeWidth={2.5} />}
                                                 Use
                                             </button>
                                             <button 

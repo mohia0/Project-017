@@ -5,9 +5,10 @@ import { createPortal } from 'react-dom';
 import { useUIStore } from '@/store/useUIStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { Plus, Moon, Sun, Bell, LayoutTemplate, Settings, Eye, EyeOff, RefreshCw, X, Check, ArrowLeftRight, Loader2 } from 'lucide-react';
+import { Plus, Moon, Sun, Bell, LayoutTemplate, Settings, Eye, EyeOff, RefreshCw, X, Check, ArrowLeftRight } from 'lucide-react';
 import { cn, detectCreateModalTab } from '@/lib/utils';
 import { useRouter, usePathname } from 'next/navigation';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { CURRENCIES } from '@/lib/currencies';
 
@@ -58,7 +59,7 @@ function CurrencyConverterPopover({ isDark, onClose, className }: { isDark: bool
                 </div>
                 <div className="flex items-center gap-1">
                     {conversionCurrency && conversionLoading && (
-                        <Loader2 size={12} className="animate-spin opacity-50" />
+                        <AppLoader size="xs" color="black" className="opacity-50" />
                     )}
                     {conversionCurrency && !conversionLoading && (
                         <Tooltip content="Refresh rates" side="left">
@@ -309,7 +310,7 @@ export default function RightToolsMenu() {
                             )}
                         >
                             {conversionLoading
-                                ? <Loader2 size={14} className="animate-spin" />
+                                ? <AppLoader size="xs" />
                                 : <ArrowLeftRight size={14} strokeWidth={1.75} className="transition-transform duration-300 group-hover:scale-110" />
                             }
                             {/* Active dot indicator */}

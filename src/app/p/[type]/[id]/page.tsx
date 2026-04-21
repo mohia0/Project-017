@@ -3,6 +3,7 @@ import PreviewClient from './PreviewClient';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 async function getDocumentData(type: string, id: string) {
     let table = '';
@@ -155,7 +156,7 @@ export default async function PublicPreviewPage({ params }: { params: Promise<{ 
     };
 
     return (
-        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-white"><div className="w-6 h-6 border-2 border-black/5 border-t-black/20 rounded-full animate-spin" /></div>}>
+        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-white"><AppLoader size="md" color="black" /></div>}>
             <PreviewClient type={type as any} data={safeData} />
         </Suspense>
     );

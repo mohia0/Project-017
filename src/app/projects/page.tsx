@@ -17,6 +17,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -670,7 +671,7 @@ export default function ProjectsPage() {
             <div className="flex-1 overflow-y-auto min-h-0">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">
-                        <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                        <AppLoader size="sm" />
                     </div>
                 ) : filtered.length === 0 ? (
                     <EmptyState isDark={isDark} onNew={() => setCreateModalOpen(true, 'Project')} isArchived={showArchived} />

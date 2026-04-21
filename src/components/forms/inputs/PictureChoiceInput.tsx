@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cn, isDarkColor } from '@/lib/utils';
 import { Image as ImageIcon, Check } from 'lucide-react';
 
 interface PictureChoiceInputProps {
@@ -12,6 +12,7 @@ interface PictureChoiceInputProps {
     borderRadius: number;
     primaryColor: string;
     multiple?: boolean;
+    backgroundColor?: string;
 }
 
 /** Parses an option string that may contain a label (format: "url|label") */
@@ -71,8 +72,11 @@ export const PictureChoiceInput = ({
     isDark, 
     borderRadius,
     primaryColor,
-    multiple
+    multiple,
+    backgroundColor
 }: PictureChoiceInputProps) => {
+    const isBgDark = backgroundColor ? isDarkColor(backgroundColor) : isDark;
+
     const values = multiple ? (() => {
         try {
             const parsed = JSON.parse(value);
@@ -106,31 +110,40 @@ export const PictureChoiceInput = ({
                         key={i} 
                         onClick={() => toggleOption(opt)}
                         className={cn(
-                            "group relative flex flex-col items-center gap-3 p-4 border-2 transition-all duration-300 cursor-pointer overflow-hidden",
-                            isSelected 
-                                ? "border-primary bg-primary/5 shadow-lg" 
-                                : (isDark ? "border-[#333] bg-[#181818] hover:border-[#444]" : "border-[#ebebeb] bg-[#f9f9f9] hover:border-[#ddd] hover:bg-white")
+                            "group relative flex flex-col items-center gap-2 p-3 border transition-all duration-300 cursor-pointer overflow-hidden",
+                            !backgroundColor && (isSelected 
+                                ? "border-primary bg-primary/5 shadow-md" 
+                                : (isDark ? "bg-white/[0.03] border-[#333] hover:border-[#444]" : "bg-black/[0.02] border-[#e5e5e5] hover:border-[#ddd] hover:bg-white")),
+                            backgroundColor && (isSelected ? "border-primary shadow-md" : (isBgDark ? "border-white/10 hover:border-white/20" : "border-black/10 hover:border-black/20"))
                         )}
                         style={{ 
                             borderRadius: `${borderRadius}px`,
                             borderColor: isSelected ? primaryColor : undefined,
-                            backgroundColor: isSelected ? `${primaryColor}10` : undefined
+                            backgroundColor: isSelected ? `${primaryColor}13` : (backgroundColor || undefined)
                         }}
                     >
                         {/* Selected Indicator */}
                         {isSelected && (
                             <div 
-                                className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 rounded-full animate-in zoom-in-50 duration-300 z-10 shadow-sm"
-                                style={{ backgroundColor: primaryColor }}
+                                className={cn(
+                                    "absolute top-2 right-2 flex items-center justify-center w-5 h-5 animate-in zoom-in-50 duration-300 z-10 shadow-sm",
+                                    multiple ? "" : "rounded-full"
+                                )}
+                                style={{ 
+                                    backgroundColor: primaryColor,
+                                    borderRadius: multiple ? `${Math.max(0, borderRadius - 4)}px` : undefined
+                                }}
                             >
                                 <Check size={12} className="text-white" strokeWidth={4} />
                             </div>
                         )}
 
                         <div className={cn(
-                            "w-full aspect-[4/3] rounded-xl flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover:scale-105",
-                            !hasImage ? (isDark ? "bg-[#222]" : "bg-white shadow-sm") : ""
-                        )}>
+                            "w-full aspect-[4/3] flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover:scale-105",
+                            !hasImage ? (!backgroundColor ? (isDark ? "bg-[#222]" : "bg-white shadow-sm") : (isBgDark ? "bg-white/10" : "bg-black/5 shadow-sm")) : ""
+                        )}
+                        style={{ borderRadius: `${Math.max(0, borderRadius - 2)}px` }}
+                        >
                             {hasImage ? (
                                 <img 
                                     src={url} 
@@ -143,14 +156,14 @@ export const PictureChoiceInput = ({
                                     }}
                                 />
                             ) : (
-                                <ImageIcon size={32} className={cn("opacity-20", isDark ? "text-white" : "text-black")} />
+                                <ImageIcon size={32} className={cn("opacity-20", !backgroundColor ? (isDark ? "text-white" : "text-black") : (isBgDark ? "text-white" : "text-black"))} />
                             )}
                         </div>
 
                         {displayName && (
                             <span className={cn(
                                 "text-[12px] font-bold tracking-tight text-center w-full leading-tight",
-                                isSelected ? "text-primary" : (isDark ? "text-[#777]" : "text-[#555]")
+                                !backgroundColor ? (isSelected ? "text-primary" : (isDark ? "text-[#777]" : "text-[#555]")) : (isSelected ? "text-primary" : (isBgDark ? "text-[#bbb]" : "text-[#555]"))
                             )} style={{ color: isSelected ? primaryColor : undefined }}>
                                 {displayName}
                             </span>

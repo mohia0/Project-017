@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { cn } from '@/lib/utils';
-import { Loader2, ArrowRight, Building, Sparkles, AlertCircle } from 'lucide-react';
+import { ArrowRight, Building, Sparkles, AlertCircle } from 'lucide-react';
 import { FullScreenLoader, AppLoader } from '@/components/ui/AppLoader';
 
 export default function OnboardingPage() {

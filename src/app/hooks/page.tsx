@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { useRouter } from 'next/navigation';
@@ -403,7 +404,7 @@ export default function HooksPage() {
             <div className="flex-1 overflow-auto pb-44">
                 {isLoading && hooks.length === 0 ? (
                     <div className="flex items-center justify-center h-40">
-                        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <AppLoader size="md" />
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 gap-4">

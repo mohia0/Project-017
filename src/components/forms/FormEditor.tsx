@@ -9,7 +9,7 @@ import {
     Image, Upload, Mail, Phone, User, MapPin, Globe, Hash,
     Sliders as SlidersIcon, Calendar, LinkIcon, PenLine, Filter,
     GripVertical, X, Download, Eye, Monitor, Smartphone, LayoutTemplate,
-    LayoutGrid, List, ArrowUpDown, ExternalLink,
+    LayoutGrid, List, ArrowUpDown, ExternalLink, ChevronUp,
     Image as ImageIcon, SeparatorHorizontal, FileText, FolderKanban
 } from 'lucide-react';
 import { SelectInput } from '@/components/forms/inputs/SelectInput';
@@ -91,6 +91,7 @@ interface FormMeta {
     design: DocumentDesign;
     confirmationBlocks?: any[];
     description?: string;
+    publicTitle?: string;
 }
 
 const DEFAULT_META: FormMeta = {
@@ -98,6 +99,7 @@ const DEFAULT_META: FormMeta = {
     expirationDate: '',
     submissionLimit: null,
     project: '',
+    publicTitle: '',
     confirmationMessage: "Thank you for your submission! We'll be in touch soon.",
     logoUrl: '',
     design: DEFAULT_DOCUMENT_DESIGN,
@@ -159,22 +161,42 @@ const isColorDark = (color: string) => {
     return false;
 };
 /* ── Option Editor Items (to prevent focus loss) ── */
-function OptionEditorItem({ opt, idx, isDark, onUpdate, options, showIndicator }: any) {
-    const controls = useDragControls();
+function OptionEditorItem({ opt, idx, isDark, onUpdate, options, showIndicator, inputBackgroundColor, borderRadius }: any) {
+    const isBgDark = inputBackgroundColor ? isColorDark(inputBackgroundColor) : isDark;
+    const moveUp = (e: any) => {
+        e.stopPropagation();
+        if (!onUpdate || idx === 0) return;
+        const newOpts = [...options];
+        [newOpts[idx - 1], newOpts[idx]] = [newOpts[idx], newOpts[idx - 1]];
+        onUpdate({ options: newOpts });
+    };
+
+    const moveDown = (e: any) => {
+        e.stopPropagation();
+        if (!onUpdate || idx === options.length - 1) return;
+        const newOpts = [...options];
+        [newOpts[idx + 1], newOpts[idx]] = [newOpts[idx], newOpts[idx + 1]];
+        onUpdate({ options: newOpts });
+    };
+
     return (
         <Reorder.Item 
             value={idx} 
             dragListener={false} 
-            dragControls={controls}
-            className={cn("flex items-center gap-2 p-1.5 rounded-lg border", isDark ? "border-[#333] bg-black/20" : "border-[#e5e5e5] bg-white")}
+            className={cn("flex items-center gap-2 p-1.5 border", 
+                !inputBackgroundColor && (isDark ? "border-[#333] bg-black/20" : "border-[#e5e5e5] bg-white"),
+                inputBackgroundColor && (isBgDark ? "border-white/10" : "border-black/10")
+            )}
+            style={{ 
+                backgroundColor: inputBackgroundColor || undefined,
+                borderRadius: `${borderRadius}px`
+            }}
         >
-            <div 
-                onPointerDown={(e) => controls.start(e)}
-                className="cursor-grab active:cursor-grabbing opacity-30 hover:opacity-100 transition-opacity"
-            >
-                <GripVertical size={12} />
+            <div className="flex flex-col items-center justify-center -gap-1 opacity-40 hover:opacity-100 transition-opacity">
+                <button onClick={moveUp} disabled={idx === 0} className={cn("hover:text-primary transition-colors flex items-center justify-center", idx === 0 && "opacity-30 cursor-default hover:text-current")}><ChevronUp size={12} /></button>
+                <button onClick={moveDown} disabled={idx === options.length - 1} className={cn("hover:text-primary transition-colors flex items-center justify-center", idx === options.length - 1 && "opacity-30 cursor-default hover:text-current")}><ChevronDown size={12} /></button>
             </div>
-            {showIndicator && <div className={cn("w-3.5 h-3.5 rounded-sm border ml-1 flex-shrink-0 transition-opacity", isDark ? "border-[#444]" : "border-[#ccc]")} />}
+            {showIndicator && <div className={cn("w-3.5 h-3.5 rounded-sm border ml-1 flex-shrink-0 transition-opacity", isBgDark ? "border-white/30" : "border-black/20")} />}
             <input 
                 value={opt} 
                 onChange={e => {
@@ -185,7 +207,7 @@ function OptionEditorItem({ opt, idx, isDark, onUpdate, options, showIndicator }
                     }
                 }} 
                 placeholder="Option label" 
-                className={cn("flex-1 bg-transparent border-none text-[13px] outline-none px-2 py-1", isDark ? "text-white" : "text-black")} 
+                className={cn("flex-1 bg-transparent border-none text-[13px] outline-none px-2 py-1", isBgDark ? "text-white placeholder:text-white/40" : "text-black placeholder:text-black/40")} 
             />
             <button 
                 onClick={(e) => {
@@ -203,29 +225,47 @@ function OptionEditorItem({ opt, idx, isDark, onUpdate, options, showIndicator }
     );
 }
 
-function PictureOptionEditorItem({ opt, idx, isDark, onUpdate, onUploadClick, fieldId, borderRadius, options }: any) {
-    const controls = useDragControls();
+function PictureOptionEditorItem({ opt, idx, isDark, onUpdate, onUploadClick, fieldId, borderRadius, options, inputBackgroundColor }: any) {
+    const isBgDark = inputBackgroundColor ? isColorDark(inputBackgroundColor) : isDark;
     const [url, label] = opt.includes('|') ? opt.split('|') : [opt, ''];
+
+    const moveUp = (e: any) => {
+        e.stopPropagation();
+        if (!onUpdate || idx === 0) return;
+        const newOpts = [...options];
+        [newOpts[idx - 1], newOpts[idx]] = [newOpts[idx], newOpts[idx - 1]];
+        onUpdate({ options: newOpts });
+    };
+
+    const moveDown = (e: any) => {
+        e.stopPropagation();
+        if (!onUpdate || idx === options.length - 1) return;
+        const newOpts = [...options];
+        [newOpts[idx + 1], newOpts[idx]] = [newOpts[idx], newOpts[idx + 1]];
+        onUpdate({ options: newOpts });
+    };
+
     return (
         <Reorder.Item 
             value={idx} 
             dragListener={false} 
-            dragControls={controls}
-            className={cn("group flex flex-col gap-2 p-2 rounded-xl border relative w-[130px]", isDark ? "bg-[#1c1c1c] border-[#2a2a2a]" : "bg-white border-[#e5e5e5]")} 
-            style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}
+            className={cn("group flex flex-col gap-2 p-2 border relative w-[130px]", 
+                !inputBackgroundColor && (isDark ? "bg-[#1c1c1c] border-[#2a2a2a]" : "bg-white border-[#e5e5e5]"),
+                inputBackgroundColor && (isBgDark ? "border-white/10" : "border-black/10")
+            )} 
+            style={{ 
+                borderRadius: `${borderRadius}px`,
+                backgroundColor: inputBackgroundColor || undefined
+            }}
         >
             <div 
                 onClick={() => { if (onUploadClick) onUploadClick(fieldId, idx); }}
                 className={cn("w-full h-24 rounded-lg flex-shrink-0 cursor-pointer overflow-hidden border-2 border-dashed flex items-center justify-center transition-all group-hover:border-primary/50 relative", isDark ? "border-[#444] bg-black/20" : "border-[#ccc] bg-black/5")}
             >
                 {url ? <img src={url} className="w-full h-full object-cover" /> : <Image size={18} className="opacity-50" />}
-                <div 
-                    onPointerDown={(e) => controls.start(e)}
-                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity"
-                >
-                    <div className="cursor-grab active:cursor-grabbing text-white">
-                        <GripVertical size={20} />
-                    </div>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity gap-3 backdrop-blur-sm">
+                    <button onClick={moveUp} disabled={idx === 0} className={cn("text-white p-2 rounded-full hover:bg-white/20 transition-colors", idx === 0 && "opacity-30 cursor-default hover:bg-transparent")}><ChevronUp size={20} /></button>
+                    <button onClick={moveDown} disabled={idx === options.length - 1} className={cn("text-white p-2 rounded-full hover:bg-white/20 transition-colors", idx === options.length - 1 && "opacity-30 cursor-default hover:bg-transparent")}><ChevronDown size={20} /></button>
                 </div>
             </div>
             <input 
@@ -238,7 +278,7 @@ function PictureOptionEditorItem({ opt, idx, isDark, onUpdate, onUploadClick, fi
                     }
                 }}
                 placeholder="Label (opt)"
-                className={cn("w-full bg-transparent border-none text-[12px] font-medium outline-none text-center px-1", isDark ? "text-white" : "text-black")}
+                className={cn("w-full bg-transparent border-none text-[12px] font-medium outline-none text-center px-1", isBgDark ? "text-white placeholder:text-white/40" : "text-black placeholder:text-black/40")}
             />
             <button 
                 onClick={(e) => {
@@ -260,13 +300,14 @@ function PictureOptionEditorItem({ opt, idx, isDark, onUpdate, onUploadClick, fi
 function FieldPreview({ 
     field, isDark, isSelected, onClick, onRemove, onUpdate, onUploadClick, 
     primaryColor, isPreview, borderRadius, marginTop, marginBottom, 
-    blockBackgroundColor, testValue, onTestValueChange 
+    blockBackgroundColor, inputBackgroundColor, testValue, onTestValueChange 
 }: {
     field: FormField; isDark: boolean; isSelected: boolean; onClick: (e: React.MouseEvent) => void;
     onRemove: () => void; onUpdate?: (patch: Partial<FormField>) => void; 
     onUploadClick?: (fieldId: string, idx: number | null) => void; primaryColor: string; 
     isPreview?: boolean; borderRadius: number;
     marginTop?: number; marginBottom?: number; blockBackgroundColor?: string;
+    inputBackgroundColor?: string;
     testValue?: string; onTestValueChange?: (val: string) => void;
 }) {
     const {
@@ -291,7 +332,7 @@ function FieldPreview({
             ),
             style: { 
                 borderRadius: `${Math.max(0, borderRadius - 6)}px`,
-                backgroundColor: blockBackgroundColor ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : undefined
+                backgroundColor: inputBackgroundColor || (blockBackgroundColor ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : undefined)
             }
         };
 
@@ -311,6 +352,7 @@ function FieldPreview({
                                 isDark={isDark} 
                                 borderRadius={borderRadius} 
                                 multiple={field.multiple}
+                                backgroundColor={inputBackgroundColor}
                             />
                         </div>
                     );
@@ -335,6 +377,8 @@ function FieldPreview({
                                     isDark={isDark}
                                     onUpdate={onUpdate}
                                     options={dropdownOpts}
+                                    inputBackgroundColor={inputBackgroundColor}
+                                    borderRadius={borderRadius}
                                 />
                             ))}
                         </Reorder.Group>
@@ -359,6 +403,7 @@ function FieldPreview({
                                 primaryColor={primaryColor} 
                                 borderRadius={borderRadius} 
                                 multiple={field.multiple}
+                                backgroundColor={inputBackgroundColor}
                             />
                         </div>
                     );
@@ -384,6 +429,8 @@ function FieldPreview({
                                     onUpdate={onUpdate}
                                     options={radioOpts}
                                     showIndicator
+                                    inputBackgroundColor={inputBackgroundColor}
+                                    borderRadius={borderRadius}
                                 />
                             ))}
                         </Reorder.Group>
@@ -407,6 +454,7 @@ function FieldPreview({
                                 borderRadius={borderRadius} 
                                 primaryColor={primaryColor} 
                                 multiple={field.multiple}
+                                backgroundColor={inputBackgroundColor}
                             />
                         </div>
                     );
@@ -434,13 +482,14 @@ function FieldPreview({
                                     fieldId={field.id}
                                     borderRadius={borderRadius}
                                     options={pictureOpts}
+                                    inputBackgroundColor={inputBackgroundColor}
                                 />
                             ))}
                         </Reorder.Group>
                         <button onClick={(e) => {
                             e.stopPropagation();
                             if (onUploadClick) onUploadClick(field.id, null);
-                        }} className={cn("w-[130px] h-[130px] rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all hover:border-primary/50 hover:bg-primary/5 cursor-pointer", isDark ? "border-[#333] text-[#666]" : "border-[#e5e5e5] text-[#aaa]")} style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}>
+                        }} className={cn("w-[130px] h-[130px] border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all hover:border-primary/50 hover:bg-primary/5 cursor-pointer", isDark ? "border-[#333] text-[#666]" : "border-[#e5e5e5] text-[#aaa]")} style={{ borderRadius: `${borderRadius}px` }}>
                             <Plus size={16} /> 
                             <span className="text-[11px] font-bold">Add Picture</span>
                         </button>
@@ -468,7 +517,7 @@ function FieldPreview({
                     <div className={cn("w-full h-20 border-2 border-dashed flex items-center justify-center transition-all",
                         isPreview ? "cursor-crosshair hover:bg-black/5" : "opacity-60",
                         isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}
-                        style={{ borderRadius: `${Math.max(0, borderRadius - 4)}px` }}>
+                        style={{ borderRadius: `${borderRadius}px` }}>
                         <span className="text-[12px]">Sign here</span>
                     </div>
                 );
@@ -517,7 +566,8 @@ function FieldPreview({
                 isPreview ? "cursor-default" : "cursor-pointer",
                 isSelected
                     ? "border-primary/50 shadow-[0_0_0_3px_rgba(77,191,57,0.08)]"
-                    : (isDark ? "border-transparent hover:border-[#333]" : "border-transparent hover:border-[#ebebeb]"),
+                    : "border-transparent",
+                !isPreview && !isSelected && (isDark ? "hover:border-[#333]" : "hover:border-[#ebebeb]"),
                 isDragging && "opacity-50"
             )}>
             
@@ -1357,12 +1407,12 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                 <div className="p-6">
                                                                     <div className="mb-10">
                                                                         {meta.logoUrl && <img src={meta.logoUrl} alt="Logo" className="mb-6 object-contain" style={{ height: `${design.logoSize || 40}px` }} />}
-                                                                        <div className="text-[32px] font-bold leading-tight tracking-tight mb-2" style={{ color: isFormDark ? '#fff' : '#111' }}>{title}</div>
+                                                                        <div className="text-[32px] font-bold leading-tight tracking-tight mb-2 whitespace-pre-wrap break-words" style={{ color: isFormDark ? '#fff' : '#111' }}>{meta.publicTitle || title}</div>
                                                                         {meta.description && <div className="text-[13.5px] opacity-60 max-w-[90%]" style={{ color: isFormDark ? '#aaa' : '#555' }}>{meta.description}</div>}
                                                                     </div>
                                                                     <div className="space-y-4">
                                                                         {fields.map(f => (
-                                                                            <FieldPreview key={f.id} field={f} isDark={isFormDark} isSelected={false} onClick={() => {}} onRemove={() => {}} primaryColor={primaryColor} isPreview={true} borderRadius={design.borderRadius ?? 16} marginTop={design.marginTop} marginBottom={design.marginBottom} blockBackgroundColor={design.blockBackgroundColor} />
+                                                                            <FieldPreview key={f.id} field={f} isDark={isFormDark} isSelected={false} onClick={() => {}} onRemove={() => {}} primaryColor={primaryColor} isPreview={true} borderRadius={design.borderRadius ?? 16} marginTop={design.marginTop} marginBottom={design.marginBottom} blockBackgroundColor={design.blockBackgroundColor} inputBackgroundColor={design.inputBackgroundColor} />
                                                                         ))}
                                                                     </div>
                                                                     {fields.length > 0 && <button 
@@ -1404,8 +1454,14 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                 className="mb-4 object-contain"
                                                                 style={{ height: `${design.logoSize || 40}px` }} />
                                                         )}
-                                                        <div className="text-[28px] font-bold leading-tight tracking-tight mb-2" style={{ color: isFormDark ? '#fff' : '#111' }}>
-                                                            {title}
+                                                        <div 
+                                                            contentEditable={!isPreview}
+                                                            suppressContentEditableWarning
+                                                            onBlur={e => updateMeta({ publicTitle: e.currentTarget.innerText?.trim() || '' })}
+                                                            className="text-[28px] font-bold leading-tight tracking-tight mb-2 outline-none whitespace-pre-wrap break-words" 
+                                                            style={{ color: isFormDark ? '#fff' : '#111' }}
+                                                        >
+                                                            {meta.publicTitle || title}
                                                         </div>
                                                         {meta.description && <div className="text-[14px] opacity-60" style={{ color: isFormDark ? '#aaa' : '#555' }}>{meta.description}</div>}
                                                     </div>
@@ -1479,6 +1535,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                                 marginTop={design.marginTop}
                                                                                 marginBottom={design.marginBottom}
                                                                                 blockBackgroundColor={design.blockBackgroundColor}
+                                                                                inputBackgroundColor={design.inputBackgroundColor}
                                                                                 testValue={testValues[f.id]}
                                                                                 onTestValueChange={(val) => setTestValues(prev => ({ ...prev, [f.id]: val }))}
                                                                             />
@@ -2201,7 +2258,7 @@ function ConfirmationBlockItem({ block, isDark, isSelected, onClick, onRemove, u
             onClick={onClick}
             className={cn(
                 "group relative w-full transition-all duration-200 rounded-xl",
-                !isSelected && "hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                !isSelected && !isPreview && "hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
             )}
         >
             {!isPreview && (
@@ -2265,7 +2322,10 @@ function ConfirmationBlockItem({ block, isDark, isSelected, onClick, onRemove, u
                             <img src={block.url} alt="" className="max-w-full h-auto rounded-xl shadow-sm" />
                         ) : (
                             <div className={cn("w-full aspect-[16/9] rounded-xl flex flex-col items-center justify-center gap-3 border-2 border-dashed transition-all",
-                                isDark ? "bg-white/[0.03] border-white/10 hover:border-white/20" : "bg-black/[0.03] border-black/10 hover:border-black/20")}>
+                                isDark 
+                                    ? cn("bg-white/[0.03] border-white/10", !isPreview && "hover:border-white/20") 
+                                    : cn("bg-black/[0.03] border-black/10", !isPreview && "hover:border-black/20")
+                            )}>
                                 <ImageIcon size={24} className="opacity-20" />
                                 <span className="text-[11px] font-bold uppercase tracking-wider opacity-40">No image selected</span>
                             </div>

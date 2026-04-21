@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Globe, Search, ChevronDown, Check } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isDarkColor } from '@/lib/utils';
 
 const COUNTRIES = [
     "Afghanistan", "Albania", "Algeria", "American Samoa", "Andorra", "Angola", "Anguilla", "Antarctica", "Antigua and Barbuda", "Argentina", "Armenia", "Aruba", "Australia", "Austria", "Azerbaijan",
@@ -36,23 +36,29 @@ interface CountryPickerProps {
     value: string;
     onChange: (v: string) => void;
     isDark: boolean;
+    borderRadius: number;
     label?: string;
     placeholder?: string;
     minimal?: boolean;
     className?: string;
     style?: React.CSSProperties;
+    backgroundColor?: string;
 }
 
 export function CountryPicker({
     value,
     onChange,
-    isDark,
+    isDark: forcedIsDark,
+    borderRadius,
     label = "Country",
     placeholder = "Select country",
     minimal = false,
     className,
-    style
+    style,
+    backgroundColor
 }: CountryPickerProps) {
+    const isBgDark = backgroundColor ? isDarkColor(backgroundColor) : forcedIsDark;
+    const isDark = forcedIsDark;
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -76,11 +82,14 @@ export function CountryPicker({
     };
 
     const field = cn(
-        "w-full border rounded-xl px-4 py-3 text-[13px] transition-all cursor-pointer",
-        isDark
+        "w-full border px-4 py-3 text-[14px] transition-all cursor-pointer",
+        !backgroundColor && (isDark
             ? "bg-[#1c1c1c] border-[#2e2e2e] hover:border-[#444]"
-            : "bg-white border-[#e0e0e0] hover:border-[#ccc]",
-        open && (isDark ? "ring-2 ring-[#333] border-[#444]" : "ring-2 ring-[#e8e8e8] border-[#ccc]"),
+            : "bg-white border-[#e0e0e0] hover:border-[#ccc]"),
+        backgroundColor && (isBgDark 
+            ? "border-white/10 hover:border-white/20" 
+            : "border-black/10 hover:border-black/20"),
+        open && (isBgDark ? "ring-2 ring-white/10 border-white/20" : "ring-2 ring-black/5 border-black/10"),
         className
     );
 
@@ -98,13 +107,13 @@ export function CountryPicker({
                     <ChevronDown size={12} className="opacity-30" />
                 </div>
             ) : (
-                <div className={field} style={style} onClick={() => setOpen(!open)}>
+                <div className={field} style={{ ...style, backgroundColor: backgroundColor || undefined, borderRadius: `${borderRadius}px` }} onClick={() => setOpen(!open)}>
                     <div className="flex items-center gap-1.5 mb-0.5">
-                        <Globe size={11} className={cn("opacity-40", isDark ? "text-white" : "text-[#333]")} />
-                        <span className={cn("text-[11px] font-semibold", isDark ? "text-[#555]" : "text-[#aaa]")}>{label}</span>
+                        <Globe size={11} className={cn("opacity-40", isBgDark ? "text-white" : "text-[#333]")} />
+                        <span className={cn("text-[11px] font-semibold", isBgDark ? "text-white/40" : "text-black/40")}>{label}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                        <span className={cn("text-[13px]", value ? (isDark ? "text-white" : "text-[#111]") : (isDark ? "text-[#555]" : "text-[#bbb]"))}>
+                        <span className={cn("text-[13px]", value ? (isBgDark ? "text-white" : "text-[#111]") : (isBgDark ? "text-white/40" : "text-black/40"))}>
                             {value || placeholder}
                         </span>
                         <ChevronDown size={14} className="opacity-30" />
@@ -113,10 +122,13 @@ export function CountryPicker({
             )}
 
             {open && (
-                <div className={cn(
-                    "absolute left-0 right-0 top-full mt-1 rounded-xl border shadow-2xl z-[1000] overflow-hidden animate-in fade-in zoom-in-95 duration-150",
-                    isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
-                )}>
+                <div 
+                    className={cn(
+                        "absolute left-0 right-0 top-full mt-1 border shadow-2xl z-[1000] overflow-hidden animate-in fade-in zoom-in-95 duration-150",
+                        isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                    )}
+                    style={{ borderRadius: `${borderRadius}px` }}
+                >
                     {/* Search */}
                     <div className={cn(
                         "flex items-center gap-2 px-3 py-2 border-b",

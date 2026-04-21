@@ -12,6 +12,7 @@ import {
     ArrowLeft, Eye, PenLine, ExternalLink, Monitor, Smartphone, Send, Settings, LayoutTemplate
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { useUIStore } from '@/store/useUIStore';
 import { useProjectStore, Project, ProjectTask, ProjectStatus, TaskStatus } from '@/store/useProjectStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
@@ -545,7 +546,7 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
                                                 title="Unlink"
                                                 className={cn('w-7 h-7 flex items-center justify-center rounded-lg transition-all', isDark ? 'text-[#444] hover:text-red-400 hover:bg-red-500/10' : 'text-[#ccc] hover:text-red-500 hover:bg-red-50')}
                                             >
-                                                {row.isUnlinking ? <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <X size={12} />}
+                                                {row.isUnlinking ? <AppLoader size="xs" /> : <X size={12} />}
                                             </button>
                                         </div>
                                     </div>
@@ -707,7 +708,7 @@ export default function ProjectDetailPage() {
     if (!project) {
         return (
             <div className={cn("flex h-full items-center justify-center", isDark ? "bg-[#141414]" : "bg-white")}>
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <AppLoader size="md" />
             </div>
         );
     }

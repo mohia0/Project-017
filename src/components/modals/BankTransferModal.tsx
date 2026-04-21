@@ -6,8 +6,8 @@ import { X, ArrowRight, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { Loader2 } from 'lucide-react';
 import { DocumentDesign } from '@/types/design';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 interface BankTransferModalProps {
     isOpen: boolean;
@@ -95,10 +95,10 @@ export function BankTransferModal({
 
                     {isLoading ? (
                         <div className={cn(
-                            "rounded-xl border p-12 flex flex-col items-center justify-center gap-3",
+                            "rounded-xl border p-12 flex flex-col items-center justify-center gap-6",
                             isDark ? "bg-[#111] border-[#333]" : "bg-[#f9f9f9] border-[#e2e2e2]"
                         )}>
-                            <Loader2 className="animate-spin opacity-20" size={24} />
+                            <AppLoader size="sm" color={isDark ? "white" : "black"} />
                             <p className="text-[11px] font-bold uppercase tracking-widest opacity-30">Loading bank details...</p>
                         </div>
                     ) : (

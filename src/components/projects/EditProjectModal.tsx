@@ -12,6 +12,7 @@ import DatePicker from '@/components/ui/DatePicker';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { Avatar } from '@/components/ui/Avatar';
 import { useRef } from 'react';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 const DEFAULT_PALETTE = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316'];
 
@@ -295,7 +296,7 @@ export default function EditProjectModal({ open, onClose, project }: Props) {
                         disabled={saving || !name.trim()}
                         className="flex items-center gap-2 px-5 py-2 text-[13px] font-bold rounded-xl bg-[#4dbf39] hover:bg-[#59d044] text-black transition-all active:scale-95 disabled:opacity-60"
                     >
-                        {saving ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
+                        {saving ? <AppLoader size="xs" /> : <Check size={13} />}
                         Save Changes
                     </button>
                 </div>

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { format, addMonths, subMonths, getDaysInMonth, startOfMonth, getDay, isSameDay, parseISO, setMonth, setYear } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, isDarkColor } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 
 interface DatePickerProps {
@@ -16,10 +16,13 @@ interface DatePickerProps {
     disabled?: boolean;
     align?: 'left' | 'right' | 'center';
     style?: React.CSSProperties;
+    backgroundColor?: string;
+    borderRadius?: number;
 }
 
-export default function DatePicker({ value, onChange, isDark: forcedIsDark, placeholder = "Select date", className, disabled, align = "left", style }: DatePickerProps) {
+export default function DatePicker({ value, onChange, isDark: forcedIsDark, placeholder = "Select date", className, disabled, align = "left", style, backgroundColor, borderRadius = 8 }: DatePickerProps) {
     const { theme } = useUIStore();
+    const isBgDark = backgroundColor ? isDarkColor(backgroundColor) : (forcedIsDark !== undefined ? forcedIsDark : theme === 'dark');
     const isDark = forcedIsDark !== undefined ? forcedIsDark : theme === 'dark';
     
     const [isOpen, setIsOpen] = useState(false);
@@ -179,7 +182,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                 }}
                 className={cn(
                     "w-full flex items-center justify-between text-left text-[11.5px] outline-none h-[22px]",
-                    !value ? (isDark ? "text-[#555]" : "text-black/40") : (isDark ? "text-white/80" : "text-black"),
+                    !value ? (isBgDark ? "text-white/40" : "text-black/40") : (isBgDark ? "text-white/80" : "text-black"),
                     disabled && "opacity-50 cursor-not-allowed"
                 )}
             >
@@ -194,10 +197,11 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                         position: 'fixed',
                         top: `${fixedTop}px`,
                         left: `${fixedLeft}px`,
-                        width: `${popoverWidth}px`
+                        width: `${popoverWidth}px`,
+                        borderRadius: `${borderRadius}px`
                     }}
                     className={cn(
-                        "z-[99999] p-3 rounded-xl shadow-2xl border animate-in fade-in zoom-in-95 duration-200",
+                        "z-[99999] p-3 shadow-2xl border animate-in fade-in zoom-in-95 duration-200",
                         isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
                     )}
                 >

@@ -796,6 +796,11 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
             <div className="flex-1 flex flex-col overflow-hidden relative z-0 isolate">
                 <div className="flex-1 flex overflow-hidden relative">
+                    {id && !isLoaded ? (
+                        <div className="flex-1 flex items-center justify-center bg-[var(--color-bg-secondary)]">
+                            <span className="text-[13px] opacity-40 font-medium">Loading document...</span>
+                        </div>
+                    ) : (
                     <div 
                         className="flex-1 overflow-auto relative w-full"
                         style={{ 
@@ -953,6 +958,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             )}
                         </div>
                     </div>
+                )}
 
                 {!isPreview && (
                     <div className={cn(

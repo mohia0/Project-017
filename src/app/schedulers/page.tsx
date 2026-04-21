@@ -10,6 +10,7 @@ import {
     MoreHorizontal, Trash2, Copy, Edit3, Link, ExternalLink,
     SlidersHorizontal, ArrowUpDown,
 } from 'lucide-react';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SearchInput } from '@/components/ui/SearchInput';
@@ -556,7 +557,7 @@ export default function SchedulersPage() {
                 {isLoading && schedulers.length === 0 ? (
                     <div className="flex items-center justify-center h-40">
                         <div className="flex flex-col items-center gap-2">
-                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <AppLoader size="md" />
                             <span className={cn("text-[12px]", isDark ? "text-[#555]" : "text-[#bbb]")}>Loading...</span>
                         </div>
                     </div>

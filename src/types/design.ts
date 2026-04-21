@@ -32,6 +32,7 @@ export interface DocumentDesign {
     documentTitle?: string;
     tableRowBg?: string;
     tableShowRowBorders?: boolean;
+    inputBackgroundColor?: string;
 }
 
 export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
@@ -62,4 +63,5 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     signTheme: 'light',
     tableRowBg: '',
     tableShowRowBorders: true,
+    inputBackgroundColor: '',
 };

@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import { Loader2, ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
 
 export default function LoginPage() {

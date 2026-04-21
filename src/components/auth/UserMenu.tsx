@@ -9,6 +9,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { User, Settings, LogOut, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AppLoader } from '@/components/ui/AppLoader';
 import { Avatar } from '@/components/ui/Avatar';
 
 export default function UserMenu() {
@@ -77,7 +78,7 @@ export default function UserMenu() {
                 title={user ? "Account" : "Sign In"}
             >
                 {isLoading ? (
-                    <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                    <AppLoader size="xs" />
                 ) : user ? (
                     <Avatar 
                         src={avatarUrl} 

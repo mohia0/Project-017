@@ -25,6 +25,7 @@ interface FieldPreviewProps {
     value?: string;
     onChange?: (val: string) => void;
     isPreview?: boolean;
+    inputBackgroundColor?: string;
 }
 
 export default function FieldPreview({
@@ -36,7 +37,8 @@ export default function FieldPreview({
     marginBottom = 0,
     value,
     onChange,
-    isPreview
+    isPreview,
+    inputBackgroundColor
 }: FieldPreviewProps) {
     const [localValue, setLocalValue] = useState("");
     
@@ -72,6 +74,7 @@ export default function FieldPreview({
                         type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
                         isDark={isDark} 
                         borderRadius={borderRadius} 
+                        backgroundColor={inputBackgroundColor}
                     />
                 );
             case 'number':
@@ -83,6 +86,7 @@ export default function FieldPreview({
                         type="number"
                         isDark={isDark} 
                         borderRadius={borderRadius} 
+                        backgroundColor={inputBackgroundColor}
                     />
                 );
             case 'long_text':
@@ -94,6 +98,7 @@ export default function FieldPreview({
                         isDark={isDark} 
                         borderRadius={borderRadius} 
                         rows={4}
+                        backgroundColor={inputBackgroundColor}
                     />
                 );
             case 'dropdown':
@@ -106,6 +111,7 @@ export default function FieldPreview({
                         isDark={isDark} 
                         borderRadius={borderRadius}
                         multiple={field.multiple}
+                        backgroundColor={inputBackgroundColor}
                     />
                 );
             case 'multi_choice':
@@ -119,6 +125,7 @@ export default function FieldPreview({
                         primaryColor={primaryColor}
                         borderRadius={borderRadius}
                         multiple={field.multiple}
+                        backgroundColor={inputBackgroundColor}
                     />
                 );
             case 'picture_choice':
@@ -131,6 +138,7 @@ export default function FieldPreview({
                         borderRadius={borderRadius} 
                         primaryColor={primaryColor}
                         multiple={field.multiple}
+                        backgroundColor={inputBackgroundColor}
                     />
                 );
             case 'countries':
@@ -141,6 +149,8 @@ export default function FieldPreview({
                         isDark={isDark} 
                         label={field.label} 
                         placeholder={field.placeholder || "Select country"} 
+                        borderRadius={borderRadius}
+                        backgroundColor={inputBackgroundColor}
                     />
                 );
             case 'datepicker':
@@ -151,7 +161,9 @@ export default function FieldPreview({
                         onChange={handleChange} 
                         isDark={isDark} 
                         placeholder={field.placeholder || "Select date"}
-                        style={{ ...inputProps.style, height: '48px', padding: '0 16px' }}
+                        style={{ ...inputProps.style, height: '48px', padding: '0 16px', backgroundColor: inputBackgroundColor || undefined, borderRadius: `${borderRadius}px` }}
+                        backgroundColor={inputBackgroundColor}
+                        borderRadius={borderRadius}
                     />
                 );
             case 'slider':
@@ -172,13 +184,17 @@ export default function FieldPreview({
                         onChange={handleChange} 
                         isDark={isDark} 
                         borderRadius={borderRadius} 
+                        backgroundColor={inputBackgroundColor}
                     />
                 );
             case 'signature':
                 return (
                     <div className={cn("w-full h-24 border-2 border-dashed flex items-center justify-center transition-all cursor-crosshair hover:bg-black/5",
                         isDark ? "border-[#333] text-[#555] bg-[#181818]" : "border-[#e5e5e5] text-[#ccc] bg-[#f9f9f9]")}
-                        style={{ borderRadius: `${borderRadius}px` }}
+                        style={{ 
+                            borderRadius: `${borderRadius}px`,
+                            backgroundColor: inputBackgroundColor || undefined
+                        }}
                         onClick={() => appToast.info("Signature functionality (Demo)")}>
                         <span className="text-[13px] font-bold uppercase tracking-widest opacity-40">Sign here</span>
                     </div>
@@ -191,6 +207,7 @@ export default function FieldPreview({
                         placeholder={field.placeholder} 
                         isDark={isDark} 
                         borderRadius={borderRadius} 
+                        backgroundColor={inputBackgroundColor}
                     />
                 );
         }

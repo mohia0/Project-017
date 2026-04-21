@@ -9,6 +9,7 @@ import { Plus, Globe, Check, RefreshCw, Copy, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 function DomainStatusBadge({ domain }: { domain: WorkspaceDomain }) {
     if (domain.status === 'active') {
@@ -22,7 +23,7 @@ function DomainStatusBadge({ domain }: { domain: WorkspaceDomain }) {
     if (domain.status === 'verifying') {
         return (
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-500">
-                <RefreshCw size={12} className="animate-spin" /> Verifying...
+                <AppLoader size="xs" /> Verifying...
             </span>
         );
     }
@@ -235,7 +236,7 @@ export default function DomainsSettingsPage() {
                         disabled={!newDomain || isAdding}
                         className="shrink-0 h-10 px-4 rounded-xl flex items-center justify-center gap-2 bg-black text-white dark:bg-white dark:text-black font-semibold text-sm disabled:opacity-50"
                     >
-                        {isAdding ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
+                        {isAdding ? <AppLoader size="xs" /> : <Plus size={16} />}
                         Add Domain
                     </button>
                 </form>
@@ -287,7 +288,7 @@ export default function DomainsSettingsPage() {
                                                     verifyingId === domain.id && "opacity-60 cursor-not-allowed"
                                                 )}
                                             >
-                                                <RefreshCw size={12} className={verifyingId === domain.id ? "animate-spin" : ""} />
+                                                {verifyingId === domain.id ? <AppLoader size="xs" /> : <RefreshCw size={12} />}
                                                 {verifyingId === domain.id ? 'Checking...' : 'Verify DNS'}
                                             </button>
                                         )}

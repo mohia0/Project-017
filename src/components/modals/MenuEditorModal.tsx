@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMenuStore, NavItem, ICON_MAP } from '@/store/useMenuStore';
+import { AppLoader } from '@/components/ui/AppLoader';
 import {
     DndContext, 
     closestCenter,
@@ -183,7 +184,7 @@ export function MenuEditorModal({ isOpen, onClose }: Props) {
                                 "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 disabled:opacity-50"
                             )}
                         >
-                            {isSaving ? <span className="animate-spin text-sm">...</span> : <Save size={14} />}
+                            {isSaving ? <AppLoader size="xs" /> : <Save size={14} />}
                             Save Changes
                         </button>
                     </div>

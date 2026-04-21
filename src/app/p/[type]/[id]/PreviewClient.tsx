@@ -344,10 +344,10 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                                     />
                                 )}
                                 <h1
-                                    className="text-[28px] font-bold leading-tight tracking-tight mb-2"
+                                    className="text-[32px] font-black leading-tight tracking-tight mb-2 whitespace-pre-wrap break-words"
                                     style={{ color: isFormDark ? '#fff' : '#111' }}
                                 >
-                                    {liveData.title}
+                                    {meta.publicTitle ?? liveData.title}
                                 </h1>
                                 {meta.description && (
                                     <p
@@ -378,6 +378,7 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                                                 marginBottom={design.marginBottom}
                                                 value={values[f.id] ?? ''}
                                                 onChange={val => setValue(f.id, val)}
+                                                inputBackgroundColor={design.inputBackgroundColor}
                                             />
                                             {errors[f.id] && (
                                                 <p className="text-[11px] text-red-500 mt-1 mb-1 font-medium">
@@ -774,6 +775,7 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
                                                         if (field.type === 'email') setInfo(prev => ({ ...prev, email: val }));
                                                         if (field.type === 'phone') setInfo(prev => ({ ...prev, phone: val }));
                                                     }}
+                                                    inputBackgroundColor={design.inputBackgroundColor}
                                                 />
                                             ))}
                                         </div>
