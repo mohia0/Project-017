@@ -29,7 +29,7 @@ export default function SettingsLayout({
     if (path.includes('/features/proposals')) return 'Proposal Settings';
     if (path.includes('/features/invoices')) return 'Invoice Settings';
     if (path.includes('/features/projects')) return 'Project Settings';
-    if (path.includes('/settings/plutio')) return 'Plutio Integration';
+
     return '';
   };
 

@@ -15,6 +15,7 @@ import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
+import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -297,6 +298,24 @@ export default function FormsPage() {
         appToast.success('Link Copied', 'URL copied to clipboard');
     };
 
+    const handleDuplicate = async (id: string) => {
+        const original = forms.find(f => f.id === id);
+        if (!original) return;
+        const promise = (async () => {
+            const { id: _, created_at: __, workspace_id: ___, ...payload } = original;
+            await addForm({
+                ...payload,
+                title: `${payload.title} (Copy)`,
+                status: 'Draft'
+            });
+        })();
+        appToast.promise(promise, {
+            loading: 'Duplicating form…',
+            success: 'Form duplicated',
+            error: 'Duplication failed',
+        });
+    };
+
     const handleDelete = async (id: string) => {
         setDeletingId(id);
     };
@@ -556,24 +575,21 @@ export default function FormsPage() {
                     <div className="flex-1 overflow-x-auto w-full">
                         <div className="min-w-[1000px] flex flex-col">
                             {/* Header */}
-                            <div className={cn("grid px-0 py-2.5 text-[11px] font-semibold tracking-wider uppercase border-b sticky top-0 z-30 shadow-sm",
-                                isDark ? "bg-[#141414] border-[#252525] text-[#555]" : "bg-[#f7f7f7] border-[#ebebeb] text-[#bbb]")}
-                                style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 120px' }}>
-                                <div className="flex justify-center">
-                                    <div 
-                                        onClick={(e) => { e.stopPropagation(); toggleAll(); }}
-                                        className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-all cursor-pointer",
-                                            isDark ? "hover:bg-white/5" : "hover:bg-black/5")}>
+                            <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-30",
+                                isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
+                                style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 20px' }}>
+                                <div className="relative px-0 py-2 flex items-center justify-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                                    <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
                                         <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
                                     </div>
                                 </div>
-                                <div className="px-4">Name</div>
-                                <div className="px-4">Status</div>
-                                <div className="px-4">Fields</div>
-                                <div className="px-4">Responses</div>
-                                <div className="px-4">Created</div>
-                                <div className="px-4">Expires</div>
-                                <div className="px-4"></div>
+                                <div className="px-4 py-2">Name</div>
+                                <div className="px-4 py-2">Status</div>
+                                <div className="px-4 py-2">Fields</div>
+                                <div className="px-4 py-2">Responses</div>
+                                <div className="px-4 py-2">Created</div>
+                                <div className="px-4 py-2">Expires</div>
+                                <div />
                             </div>
 
                             {/* Rows */}
@@ -582,29 +598,34 @@ export default function FormsPage() {
                                     const fields = Array.isArray(f.fields) ? f.fields : [];
                                     const isSelected = selectedIds.has(f.id);
 
+                                    const menuItems = [
+                                        { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/forms/${f.id}`) },
+                                        { label: 'Open Public Link', icon: <ExternalLink size={12} />, onClick: () => window.open(window.location.origin + '/p/form/' + f.id, '_blank') },
+                                        { label: 'Copy Public Link', icon: <Link size={12} />, onClick: (e: any) => copyLink(f.id, e as any) },
+                                        { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(f.id) },
+                                        { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(f.id), separator: true },
+                                    ];
+
                                     return (
-                                        <div
+                                        <ContextMenuRow
                                             key={f.id}
-                                            onClick={() => router.push(`/forms/${f.id}`)}
+                                            items={menuItems}
+                                            isDark={isDark}
+                                            onRowClick={() => router.push(`/forms/${f.id}`)}
                                             className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
-                                                isDark ? "border-[#1e1e1e] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
+                                                isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
                                                 isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
-                                            style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 120px' }}>
-
-                                            <div className="flex items-center justify-center px-0 py-3 self-stretch">
-                                                <div 
-                                                    onClick={e => toggleRow(f.id, e)}
-                                                    className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-all cursor-pointer",
-                                                        isDark ? "hover:bg-white/5" : "hover:bg-black/5")}>
-                                                    <Chk checked={isSelected} isDark={isDark} />
-                                                </div>
+                                            style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 20px' }}
+                                        >
+                                            <div className="flex items-center justify-center px-0 py-1.5 self-stretch" onClick={e => toggleRow(f.id, e)}>
+                                                <Chk checked={isSelected} isDark={isDark} />
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3 min-w-0">
-                                                <div className={cn("font-semibold truncate", isDark ? "text-[#e0e0e0]" : "text-[#111]")}>{f.title}</div>
+                                            <div className="flex items-center px-4 py-1.5 font-bold truncate self-center">
+                                                <span className={isDark ? "text-white" : "text-black"}>{f.title || 'Untitled Form'}</span>
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
+                                            <div className="flex items-center px-4 py-1.5 self-center">
                                                 <StatusCell
                                                     status={f.status}
                                                     onStatusChange={(s) => updateForm(f.id, { status: s })}
@@ -612,51 +633,23 @@ export default function FormsPage() {
                                                 />
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#666]" : "text-[#888]")}>{fields.length}</span>
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <span className="text-[12px]">{fields.length}</span>
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#666]" : "text-[#aaa]")}>{f.responses_count || 0}</span>
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <span className="text-[12px]">{f.responses_count || 0}</span>
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>{fmtDate(f.created_at)}</span>
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <span className="text-[12px]">{fmtDate(f.created_at)}</span>
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
-                                                {f.meta?.expirationDate ? (
-                                                    <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>{fmtDate(f.meta.expirationDate)}</span>
-                                                ) : <span className={cn("opacity-20", isDark ? "text-white" : "text-black")}>—</span>}
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <span className="text-[12px]">{f.meta?.expirationDate ? fmtDate(f.meta.expirationDate) : '—'}</span>
                                             </div>
-
-                                            <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors",
-                                                isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"))} 
-                                                onClick={e => e.stopPropagation()}>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                                                    <Tooltip content="Open Link" side="top">
-                                                        <button onClick={(e) => { e.stopPropagation(); window.open(window.location.origin + '/p/form/' + f.id, '_blank'); }}
-                                                            className={cn("p-1.5 rounded-lg transition-colors", isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
-                                                            <ExternalLink size={12} />
-                                                        </button>
-                                                    </Tooltip>
-                                                    <Tooltip content="Copy preview link" side="top">
-                                                        <button onClick={(e) => copyLink(f.id, e)}
-                                                            className={cn("p-1.5 rounded-lg transition-colors", isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
-                                                            <Link size={12} />
-                                                        </button>
-                                                    </Tooltip>
-                                                    {deletingId === f.id ? (
-                                                        <InlineDeleteButton onDelete={() => handleDelete(f.id)} isDark={isDark} />
-                                                    ) : (
-                                                        <button onClick={() => setDeletingId(f.id)}
-                                                            className={cn("p-1.5 rounded-lg transition-colors text-red-400", isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
-                                                            <Trash2 size={12} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
+                                            <div />
+                                        </ContextMenuRow>
                                     );
                                 })}
                             </div>

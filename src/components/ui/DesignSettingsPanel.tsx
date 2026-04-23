@@ -39,7 +39,11 @@ interface DesignSettingsPanelProps {
 
 export function MetaField({ label, children, isDark, icon, onReset, valueLabel }: any) {
     return (
-        <div className={cn("rounded-lg border px-2.5 py-1.5 shadow-sm group/field", isDark ? "border-[#252525] bg-[#1f1f1f]" : "border-[#ebebeb] bg-white")}>
+        <div className={cn(
+            "rounded-lg border px-2.5 py-1.5 shadow-sm group/field transition-all duration-200",
+            "focus-within:border-[var(--brand-primary)]/50 focus-within:ring-2 focus-within:ring-[var(--brand-primary)]/10",
+            isDark ? "border-[#252525] bg-[#1f1f1f]" : "border-[#ebebeb] bg-white"
+        )}>
             {(label || valueLabel) && (
                 <div className="flex items-center justify-between mb-0.5">
                     <div className={cn("flex items-center gap-1 text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>
@@ -192,7 +196,10 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 isDark ? "hover:text-white" : "hover:text-black"
             )}
         >
-            <span className={cn("text-[9px] uppercase tracking-widest font-black", isDark ? "text-[#555]" : "text-[#bbb]", !collapsed[id] && "text-[#4dbf39]")}>
+            <span 
+                className={cn("text-[9px] uppercase tracking-widest font-black", isDark ? "text-[#555]" : "text-[#bbb]")}
+                style={{ color: !collapsed[id] ? 'var(--brand-primary)' : undefined }}
+            >
                 {label}
             </span>
             <div className={cn("transition-transform duration-200", collapsed[id] ? "-rotate-90" : "rotate-0")}>
@@ -252,7 +259,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                     onClick={onUploadLogo}
                                     className={cn(
                                         "w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border-2 border-dashed transition-all",
-                                        isDark ? "border-white/5 hover:border-[#4dbf39]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[#4dbf39]/30 hover:bg-gray-50 text-gray-500"
+                                        isDark ? "border-white/5 hover:border-[var(--brand-primary)]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[var(--brand-primary)]/30 hover:bg-gray-50 text-gray-500"
                                     )}
                                 >
                                     <Upload size={12} />
@@ -262,7 +269,54 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 </button>
                             </div>
                         </MetaField>
-                        
+                        <MetaField 
+                            label="Background Image / GIF" 
+                            isDark={isDark}
+                            onReset={() => updateDesign({ backgroundImage: '' })}
+                        >
+                            <div className="flex flex-col gap-2">
+                                {design.backgroundImage && (
+                                    <div className="flex flex-col gap-2">
+                                        <div className="relative group/bgimg w-full">
+                                            <div 
+                                                className="h-20 w-full rounded-xl border border-white/10 bg-cover bg-center" 
+                                                style={{ backgroundImage: `url(${design.backgroundImage})` }}
+                                            />
+                                            <button 
+                                                onClick={() => updateDesign({ backgroundImage: '' })}
+                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover/bgimg:opacity-100 transition-opacity"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                        <div className="space-y-1 px-0.5">
+                                            <div className="flex items-center justify-between mb-0.5 px-0.5">
+                                                <span className={cn("text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Image Opacity</span>
+                                                <span className={cn("text-[9.5px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{Math.round((design.backgroundImageOpacity ?? 1) * 100)}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" min="0" max="1" step="0.05" 
+                                                value={design.backgroundImageOpacity ?? 1} 
+                                                onChange={e => updateDesign({ backgroundImageOpacity: Number(e.target.value) })}
+                                                className="w-full cursor-pointer" 
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                <button 
+                                    onClick={onUploadBackground}
+                                    className={cn(
+                                        "w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border-2 border-dashed transition-all",
+                                        isDark ? "border-white/5 hover:border-[var(--brand-primary)]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[var(--brand-primary)]/30 hover:bg-gray-50 text-gray-500"
+                                    )}
+                                >
+                                    <Upload size={12} />
+                                    <span className="text-[11px] font-medium">
+                                        {design.backgroundImage ? "Change Background" : "Upload Image/GIF"}
+                                    </span>
+                                </button>
+                            </div>
+                        </MetaField>
                     </div>
                 )}
             </div>
@@ -367,7 +421,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                         >
                             <div className="flex flex-col gap-2">
                                 <ColorisInput 
-                                    value={design.primaryColor || '#4dbf39'} 
+                                    value={design.primaryColor || 'var(--brand-primary)'} 
                                     onChange={val => updateDesign({ primaryColor: val })}
                                     className="w-fit min-w-[120px]"
                                 />
@@ -409,7 +463,6 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 </p>
                             </div>
                         </MetaField>
-
                         <MetaField 
                             label="Input Area Color" 
                             isDark={isDark}
@@ -424,55 +477,6 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
                                     This sets the background color for all form input areas.
                                 </p>
-                            </div>
-                        </MetaField>
-
-                        <MetaField 
-                            label="Background Image / GIF" 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ backgroundImage: '' })}
-                        >
-                            <div className="flex flex-col gap-2">
-                                {design.backgroundImage && (
-                                    <div className="flex flex-col gap-2">
-                                        <div className="relative group/bgimg w-full">
-                                            <div 
-                                                className="h-20 w-full rounded-xl border border-white/10 bg-cover bg-center" 
-                                                style={{ backgroundImage: `url(${design.backgroundImage})` }}
-                                            />
-                                            <button 
-                                                onClick={() => updateDesign({ backgroundImage: '' })}
-                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover/bgimg:opacity-100 transition-opacity"
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        </div>
-                                        <div className="space-y-1 px-0.5">
-                                            <div className="flex items-center justify-between mb-0.5 px-0.5">
-                                                <span className={cn("text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Image Opacity</span>
-                                                <span className={cn("text-[9.5px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{Math.round((design.backgroundImageOpacity ?? 1) * 100)}%</span>
-                                            </div>
-                                            <input 
-                                                type="range" min="0" max="1" step="0.05" 
-                                                value={design.backgroundImageOpacity ?? 1} 
-                                                onChange={e => updateDesign({ backgroundImageOpacity: Number(e.target.value) })}
-                                                className="w-full cursor-pointer" 
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                                <button 
-                                    onClick={onUploadBackground}
-                                    className={cn(
-                                        "w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border-2 border-dashed transition-all",
-                                        isDark ? "border-white/5 hover:border-[#4dbf39]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[#4dbf39]/30 hover:bg-gray-50 text-gray-500"
-                                    )}
-                                >
-                                    <Upload size={12} />
-                                    <span className="text-[11px] font-medium">
-                                        {design.backgroundImage ? "Change Background" : "Upload Image/GIF"}
-                                    </span>
-                                </button>
                             </div>
                         </MetaField>
                     </div>
@@ -595,6 +599,18 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             </MetaField>
 
                             <MetaField 
+                                label="Row Border Color" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ tableRowBorderColor: DEFAULT_DOCUMENT_DESIGN.tableRowBorderColor })}
+                            >
+                                <ColorisInput 
+                                    value={design.tableRowBorderColor || (isDark ? '#2a2a2a' : '#ebebeb')} 
+                                    onChange={val => updateDesign({ tableRowBorderColor: val })}
+                                    className="w-fit min-w-[120px]"
+                                />
+                            </MetaField>
+
+                            <MetaField 
                                 label="Row Borders" 
                                 isDark={isDark}
                                 onReset={() => updateDesign({ tableShowRowBorders: DEFAULT_DOCUMENT_DESIGN.tableShowRowBorders })}
@@ -605,7 +621,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                         "w-10 h-5 rounded-full relative transition-all duration-200",
                                         design.tableShowRowBorders === false ? (isDark ? "bg-[#333]" : "bg-[#e5e5e5]") : ""
                                     )}
-                                    style={{ backgroundColor: design.tableShowRowBorders !== false ? (design.primaryColor || '#4dbf39') : undefined }}
+                                    style={{ backgroundColor: design.tableShowRowBorders !== false ? (design.primaryColor || 'var(--brand-primary)') : undefined }}
                                 >
                                     <div className={cn(
                                         "absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-200",

@@ -16,6 +16,7 @@ import {
     FileJson, FileSpreadsheet, Link2, ExternalLink
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
+import { ThreeDotMenu, ContextMenuPopup, useRowContextMenu, ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { useRouter } from 'next/navigation';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import ClientEditor from '@/components/clients/ClientEditor';
@@ -837,6 +838,24 @@ export default function ProposalsPage() {
         return s;
     }, [proposals, archivedIds, dateFilter, showArchived, activeStatues]);
 
+    const handleDuplicate = async (id: string) => {
+        const original = proposals.find(p => p.id === id);
+        if (!original) return;
+        const promise = (async () => {
+            const { id: _, created_at: __, ...payload } = original;
+            await addProposal({
+                ...payload,
+                title: `${original.title || 'Proposal'} (Copy)`,
+                status: 'Draft'
+            });
+        })();
+        appToast.promise(promise, {
+            loading: 'Duplicating proposal…',
+            success: 'Proposal duplicated',
+            error: 'Duplication failed',
+        });
+    };
+
     const displayCurrency = useMemo(() => {
         if (filtered.length === 0) return 'USD';
         const first = filtered[0].meta?.currency || 'USD';
@@ -1327,14 +1346,26 @@ export default function ProposalsPage() {
                         <>
                             {filtered.map(p => {
                                 const isSelected = selectedIds.has(p.id);
+                                    const menuItems = [
+                                        { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/proposals/${p.id}`) },
+                                        { label: 'Open Public Link', icon: <Link2 size={12} />, onClick: () => window.open(window.location.origin + '/p/proposal/' + p.id, '_blank') },
+                                        { label: 'Copy Public Link', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(window.location.origin + '/p/proposal/' + p.id); appToast.success('Link copied'); } },
+                                        { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(p.id) },
+                                        { label: archivedIds.has(p.id) ? 'Unarchive' : 'Archive', icon: archivedIds.has(p.id) ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: () => handleArchive(p.id), separator: true },
+                                        { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(p.id), separator: true },
+                                    ];
                                 return (
-                                    <div key={p.id} onClick={() => router.push(`/proposals/${p.id}`)}
+                                    <ContextMenuRow
+                                        key={p.id}
+                                        items={menuItems}
+                                        isDark={isDark}
+                                        onRowClick={() => router.push(`/proposals/${p.id}`)}
                                         className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
                                             isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
                                             isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
-                                        style={{ gridTemplateColumns: gridTemplate }}>
-                                        
-                                        <div className="flex items-center justify-center px-0 py-3 self-stretch" onClick={e => toggleRow(p.id, e)}>
+                                        style={{ gridTemplateColumns: gridTemplate }}
+                                    >
+                                        <div className="flex items-center justify-center px-0 py-1.5 self-stretch" onClick={e => toggleRow(p.id, e)}>
                                             <Chk checked={isSelected} isDark={isDark} />
                                         </div>
 
@@ -1351,23 +1382,23 @@ export default function ProposalsPage() {
                                                 </div>
                                             );
                                             if (colId === 'name') return (
-                                                <div key={colId} className={cn("flex items-center px-4 py-3 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
+                                                <div key={colId} className={cn("flex items-center px-4 py-1.5 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
                                                     <span className="truncate">{p.title || 'New Proposal'}</span>
                                                 </div>
                                             );
                                             if (colId === 'status') return (
-                                                <div key={colId} className="flex items-center px-4 py-3">
+                                                <div key={colId} className="flex items-center px-4 py-1.5">
                                                     <StatusCell status={p.status} onStatusChange={(s) => handleStatusChangeRequest(p.id, s)} isDark={isDark} customStatuses={customStatuses} />
                                                 </div>
                                             );
                                             if (colId === 'issue') return (
-                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-3 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
                                                     <span className="text-[12px]">{fmtDate(p.issue_date)}</span>
                                                     <span className="text-[10px] opacity-50">{timeAgo(p.issue_date)}</span>
                                                 </div>
                                             );
                                             if (colId === 'due') return (
-                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-3 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
                                                     {p.due_date ? (
                                                         <>
                                                             <span className="text-[12px]">{fmtDate(p.due_date)}</span>
@@ -1377,7 +1408,7 @@ export default function ProposalsPage() {
                                                 </div>
                                             );
                                             if (colId === 'accepted') return (
-                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-3 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
                                                     {p.accepted_at ? (
                                                         <>
                                                             <span className="text-[12px]">{fmtDate(p.accepted_at)}</span>
@@ -1389,46 +1420,13 @@ export default function ProposalsPage() {
                                             return null;
                                         })}
 
-                                        <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors",
+                                        <div className={cn("flex items-center justify-end px-4 py-1.5 gap-1 font-semibold tabular-nums sticky right-0 z-20 transition-colors",
                                             isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"),
-                                            isDark ? "text-[#ccc]" : "text-[#333]")}>
-                                            <span className="transition-transform group-hover:-translate-x-[115px] duration-300">
-                                                <MoneyAmount amount={Number(p.amount || 0)} currency={p.meta?.currency} />
-                                            </span>
-                                            <div className="absolute right-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
-                                                <button onClick={e => { 
-                                                        e.stopPropagation(); 
-                                                        window.open(window.location.origin + '/p/proposal/' + p.id, '_blank');
-                                                    }} title="Open Link"
-                                                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
-                                                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
-                                                    <ExternalLink size={11} />
-                                                </button>
-                                                <button onClick={e => { 
-                                                        e.stopPropagation(); 
-                                                        const url = window.location.origin + '/p/proposal/' + p.id;
-                                                        navigator.clipboard.writeText(url);
-                                                        appToast.success('Link copied');
-                                                    }} title="Copy Link"
-                                                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
-                                                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
-                                                    <Link2 size={11} />
-                                                </button>
-                                                <button onClick={e => { e.stopPropagation(); handleArchive(p.id); }} title={archivedIds.has(p.id) ? 'Unarchive' : 'Archive'}
-                                                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
-                                                        isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/8" : "text-[#bbb] hover:text-[#555] hover:bg-[#f0f0f0]")}>
-                                                    {archivedIds.has(p.id) ? <ArchiveRestore size={11} /> : <Archive size={11} />}
-                                                </button>
-                                                <InlineDeleteButton 
-                                                    onDelete={async () => {
-                                                        await deleteProposal(p.id);
-                                                        appToast.error("Deleted", 'Proposal deleted');
-                                                    }} 
-                                                    isDark={isDark} 
-                                                />
-                                            </div>
+                                            isDark ? "text-[#ccc]" : "text-[#333]")}
+                                            onClick={e => e.stopPropagation()}>
+                                            <MoneyAmount amount={Number(p.amount || 0)} currency={p.meta?.currency} />
                                         </div>
-                                    </div>
+                                    </ContextMenuRow>
                                 );
                             })}
                             

@@ -18,7 +18,7 @@ import {
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image as ImageIcon, SeparatorHorizontal,
     Settings, ChevronRight, ChevronLeft, RotateCcw, Monitor, Smartphone, PanelTop,
-    X, Upload, LayoutTemplate, ExternalLink, Printer
+    X, Upload, LayoutTemplate, ExternalLink, Printer, Hash
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
@@ -767,7 +767,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     { icon: ExternalLink,  label: 'Open Link',         action: () => window.open(window.location.origin + '/p/proposal/' + id, '_blank') },
                                     { icon: Link2,          label: 'Copy Link',         action: copyLink },
                                     { icon: Download,       label: 'Download PDF',      action: handleDownloadPDF },
-                                    { icon: Printer,        label: 'Print',             action: handlePrint },
                                     { icon: Copy,           label: 'Duplicate',         action: () => console.log('Duplicate') },
                                     { 
                                         icon: Trash2,         
@@ -838,7 +837,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         design={meta.design}
                                         onAccept={() => setIsSignModalOpen(true)}
                                         onDownloadPDF={handleDownloadPDF}
-                                        onPrint={handlePrint}
                                     />
                                 </div>
                             </div>
@@ -901,7 +899,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                     onAccept={() => setIsSignModalOpen(true)}
                                                     onDecline={() => updateMeta({ status: 'Declined' as any })}
                                                     onDownloadPDF={handleDownloadPDF}
-                                                    onPrint={handlePrint}
                                                     className="!py-3"
                                                 />
                                             </div>
@@ -1012,6 +1009,23 @@ export default function ProposalEditor({ id }: { id?: string }) {
                             {rightTab === 'details' && (
                                 <>
                                     <MetaField
+                                        label="Proposal #"
+                                        isDark={isDark}
+                                        icon={<Hash size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ proposalNumber: id?.slice(0, 8).toUpperCase() || '017001' })}
+                                    >
+                                        <input
+                                            value={meta.proposalNumber}
+                                            onChange={e => updateMeta({ proposalNumber: e.target.value })}
+                                            placeholder="Enter proposal number..."
+                                            className={cn(
+                                                "w-full text-[12px] bg-transparent outline-none font-medium",
+                                                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                            )}
+                                        />
+                                    </MetaField>
+
+                                    <MetaField
                                         label="Client"
                                         isDark={isDark}
                                         icon={<User size={11} className="opacity-50" />}
@@ -1076,7 +1090,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                                 }}
                                                                 className={cn(
                                                                     "w-full text-left px-3 py-2.5 text-[11px] font-bold transition-colors flex items-center gap-2",
-                                                                    isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-black/5"
+                                                                    isDark ? "text-[var(--brand-primary)] hover:bg-white/5" : "text-[var(--brand-primary-hover)] hover:bg-black/5"
                                                                 )}
                                                             >
                                                                 <Plus size={14} strokeWidth={3} />
@@ -1405,7 +1419,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         className={cn(
                                             "flex items-center gap-1.5 px-4 h-11 text-[12px] font-semibold transition-all shrink-0 border-b-2",
                                             rightTab === tab && mobileBottomPanelOpen
-                                                ? "border-[#4dbf39] text-[#4dbf39]"
+                                                ? "border-[var(--brand-primary)] text-[var(--brand-primary)]"
                                                 : isDark
                                                     ? "border-transparent text-[#555] hover:text-[#aaa]"
                                                     : "border-transparent text-[#bbb] hover:text-[#666]"
@@ -1593,6 +1607,7 @@ export function ProposalDocument({
         '--table-row-bg': design.tableRowBg || 'transparent',
         '--table-row-text': isDarkColor(design.tableRowBg && design.tableRowBg !== 'transparent' ? design.tableRowBg : (design.blockBackgroundColor || '#ffffff')) ? '#ffffff' : '#000000',
         '--table-row-border-width': design.tableShowRowBorders === false ? '0px' : `${design.tableStrokeWidth ?? 1}px`,
+        '--table-row-border-color': design.tableRowBorderColor || design.tableBorderColor || '#ebebeb',
         '--primary-color': design.primaryColor || 'var(--brand-primary)',
         '--primary': design.primaryColor || 'var(--brand-primary)',
     } as React.CSSProperties), [design]);
@@ -1797,9 +1812,9 @@ function BlockRenderer({
         case 'heading':
             return <HeadingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} />;
         case 'text':
-            return <TextBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} meta={meta} />;
+            return <TextBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} meta={meta || {}} />;
         case 'pricing':
-            return <PricingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} isMobile={isMobile} />;
+            return <PricingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} isMobile={isMobile} meta={meta} />;
         case 'breakdown':
             return <BreakdownBlock block={block} blocks={blocks} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} currency={currency} />;
         case 'signature':
@@ -1808,8 +1823,8 @@ function BlockRenderer({
                 isDark={isDark} 
                 isPreview={isPreview} 
                 updateBlock={updateBlock} 
-                design={meta.design} 
-                meta={meta} 
+                design={meta?.design} 
+                meta={meta || {}} 
                 updateMeta={updateMeta} 
                 addNotification={useNotificationStore.getState().addNotification}
             />;
@@ -1866,7 +1881,7 @@ function BlockRenderer({
                             }}
                             className={cn(
                                 "flex flex-col items-center justify-center w-full min-h-32 rounded-xl border-2 border-dashed transition-all p-8 gap-3",
-                                isDark ? "border-white/5 hover:border-[#4dbf39]/30 hover:bg-white/5 text-white/30 hover:text-[#4dbf39]" : "border-gray-200 hover:border-[#4dbf39]/30 hover:bg-gray-50 text-[#999] hover:text-[#4dbf39]"
+                                isDark ? "border-white/5 hover:border-[var(--brand-primary)]/30 hover:bg-white/5 text-white/30 hover:text-[var(--brand-primary)]" : "border-gray-200 hover:border-[var(--brand-primary)]/30 hover:bg-gray-50 text-[#999] hover:text-[var(--brand-primary)]"
                             )}
                         >
                             <ImageIcon size={24} className="opacity-50" />
@@ -2043,7 +2058,7 @@ function HeadingBlock({ block, isDark, isPreview, updateBlock }: any) {
 }
 
 /* ─── Text Block ─── */
-function TextBlock({ block, isDark, isPreview, updateBlock, meta }: any) {
+function TextBlock({ block, isDark, isPreview, updateBlock, meta = {} }: any) {
     const [mounted, setMounted] = React.useState(false);
     React.useEffect(() => { setMounted(true); }, []);
 
@@ -2074,7 +2089,7 @@ function TextBlock({ block, isDark, isPreview, updateBlock, meta }: any) {
 }
 
 /* ─── Pricing Block ─── */
-function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, isMobile }: any) {
+function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta = {}, isMobile }: any) {
     const rows: PricingRow[] = block.rows || [];
     const hideQty = block.hideQty || false;
 
@@ -2094,10 +2109,15 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
             rows: rows.map((r: PricingRow) => r.id === rowId ? { ...r, ...patch } : r)
         });
     };
-    const addRow = () => {
-        updateBlock(block.id, {
-            rows: [...rows, { id: uuidv4(), title: '', description: '', qty: 1, rate: 0 }]
-        });
+    const addRow = (atIdx?: number) => {
+        const newRow = { id: uuidv4(), title: '', description: '', qty: 1, rate: 0 };
+        const nextRows = [...rows];
+        if (typeof atIdx === 'number') {
+            nextRows.splice(atIdx + 1, 0, newRow);
+        } else {
+            nextRows.push(newRow);
+        }
+        updateBlock(block.id, { rows: nextRows });
     };
     const duplicateRow = (row: PricingRow) => {
         const nextRows = [...rows];
@@ -2218,7 +2238,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                                     .pricing-table-root tbody tr td {
                                         border-top-width: var(--table-row-border-width) !important;
                                         border-top-style: solid !important;
-                                        border-top-color: var(--table-border-color) !important;
+                                        border-top-color: var(--table-row-border-color) !important;
                                     }
                                     .pricing-table-root tbody tr:last-child td:first-child {
                                         border-bottom-left-radius: calc(var(--table-radius-bl) - var(--table-stroke-width));
@@ -2228,7 +2248,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                                     }
                                 ` }} />
                                 <SortableContext items={rows.map(r => r.id)} strategy={verticalListSortingStrategy}>
-                                    {rows.map((row: PricingRow) => (
+                                    {rows.map((row: PricingRow, idx: number) => (
                                         <SortableRow 
                                             key={row.id} 
                                             row={row} 
@@ -2240,6 +2260,9 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                                             removeRow={removeRow} 
                                             duplicateRow={duplicateRow}
                                             td={td}
+                                            idx={idx}
+                                            onAddRow={() => addRow(idx)}
+                                            showRowBorders={meta.design?.tableShowRowBorders !== false}
                                         />
                                     ))}
                                 </SortableContext>
@@ -2257,7 +2280,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                 {!isPreview && (
                     <div className="flex justify-between items-center mb-4">
                         <button
-                            onClick={addRow}
+                            onClick={() => addRow()}
                             className={cn("flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 border border-dashed transition-all", isDark ? "border-white/10 text-white/40 hover:border-white/20 hover:text-white/60" : "border-black/10 text-black/40 hover:border-black/20 hover:text-black/60")}
                             style={{ borderRadius: 'var(--block-button-radius)' }}
                         >
@@ -2268,7 +2291,8 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
                                 type="checkbox" 
                                 checked={hideQty} 
                                 onChange={e => updateBlock(block.id, { hideQty: e.target.checked })} 
-                                className="rounded border-gray-300 text-[#4dbf39] focus:ring-[#4dbf39]" 
+                                className="rounded border-gray-300" 
+                                style={{ accentColor: meta.design?.primaryColor || 'var(--brand-primary)' }}
                             />
                             Hide QTY
                         </label>
@@ -2333,7 +2357,34 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta, i
 }
 
 /* ─── Sortable Row Helpers ─── */
-function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td, isMobile }: any) {
+function TableRowInsertZone({ onAdd, isDark }: any) {
+    const [hovered, setHovered] = React.useState(false);
+    return (
+        <div 
+            className="absolute inset-x-0 -bottom-[1px] h-[10px] z-50 group/table-insert flex items-center justify-center translate-y-1/2"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
+            <div className={cn(
+                "w-full h-[2px] transition-all duration-200",
+                hovered ? "opacity-100" : "opacity-0"
+            )} style={{ backgroundColor: 'var(--brand-primary)' }} />
+            <button
+                onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                className={cn(
+                    "absolute left-1/2 -translate-x-1/2 w-5 h-5 flex items-center justify-center rounded-full border transition-all duration-200 shadow-sm",
+                    hovered 
+                        ? (isDark ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white scale-110" : "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white scale-110")
+                        : "opacity-0 invisible scale-50"
+                )}
+            >
+                <Plus size={12} strokeWidth={3} />
+            </button>
+        </div>
+    );
+}
+
+function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td, isMobile, idx, onAddRow, showRowBorders }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
     const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 0 };
 
@@ -2560,6 +2611,9 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             <Trash2 size={13} />
                         </button>
                     </div>
+                    {showRowBorders && (
+                        <TableRowInsertZone isDark={isDark} onAdd={onAddRow} />
+                    )}
                 </td>
             )}
         </tr>
@@ -2819,9 +2873,9 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
                         <tbody className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
                             <style dangerouslySetInnerHTML={{ __html: `
                                 .pricing-breakdown-table tbody tr td {
-                                    border-top-width: var(--table-row-border-width, var(--table-stroke-width)) !important;
+                                    border-top-width: var(--table-row-border-width) !important;
                                     border-top-style: solid !important;
-                                    border-top-color: var(--table-border-color) !important;
+                                    border-top-color: var(--table-row-border-color) !important;
                                 }
                                 .pricing-breakdown-table tbody tr:last-child td:first-child {
                                     border-bottom-left-radius: calc(var(--table-radius-bl) - var(--table-stroke-width));
@@ -2871,7 +2925,7 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
 }
 
 /* ─── Signature Block ─── */
-function SignatureBlock({ block, isDark, isPreview, updateBlock, design, meta, updateMeta, addNotification }: any) {
+function SignatureBlock({ block, isDark, isPreview, updateBlock, design, meta = {}, updateMeta, addNotification }: any) {
     const sigTheme = design?.signTheme || 'light';
     const isSigDark = sigTheme === 'dark';
 
@@ -2925,14 +2979,14 @@ function SignatureBlock({ block, isDark, isPreview, updateBlock, design, meta, u
                                     onChange={e => updateBlock(block.id, { signerName: e.target.value })}
                                     placeholder="Full Name"
                                     className={cn("w-full bg-transparent outline-none text-[13px] font-semibold border-b pb-1 transition-colors", 
-                                        isSigDark ? "border-white/10 text-white placeholder:text-white/20 focus:border-[#4dbf39]" : "border-black/10 text-black placeholder:text-black/20 focus:border-[#4dbf39]")}
+                                        isSigDark ? "border-white/10 text-white placeholder:text-white/20 focus:border-[var(--brand-primary)]" : "border-black/10 text-black placeholder:text-black/20 focus:border-[var(--brand-primary)]")}
                                 />
                                 <input
                                     value={block.signerRole || ''}
                                     onChange={e => updateBlock(block.id, { signerRole: e.target.value })}
                                     placeholder="Role / Title"
                                     className={cn("w-full bg-transparent outline-none text-[11px] opacity-40 border-b pb-1 transition-colors", 
-                                        isSigDark ? "border-white/10 text-white focus:border-[#4dbf39]" : "border-black/10 text-black focus:border-[#4dbf39]")}
+                                        isSigDark ? "border-white/10 text-white focus:border-[var(--brand-primary)]" : "border-black/10 text-black focus:border-[var(--brand-primary)]")}
                                 />
                             </div>
                         )}

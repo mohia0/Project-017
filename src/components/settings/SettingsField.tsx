@@ -114,7 +114,7 @@ export function SettingsToggle({ checked, onChange, disabled }: { checked: boole
             className={cn(
                 "w-11 h-6 rounded-full transition-colors relative flex items-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed",
                 checked 
-                    ? (isDark ? "bg-[#4dbf39]" : "bg-black")
+                    ? (isDark ? "bg-[var(--brand-primary)]" : "bg-black")
                     : (isDark ? "bg-[#252525]" : "bg-[#ebebeb]")
             )}
         >

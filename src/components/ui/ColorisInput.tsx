@@ -213,8 +213,8 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
                     "flex items-center gap-2 rounded-xl transition-all cursor-pointer border",
                     large ? "p-3" : "p-1 rounded-lg",
                     isDark 
-                        ? (isOpen ? "border-[#4dbf39]/50 bg-[#1a1a1a]" : "border-white/5 hover:border-white/10 bg-white/5")
-                        : (isOpen ? "border-[#4dbf39]/50 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]" : "border-black/[0.08] hover:border-black/[0.15] bg-black/[0.02]")
+                        ? (isOpen ? "border-[var(--brand-primary)]/50 bg-[#1a1a1a]" : "border-white/5 hover:border-white/10 bg-white/5")
+                        : (isOpen ? "border-[var(--brand-primary)]/50 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)]" : "border-black/[0.08] hover:border-black/[0.15] bg-black/[0.02]")
                 )}
                 onClick={() => {
                     if (isOpen) addToHistory(value);

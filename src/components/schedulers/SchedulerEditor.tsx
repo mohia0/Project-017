@@ -78,7 +78,7 @@ const DEFAULT_META: SchedulerMeta = {
 
 const STATUS_OPTS: SchedulerStatus[] = ['Active', 'Draft', 'Inactive'];
 const STATUS_COLORS: Record<SchedulerStatus, string> = {
-    Active: '#22c55e',
+    Active: 'var(--brand-primary)',
     Draft: '#888',
     Inactive: '#f97316',
 };
@@ -302,7 +302,7 @@ function TinyCopy({ text, isDark }: { text: string; isDark: boolean }) {
             "p-1 rounded-[4px] transition-all opacity-0 group-hover/line:opacity-100 shrink-0",
             isDark ? "hover:bg-white/10 text-white/30 hover:text-white" : "hover:bg-black/5 text-black/30 hover:text-black"
         )}>
-            {copied ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} />}
+            {copied ? <Check size={10} style={{ color: 'var(--brand-primary)' }} /> : <Copy size={10} />}
         </button>
     );
 }
@@ -689,7 +689,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                 isDark ? "hover:bg-white/5 text-[#ccc]" : "hover:bg-[#f5f5f5] text-[#333]",
                                                 status === s ? "font-semibold" : ""
                                             )}>
-                                            {status === s ? <Check size={12} className="text-emerald-500" /> : <div className="w-3" />}
+                                            {status === s ? <Check size={12} style={{ color: 'var(--brand-primary)' }} /> : <div className="w-3" />}
                                             <span>{s}</span>
                                         </button>
                                     ))}
@@ -1199,7 +1199,9 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                 : (isDark ? "text-[#555] hover:bg-white/[0.03] hover:text-[#aaa]" : "text-[#bbb] hover:bg-black/[0.03] hover:text-[#666]")
                                         )}>
                                         <Icon size={14} strokeWidth={rightTab === tab ? 2.5 : 2} />
-                                        <span>{label}</span>
+                                        <span className={cn("transition-all", rightTab === tab ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 absolute")}>
+                                            {label}
+                                        </span>
                                     </button>
                                 ))}
                             </div>

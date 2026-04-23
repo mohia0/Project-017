@@ -249,7 +249,7 @@ export function PricingBlock({
                                         onClick={() => setSettings({ ...settings, viewMode: 'table' })}
                                         className={cn(
                                             "relative group flex flex-col rounded-xl overflow-hidden border-2 transition-all h-[120px]",
-                                            settings.viewMode === 'table' ? "border-[var(--primary-color)]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
+                                            settings.viewMode === 'table' ? "border-[var(--brand-primary)]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
                                         )}
                                     >
                                         <div className="flex-1 p-4 flex flex-col gap-2">
@@ -265,7 +265,7 @@ export function PricingBlock({
                                         onClick={() => setSettings({ ...settings, viewMode: 'cards' })}
                                         className={cn(
                                             "relative group flex flex-col rounded-xl overflow-hidden border-2 transition-all h-[120px]",
-                                            settings.viewMode === 'cards' ? "border-[var(--primary-color)]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
+                                            settings.viewMode === 'cards' ? "border-[var(--brand-primary)]/50 bg-[#2a2a2a]" : "border-transparent bg-[#2a2a2a]/50 opacity-60 hover:opacity-100"
                                         )}
                                     >
                                         <div className="flex-1 p-4 flex gap-2 justify-center items-center">
@@ -293,7 +293,7 @@ export function PricingBlock({
                                             <div className="flex items-center gap-10">
                                                 <button
                                                     onClick={() => setSettings({ ...settings, allowSelection: !settings.allowSelection })}
-                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.allowSelection ? "bg-[var(--primary-color)]" : "bg-[#333]")}
+                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.allowSelection ? "bg-[var(--brand-primary)]" : "bg-[#333]")}
                                                 >
                                                     <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300", settings.allowSelection ? "left-7" : "left-1")}>
                                                         <div className="w-full h-full flex items-center justify-center">
@@ -322,7 +322,7 @@ export function PricingBlock({
                                             <div className="flex items-center gap-6">
                                                 <button
                                                     onClick={() => setSettings({ ...settings, hideQuantity: !settings.hideQuantity })}
-                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.hideQuantity ? "bg-[var(--primary-color)]" : "bg-[#333]")}
+                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.hideQuantity ? "bg-[var(--brand-primary)]" : "bg-[#333]")}
                                                 >
                                                     <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300", settings.hideQuantity ? "left-7" : "left-1")}>
                                                         <div className="w-full h-full flex items-center justify-center">
@@ -340,7 +340,7 @@ export function PricingBlock({
                                             <div className="flex items-center gap-6">
                                                 <button
                                                     onClick={() => setSettings({ ...settings, hideAmount: !settings.hideAmount })}
-                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.hideAmount ? "bg-[var(--primary-color)]" : "bg-[#333]")}
+                                                    className={cn("w-12 h-6 rounded-full relative transition-all duration-300", settings.hideAmount ? "bg-[var(--brand-primary)]" : "bg-[#333]")}
                                                 >
                                                     <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300", settings.hideAmount ? "left-7" : "left-1")}>
                                                         <div className="w-full h-full flex items-center justify-center">
@@ -368,7 +368,7 @@ export function PricingBlock({
                                 <button
                                     onClick={() => handleSaveSettings(settings)}
                                     className="flex-1 py-4 px-6 rounded-2xl text-black font-bold text-[15px] hover:opacity-90 transition-all"
-                                    style={{ backgroundColor: data.design?.primaryColor || '#4dbf39' }}
+                                    style={{ backgroundColor: data.design?.primaryColor || 'var(--brand-primary)' }}
                                 >
                                     Save
                                 </button>

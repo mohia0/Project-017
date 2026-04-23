@@ -107,10 +107,10 @@ export function SignatureBlock({ id, data, updateData, removeBlock, addBlockAfte
                 </div>
 
                 <div className="mt-8 flex items-center justify-between border-t border-[#e2e2e2] pt-4">
-                    <div className={cn(
-                        "text-xs font-semibold px-2 py-1 rounded-md",
-                        isSigned ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                    )}>
+                    <div 
+                        className={cn("text-xs font-semibold px-2 py-1 rounded-md")}
+                        style={isSigned ? { backgroundColor: 'var(--brand-primary)', color: 'var(--brand-primary-foreground)' } : { backgroundColor: 'rgba(217, 119, 6, 0.1)', color: '#d97706' }}
+                    >
                         {isSigned ? 'Signed' : 'Pending Signature'}
                     </div>
                     {isSigned && (

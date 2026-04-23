@@ -277,7 +277,7 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 "group relative p-4 border-2 transition-all mx-1",
                 !isReadOnly ? "cursor-pointer" : "cursor-default",
                 isSelected 
-                    ? "border-primary/50 shadow-[0_0_0_3px_rgba(77,191,57,0.08)]" 
+                    ? "border-primary/50 shadow-[0_0_0_3px_var(--brand-primary)]" 
                     : (!isReadOnly 
                         ? (isDark ? "border-transparent hover:border-[#333]" : "border-transparent hover:border-[#ebebeb]")
                         : "border-transparent"

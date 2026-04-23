@@ -18,7 +18,7 @@ import {
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image, SeparatorHorizontal,
     Settings, ChevronRight, ChevronLeft, RotateCcw, Monitor, Smartphone, PanelTop,
-    Printer, LayoutTemplate, CreditCard, ExternalLink
+    Printer, LayoutTemplate, CreditCard, ExternalLink, Hash
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
@@ -99,6 +99,7 @@ interface InvoiceMeta {
     documentTitle?: string;
     design?: DocumentDesign;
     paymentMethods?: string[];
+    reference?: string;
 }
 
 type RightPanelTab = 'details' | 'appearance' | 'automation';
@@ -180,8 +181,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
         status: 'Draft',
         logoUrl: '',
         documentTitle: 'INVOICE',
-        paymentMethods: [],
         design: DEFAULT_DOCUMENT_DESIGN,
+        paymentMethods: [],
+        reference: ''
     });
 
     const [blocks, setBlocks] = useState<BlockData[]>([
@@ -730,15 +732,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         {copied ? <Check size={14} className="text-primary" /> : <Link2 size={14} />}
                     </button>
 
-                    <button
-                        onClick={() => window.print()}
-                        className={cn(
-                            "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
-                            isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
-                        )}
-                    >
-                        <Printer size={14} />
-                    </button>
 
 
 
@@ -762,7 +755,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     { icon: ExternalLink,  label: 'Open Link',         action: () => window.open(window.location.origin + '/p/invoice/' + id, '_blank') },
                                     { icon: Link2,          label: 'Copy Link',         action: copyLink },
                                     { icon: Download, label: 'Download PDF', action: handleDownloadPDF },
-                                    { icon: Printer, label: 'Print', action: handlePrint },
                                     { 
                                         icon: Trash2,   
                                         label: 'Delete', 
@@ -838,7 +830,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         inline={true}
                                         design={meta.design}
                                         onDownloadPDF={handleDownloadPDF}
-                                        onPrint={handlePrint}
                                         onPay={() => setIsPayModalOpen(true)}
                                         className=""
                                     />
@@ -903,7 +894,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                         inline={true}
                                                         design={meta.design}
                                                         onDownloadPDF={handleDownloadPDF}
-                                                        onPrint={handlePrint}
                                                         onPay={() => setIsPayModalOpen(true)}
                                                         className="!py-3"
                                                     />
@@ -967,33 +957,66 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         "hidden md:flex flex-col overflow-hidden border-l transition-all duration-300 relative w-[240px]",
                         isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                     )}>
-                        <div className="flex items-center p-1.5 gap-1">
-                            <button 
-                                onClick={() => setRightTab('details')} 
-                                className={cn(
-                                    "flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all", 
-                                    rightTab === 'details' 
-                                        ? (isDark ? "bg-white/10 text-white" : "bg-[#111]/5 text-[#111]") 
-                                        : "opacity-40 hover:opacity-100"
-                                )}
-                            >
-                                Details
-                            </button>
-                            <button 
-                                onClick={() => setRightTab('appearance')} 
-                                className={cn(
-                                    "flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all", 
-                                    rightTab === 'appearance' 
-                                        ? (isDark ? "bg-white/10 text-white" : "bg-[#111]/5 text-[#111]") 
-                                        : "opacity-40 hover:opacity-100"
-                                )}
-                            >
-                                Design
-                            </button>
+                        <div className="flex items-center shrink-0 p-1.5 gap-1">
+                            {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setRightTab(tab)}
+                                    className={cn(
+                                        "flex-1 flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold transition-all rounded-xl",
+                                        rightTab === tab
+                                            ? isDark
+                                                ? "bg-white/10 text-white"
+                                                : "bg-[#111]/5 text-[#111]"
+                                            : isDark
+                                                ? "text-[#555] hover:bg-white/[0.03] hover:text-[#aaa]"
+                                                : "text-[#bbb] hover:bg-black/[0.03] hover:text-[#666]"
+                                    )}
+                                >
+                                    <Icon size={14} strokeWidth={rightTab === tab ? 2.5 : 2} />
+                                    <span className={cn("transition-all", rightTab === tab ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 absolute")}>
+                                        {label}
+                                    </span>
+                                </button>
+                            ))}
                         </div>
                         <div className="flex-1 overflow-auto py-3 px-3 space-y-1.5">
                             {rightTab === 'details' && (
                                 <>
+                                    <MetaField
+                                        label="Invoice #"
+                                        isDark={isDark}
+                                        icon={<Hash size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ invoiceNumber: id?.slice(0, 8).toUpperCase() || 'INV-001' })}
+                                    >
+                                        <input
+                                            value={meta.invoiceNumber}
+                                            onChange={e => updateMeta({ invoiceNumber: e.target.value })}
+                                            placeholder="Enter invoice number..."
+                                            className={cn(
+                                                "w-full text-[12px] bg-transparent outline-none font-medium",
+                                                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                            )}
+                                        />
+                                    </MetaField>
+
+                                    <MetaField
+                                        label="Reference"
+                                        isDark={isDark}
+                                        icon={<Info size={11} className="opacity-50" />}
+                                        onReset={() => updateMeta({ reference: '' })}
+                                    >
+                                        <input
+                                            value={meta.reference}
+                                            onChange={e => updateMeta({ reference: e.target.value })}
+                                            placeholder="PO # or internal ref..."
+                                            className={cn(
+                                                "w-full text-[12px] bg-transparent outline-none font-medium",
+                                                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                            )}
+                                        />
+                                    </MetaField>
+
                                     <MetaField 
                                         label="Client" 
                                         isDark={isDark} 
@@ -1067,7 +1090,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                                 }}
                                                                 className={cn(
                                                                     "w-full text-left px-3 py-2.5 text-[11px] font-bold transition-colors flex items-center gap-2",
-                                                                    isDark ? "text-[#4dbf39] hover:bg-white/5" : "text-[#3aaa29] hover:bg-black/5"
+                                                                    isDark ? "text-[var(--brand-primary)] hover:bg-white/5" : "text-[var(--brand-primary)] hover:bg-black/5"
                                                                 )}
                                                             >
                                                                 <Plus size={14} strokeWidth={3} />
@@ -1248,7 +1271,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                     <div className={cn(
                                                         "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
                                                         meta.paymentMethods?.includes('paypal')
-                                                            ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                                                            ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white shadow-sm"
                                                             : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
                                                     )}>
                                                         {meta.paymentMethods?.includes('paypal') && <Check size={10} strokeWidth={4} />}
@@ -1275,7 +1298,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                     <div className={cn(
                                                         "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
                                                         meta.paymentMethods?.includes(acc.id)
-                                                            ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                                                            ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white shadow-sm"
                                                             : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
                                                     )}>
                                                         {meta.paymentMethods?.includes(acc.id) && <Check size={10} strokeWidth={4} />}
@@ -1531,6 +1554,7 @@ export function InvoiceDocument({
         '--table-row-bg': design.tableRowBg || 'transparent',
         '--table-row-text': isDarkColor(design.tableRowBg && design.tableRowBg !== 'transparent' ? design.tableRowBg : (design.blockBackgroundColor || '#ffffff')) ? '#ffffff' : '#000000',
         '--table-row-border-width': design.tableShowRowBorders === false ? '0px' : `${design.tableStrokeWidth ?? 1}px`,
+        '--table-row-border-color': design.tableRowBorderColor || design.tableBorderColor || '#ebebeb',
         '--primary-color': design.primaryColor || 'var(--brand-primary)',
         '--primary': design.primaryColor || 'var(--brand-primary)',
         '--sign-bar-color': design.signBarColor || '#000000',
@@ -1670,6 +1694,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
     updateMeta: (patch: Partial<InvoiceMeta>) => void;
     isMobile?: boolean;
 }) {
+    const design = meta.design || DEFAULT_DOCUMENT_DESIGN;
     switch (block.type) {
         case 'header': {
             const { branding } = useSettingsStore();
@@ -1799,9 +1824,15 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                 updateBlock(block.id, { rows: newRows });
             };
 
-            const addRow = () => {
-                const newRows = [...rows, { id: uuidv4(), title: '', description: '', qty: 1, rate: 0 }];
-                updateBlock(block.id, { rows: newRows });
+            const addRow = (atIdx?: number) => {
+                const newRow = { id: uuidv4(), title: '', description: '', qty: 1, rate: 0 };
+                const nextRows = [...rows];
+                if (typeof atIdx === 'number') {
+                    nextRows.splice(atIdx + 1, 0, newRow);
+                } else {
+                    nextRows.push(newRow);
+                }
+                updateBlock(block.id, { rows: nextRows });
             };
 
             const duplicateRow = (row: PricingRow) => {
@@ -1821,7 +1852,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
             const taxAmt = (subtotal - discAmt) * ((block.taxRate || 0) / 100);
             const total = subtotal - discAmt + taxAmt;
 
-            const th = cn("uppercase font-bold px-3 py-2", isDark ? "text-white/40" : "text-black");
+            const th = cn("uppercase font-bold px-3 py-2 text-[inherit]");
             const td = cn("border-none", "text-[inherit]");
 
             return (
@@ -1836,7 +1867,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             borderWidth: 'var(--table-stroke-width)', 
                             borderStyle: 'solid', 
                             borderColor: 'var(--table-border-color)',
-                            backgroundColor: isDark ? '#1a1a1a' : '#ffffff'
+                            backgroundColor: design.tableRowBg || 'transparent'
                         }}
                     >
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -1844,8 +1875,8 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 <div className="divide-y relative" style={{ borderColor: 'var(--table-border-color)' }}>
                                     <style dangerouslySetInnerHTML={{ __html: `
                                         .divide-y > * + * {
-                                            border-top-width: var(--table-stroke-width) !important;
-                                            border-color: var(--table-border-color) !important;
+                                            border-top-width: var(--table-row-border-width) !important;
+                                            border-top-color: var(--table-row-border-color) !important;
                                         }
                                         .pricing-mobile-row:first-of-type {
                                             border-top-left-radius: calc(var(--table-radius-tl) - var(--table-stroke-width));
@@ -1875,7 +1906,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                     </SortableContext>
                                 </div>
                             ) : (
-                                <table className="w-full relative" style={{ borderTopLeftRadius: 'var(--table-radius-tl)', borderTopRightRadius: 'var(--table-radius-tr)', borderBottomRightRadius: 'var(--table-radius-br)', borderBottomLeftRadius: 'var(--table-radius-bl)', borderCollapse: 'separate', borderSpacing: 0 }}>
+                                <table className="w-full relative pricing-table-root" style={{ borderTopLeftRadius: 'var(--table-radius-tl)', borderTopRightRadius: 'var(--table-radius-tr)', borderBottomRightRadius: 'var(--table-radius-br)', borderBottomLeftRadius: 'var(--table-radius-bl)', borderCollapse: 'separate', borderSpacing: 0 }}>
                                     <thead style={{ color: 'var(--table-header-text, inherit)' }}>
                                         <tr style={{ fontSize: 'calc(var(--table-font-size) - 2px)' }}>
                                             <th className="w-0 relative pl-5" style={{ borderTopLeftRadius: 'calc(var(--table-radius-tl) - var(--table-stroke-width))', backgroundColor: 'var(--table-header-bg)' }} />
@@ -1886,21 +1917,22 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                             {!isPreview && <th className="w-0 pr-5" style={{ borderTopRightRadius: 'calc(var(--table-radius-tr) - var(--table-stroke-width))', backgroundColor: 'var(--table-header-bg)' }} />}
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y relative pricing-table-root" style={{ borderColor: 'var(--table-border-color)' }}>
+                                    <tbody className="relative" style={{ borderColor: 'var(--table-border-color)' }}>
                                         <style dangerouslySetInnerHTML={{ __html: `
-                                            .divide-y > * + * {
-                                                border-top-width: var(--table-stroke-width) !important;
-                                                border-color: var(--table-border-color) !important;
+                                            .pricing-table-root tbody tr td {
+                                                border-top-width: var(--table-row-border-width) !important;
+                                                border-top-style: solid !important;
+                                                border-top-color: var(--table-row-border-color) !important;
                                             }
-                                            .pricing-table-root > tr:last-child td:first-child {
+                                            .pricing-table-root tr:last-child td:first-child {
                                                 border-bottom-left-radius: calc(var(--table-radius-bl) - var(--table-stroke-width));
                                             }
-                                            .pricing-table-root > tr:last-child td:last-child {
+                                            .pricing-table-root tr:last-child td:last-child {
                                                 border-bottom-right-radius: calc(var(--table-radius-br) - var(--table-stroke-width));
                                             }
                                         ` }} />
                                         <SortableContext items={rows.map((r: any) => r.id)} strategy={verticalListSortingStrategy}>
-                                            {rows.map((row: PricingRow) => (
+                                            {rows.map((row: PricingRow, idx: number) => (
                                                 <SortableRow 
                                                     key={row.id} 
                                                     row={row} 
@@ -1912,6 +1944,9 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                                     removeRow={removeRow} 
                                                     duplicateRow={duplicateRow}
                                                     td={td}
+                                                    idx={idx}
+                                                    onAddRow={() => addRow(idx)}
+                                                    showRowBorders={design.tableShowRowBorders !== false}
                                                 />
                                             ))}
                                         </SortableContext>
@@ -1922,11 +1957,11 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                     </div>
 
                     {/* Summary Card */}
-                    <div className="px-5 py-3" style={{ backgroundColor: isPreview ? 'transparent' : 'var(--table-header-bg)', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)', borderWidth: isPreview ? 0 : 'var(--table-stroke-width)', borderStyle: isPreview ? 'none' : 'solid' }}>
+                    <div className="px-5 py-3" style={{ backgroundColor: 'transparent', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)', borderWidth: isPreview ? 0 : 'var(--table-stroke-width)', borderStyle: isPreview ? 'none' : 'solid' }}>
                         {!isPreview && (
                             <div className="flex justify-between items-center mb-4">
                                 <button
-                                    onClick={addRow}
+                                    onClick={() => addRow()}
                                     className={cn("flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 border border-dashed transition-all hover:bg-black/5 dark:hover:bg-white/5", isDark ? "border-white/10 text-white/40" : "border-black/10 text-black/40")}
                                     style={{ borderRadius: 'var(--block-button-radius)' }}
                                 >
@@ -1937,7 +1972,8 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                         type="checkbox" 
                                         checked={hideQty} 
                                         onChange={e => updateBlock(block.id, { hideQty: e.target.checked })} 
-                                        className="rounded border-gray-300 text-[#4dbf39] focus:ring-[#4dbf39]" 
+                                        className="rounded border-gray-300" 
+                                        style={{ accentColor: design.primaryColor || 'var(--brand-primary)' }}
                                     />
                                     Hide QTY
                                 </label>
@@ -1947,13 +1983,13 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         <div className="flex flex-col items-end">
                             <div className="w-full max-w-[180px] space-y-1.5">
                                 {rows.length > 1 && (
-                                    <div className={cn("flex justify-between text-[12px] font-medium", isDark ? "opacity-50" : "text-black")}>
+                                    <div className={cn("flex justify-between text-[12px] font-medium opacity-60")} style={{ color: 'var(--table-row-text)' }}>
                                         <span>Subtotal</span>
                                         <span><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
                                     </div>
                                 )}
                                 {(!isPreview || (block.discountRate || 0) > 0) && (
-                                    <div className={cn("flex justify-between items-center text-[12px] font-medium", isDark ? "opacity-50" : "text-black")}>
+                                    <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-60")} style={{ color: 'var(--table-row-text)' }}>
                                         <div className="flex items-center gap-2">
                                             <span>Discount{isPreview && <span className="ml-1 opacity-70">({block.discountRate}%)</span>}</span>
                                             {!isPreview && (
@@ -1970,7 +2006,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                     </div>
                                 )}
                                 {(!isPreview || (block.taxRate || 0) > 0) && (
-                                    <div className={cn("flex justify-between items-center text-[12px] font-medium", isDark ? "opacity-50" : "text-black")}>
+                                    <div className={cn("flex justify-between items-center text-[12px] font-medium opacity-60")} style={{ color: 'var(--table-row-text)' }}>
                                         <div className="flex items-center gap-2">
                                             <span>Tax{isPreview && <span className="ml-1 opacity-70">({block.taxRate}%)</span>}</span>
                                             {!isPreview && (
@@ -1986,7 +2022,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                         <span><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
                                     </div>
                                 )}
-                                <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
+                                <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ color: 'var(--table-row-text)', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
                                     <span>Total</span>
                                     <span><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
                                 </div>
@@ -2234,7 +2270,35 @@ function InsertZone({ idx, isDark, isOpen, onOpen, onClose, onAdd, isFirst, isLa
 }
 
 
-function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td, isMobile }: any) {
+function TableRowInsertZone({ onAdd, isDark }: any) {
+    const [hovered, setHovered] = useState(false);
+    return (
+        <div 
+            className="absolute inset-x-0 -bottom-[1px] h-[10px] z-50 group/table-insert flex items-center justify-center translate-y-1/2"
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+        >
+            <div className={cn(
+                "w-full h-[2px] transition-all duration-200",
+                hovered ? "opacity-100" : "opacity-0"
+            )} style={{ backgroundColor: 'var(--brand-primary)' }} />
+            <button
+                onClick={(e) => { e.stopPropagation(); onAdd(); }}
+                className={cn(
+                    "absolute left-1/2 -translate-x-1/2 w-5 h-5 flex items-center justify-center rounded-full border transition-all duration-200 shadow-sm",
+                    hovered 
+                        ? (isDark ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white scale-110" : "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white scale-110")
+                        : "opacity-0 invisible scale-50"
+                )}
+            >
+                <Plus size={12} strokeWidth={3} />
+            </button>
+        </div>
+    );
+}
+
+
+function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, removeRow, duplicateRow, td, isMobile, idx, onAddRow, showRowBorders }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
     const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 0 };
 
@@ -2314,7 +2378,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                         type="number"
                                         value={row.qty}
                                         onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
-                                        className={cn("w-10 bg-transparent outline-none font-bold text-[13px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                        className={cn("w-10 bg-transparent outline-none font-bold text-[13px] text-[inherit]")}
                                     />
                                 )}
                             </div>
@@ -2328,7 +2392,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                     type="number"
                                     value={row.rate}
                                     onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
-                                    className={cn("w-20 bg-transparent outline-none font-bold text-[13px]", isDark ? "text-[#ccc]" : "text-[#333]")}
+                                    className={cn("w-20 bg-transparent outline-none font-bold text-[13px] text-[inherit]")}
                                 />
                             )}
                         </div>
@@ -2415,7 +2479,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             type="number"
                             value={row.qty}
                             onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
-                            className={cn("w-12 text-right bg-transparent outline-none font-medium", isDark ? "text-[#ccc]" : "text-[#333]")}
+                            className={cn("w-12 text-right bg-transparent outline-none font-medium text-[inherit]")}
                         />
                     )}
                 </td>
@@ -2459,6 +2523,9 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             <Trash2 size={13} />
                         </button>
                     </div>
+                    {showRowBorders && (
+                        <TableRowInsertZone isDark={isDark} onAdd={onAddRow} />
+                    )}
                 </td>
             )}
         </tr>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, ArrowDownToLine, Printer, Check, AlertTriangle, FileText, ArrowRight } from 'lucide-react';
+import { Download, ArrowDownToLine, Check, AlertTriangle, FileText, ArrowRight, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -120,9 +120,11 @@ export function ClientActionBar({
                     <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                         <ArrowDownToLine size={isMobile ? 13 : 15} />
                     </button>
-                    <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                        <Printer size={isMobile ? 13 : 15} />
-                    </button>
+                    {onPrint && (
+                        <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <Printer size={isMobile ? 13 : 15} />
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -216,9 +218,11 @@ export function ClientActionBar({
                         <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                             <ArrowDownToLine size={15} />
                         </button>
-                        <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                            <Printer size={15} />
-                        </button>
+                        {onPrint && (
+                            <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                <Printer size={15} />
+                            </button>
+                        )}
                     </div>
 
                     {status === 'Paid' ? (
@@ -296,9 +300,11 @@ export function ClientActionBar({
                     <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                         <ArrowDownToLine size={isMobile ? 13 : 15} />
                     </button>
-                    <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                        <Printer size={isMobile ? 13 : 15} />
-                    </button>
+                    {onPrint && (
+                        <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <Printer size={isMobile ? 13 : 15} />
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -378,9 +384,11 @@ export function ClientActionBar({
                     <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                         <ArrowDownToLine size={isMobile ? 13 : 15} />
                     </button>
-                    <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                        <Printer size={isMobile ? 13 : 15} />
-                    </button>
+                    {onPrint && (
+                        <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <Printer size={isMobile ? 13 : 15} />
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -416,9 +424,11 @@ export function ClientActionBar({
                     <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                         <ArrowDownToLine size={isMobile ? 16 : 18} strokeWidth={1.75} />
                     </button>
-                    <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                        <Printer size={isMobile ? 16 : 18} strokeWidth={1.75} />
-                    </button>
+                    {onPrint && (
+                        <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <Printer size={isMobile ? 16 : 18} strokeWidth={1.75} />
+                        </button>
+                    )}
                 </div>
 
                 <div className={cn(isMobile ? "w-px h-5 mx-0.5" : "w-px h-6 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />

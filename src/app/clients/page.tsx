@@ -22,6 +22,8 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
+import { ContextMenuRow } from '@/components/ui/RowContextMenu';
+import { ExternalLink, Mail as MailIcon, Phone as PhoneIcon } from 'lucide-react';
 
 type Tab = 'people' | 'companies';
 type ViewMode = 'grid' | 'list';
@@ -212,6 +214,41 @@ export default function ClientsPage() {
     };
 
 
+
+    const handleDuplicateClient = async (id: string) => {
+        const original = clients.find(c => c.id === id);
+        if (!original) return;
+        const promise = (async () => {
+            const { id: _, created_at: __, workspace_id: ___, ...payload } = original;
+            await addClient({
+                ...payload,
+                contact_person: `${original.contact_person || 'Contact'} (Copy)`
+            });
+        })();
+        appToast.promise(promise, {
+            loading: 'Duplicating contact…',
+            success: 'Contact duplicated',
+            error: 'Duplication failed',
+        });
+    };
+
+    const handleDuplicateCompany = async (id: string) => {
+        const original = companies.find(c => c.id === id);
+        if (!original) return;
+        const promise = (async () => {
+            const { id: _, created_at: __, workspace_id: ___, ...payload } = original;
+            const { addCompany } = useCompanyStore.getState();
+            await addCompany({
+                ...payload,
+                name: `${original.name || 'Company'} (Copy)`
+            });
+        })();
+        appToast.promise(promise, {
+            loading: 'Duplicating company…',
+            success: 'Company duplicated',
+            error: 'Duplication failed',
+        });
+    };
 
     const toggleRow = (id: string, e?: React.MouseEvent) => {
         e?.stopPropagation();
@@ -567,13 +604,26 @@ export default function ClientsPage() {
                                         <div /><div>Name</div><div>Email</div><div>Phone</div><div>Country</div><div>Company</div>
                                     </div>
                                 {filteredPeople.map((client, i) => {
-                                    const isActive = activeContactId === client.id;
+                                    const menuItems = [
+                                        { label: 'View Profile', icon: <Users size={12} />, onClick: () => openRightPanel({ type: 'contact', id: client.id }) },
+                                        { label: 'Copy Name', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(client.contact_person || ''); appToast.success('Name copied'); } },
+                                        { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicateClient(client.id) },
+                                        { label: 'Send Email', icon: <Mail size={12} />, onClick: () => window.location.href = `mailto:${client.email}`, disabled: !client.email },
+                                        { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: async () => {
+                                            const { deleteClient } = useClientStore.getState();
+                                            await deleteClient(client.id);
+                                            appToast.error("Deleted", 'Contact deleted');
+                                        }, separator: true },
+                                    ];
+
                                     return (
-                                        <div
+                                        <ContextMenuRow
                                             key={client.id}
-                                            onClick={() => openRightPanel({ type: 'contact', id: client.id })}
+                                            items={menuItems}
+                                            isDark={isDark}
+                                            onRowClick={() => openRightPanel({ type: 'contact', id: client.id })}
                                             className={cn(
-                                                "grid px-4 py-2.5 text-[12px] cursor-pointer transition-colors group select-none",
+                                                "grid px-4 py-1 text-[12px] cursor-pointer transition-colors group select-none",
                                                 selectedIds.has(client.id)
                                                     ? "bg-primary/5"
                                                     : isDark ? "hover:bg-white/[0.025]" : "hover:bg-[#fafafa]",
@@ -587,12 +637,14 @@ export default function ClientsPage() {
                                                     {selectedIds.has(client.id) && <Check size={9} strokeWidth={4} className="text-black" />}
                                                 </div>
                                             </div>
-                                            <Avatar 
-                                                src={client.avatar_url} 
-                                                name={client.contact_person || client.company_name} 
-                                                className="w-7 h-7" 
-                                                isDark={isDark} 
-                                            />
+                                            <div className="flex items-center py-1">
+                                                <Avatar 
+                                                    src={client.avatar_url} 
+                                                    name={client.contact_person || client.company_name} 
+                                                    className="w-7 h-7" 
+                                                    isDark={isDark} 
+                                                />
+                                            </div>
                                             <div className={cn("flex items-center font-medium truncate", textPrimary)}>
                                                 {client.contact_person || '—'}
                                             </div>
@@ -601,18 +653,8 @@ export default function ClientsPage() {
                                             <div className={cn("flex items-center truncate", textSecondary)}>{client.country || '—'}</div>
                                             <div className={cn("flex items-center truncate relative", muted)}>
                                                 {client.company_name || '—'}
-                                                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all bg-inherit">
-                                                    <InlineDeleteButton 
-                                                        onDelete={async () => {
-                                                            const { deleteClient } = useClientStore.getState();
-                                                            await deleteClient(client.id);
-                                                            appToast.error("Deleted", 'Contact deleted');
-                                                        }} 
-                                                        isDark={isDark} 
-                                                    />
-                                                </div>
                                             </div>
-                                        </div>
+                                        </ContextMenuRow>
                                     );
                                 })}
                                 </div>

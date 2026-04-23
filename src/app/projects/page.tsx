@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, LayoutGrid, List, ChevronDown, Plus, Archive,
     ArchiveRestore, Trash2, Check, X, Filter,
-    ArrowUpDown, Briefcase, Calendar, Users, Copy,
+    ArrowUpDown, Briefcase, Calendar, Users, Copy, ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -18,6 +18,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -145,9 +146,9 @@ function CircleProgress({ pct, color, size = 44, isDark }: { pct: number; color:
 
 // ─── Project Card ─────────────────────────────────────────────────────────────
 
-function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle, onStatusChange, currentUser }: {
+function ProjectCard({ project, isDark, onClick, onArchive, onDelete, onDuplicate, taskProgress, isSelected, onToggle, onStatusChange, currentUser }: {
     project: Project; isDark: boolean; onClick: () => void;
-    onArchive: () => void; onDelete: () => void;
+    onArchive: () => void; onDelete: () => void; onDuplicate: () => void;
     taskProgress: { total: number; done: number; pct: number };
     isSelected: boolean; onToggle: () => void; onStatusChange: (status: ProjectStatus) => void;
     currentUser?: any;
@@ -163,22 +164,30 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
         return m;
     }, [project.members, currentUser]);
 
+    const menuItems = [
+        { label: 'Open', icon: <ExternalLink size={12} />, onClick: onClick },
+        { label: 'Copy Name', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(project.name); appToast.success('Name copied'); } },
+        { label: 'Duplicate', icon: <Copy size={12} />, onClick: onDuplicate },
+        { label: project.is_archived ? 'Unarchive' : 'Archive', icon: project.is_archived ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: onArchive, separator: true },
+        { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: onDelete, separator: true },
+    ];
+
     return (
-        <motion.div
-            layout
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            onClick={onClick}
-            className={cn(
-                "relative rounded-[10px] border cursor-pointer transition-all duration-150 group flex flex-col select-none",
-                isSelected
-                    ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                    : isDark
-                        ? "bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#3d3d3d] hover:shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
-                        : "bg-white border-[#ebebeb] hover:border-[#d4d4d4] hover:shadow-[0_4px_20px_rgba(0,0,0,0.07)]"
-            )}
-        >
+        <ContextMenuRow items={menuItems} isDark={isDark} onRowClick={onClick}>
+            <motion.div
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                className={cn(
+                    "relative rounded-[10px] border cursor-pointer transition-all duration-150 group flex flex-col select-none h-full",
+                    isSelected
+                        ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                        : isDark
+                            ? "bg-[#1a1a1a] border-[#2a2a2a] hover:border-[#3d3d3d] hover:shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+                            : "bg-white border-[#ebebeb] hover:border-[#d4d4d4] hover:shadow-[0_4px_20px_rgba(0,0,0,0.07)]"
+                )}
+            >
             {/* Left accent vertical line */}
             <div className="absolute left-0 top-0 bottom-0 w-[4px] rounded-l-[9px]" style={{ background: project.color }} />
 
@@ -266,15 +275,16 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, taskProgre
             >
                 <Archive size={11} />
             </button>
-        </motion.div>
+            </motion.div>
+        </ContextMenuRow>
     );
 }
 
 // ─── Table Row ────────────────────────────────────────────────────────────────
 
-function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress, isSelected, onToggle, onStatusChange, currentUser }: {
+function TableRow({ project, isDark, onClick, onArchive, onDelete, onDuplicate, taskProgress, isSelected, onToggle, onStatusChange, currentUser }: {
     project: Project; isDark: boolean; onClick: () => void;
-    onArchive: () => void; onDelete: () => void;
+    onArchive: () => void; onDelete: () => void; onDuplicate: () => void;
     taskProgress: { total: number; done: number; pct: number };
     isSelected: boolean; onToggle: () => void; onStatusChange: (status: ProjectStatus) => void;
     currentUser?: any;
@@ -290,15 +300,25 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress,
         return m;
     }, [project.members, currentUser]);
 
+    const menuItems = [
+        { label: 'Open', icon: <ExternalLink size={12} />, onClick: onClick },
+        { label: 'Copy Name', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(project.name); appToast.success('Name copied'); } },
+        { label: 'Duplicate', icon: <Copy size={12} />, onClick: onDuplicate },
+        { label: project.is_archived ? 'Unarchive' : 'Archive', icon: project.is_archived ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: onArchive, separator: true },
+        { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: onDelete, separator: true },
+    ];
+
     return (
-        <div
-            onClick={onClick}
+        <ContextMenuRow
+            items={menuItems}
+            isDark={isDark}
+            onRowClick={onClick}
             className={cn(
                 "grid border-b cursor-pointer group transition-colors select-none w-full",
-                isSelected ? isDark ? 'bg-primary/5' : 'bg-primary/5'
-                : isDark ? "border-[#1f1f1f] hover:bg-white/[0.02]" : "border-[#f3f3f3] hover:bg-[#fafafa]",
+                isSelected ? (isDark ? 'bg-primary/10' : 'bg-primary/5')
+                : (isDark ? "border-[#1f1f1f] hover:bg-white/[0.02]" : "border-[#f3f3f3] hover:bg-[#fafafa]"),
             )}
-            style={{ gridTemplateColumns: '44px 3px 1fr 150px 160px 80px 90px 120px 52px' }}
+            style={{ gridTemplateColumns: '44px 3px 1fr 150px 160px 80px 90px 120px 20px' }}
         >
             {/* Select */}
             <div className="flex flex-col justify-center items-center h-full" onClick={e => { e.stopPropagation(); onToggle(); }}>
@@ -308,17 +328,17 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress,
                 </div>
             </div>
             {/* Left color stripe */}
-            <div className="w-full shrink-0 self-stretch rounded-full my-2.5 ml-1.5" style={{ background: project.color }} />
+            <div className="w-full shrink-0 self-stretch rounded-full my-1.5 ml-1.5" style={{ background: project.color }} />
             {/* Name */}
-            <div className="flex-1 min-w-0 py-3 pl-3 pr-4 self-center">
+            <div className="flex-1 min-w-0 py-1.5 pl-3 pr-4 self-center">
                 <p className={cn("font-bold text-[12.5px] truncate", isDark ? "text-white" : "text-[#111]")}>{project.name}</p>
             </div>
             {/* Status */}
-            <div className="shrink-0 py-3 pr-4 self-center">
+            <div className="shrink-0 py-1.5 pr-4 self-center">
                 <StatusCell status={project.status} onStatusChange={onStatusChange} isDark={isDark} />
             </div>
             {/* Progress */}
-            <div className="shrink-0 py-3 pr-4 self-center">
+            <div className="shrink-0 py-1.5 pr-4 self-center">
                 <div className="flex items-center gap-2">
                     <div className={cn("flex-1 h-1 rounded-full overflow-hidden", isDark ? "bg-white/[0.07]" : "bg-black/[0.07]")}>
                         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${taskProgress.pct}%`, background: project.color }} />
@@ -327,12 +347,12 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress,
                 </div>
             </div>
             {/* Tasks */}
-            <div className={cn("shrink-0 py-3 text-[11.5px] tabular-nums self-center", isDark ? "text-[#555]" : "text-[#aaa]")}>
+            <div className={cn("shrink-0 py-1.5 text-[11.5px] tabular-nums self-center", isDark ? "text-[#555]" : "text-[#aaa]")}>
                 <span className={isDark ? "text-[#ccc]" : "text-[#444]"}>{taskProgress.done}</span>
                 <span className="opacity-40">/{taskProgress.total}</span>
             </div>
             {/* Members */}
-            <div className="shrink-0 py-3 self-center">
+            <div className="shrink-0 py-1.5 self-center">
                 {displayMembers.length > 0 ? (
                     <div className="flex -space-x-1.5">
                         {displayMembers.slice(0, 3).map((m, i) => (
@@ -353,21 +373,14 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, taskProgress,
                 )}
             </div>
             {/* Deadline */}
-            <div className={cn("shrink-0 py-3 text-[11.5px] self-center",
+            <div className={cn("shrink-0 py-1.5 text-[11.5px] self-center",
                 dl.urgent ? "text-red-400 font-semibold" : isDark ? "text-[#666]" : "text-[#999]")}>
                 {dl.urgent && <Calendar size={9} className="inline mr-1 mb-0.5" />}
                 {dl.text}
             </div>
-            {/* Hover actions */}
-            <div className="shrink-0 py-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-2 self-center">
-                <button onClick={e => { e.stopPropagation(); onArchive(); }} className={cn("w-6 h-6 rounded-md flex items-center justify-center transition-colors", isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
-                    <Archive size={11} />
-                </button>
-                <button onClick={e => { e.stopPropagation(); onDelete(); }} className={cn("w-6 h-6 rounded-md flex items-center justify-center transition-colors", isDark ? "text-red-400/40 hover:text-red-400 hover:bg-red-500/10" : "text-red-200 hover:text-red-500 hover:bg-red-50")}>
-                    <Trash2 size={11} />
-                </button>
-            </div>
-        </div>
+            {/* Empty space for alignment */}
+            <div className="shrink-0 py-1.5" />
+        </ContextMenuRow>
     );
 }
 
@@ -498,6 +511,15 @@ export default function ProjectsPage() {
         setArchivedIds(next);
         updateProject(id, { is_archived: !wasArch });
         appToast.success(wasArch ? 'Restored' : 'Archived', wasArch ? 'Project restored from archive' : 'Project moved to archive');
+    };
+
+    const handleDuplicate = async (id: string) => {
+        const promise = bulkDuplicateProjects([id]);
+        appToast.promise(promise, {
+            loading: 'Duplicating project…',
+            success: 'Project duplicated',
+            error: 'Duplication failed',
+        });
     };
 
     const toggleRow = (id: string) => {
@@ -680,19 +702,20 @@ export default function ProjectsPage() {
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
                         <AnimatePresence>
                             {filtered.map(p => (
-                                <ProjectCard
-                                    key={p.id}
-                                    project={p}
-                                    isDark={isDark}
-                                    onClick={() => router.push(`/projects/${p.id}`)}
-                                    onArchive={() => handleArchive(p.id)}
-                                    onDelete={() => setDeletingId(p.id)}
-                                    taskProgress={progressMap[p.id] ?? { total: 0, done: 0, pct: 0 }}
-                                    isSelected={selectedIds.has(p.id)}
-                                    onToggle={() => toggleRow(p.id)}
-                                    onStatusChange={(status) => updateProject(p.id, { status })}
-                                    currentUser={currentUser}
-                                />
+                                    <ProjectCard
+                                        key={p.id}
+                                        project={p}
+                                        isDark={isDark}
+                                        onClick={() => router.push(`/projects/${p.id}`)}
+                                        onArchive={() => handleArchive(p.id)}
+                                        onDelete={() => setDeletingId(p.id)}
+                                        onDuplicate={() => handleDuplicate(p.id)}
+                                        taskProgress={progressMap[p.id] ?? { total: 0, done: 0, pct: 0 }}
+                                        isSelected={selectedIds.has(p.id)}
+                                        onToggle={() => toggleRow(p.id)}
+                                        onStatusChange={(status) => updateProject(p.id, { status })}
+                                        currentUser={currentUser}
+                                    />
                             ))}
                         </AnimatePresence>
                     </div>
@@ -700,24 +723,23 @@ export default function ProjectsPage() {
                     /* ── Table ── */
                     <div className="flex flex-col">
                         {/* Header */}
-                        <div className={cn(
-                            "flex items-center border-b sticky top-0 z-10",
-                            isDark ? "bg-[#141414] border-[#1f1f1f]" : "bg-white border-[#ebebeb]"
-                        )}>
-                            <div className="w-11 flex items-center justify-center py-2 shrink-0 cursor-pointer" onClick={toggleAll}>
+                        <div className={cn("grid px-0 py-2.5 border-b text-[10px] font-bold uppercase tracking-wider sticky top-0 z-30",
+                        isDark ? "bg-[#141414] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}
+                        style={{ gridTemplateColumns: '44px 3px 1fr 150px 160px 80px 90px 120px 20px' }}>
+                            <div className="flex items-center justify-center py-2 cursor-pointer" onClick={toggleAll}>
                                 <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
                                     isAllSelected ? "bg-primary border-primary" : isDark ? "border-[#333] bg-transparent" : "border-[#d0d0d0] bg-white")}>
                                     {isAllSelected && <Check size={9} strokeWidth={4} className="text-black" />}
                                 </div>
                             </div>
-                            <div className="w-1 mr-3" />
-                            <div className={cn("flex-1 text-[10px] font-bold uppercase tracking-widest py-2", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>Name</div>
-                            <div className={cn("w-[150px] text-[10px] font-bold uppercase tracking-widest", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>Status</div>
-                            <div className={cn("w-[160px] text-[10px] font-bold uppercase tracking-widest pr-4", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>Progress</div>
-                            <div className={cn("w-[80px] text-[10px] font-bold uppercase tracking-widest", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>Tasks</div>
-                            <div className={cn("w-[90px] text-[10px] font-bold uppercase tracking-widest", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>Members</div>
-                            <div className={cn("w-[120px] text-[10px] font-bold uppercase tracking-widest", isDark ? "text-[#3a3a3a]" : "text-[#ccc]")}>Deadline</div>
-                            <div className="w-[52px]" />
+                            <div />
+                            <div className="px-4 py-2">Name</div>
+                            <div className="px-4 py-2">Status</div>
+                            <div className="px-4 py-2">Progress</div>
+                            <div className="px-4 py-2">Tasks</div>
+                            <div className="px-4 py-2">Members</div>
+                            <div className="px-4 py-2">Deadline</div>
+                            <div />
                         </div>
                         <AnimatePresence>
                             {filtered.map(p => (
@@ -728,6 +750,7 @@ export default function ProjectsPage() {
                                     onClick={() => router.push(`/projects/${p.id}`)}
                                     onArchive={() => handleArchive(p.id)}
                                     onDelete={() => setDeletingId(p.id)}
+                                    onDuplicate={() => handleDuplicate(p.id)}
                                     taskProgress={progressMap[p.id] ?? { total: 0, done: 0, pct: 0 }}
                                     isSelected={selectedIds.has(p.id)}
                                     onToggle={() => toggleRow(p.id)}

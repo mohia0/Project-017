@@ -201,7 +201,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleClear(); }}
                         className={cn(
-                            "w-5 h-5 shrink-0 flex items-center justify-center rounded-full transition-all opacity-0 group-hover/dpinput:opacity-100",
+                            "w-5 h-5 shrink-0 flex items-center justify-center rounded-md transition-all opacity-0 group-hover/dpinput:opacity-100",
                             isBgDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
                         )}
                     >
@@ -232,7 +232,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                             type="button"
                             onClick={handlePreviousMonth}
                             className={cn(
-                                "shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors",
+                                "shrink-0 w-6 h-6 rounded-md flex items-center justify-center transition-colors",
                                 isDark ? "hover:bg-white/10 text-white" : "hover:bg-black/5 text-[#111]"
                             )}
                         >
@@ -309,7 +309,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                             type="button"
                             onClick={handleNextMonth}
                             className={cn(
-                                "shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors",
+                                "shrink-0 w-6 h-6 rounded-md flex items-center justify-center transition-colors",
                                 isDark ? "hover:bg-white/10 text-white" : "hover:bg-black/5 text-[#111]"
                             )}
                         >
@@ -346,7 +346,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                                     type="button"
                                     onClick={() => handleSelectDate(day)}
                                     className={cn(
-                                        "w-7 h-7 mx-auto flex items-center justify-center rounded-full text-[12px] font-medium transition-all duration-150",
+                                        "w-7 h-7 mx-auto flex items-center justify-center rounded-md text-[12px] font-medium transition-all duration-150",
                                         isSelected 
                                             ? "bg-primary text-primary-foreground shadow-[0_2px_8px_rgba(var(--brand-primary-rgb),0.4)]" 
                                             : isDark 
@@ -366,7 +366,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                             type="button"
                             onClick={handleSelectToday}
                             className={cn(
-                                "text-[10px] font-bold px-3 py-1 rounded-full transition-colors",
+                                "text-[10px] font-bold px-3 py-1 rounded-md transition-colors",
                                 isDark ? "bg-[#252525] text-white hover:bg-[#333]" : "bg-[#f5f5f5] text-[#333] hover:bg-[#e8e8e8]"
                             )}
                         >
@@ -377,7 +377,7 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                                 type="button"
                                 onClick={() => handleClear()}
                                 className={cn(
-                                    "text-[10px] font-bold px-3 py-1 rounded-full transition-colors",
+                                    "text-[10px] font-bold px-3 py-1 rounded-md transition-colors",
                                     isDark ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-500 hover:bg-red-100"
                                 )}
                             >

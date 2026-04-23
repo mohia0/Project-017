@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 
 /* ─── Status config ─────────────────────────────────────────── */
 const STATUS_CFG: Record<SchedulerStatus, { bg: string; text: string; border: string; dot: string }> = {
@@ -339,6 +340,24 @@ export default function SchedulersPage() {
         appToast.success('Link Copied', 'URL copied to clipboard');
     };
 
+    const handleDuplicate = async (id: string) => {
+        const original = schedulers.find(s => s.id === id);
+        if (!original) return;
+        const promise = (async () => {
+            const { id: _, created_at: __, workspace_id: ___, ...payload } = original;
+            await addScheduler({
+                ...payload,
+                title: `${payload.title} (Copy)`,
+                status: 'Draft'
+            });
+        })();
+        appToast.promise(promise, {
+            loading: 'Duplicating scheduler…',
+            success: 'Scheduler duplicated',
+            error: 'Duplication failed',
+        });
+    };
+
     const handleDelete = async (id: string) => {
         setDeletingId(id);
     };
@@ -612,20 +631,22 @@ export default function SchedulersPage() {
                     <div className="flex-1 overflow-x-auto w-full">
                         <div className="min-w-[1000px] flex flex-col">
                             {/* Header */}
-                            <div className={cn("grid px-0 py-2.5 text-[11px] font-semibold tracking-wider uppercase border-b sticky top-0 z-30 shadow-sm",
-                                isDark ? "bg-[#141414] border-[#252525] text-[#555]" : "bg-[#f7f7f7] border-[#ebebeb] text-[#bbb]")}
-                                style={{ gridTemplateColumns: '44px 2fr 1.5fr 1.5fr 1fr 1.5fr 1fr 1fr 120px' }}>
-                                <div className="flex justify-center" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
-                                    <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                            <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-30",
+                                isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
+                                style={{ gridTemplateColumns: '44px 2fr 1.5fr 1.5fr 1fr 1.5fr 1fr 1fr 20px' }}>
+                                <div className="relative px-0 py-2 flex items-center justify-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                                    <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
+                                        <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                                    </div>
                                 </div>
-                                <div className="px-4">Name</div>
-                                <div className="px-4">Status</div>
-                                <div className="px-4">Durations</div>
-                                <div className="px-4">Bookings</div>
-                                <div className="px-4">Location</div>
-                                <div className="px-4">Created</div>
-                                <div className="px-4">Expires</div>
-                                <div className="px-4"></div>
+                                <div className="px-4 py-2">Name</div>
+                                <div className="px-4 py-2">Status</div>
+                                <div className="px-4 py-2">Durations</div>
+                                <div className="px-4 py-2">Bookings</div>
+                                <div className="px-4 py-2">Location</div>
+                                <div className="px-4 py-2">Created</div>
+                                <div className="px-4 py-2">Expires</div>
+                                <div />
                             </div>
 
                             {/* Rows */}
@@ -635,27 +656,37 @@ export default function SchedulersPage() {
                                     const durations: number[] = meta.durations || [];
                                     const isSelected = selectedIds.has(s.id);
 
-                                    return (
-                                        <div
-                                            key={s.id}
-                                            onClick={() => router.push(`/schedulers/${s.id}`)}
-                                            className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
-                                                isDark ? "border-[#1e1e1e] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
-                                                isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
-                                            style={{ gridTemplateColumns: '44px 2fr 1.5fr 1.5fr 1fr 1.5fr 1fr 1fr 120px' }}>
+                                    const menuItems = [
+                                        { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/schedulers/${s.id}`) },
+                                        { label: 'Open Public Link', icon: <ExternalLink size={12} />, onClick: () => window.open(window.location.origin + '/p/scheduler/' + s.id, '_blank') },
+                                        { label: 'Copy Public Link', icon: <Link size={12} />, onClick: (e: any) => copyLink(s.id, e as any) },
+                                        { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(s.id) },
+                                        { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(s.id), separator: true },
+                                    ];
 
-                                            <div className="flex items-center justify-center px-0 py-3 self-stretch" onClick={e => toggleRow(s.id, e)}>
+                                    return (
+                                        <ContextMenuRow
+                                            key={s.id}
+                                            items={menuItems}
+                                            isDark={isDark}
+                                            onRowClick={() => router.push(`/schedulers/${s.id}`)}
+                                            className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
+                                                isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
+                                                isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
+                                            style={{ gridTemplateColumns: '44px 2fr 1.5fr 1.5fr 1fr 1.5fr 1fr 1fr 20px' }}
+                                        >
+                                            <div className="flex items-center justify-center px-0 py-1.5 self-stretch" onClick={e => toggleRow(s.id, e)}>
                                                 <Chk checked={isSelected} isDark={isDark} />
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3 min-w-0">
-                                                <div className={cn("font-semibold truncate", isDark ? "text-[#e0e0e0]" : "text-[#111]")}>{s.title}</div>
+                                            <div className="flex flex-col justify-center px-4 py-1.5 min-w-0 self-center">
+                                                <div className={cn("font-bold truncate", isDark ? "text-white" : "text-black")}>{s.title}</div>
                                                 {meta.organizer && (
-                                                    <div className={cn("text-[11px] mt-0.5 truncate", isDark ? "text-[#555]" : "text-[#aaa]")}>{meta.organizer}</div>
+                                                    <div className={cn("text-[10px] opacity-50 truncate", isDark ? "text-[#aaa]" : "text-[#888]")}>{meta.organizer}</div>
                                                 )}
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
+                                            <div className="flex items-center px-4 py-1.5 self-center">
                                                 <StatusCell
                                                     status={s.status}
                                                     onStatusChange={(newStatus) => updateScheduler(s.id, { status: newStatus })}
@@ -663,7 +694,7 @@ export default function SchedulersPage() {
                                                 />
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
+                                            <div className="flex items-center px-4 py-1.5 self-center">
                                                 {durations.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1">
                                                         {durations.map((d: number) => (
@@ -679,56 +710,28 @@ export default function SchedulersPage() {
                                                 ) : <span className={cn("text-[11px]", isDark ? "text-[#444]" : "text-[#ccc]")}>—</span>}
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#666]" : "text-[#aaa]")}>0</span>
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <span className="text-[12px]">0</span>
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3 min-w-0">
+                                            <div className="flex flex-col justify-center px-4 py-1.5 min-w-0 self-center">
                                                 {meta.location ? (
-                                                    <div className={cn("flex items-center gap-1.5 text-[12px] truncate", isDark ? "text-[#888]" : "text-[#555]")}>
+                                                    <div className={cn("flex items-center gap-1.5 text-[12px] truncate", isDark ? "text-[#777]" : "text-[#888]")}>
                                                         <MapPin size={10} className="shrink-0" />
                                                         <span className="truncate">{meta.location}</span>
                                                     </div>
-                                                ) : <span className={cn("text-[11px]", isDark ? "text-[#444]" : "text-[#ccc]")}>—</span>}
+                                                ) : <span className="text-[11px] opacity-20">—</span>}
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>{fmtDate(s.created_at)}</span>
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <span className="text-[12px]">{fmtDate(s.created_at)}</span>
                                             </div>
 
-                                            <div className="flex flex-col justify-center px-4 py-3">
-                                                {meta.expirationDate ? (
-                                                    <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>{fmtDate(meta.expirationDate)}</span>
-                                                ) : <span className={cn("opacity-20", isDark ? "text-white" : "text-black")}>—</span>}
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <span className="text-[12px]">{meta.expirationDate ? fmtDate(meta.expirationDate) : '—'}</span>
                                             </div>
-
-                                            <div className={cn("flex items-center justify-end px-4 py-3 gap-1.5 font-semibold tabular-nums pr-5 sticky right-0 z-20 transition-colors",
-                                                isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"))} 
-                                                onClick={e => e.stopPropagation()}>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                                                    <Tooltip content="Open Link" side="top">
-                                                        <button onClick={(e) => { e.stopPropagation(); window.open(window.location.origin + '/p/scheduler/' + s.id, '_blank'); }}
-                                                            className={cn("p-1.5 rounded-lg transition-colors", isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
-                                                            <ExternalLink size={12} />
-                                                        </button>
-                                                    </Tooltip>
-                                                    <Tooltip content="Copy preview link" side="top">
-                                                        <button onClick={(e) => copyLink(s.id, e)}
-                                                            className={cn("p-1.5 rounded-lg transition-colors", isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
-                                                            <Link size={12} />
-                                                        </button>
-                                                    </Tooltip>
-                                                    {deletingId === s.id ? (
-                                                        <InlineDeleteButton onDelete={() => handleDelete(s.id)} isDark={isDark} />
-                                                    ) : (
-                                                        <button onClick={() => setDeletingId(s.id)}
-                                                            className={cn("p-1.5 rounded-lg transition-colors text-red-400", isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
-                                                            <Trash2 size={12} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
+                                            <div />
+                                        </ContextMenuRow>
                                     );
                                 })}
                             </div>

@@ -566,7 +566,7 @@ function FieldPreview({
                 "group relative p-4 border-2 transition-all mx-1",
                 isPreview ? "cursor-default" : "cursor-pointer",
                 isSelected
-                    ? "border-primary/50 shadow-[0_0_0_3px_rgba(77,191,57,0.08)]"
+                    ? "border-primary/50 shadow-[0_0_0_3px_rgba(var(--brand-primary-rgb),0.08)]"
                     : "border-transparent",
                 !isPreview && !isSelected && (isDark ? "hover:border-[#333]" : "hover:border-[#ebebeb]"),
                 isDragging && "opacity-50"
@@ -1622,19 +1622,21 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                     isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                                 )}>
                                     <div className="flex items-center shrink-0 p-1.5 gap-1">
-                                    {([['details', Settings, 'Details'], ['design', Palette, 'Design']] as const).map(([tab, Icon, label]) => (
-                                        <button key={tab} onClick={() => setRightTab(tab)}
-                                            className={cn(
-                                                "flex-1 flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold transition-all rounded-xl",
-                                                rightTab === tab
-                                                    ? (isDark ? "bg-white/10 text-white" : "bg-[#111]/5 text-[#111]")
-                                                    : (isDark ? "text-[#555] hover:bg-white/[0.03] hover:text-[#aaa]" : "text-[#bbb] hover:bg-black/[0.03] hover:text-[#666]")
-                                            )}>
-                                            <Icon size={14} strokeWidth={rightTab === tab ? 2.5 : 2} />
-                                            <span>{label}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                                        {([['details', Settings, 'Details'], ['design', Palette, 'Design']] as const).map(([tab, Icon, label]) => (
+                                            <button key={tab} onClick={() => setRightTab(tab)}
+                                                className={cn(
+                                                    "flex-1 flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold transition-all rounded-xl",
+                                                    rightTab === tab
+                                                        ? (isDark ? "bg-white/10 text-white" : "bg-[#111]/5 text-[#111]")
+                                                        : (isDark ? "text-[#555] hover:bg-white/[0.03] hover:text-[#aaa]" : "text-[#bbb] hover:bg-black/[0.03] hover:text-[#666]")
+                                                )}>
+                                                <Icon size={14} strokeWidth={rightTab === tab ? 2.5 : 2} />
+                                                <span className={cn("transition-all", rightTab === tab ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 absolute")}>
+                                                    {label}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
 
                                 <div className="flex-1 overflow-y-auto">
                                     {rightTab === 'details' && (

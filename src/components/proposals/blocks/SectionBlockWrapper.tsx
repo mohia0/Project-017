@@ -267,7 +267,7 @@ export function SectionBlockWrapper({
                                                     className={cn(
                                                         'w-7 h-7 rounded-lg border transition-all hover:scale-110',
                                                         backgroundColor === sw.value
-                                                            ? 'border-[#4dbf39] ring-1 ring-[#4dbf39]'
+                                                            ? 'border-[var(--brand-primary)] ring-1 ring-[var(--brand-primary)]'
                                                             : isDark ? 'border-white/10' : 'border-black/10',
                                                     )}
                                                     style={{
