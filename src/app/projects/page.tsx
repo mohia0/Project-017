@@ -264,17 +264,6 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, onDuplicat
                 </span>
             </div>
 
-            {/* Archive hover button */}
-            <button
-                onClick={e => { e.stopPropagation(); onArchive(); }}
-                title="Archive"
-                className={cn(
-                    "absolute top-4 right-9 w-4 h-4 rounded-[4px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all",
-                    isDark ? "text-[#555] hover:text-red-400 hover:bg-red-500/10" : "text-[#bbb] hover:text-red-500 hover:bg-red-50"
-                )}
-            >
-                <Archive size={11} />
-            </button>
             </motion.div>
         </ContextMenuRow>
     );

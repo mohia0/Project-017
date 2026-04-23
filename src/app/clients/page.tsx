@@ -112,10 +112,11 @@ function DItem({ label, icon, active, onClick, isDark }: { label: string; icon?:
 export default function ClientsPage() {
     const { clients, addClient, fetchClients, isLoading: isClientsLoading } = useClientStore();
     const { companies, fetchCompanies, isLoading: isCompaniesLoading } = useCompanyStore();
-    const { theme, openRightPanel, rightPanel, setImportModalOpen, setCreateModalOpen } = useUIStore();
+    const { theme, openRightPanel, rightPanel, setImportModalOpen, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const isDark = theme === 'dark';
     const [tab, setTab] = useState<Tab>('people');
-    const [view, setView] = useState<ViewMode>('grid');
+    const view = (pageViews['clients'] as ViewMode) || 'grid';
+    const setView = (v: ViewMode) => setPageView('clients', v);
     const [search, setSearch] = useState('');
     const [importExportOpen, setImportExportOpen] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);

@@ -487,6 +487,20 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
                 />
             </div>
             <span className={cn("truncate font-medium", variant === 'card' ? "text-[12px]" : "text-[13px]")}>{currentName || '—'}</span>
+            {currentName && (
+                <div 
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        onClientChange('', ''); 
+                    }}
+                    className={cn(
+                        "ml-auto p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer",
+                        isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
+                    )}
+                >
+                    <X size={10} />
+                </div>
+            )}
         </div>
     );
 
@@ -656,7 +670,7 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function InvoicesPage() {
     const router = useRouter();
-    const { theme, setImportModalOpen, activeWorkspaceId, setCreateModalOpen } = useUIStore();
+    const { theme, setImportModalOpen, activeWorkspaceId, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const { invoices, fetchInvoices, updateInvoice, addInvoice, deleteInvoice, isLoading } = useInvoiceStore();
     const { statuses, fetchStatuses } = useSettingsStore();
 
@@ -669,7 +683,8 @@ export default function InvoicesPage() {
 
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
-    const [view, setView] = useState<'table' | 'cards'>('table');
+    const view = (pageViews['invoices'] as 'table' | 'cards') || 'table';
+    const setView = (v: 'table' | 'cards') => setPageView('invoices', v);
     const [importExportOpen, setImportExportOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     /* ... existing state ... */

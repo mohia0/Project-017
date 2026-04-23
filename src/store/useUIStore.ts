@@ -53,6 +53,9 @@ interface UIState {
     conversionLoading: boolean;
     setConversionCurrency: (code: string | null) => void;
     fetchConversionRates: (targetCode: string) => Promise<void>;
+    /* page views persistence */
+    pageViews: Record<string, string>;
+    setPageView: (pageId: string, view: string) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -141,6 +144,20 @@ export const useUIStore = create<UIState>()(
                     set({ conversionLoading: false });
                 }
             },
+
+            /* Page Views */
+            pageViews: {
+                proposals: 'table',
+                invoices: 'table',
+                clients: 'grid',
+                forms: 'table',
+                schedulers: 'table',
+                hooks: 'table',
+                templates: 'table',
+            },
+            setPageView: (pageId, view) => set((state) => ({
+                pageViews: { ...state.pageViews, [pageId]: view }
+            })),
         }),
         {
             name: 'ui-storage',
@@ -153,6 +170,7 @@ export const useUIStore = create<UIState>()(
                 isRightPanelCollapsed: state.isRightPanelCollapsed,
                 isPrivacyMode: state.isPrivacyMode,
                 conversionCurrency: state.conversionCurrency,
+                pageViews: state.pageViews,
             }),
         }
     )

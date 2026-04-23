@@ -215,12 +215,13 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
 }
 
 export default function HooksPage() {
-    const { theme, openRightPanel, closeRightPanel, rightPanel, setCreateModalOpen } = useUIStore();
+    const { theme, openRightPanel, closeRightPanel, rightPanel, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const { hooks, fetchHooks, addHook, updateHook, deleteHook, bulkDeleteHooks, isLoading } = useHookStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
 
-    const [view, setView] = useState<'table' | 'cards'>('cards');
+    const view = (pageViews['hooks'] as 'table' | 'cards') || 'cards';
+    const setView = (v: 'table' | 'cards') => setPageView('hooks', v);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<HookStatus | 'All'>('All');
     const [orderBy, setOrderBy] = useState<'created_at' | 'name'>('created_at');

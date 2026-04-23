@@ -47,12 +47,13 @@ import { CSS } from '@dnd-kit/utilities';
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_ORDER: ProposalStatus[] = ['Draft', 'Pending', 'Accepted', 'Overdue', 'Declined', 'Cancelled'];
 
-function SortableHeader({ id, children, onResizeStart, isDark, width }: { 
+function SortableHeader({ id, children, onResizeStart, isDark, width, flexible }: { 
     id: string; 
     children: React.ReactNode; 
     onResizeStart?: (e: React.MouseEvent) => void;
     isDark: boolean;
-    width: number;
+    width?: number;
+    flexible?: boolean;
 }) {
     const {
         attributes,
@@ -66,7 +67,7 @@ function SortableHeader({ id, children, onResizeStart, isDark, width }: {
     const style = {
         transform: CSS.Translate.toString(transform),
         transition,
-        width: `${width}px`,
+        width: flexible ? '100%' : `${width}px`,
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 20 : 1,
     };
@@ -408,7 +409,7 @@ function StatusCell({ status, onStatusChange, isDark, customStatuses = [] }: {
             >
                 {status}<ChevronDown size={10} className="opacity-50" />
             </button>
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center">
                 <div className="py-1 min-w-[140px]">
                     {activeStatues.map(s => {
                         const sSc = getStatusColors(s.name, customStatuses);
@@ -471,6 +472,20 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
                 />
             </div>
             <span className={cn("truncate font-medium", variant === 'card' ? "text-[12px]" : "text-[13px]")}>{currentName || '—'}</span>
+            {currentName && (
+                <div 
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        onClientChange('', ''); 
+                    }}
+                    className={cn(
+                        "ml-auto p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer",
+                        isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
+                    )}
+                >
+                    <X size={10} />
+                </div>
+            )}
         </div>
     );
 
@@ -647,7 +662,7 @@ function MobileProposalRow({ p, onOpen, isDark, onStatusChange, onArchive, isArc
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function ProposalsPage() {
     const router = useRouter();
-    const { theme, setImportModalOpen, activeWorkspaceId, setCreateModalOpen } = useUIStore();
+    const { theme, setImportModalOpen, activeWorkspaceId, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const { proposals, fetchProposals, updateProposal, addProposal, deleteProposal, isLoading } = useProposalStore();
     const { statuses, fetchStatuses } = useSettingsStore();
 
@@ -660,7 +675,8 @@ export default function ProposalsPage() {
 
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
-    const [view, setView] = useState<'table' | 'cards'>('table');
+    const view = (pageViews['proposals'] as 'table' | 'cards') || 'table';
+    const setView = (v: 'table' | 'cards') => setPageView('proposals', v);
     const [importExportOpen, setImportExportOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [pendingStatusChange, setPendingStatusChange] = useState<{ id: string, status: ProposalStatus } | null>(null);
@@ -777,7 +793,9 @@ export default function ProposalsPage() {
         }
     };
 
-    const gridTemplate = `${colWidths.select}px ${columnOrder.map(c => `${colWidths[c as keyof typeof colWidths]}px`).join(' ')} minmax(${colWidths.amount}px, 1fr)`;
+    const gridTemplate = `${colWidths.select}px ${columnOrder.map(c => 
+        c === 'name' ? `minmax(${colWidths[c as keyof typeof colWidths]}px, 1fr)` : `${colWidths[c as keyof typeof colWidths]}px`
+    ).join(' ')} ${colWidths.amount}px`;
     const [statusFilter, setStatusFilter] = useState<string | 'All'>('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1305,7 +1323,8 @@ export default function ProposalsPage() {
                                             key={colId} 
                                             id={colId} 
                                             isDark={isDark} 
-                                            width={colWidths[colId as keyof typeof colWidths]}
+                                            width={colId === 'name' ? undefined : colWidths[colId as keyof typeof colWidths]}
+                                            flexible={colId === 'name'}
                                             onResizeStart={(e) => handleResizeStart(colId as keyof typeof colWidths, e)}
                                         >
                                             {label}

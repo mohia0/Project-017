@@ -20,6 +20,23 @@ import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { 
+    DndContext, 
+    closestCenter, 
+    KeyboardSensor, 
+    PointerSensor, 
+    useSensor, 
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import { 
+    arrayMove, 
+    SortableContext, 
+    sortableKeyboardCoordinates, 
+    horizontalListSortingStrategy, 
+    useSortable 
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 /* ─── Status config ─────────────────────────────────────────── */
 const STATUS_CFG: Record<FormStatus, { bg: string; text: string; border: string; dot: string }> = {
@@ -36,6 +53,56 @@ const STATUS_DARK: Record<FormStatus, { text: string; dot: string }> = {
 function fmtDate(d: string) {
     const date = new Date(d);
     return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
+}
+
+function SortableHeader({ id, children, onResizeStart, isDark, width, flexible }: { 
+    id: string; 
+    children: React.ReactNode; 
+    onResizeStart?: (e: React.MouseEvent) => void;
+    isDark: boolean;
+    width?: number;
+    flexible?: boolean;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        width: flexible ? '100%' : `${width}px`,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 20 : 1,
+    };
+
+    return (
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            className={cn(
+                "relative px-4 py-2 flex items-center border-r select-none group/header",
+                isDragging ? "bg-blue-500/10" : "",
+                isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]"
+            )}
+        >
+            <div {...attributes} {...listeners} className="flex-1 cursor-grab active:cursor-grabbing truncate">
+                {children}
+            </div>
+            {onResizeStart && (
+                <div 
+                    onMouseDown={onResizeStart} 
+                    className="absolute -right-3 top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-10 group/resizer transition-colors hover:bg-primary/10"
+                >
+                    <div className="w-[2px] h-[50%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
+                </div>
+            )}
+        </div>
+    );
 }
 
 function Dropdown({ open, onClose, isDark, children, side = 'bottom' }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode; side?: 'top' | 'bottom' }) {
@@ -99,14 +166,13 @@ function StatusCell({ status, onStatusChange, isDark }: {
             <button
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
                 className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-all hover:brightness-95",
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-semibold border transition-all hover:brightness-95",
                     isDark ? "bg-white/5 border-white/10" : ""
                 )}
-                style={isDark ? {} : { background: cfg.bg, color: cfg.text, borderColor: cfg.border }}
+                style={isDark ? { color: dark.text } : { background: cfg.bg, color: cfg.text, borderColor: cfg.border }}
             >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: isDark ? dark.dot : cfg.dot }} />
                 {status}
-                <ChevronDown size={10} className="ml-0.5 opacity-40" />
+                <ChevronDown size={10} className="opacity-40" />
             </button>
 
             <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} side="bottom">
@@ -258,12 +324,13 @@ function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }:
 /* ─── Main page ─────────────────────────────────────────────── */
 export default function FormsPage() {
     const router = useRouter();
-    const { theme, setCreateModalOpen } = useUIStore();
+    const { theme, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const { forms, fetchForms, addForm, updateForm, deleteForm, isLoading } = useFormStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
 
-    const [view, setView] = useState<'table' | 'cards'>('table');
+    const view = (pageViews['forms'] as 'table' | 'cards') || 'table';
+    const setView = (v: 'table' | 'cards') => setPageView('forms', v);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<FormStatus | 'All'>('All');
     const [orderBy, setOrderBy] = useState<'created_at' | 'title'>('created_at');
@@ -273,6 +340,75 @@ export default function FormsPage() {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     useEffect(() => { fetchForms(); }, [fetchForms]);
+
+    /* ─── Column resizing & reordering ─── */
+    const [colWidths, setColWidths] = useState<Record<string, number>>({
+        select: 44,
+        name: 300,
+        status: 160,
+        fields: 100,
+        responses: 120,
+        created: 140,
+        expires: 140,
+        actions: 20
+    });
+    const [columnOrder, setColumnOrder] = useState<string[]>(['name', 'status', 'fields', 'responses', 'created', 'expires']);
+
+    useEffect(() => {
+        const savedWidths = localStorage.getItem('forms_col_widths');
+        if (savedWidths) setColWidths(prev => ({ ...prev, ...JSON.parse(savedWidths) }));
+        const savedOrder = localStorage.getItem('forms_col_order');
+        if (savedOrder) setColumnOrder(JSON.parse(savedOrder));
+    }, []);
+
+    useEffect(() => { localStorage.setItem('forms_col_widths', JSON.stringify(colWidths)); }, [colWidths]);
+    useEffect(() => { localStorage.setItem('forms_col_order', JSON.stringify(columnOrder)); }, [columnOrder]);
+
+    const isResizing = useRef<string | null>(null);
+    const startX = useRef<number>(0);
+    const startWidth = useRef<number>(0);
+
+    const handleResizeStart = (key: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        isResizing.current = key;
+        startX.current = e.clientX;
+        startWidth.current = colWidths[key];
+        document.addEventListener('mousemove', handleResizeMove);
+        document.addEventListener('mouseup', handleResizeEnd);
+    };
+
+    const handleResizeMove = (e: MouseEvent) => {
+        if (!isResizing.current) return;
+        const delta = e.clientX - startX.current;
+        const newWidth = Math.max(50, startWidth.current + delta);
+        setColWidths(prev => ({ ...prev, [isResizing.current as string]: newWidth }));
+    };
+
+    const handleResizeEnd = () => {
+        isResizing.current = null;
+        document.removeEventListener('mousemove', handleResizeMove);
+        document.removeEventListener('mouseup', handleResizeEnd);
+    };
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setColumnOrder((items) => {
+                const oldIndex = items.indexOf(active.id as string);
+                const newIndex = items.indexOf(over.id as string);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+    };
+
+    const gridTemplate = `${colWidths.select}px ${columnOrder.map(c => 
+        c === 'name' ? `minmax(${colWidths[c]}px, 1fr)` : `${colWidths[c]}px`
+    ).join(' ')} 20px`;
 
     const filtered = useMemo(() => {
         let r = forms.filter(f => {
@@ -529,9 +665,63 @@ export default function FormsPage() {
             {/* Content */}
             <div className="flex-1 overflow-auto pb-44">
                 {isLoading && forms.length === 0 ? (
-                    <div className="flex items-center justify-center h-40">
-                        <AppLoader size="md" />
-                    </div>
+                    view === 'cards' ? (
+                        <div className="p-4 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {Array.from({ length: 12 }).map((_, i) => (
+                                <div key={i} className={cn("rounded-xl border flex flex-col pointer-events-none", isDark ? "border-[#2e2e2e] bg-[#1a1a1a]" : "border-[#f0f0f0] bg-white")}>
+                                    <div className="h-1.5 w-full bg-primary/20" />
+                                    <div className="p-4 flex flex-col gap-4">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-start gap-1.5 flex-1 -ml-2">
+                                                <div className={cn("w-8 h-8 rounded-lg animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
+                                                <div className="space-y-1.5 pt-1 flex-1">
+                                                    <div className={cn("h-4 w-[60%] rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
+                                                    <div className={cn("h-3 w-[40%] rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
+                                                </div>
+                                            </div>
+                                            <div className={cn("h-5 w-16 rounded-full animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
+                                            <div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
+                                        </div>
+                                    </div>
+                                    <div className={cn("flex justify-end gap-1 px-4 py-2.5 border-t", isDark ? "border-[#252525]" : "border-[#f5f5f5]")}>
+                                        <div className={cn("w-6 h-6 rounded-lg animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
+                                        <div className={cn("w-6 h-6 rounded-lg animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
+                                        <div className={cn("w-6 h-6 rounded-lg animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col">
+                            <div className={cn("grid border-b h-10 items-center bg-[#1a1a1a] shadow-sm", isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#f5f5f7] border-[#ebebeb]")} style={{ gridTemplateColumns: gridTemplate }}>
+                                <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[5px] animate-pulse", isDark ? "bg-white/[0.1]" : "bg-black/[0.1]")} /></div>
+                                {columnOrder.map(colId => (
+                                    <div key={colId} className="px-4"><div className={cn("h-3 w-16 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
+                                ))}
+                                <div />
+                            </div>
+                            {Array.from({ length: 25 }).map((_, i) => (
+                                <div key={i} className={cn("grid border-b items-center h-[52px]", isDark ? "border-[#1f1f1f] bg-[#141414]" : "border-[#f0f0f0] bg-white")} style={{ gridTemplateColumns: gridTemplate }}>
+                                    <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[5px] animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} /></div>
+                                    {columnOrder.map(colId => (
+                                        <div key={colId} className="px-4">
+                                            {colId === 'name' ? (
+                                                <div className={cn("h-4 w-32 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
+                                            ) : colId === 'status' ? (
+                                                <div className={cn("h-5 w-16 rounded-full animate-pulse", isDark ? "bg-white/[0.06]" : "bg-black/[0.06]")} />
+                                            ) : (
+                                                <div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
+                                            )}
+                                        </div>
+                                    ))}
+                                    <div />
+                                </div>
+                            ))}
+                        </div>
+                    )
                 ) : filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 gap-4">
                         <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
@@ -575,22 +765,45 @@ export default function FormsPage() {
                     <div className="flex-1 overflow-x-auto w-full">
                         <div className="min-w-[1000px] flex flex-col">
                             {/* Header */}
-                            <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-30",
-                                isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
-                                style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 20px' }}>
-                                <div className="relative px-0 py-2 flex items-center justify-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                                    <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
-                                        <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-30",
+                                    isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
+                                    style={{ gridTemplateColumns: gridTemplate }}>
+                                    
+                                    <div className="relative px-0 py-2 flex items-center justify-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                                        <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
+                                            <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                                        </div>
+                                        <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
                                     </div>
+
+                                    <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+                                        {columnOrder.map(colId => {
+                                            let label = '';
+                                            if (colId === 'name') label = 'Name';
+                                            if (colId === 'status') label = 'Status';
+                                            if (colId === 'fields') label = 'Fields';
+                                            if (colId === 'responses') label = 'Responses';
+                                            if (colId === 'created') label = 'Created';
+                                            if (colId === 'expires') label = 'Expires';
+
+                                            return (
+                                                <SortableHeader 
+                                                    key={colId} 
+                                                    id={colId} 
+                                                    isDark={isDark} 
+                                                    width={colId === 'name' ? undefined : colWidths[colId]}
+                                                    flexible={colId === 'name'}
+                                                    onResizeStart={(e) => handleResizeStart(colId, e)}
+                                                >
+                                                    {label}
+                                                </SortableHeader>
+                                            );
+                                        })}
+                                    </SortableContext>
+                                    <div />
                                 </div>
-                                <div className="px-4 py-2">Name</div>
-                                <div className="px-4 py-2">Status</div>
-                                <div className="px-4 py-2">Fields</div>
-                                <div className="px-4 py-2">Responses</div>
-                                <div className="px-4 py-2">Created</div>
-                                <div className="px-4 py-2">Expires</div>
-                                <div />
-                            </div>
+                            </DndContext>
 
                             {/* Rows */}
                             <div className="flex flex-col">
@@ -615,39 +828,49 @@ export default function FormsPage() {
                                             className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
                                                 isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
                                                 isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
-                                            style={{ gridTemplateColumns: '44px 2fr 1.5fr 1fr 1fr 1fr 1fr 20px' }}
+                                            style={{ gridTemplateColumns: gridTemplate }}
                                         >
                                             <div className="flex items-center justify-center px-0 py-1.5 self-stretch" onClick={e => toggleRow(f.id, e)}>
                                                 <Chk checked={isSelected} isDark={isDark} />
                                             </div>
 
-                                            <div className="flex items-center px-4 py-1.5 font-bold truncate self-center">
-                                                <span className={isDark ? "text-white" : "text-black"}>{f.title || 'Untitled Form'}</span>
-                                            </div>
-
-                                            <div className="flex items-center px-4 py-1.5 self-center">
-                                                <StatusCell
-                                                    status={f.status}
-                                                    onStatusChange={(s) => updateForm(f.id, { status: s })}
-                                                    isDark={isDark}
-                                                />
-                                            </div>
-
-                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                <span className="text-[12px]">{fields.length}</span>
-                                            </div>
-
-                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                <span className="text-[12px]">{f.responses_count || 0}</span>
-                                            </div>
-
-                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                <span className="text-[12px]">{fmtDate(f.created_at)}</span>
-                                            </div>
-
-                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                <span className="text-[12px]">{f.meta?.expirationDate ? fmtDate(f.meta.expirationDate) : '—'}</span>
-                                            </div>
+                                            {columnOrder.map(colId => {
+                                                if (colId === 'name') return (
+                                                    <div key={colId} className="flex items-center px-4 py-1.5 font-bold truncate self-center">
+                                                        <span className={isDark ? "text-white" : "text-black"}>{f.title || 'Untitled Form'}</span>
+                                                    </div>
+                                                );
+                                                if (colId === 'status') return (
+                                                    <div key={colId} className="flex items-center px-4 py-1.5 self-center">
+                                                        <StatusCell
+                                                            status={f.status}
+                                                            onStatusChange={(s) => updateForm(f.id, { status: s })}
+                                                            isDark={isDark}
+                                                        />
+                                                    </div>
+                                                );
+                                                if (colId === 'fields') return (
+                                                    <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                        <span className="text-[12px]">{fields.length}</span>
+                                                    </div>
+                                                );
+                                                if (colId === 'responses') return (
+                                                    <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                        <span className="text-[12px]">{f.responses_count || 0}</span>
+                                                    </div>
+                                                );
+                                                if (colId === 'created') return (
+                                                    <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                        <span className="text-[12px]">{fmtDate(f.created_at)}</span>
+                                                    </div>
+                                                );
+                                                if (colId === 'expires') return (
+                                                    <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                        <span className="text-[12px]">{f.meta?.expirationDate ? fmtDate(f.meta.expirationDate) : '—'}</span>
+                                                    </div>
+                                                );
+                                                return null;
+                                            })}
                                             <div />
                                         </ContextMenuRow>
                                     );

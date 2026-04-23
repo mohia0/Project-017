@@ -27,6 +27,7 @@ export interface Scheduler {
     status: SchedulerStatus;
     meta?: any;
     created_at: string;
+    bookings_count?: number;
 }
 
 interface SchedulerState {
@@ -58,12 +59,18 @@ export const useSchedulerStore = create<SchedulerState>((set) => ({
 
         const { data, error } = await supabase
             .from('schedulers')
-            .select('*')
+            .select('*, bookings_count:scheduler_bookings(count)')
             .eq('workspace_id', workspaceId)
             .order('created_at', { ascending: false });
 
         if (error) set({ error: error.message, isLoading: false });
-        else set({ schedulers: data || [], isLoading: false });
+        else {
+            const schedulersWithCounts = (data || []).map(s => ({
+                ...s,
+                bookings_count: s.bookings_count?.[0]?.count || 0
+            }));
+            set({ schedulers: schedulersWithCounts, isLoading: false });
+        }
     },
 
     addScheduler: async (scheduler) => {
