@@ -36,7 +36,7 @@ interface CountryPickerProps {
     value: string;
     onChange: (v: string) => void;
     isDark: boolean;
-    borderRadius: number;
+    borderRadius?: number;
     label?: string;
     placeholder?: string;
     minimal?: boolean;
@@ -49,7 +49,7 @@ export function CountryPicker({
     value,
     onChange,
     isDark: forcedIsDark,
-    borderRadius,
+    borderRadius = 12,
     label = "Country",
     placeholder = "Select country",
     minimal = false,

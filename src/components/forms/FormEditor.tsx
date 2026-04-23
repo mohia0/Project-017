@@ -41,6 +41,7 @@ import { appToast } from '@/lib/toast';
 import { v4 as uuidv4 } from 'uuid';
 import DatePicker from '@/components/ui/DatePicker';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 /* ══════════════════════════════════════════════════════════
    FIELD TYPE CONFIG

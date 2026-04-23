@@ -51,6 +51,7 @@ import { useSectionTemplateStore } from '@/store/useSectionTemplateStore';
 import { appToast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
 import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
+import { AppLoader } from '@/components/ui/AppLoader';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -798,7 +799,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 <div className="flex-1 flex overflow-hidden relative">
                     {/* ── LEFT: CANVAS ── */}
                     {id && !isLoaded ? (
-                        <div className="flex-1 flex items-center justify-center bg-[var(--color-bg-secondary)]">
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[var(--color-bg-secondary)] gap-4">
+                            <AppLoader size="sm" color={meta.design?.primaryColor || 'var(--primary)'} />
                             <span className="text-[13px] opacity-40 font-medium">Loading document...</span>
                         </div>
                     ) : (
