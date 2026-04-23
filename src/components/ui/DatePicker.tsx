@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { format, addMonths, subMonths, getDaysInMonth, startOfMonth, getDay, isSameDay, parseISO, setMonth, setYear } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn, isDarkColor } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 
@@ -106,6 +106,12 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
         emitDate(new Date());
     };
 
+    const handleClear = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        onChange('');
+        setIsOpen(false);
+    };
+
     const handleMonthSelect = (mIndex: number) => {
         setCurrentMonth(setMonth(currentMonth, mIndex));
         setShowMonthList(false);
@@ -170,24 +176,39 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
 
     return (
         <div className={cn("relative w-full", className)} ref={containerRef} style={style}>
-            {/* Input Trigger */}
-            <button
-                type="button"
-                disabled={disabled}
+            <div 
+                className="relative group/dpinput flex items-center gap-1 w-full cursor-pointer"
                 onClick={() => {
                     if (!disabled) {
                         updateRect();
                         setIsOpen(!isOpen);
                     }
                 }}
-                className={cn(
-                    "w-full flex items-center justify-between text-left text-[11.5px] outline-none h-[22px]",
-                    !value ? (isBgDark ? "text-white/40" : "text-black/40") : (isBgDark ? "text-white/80" : "text-black"),
-                    disabled && "opacity-50 cursor-not-allowed"
-                )}
             >
-                <span className="truncate">{value ? format(parseISO(value), 'MMM dd, yyyy') : placeholder}</span>
-            </button>
+                <button
+                    type="button"
+                    disabled={disabled}
+                    className={cn(
+                        "w-fit flex items-center text-left text-[11.5px] outline-none h-[22px]",
+                        !value ? (isBgDark ? "text-white/40" : "text-black/40") : (isBgDark ? "text-white/80" : "text-black"),
+                        disabled && "opacity-50 cursor-not-allowed"
+                    )}
+                >
+                    <span className="truncate">{value ? format(parseISO(value), 'MMM dd, yyyy') : placeholder}</span>
+                </button>
+                {value && !disabled && (
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleClear(); }}
+                        className={cn(
+                            "w-5 h-5 shrink-0 flex items-center justify-center rounded-full transition-all opacity-0 group-hover/dpinput:opacity-100",
+                            isBgDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
+                        )}
+                    >
+                        <X size={10} strokeWidth={3} />
+                    </button>
+                )}
+            </div>
 
             {/* Popover Calendar (Rendered in Portal) */}
             {isOpen && typeof document !== 'undefined' && createPortal(
@@ -340,17 +361,29 @@ export default function DatePicker({ value, onChange, isDark: forcedIsDark, plac
                         })}
                     </div>
                     
-                    <div className={cn("border-t pt-2 flex justify-center", isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]")}>
+                    <div className={cn("border-t pt-2 flex justify-center gap-2", isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]")}>
                         <button
                             type="button"
                             onClick={handleSelectToday}
                             className={cn(
-                                "text-[11px] font-semibold px-4 py-1.5 rounded-full transition-colors",
+                                "text-[10px] font-bold px-3 py-1 rounded-full transition-colors",
                                 isDark ? "bg-[#252525] text-white hover:bg-[#333]" : "bg-[#f5f5f5] text-[#333] hover:bg-[#e8e8e8]"
                             )}
                         >
                             Today
                         </button>
+                        {value && (
+                            <button
+                                type="button"
+                                onClick={() => handleClear()}
+                                className={cn(
+                                    "text-[10px] font-bold px-3 py-1 rounded-full transition-colors",
+                                    isDark ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-500 hover:bg-red-100"
+                                )}
+                            >
+                                Clear
+                            </button>
+                        )}
                     </div>
                 </div>,
                 document.body
