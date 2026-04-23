@@ -6,6 +6,8 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Providers } from '@/components/layout/Providers';
 import { BrandingProvider } from '@/components/settings/BrandingProvider';
 import { createSupabaseServer } from '@/lib/supabase/server';
+import { supabaseService } from '@/lib/supabase-service';
+import { headers } from 'next/headers';
 
 const mrDafoe = Mr_Dafoe({
   weight: '400',
@@ -14,34 +16,57 @@ const mrDafoe = Mr_Dafoe({
   display: 'swap',
 });
 
-import { supabaseService } from '@/lib/supabase-service';
 
 export async function generateMetadata(): Promise<Metadata> {
   let title = 'CRM 17';
   let description = 'A premium CRM solution for scaling operations.';
   let favicon = '/favicon.svg';
 
-  /*
-   * PHASE 3 - Caching Unblock:
-   * Reading headers() forces the entire layout into Dynamic Rendering.
-   * If you need custom domain metadata, consider using Middleware rewrites 
-   * to a dynamic [domain] route instead of checking headers() at the root.
-   */
-  // try {
-  //   const headersList = await headers();
-  //   const host = headersList.get('host');
-  //
-  //   if (host) {
-  //     // Find a matching custom domain
-  //     const { data: domainData } = await supabaseService
-  //       .from('workspace_domains')
-  //       .select('workspace_id')
-  //       .eq('domain', host)
-  //       .single();
-  // ... omitted for caching
-  // } catch (error) {
-  //   // Fallback
-  // }
+  try {
+    const headersList = await headers();
+    const host = headersList.get('host') ?? '';
+
+    // Strip port for local dev (e.g. "localhost:3000" → "localhost:3000" is kept, but
+    // we only match real custom domains registered in workspace_domains).
+    if (host && !host.startsWith('localhost') && !host.includes('127.0.0.1')) {
+      // Look up whether this host is a registered custom domain
+      const { data: domainData } = await supabaseService
+        .from('workspace_domains')
+        .select('workspace_id')
+        .eq('domain', host)
+        .eq('status', 'active')
+        .single();
+
+      if (domainData?.workspace_id) {
+        const workspaceId = domainData.workspace_id;
+
+        // Fetch workspace name for the tab title
+        const { data: workspaceData } = await supabaseService
+          .from('workspaces')
+          .select('name')
+          .eq('id', workspaceId)
+          .single();
+
+        if (workspaceData?.name) {
+          title = workspaceData.name;
+          description = `${workspaceData.name} — Workspace`;
+        }
+
+        // Fetch favicon from branding
+        const { data: brandingData } = await supabaseService
+          .from('workspace_branding')
+          .select('favicon_url')
+          .eq('workspace_id', workspaceId)
+          .single();
+
+        if (brandingData?.favicon_url) {
+          favicon = brandingData.favicon_url;
+        }
+      }
+    }
+  } catch {
+    // Fallback to defaults — never let a metadata error break the page
+  }
 
   return {
     title,

@@ -99,45 +99,34 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
         }
     }, [branding, hasFetched.branding, activeWorkspaceId]);
     
-    // Update favicon dynamically
+    // Update favicon dynamically — only override when a custom favicon_url is set.
+    // We intentionally do NOT fall back to /favicon.svg here; the SSR <head> tag
+    // already points to the right default. Overwriting it from JS before branding
+    // loads causes the flicker. We only touch the DOM when we have a real custom URL.
     useEffect(() => {
-        // Do not overwrite Next.js SSR favicon with default while branding is loading
-        if (activeWorkspaceId && !hasFetched.branding) return;
+        const customFavicon = branding?.favicon_url;
+        if (!customFavicon) return; // Let SSR <head> handle the default; nothing to do.
 
         const setFavicon = (url: string) => {
-            // Find or create the primary favicon link
-            let icon: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-            if (!icon) {
-                icon = document.createElement('link');
+            // Update all existing icon links in the document head
+            const icons = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
+            if (icons.length === 0) {
+                // Create one if none exists (edge case)
+                const icon = document.createElement('link');
                 icon.rel = 'shortcut icon';
                 document.head.appendChild(icon);
             }
-            
-            // Set type if it's an SVG
-            if (url.endsWith('.svg')) {
-                icon.type = 'image/svg+xml';
-            } else if (url.endsWith('.png')) {
-                icon.type = 'image/png';
-            } else if (url.endsWith('.ico')) {
-                icon.type = 'image/x-icon';
-            }
-            
-            icon.href = url;
-            
-            // Also update any others (some templates have multiple icon tags)
-            const icons = document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']");
-            icons.forEach(link => {
+
+            document.querySelectorAll<HTMLLinkElement>("link[rel*='icon']").forEach(link => {
+                if (url.endsWith('.svg')) link.type = 'image/svg+xml';
+                else if (url.endsWith('.png')) link.type = 'image/png';
+                else if (url.endsWith('.ico')) link.type = 'image/x-icon';
                 link.href = url;
             });
         };
 
-        if (branding?.favicon_url) {
-            setFavicon(branding.favicon_url);
-        } else {
-            // Fallback to default system favicon ONLY if branding is actually fetched and empty
-            setFavicon('/favicon.svg');
-        }
-    }, [branding?.favicon_url, hasFetched.branding, activeWorkspaceId]);
+        setFavicon(customFavicon);
+    }, [branding?.favicon_url]);
 
     return <>{children}</>;
 }

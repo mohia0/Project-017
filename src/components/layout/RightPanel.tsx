@@ -224,6 +224,8 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                         titleLower.includes('hook')
                                                     );
 
+                                                    const isPlutio = notif.type === 'plutio' || titleLower.includes('plutio');
+
                                                     const isSuccess = notif.type === 'success' || 
                                                         titleLower.includes('signed') || 
                                                         titleLower.includes('accepted') || 
@@ -231,6 +233,13 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
 
                                                     const iconClass = isDark ? "text-[#888]" : "text-[#999]";
 
+                                                    if (isPlutio) return (
+                                                        <Zap 
+                                                            size={12} 
+                                                            className="text-primary" 
+                                                            fill="currentColor" 
+                                                        />
+                                                    );
                                                     if (isHook) return (
                                                         <Zap 
                                                             size={12} 
