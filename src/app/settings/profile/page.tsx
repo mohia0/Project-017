@@ -18,7 +18,9 @@ export default function ProfileSettingsPage() {
 
     const { user } = useAuthStore();
     const [formData, setFormData] = useState<Partial<UserProfile & { linkedin: string; twitter: string; website: string }>>({});
-    const [isSaving, setIsSaving] = useState(false);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [isSavingPersonal, setIsSavingPersonal] = useState(false);
+    const [isSavingSocial, setIsSavingSocial] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     useEffect(() => {
@@ -46,9 +48,26 @@ export default function ProfileSettingsPage() {
         }
     }, [profile]);
 
-    const hasUnsavedChanges = () => {
+    const hasProfileChanges = () => {
         if (!profile) return false;
-        
+        return (
+            (formData.full_name || '') !== (profile.full_name || '') ||
+            (formData.avatar_url || '') !== (profile.avatar_url || '')
+        );
+    };
+
+    const hasPersonalChanges = () => {
+        if (!profile) return false;
+        return (
+            (formData.phone || '') !== (profile.phone || '') ||
+            (formData.address || '') !== (profile.address || '') ||
+            (formData.timezone || 'UTC') !== (profile.timezone || 'UTC') ||
+            (formData.language || 'en') !== (profile.language || 'en')
+        );
+    };
+
+    const hasSocialChanges = () => {
+        if (!profile) return false;
         let socialObj = { linkedin: '', twitter: '', website: '' };
         try {
             if (profile.social_links) {
@@ -57,20 +76,16 @@ export default function ProfileSettingsPage() {
         } catch (e) {}
 
         return (
-            (formData.full_name || '') !== (profile.full_name || '') ||
-            (formData.avatar_url || '') !== (profile.avatar_url || '') ||
-            (formData.phone || '') !== (profile.phone || '') ||
-            (formData.address || '') !== (profile.address || '') ||
-            (formData.timezone || 'UTC') !== (profile.timezone || 'UTC') ||
-            (formData.language || 'en') !== (profile.language || 'en') ||
             (formData.linkedin || '') !== (socialObj.linkedin || '') ||
             (formData.twitter || '') !== (socialObj.twitter || '') ||
             (formData.website || '') !== (socialObj.website || '')
         );
     };
 
-    const handleSave = async () => {
-        setIsSaving(true);
+    const handleSave = async (section: 'profile' | 'personal' | 'social') => {
+        const setSaving = section === 'profile' ? setIsSavingProfile : section === 'personal' ? setIsSavingPersonal : setIsSavingSocial;
+        setSaving(true);
+
         await appToast.promise(
             updateProfile({
                 full_name: formData.full_name,
@@ -91,7 +106,7 @@ export default function ProfileSettingsPage() {
                 error: 'Failed to update profile'
             }
         );
-        setIsSaving(false);
+        setSaving(false);
     };
 
     if (!hasFetched.profile) {
@@ -103,9 +118,9 @@ export default function ProfileSettingsPage() {
             <SettingsCard
                 title="Public Profile"
                 description="This information will be displayed to your clients and team members."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasUnsavedChanges()}
+                onSave={() => handleSave('profile')}
+                isSaving={isSavingProfile}
+                unsavedChanges={hasProfileChanges()}
             >
                 <SettingsField label="Full Name" description="Your preferred display name.">
                     <SettingsInput 
@@ -165,9 +180,9 @@ export default function ProfileSettingsPage() {
             <SettingsCard
                 title="Personal Information"
                 description="Your contact details used for internal accounts and defaults."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasUnsavedChanges()}
+                onSave={() => handleSave('personal')}
+                isSaving={isSavingPersonal}
+                unsavedChanges={hasPersonalChanges()}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <SettingsField label="Phone Number">
@@ -224,9 +239,9 @@ export default function ProfileSettingsPage() {
             <SettingsCard
                 title="Social Presence"
                 description="Links to your professional profiles."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasUnsavedChanges()}
+                onSave={() => handleSave('social')}
+                isSaving={isSavingSocial}
+                unsavedChanges={hasSocialChanges()}
             >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <SettingsField label="LinkedIn">

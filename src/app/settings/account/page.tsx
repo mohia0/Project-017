@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { SettingsCard } from '@/components/settings/SettingsCard';
-import { SettingsField, SettingsInput, SettingsToggle } from '@/components/settings/SettingsField';
+import { SettingsField, SettingsInput } from '@/components/settings/SettingsField';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { supabase } from '@/lib/supabase';
 import { appToast } from '@/lib/toast';
-import { Eye, EyeOff, Shield, Zap, Lock } from 'lucide-react';
-import TwoFactorSMSModal from '@/components/modals/TwoFactorSMSModal';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function AccountSettingsPage() {
     const { user } = useAuthStore();
@@ -21,24 +20,6 @@ export default function AccountSettingsPage() {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
-
-    // MFA state
-    const [mfaFactors, setMfaFactors] = useState<any[]>([]);
-    const [isMfaEnabled, setIsMfaEnabled] = useState(false);
-    const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
-
-    useEffect(() => {
-        checkMfaStatus();
-    }, []);
-
-    const checkMfaStatus = async () => {
-        const { data, error } = await supabase.auth.mfa.listFactors();
-        if (data) {
-            const activeFactors = data.all.filter(f => f.status === 'verified');
-            setMfaFactors(data.all);
-            setIsMfaEnabled(activeFactors.length > 0);
-        }
-    };
 
     const handleUpdatePassword = async () => {
         if (!currentPassword) {
@@ -78,15 +59,11 @@ export default function AccountSettingsPage() {
         setIsUpdatingPassword(false);
     };
 
-    const handleToggleMfa = () => {
-        setIsMfaModalOpen(true);
-    };
-
     return (
         <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
             <SettingsCard
                 title="Account Security"
-                description="Manage your password, email preferences, and security factors."
+                description="Manage your email address, password, and security settings."
             >
                 <div className="flex flex-col gap-4 mb-6">
                     <SettingsField label="Email Address" description="Your primary email used for login and identity.">
@@ -100,7 +77,6 @@ export default function AccountSettingsPage() {
 
                 <div className="flex flex-col gap-4 border-t pt-6" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
                     <div className="flex items-center gap-2 mb-1">
-                        <Shield size={16} className="text-blue-500" />
                         <h3 className="font-bold text-sm">Update Password</h3>
                     </div>
                     
@@ -146,33 +122,14 @@ export default function AccountSettingsPage() {
                         <button 
                             onClick={handleUpdatePassword}
                             disabled={isUpdatingPassword || !currentPassword || !newPassword}
-                            className="h-11 px-6 bg-black text-white dark:bg-white dark:text-black hover:opacity-90 active:scale-95 transition-all text-xs font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="h-11 px-6 bg-primary text-[var(--brand-primary-foreground)] hover:bg-primary-hover shadow-[0_4px_12px_-4px_rgba(var(--brand-primary-rgb),0.5)] active:scale-95 transition-all text-xs font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isUpdatingPassword ? 'Updating...' : 'Save New Password'}
                         </button>
                     </div>
                 </div>
-
-                <div className="flex flex-col gap-4 border-t pt-6" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
-                   <SettingsField 
-                        layout="horizontal" 
-                        label="Two-Factor Authentication (SMS)" 
-                        description="Receive a secure code on your mobile device when attempting to sign-in from new devices."
-                    >
-                       <SettingsToggle checked={isMfaEnabled} onChange={handleToggleMfa} />
-                   </SettingsField>
-                </div>
             </SettingsCard>
-
-            <TwoFactorSMSModal 
-                isOpen={isMfaModalOpen}
-                onClose={() => {
-                    setIsMfaModalOpen(false);
-                    checkMfaStatus();
-                }}
-                isDark={isDark}
-                currentFactors={mfaFactors}
-            />
         </div>
     );
 }
+
