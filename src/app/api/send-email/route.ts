@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
             subject_override,
             body_override,
         } = body;
+        let is_html = body.is_html;
 
         const origin = req.nextUrl.origin;
 
@@ -81,12 +82,13 @@ export async function POST(req: NextRequest) {
         if (template_key) {
             const { data: tmpl } = await supabaseService
                 .from('email_templates')
-                .select('subject, body')
+                .select('subject, body, is_html')
                 .eq('workspace_id', workspace_id)
                 .eq('template_key', template_key)
                 .single();
             if (tmpl?.subject && tmpl?.body) {
                 dbTemplate = tmpl;
+                if (is_html === undefined) is_html = tmpl.is_html;
             }
         }
 
@@ -152,8 +154,23 @@ export async function POST(req: NextRequest) {
         const finalSubject = renderTemplate(rawSubject, allVars);
         const textBody     = renderTemplate(rawBody, allVars);
         
-        // 1. Initial render of the template tags if any
-        let htmlBody = renderTemplate(rawBody, htmlVars).replace(/\n/g, '<br/>');
+        let finalHtml = '';
+
+        if (is_html) {
+            // Raw HTML mode: Resolve vars but skip auto-formatting and branding shell
+            const renderedHtml = renderTemplate(rawBody, allVars);
+            
+            // If it looks like a full document, send as is.
+            if (renderedHtml.toLowerCase().includes('<html') || renderedHtml.toLowerCase().includes('<!doctype')) {
+                finalHtml = renderedHtml;
+            } else {
+                // Fragment: Send as is but maybe wrap in a basic font container
+                finalHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">${renderedHtml}</div>`;
+            }
+        } else {
+            // Standard mode: Branding shell + Auto-formatting
+            // 1. Initial render of the template tags if any
+            let htmlBody = renderTemplate(rawBody, htmlVars).replace(/\n/g, '<br/>');
 
         // 2. Proactive replacement for special variables by value (What You See Is What You Get)
         // This handles cases where the user might have edited the body and the {{tags}} are gone,
@@ -200,21 +217,22 @@ export async function POST(req: NextRequest) {
             <span style="font-size: 16px; font-weight: 600; color: ${headerTextColor};">${config.from_name}</span>
         `;
 
-        const finalHtml    = `
-            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #ffffff; padding: 24px 16px;">
-                <div style="max-width: 600px; margin: 0 auto; color: #333; border-radius: 8px; overflow: hidden; border: 1px solid #eaeaea;">
-                    <div style="background-color: ${accentColor}; padding: 24px 32px; text-align: left;">
-                        ${logoHtml}
-                    </div>
-                    <div style="padding: 40px 32px; font-size: 15px; line-height: 1.6; color: #444;">
-                        ${htmlBody}
-                    </div>
-                    <div style="padding: 24px 32px; border-top: 1px solid #f0f0f0;">
-                        <p style="margin: 0; font-size: 12px; color: #999;">Securely sent via <span style="font-weight: 500; color: #777;">${config.from_name}</span></p>
+            finalHtml = `
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #ffffff; padding: 24px 16px;">
+                    <div style="max-width: 600px; margin: 0 auto; color: #333; border-radius: 8px; overflow: hidden; border: 1px solid #eaeaea;">
+                        <div style="background-color: ${accentColor}; padding: 24px 32px; text-align: left;">
+                            ${logoHtml}
+                        </div>
+                        <div style="padding: 40px 32px; font-size: 15px; line-height: 1.6; color: #444;">
+                            ${htmlBody}
+                        </div>
+                        <div style="padding: 24px 32px; border-top: 1px solid #f0f0f0;">
+                            <p style="margin: 0; font-size: 12px; color: #999;">Securely sent via <span style="font-weight: 500; color: #777;">${config.from_name}</span></p>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
 
         const transporter = nodemailer.createTransport({
             host: config.smtp_host,

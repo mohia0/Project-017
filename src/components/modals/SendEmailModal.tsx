@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Send, Mail, User, ChevronDown, Check, AlertCircle, Sparkles, Settings2, FileText, Receipt, FileCheck, Calendar } from 'lucide-react';
+import { X, Send, Mail, User, ChevronDown, Check, AlertCircle, Sparkles, Settings2, FileText, Receipt, FileCheck, Calendar, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -13,7 +13,7 @@ import { AppLoader } from '@/components/ui/AppLoader';
 interface SendEmailModalProps {
     isOpen: boolean;
     onClose: () => void;
-    templateKey: 'proposal' | 'invoice' | 'receipt' | 'overdue_remind' | 'booking_confirmed';
+    templateKey: 'proposal' | 'invoice' | 'receipt' | 'overdue_remind' | 'booking_confirmed' | 'scheduler';
     to: string;
     variables: Record<string, string>;
     workspaceId: string;
@@ -27,6 +27,7 @@ const TEMPLATE_INFO = {
     receipt:  { label: 'Receipt',  color: '#10b981', icon: FileCheck },
     overdue_remind: { label: 'Overdue Reminder', color: '#ef4444', icon: AlertCircle },
     booking_confirmed: { label: 'Booking Confirmed', color: '#8b5cf6', icon: Calendar },
+    scheduler: { label: 'Scheduler', color: '#10b981', icon: Clock },
 };
 
 const DEFAULT_SUBJECTS: Record<string, string> = {
@@ -35,6 +36,7 @@ const DEFAULT_SUBJECTS: Record<string, string> = {
     receipt:  'Payment Receipt — Invoice #{{invoice_number}}',
     overdue_remind: 'Action Required: Overdue Invoice #{{invoice_number}}',
     booking_confirmed: 'Booking Confirmed: {{scheduler_title}}',
+    scheduler: 'Schedule a time with {{sender_name}}',
 };
 
 const DEFAULT_BODIES: Record<string, string> = {
@@ -43,6 +45,7 @@ const DEFAULT_BODIES: Record<string, string> = {
     receipt:  `Hi {{client_name}},\n\nThank you for your payment! We have received your payment of {{amount_paid}} for Invoice #{{invoice_number}}.\n\nYou can view your receipt here:\n{{document_link}}\n\nYour business is much appreciated!\n\nBest regards,\n{{sender_name}}`,
     overdue_remind: `Hi {{client_name}},\n\nThis is a gentle reminder that your payment for invoice #{{invoice_number}} is currently {{days_overdue}} days overdue.\n\nAmount Due: {{amount_due}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nIf you have already made the payment, please disregard this message.\n\nBest regards,\n{{sender_name}}`,
     booking_confirmed: `Hi {{client_name}},\n\nYour booking for "{{scheduler_title}}" has been confirmed.\n\nDate: {{booked_date}}\nTime: {{booked_time}}\nTimezone: {{timezone}}\n\nWe look forward to meeting with you!\n\nBest regards,\n{{sender_name}}`,
+    scheduler: `Hi {{client_name}},\n\nPlease use the link below to schedule a time that works best for you:\n{{document_link}}\n\nI look forward to meeting with you!\n\nBest regards,\n{{sender_name}}`,
 };
 
 function renderTemplate(template: string, vars: Record<string, string>) {
@@ -69,7 +72,6 @@ export function SendEmailModal({
     const [isSending, setIsSending] = useState(false);
     const [sent, setSent] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showPreview, setShowPreview] = useState(false);
 
     // Load template whenever open/templateKey changes
     useEffect(() => {
@@ -80,6 +82,7 @@ export function SendEmailModal({
 
         // Merge: DB template overrides defaults
         const dbTemplate = emailTemplates.find(t => t.template_key === templateKey);
+
         const baseSubject = dbTemplate?.subject || DEFAULT_SUBJECTS[templateKey] || '';
         const baseBody    = dbTemplate?.body    || DEFAULT_BODIES[templateKey]   || '';
 
@@ -89,8 +92,9 @@ export function SendEmailModal({
             ...variables,
         };
 
-        setSubject(renderTemplate(baseSubject, allVars));
-        setBody(renderTemplate(baseBody, allVars));
+        setSubject(baseSubject);
+        setBody(baseBody);
+
     }, [isOpen, templateKey, initialTo, variables, emailTemplates, emailConfig, documentTitle]);
 
     const handleSend = async () => {
@@ -110,8 +114,17 @@ export function SendEmailModal({
                         document_title: documentTitle || '',
                         ...variables,
                     },
-                    subject_override: subject,
-                    body_override: body,
+                    subject_override: renderTemplate(subject, {
+                        sender_name: emailConfig?.from_name || '',
+                        document_title: documentTitle || '',
+                        ...variables,
+                    }),
+                    body_override: renderTemplate(body, {
+                        sender_name: emailConfig?.from_name || '',
+                        document_title: documentTitle || '',
+                        ...variables,
+                    }),
+
                 }),
             });
             const data = await res.json();
@@ -154,7 +167,7 @@ export function SendEmailModal({
             {/* Modal */}
             <div
                 className={cn(
-                    "relative w-full max-w-[560px] rounded-2xl shadow-2xl border flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200",
+                    "relative w-full max-w-[1000px] h-[80vh] rounded-2xl shadow-2xl border flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200",
                     isDark ? "bg-[#141414] border-[#2a2a2a]" : "bg-white border-[#e5e5e5]"
                 )}
             >
@@ -198,15 +211,20 @@ export function SendEmailModal({
                     </div>
                 )}
 
-                {/* Form */}
-                <div className="flex flex-col gap-4 px-6 py-5">
+            {/* Content Area */}
+            <div className="flex flex-1 overflow-hidden">
+                {/* Left Side: Form */}
+                <div className={cn(
+                    "flex flex-col gap-3 px-5 py-4 overflow-y-auto custom-scrollbar w-[280px] border-r",
+                    isDark ? "border-[#252525]" : "border-[#f0f0f0]"
+                )}>
                     {/* To field */}
                     <div>
                         <label className={cn("text-[11px] font-bold uppercase tracking-wider mb-1.5 block", isDark ? "text-white/30" : "text-black/30")}>
                             To
                         </label>
                         <div className={cn(
-                            "flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-colors",
+                            "flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors",
                             isDark ? "bg-white/[0.03] border-white/10 focus-within:border-white/20" : "bg-black/[0.02] border-black/10 focus-within:border-black/20"
                         )}>
                             <Mail size={13} className={isDark ? "text-white/20" : "text-black/20"} />
@@ -233,110 +251,108 @@ export function SendEmailModal({
                             value={subject}
                             onChange={e => setSubject(e.target.value)}
                             className={cn(
-                                "w-full px-3 py-2.5 rounded-xl border outline-none text-[13px] font-medium transition-colors",
+                                "w-full px-3 py-2 rounded-xl border outline-none text-[13px] font-medium transition-colors",
                                 isDark ? "bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-white/20" : "bg-black/[0.02] border-black/10 text-[#111] placeholder:text-black/25 focus:border-black/20"
                             )}
                             placeholder="Email subject..."
                         />
                     </div>
 
-                    {/* Body */}
-                    <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                            <label className={cn("text-[11px] font-bold uppercase tracking-wider", isDark ? "text-white/30" : "text-black/30")}>
-                                Message
-                            </label>
-                            <button
-                                onClick={() => setShowPreview(p => !p)}
-                                className={cn(
-                                    "text-[10px] font-semibold px-2 py-0.5 rounded-md transition-colors",
-                                    isDark ? "text-white/30 hover:text-white/60 hover:bg-white/5" : "text-black/30 hover:text-black/60 hover:bg-black/5"
-                                )}
-                            >
-                                {showPreview ? 'Edit' : 'Preview Live Layout'}
-                            </button>
-                        </div>
-                        {showPreview ? (
-                            <div className={cn("w-full h-[320px] overflow-y-auto custom-scrollbar rounded-xl border transition-all", isDark ? "bg-[#0a0a0a] border-white/10" : "bg-[#f5f5f5] border-black/10")}>
-                                <div className="flex flex-col items-center p-6 w-full min-h-full">
-                                    <div className="w-full max-w-[500px] border border-[#eaeaea] bg-white text-[#333] rounded-lg shadow-sm overflow-hidden shrink-0">
-                                    {/* Email Header */}
-                                    {(() => {
-                                        const accentColor = branding?.primary_color || '#10b981';
-                                        const isAccentDark = getBrightness(accentColor) < 128;
-                                        const logoUrl = isAccentDark ? branding?.logo_light_url : (branding?.logo_dark_url || branding?.logo_light_url);
-                                        const headerTextColor = isAccentDark ? '#ffffff' : '#000000';
-                                        
-                                        return (
-                                            <div className="px-6 py-5 text-left flex items-center" style={{ backgroundColor: accentColor }}>
-                                                {logoUrl ? (
-                                                    <img src={logoUrl} alt="Logo" className="max-h-[28px] object-contain block" />
-                                                ) : (
-                                                    <span className="text-[15px] font-semibold" style={{ color: headerTextColor }}>{emailConfig?.from_name || '—'}</span>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
-                                        {/* Body */}
-                                        <div className="p-6 text-[14px] leading-[1.6] text-[#444] font-sans">
-                                            <div dangerouslySetInnerHTML={{ __html: (() => {
-                                                const accentColor = branding?.primary_color || '#10b981';
-                                                let html = body.replace(/\n/g, '<br/>');
-                                                
-                                                if (variables.amount_due) {
-                                                    html = html.replace(new RegExp(variables.amount_due.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_due}</strong>`);
-                                                }
-                                                if (variables.amount_paid) {
-                                                    html = html.replace(new RegExp(variables.amount_paid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_paid}</strong>`);
-                                                }
-                                                if (variables.document_link) {
-                                                    html = html.replace(
-                                                        new RegExp(variables.document_link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-                                                        `<div style="margin: 32px 0;">
-                                                            <a href="#" onclick="return false;" style="display: inline-block; background-color: ${accentColor}; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                                                                View Document
-                                                            </a>
-                                                            <div style="margin-top: 16px; font-size: 12px; color: #888; line-height: 1.5;">
-                                                                If the button above doesn't work, copy and paste this link into your browser:<br/>
-                                                                <a href="#" onclick="return false;" style="color: ${accentColor}; text-decoration: none; word-break: break-all;">${variables.document_link}</a>
-                                                            </div>
-                                                        </div>`
-                                                    );
-                                                }
-                                                return html;
-                                            })() }} />
-                                        </div>
-                                        {/* Footer */}
-                                        <div className="bg-white border-t border-[#f0f0f0] px-6 py-4 text-left">
-                                            <p className="m-0 text-[11px] text-[#999]">Securely sent via <span className="font-medium text-[#777]">{emailConfig?.from_name || '—'}</span></p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <textarea
-                                value={body}
-                                onChange={e => setBody(e.target.value)}
-                                className={cn(
-                                    "w-full h-[320px] px-3 py-2.5 rounded-xl border outline-none text-[13px] leading-relaxed resize-none custom-scrollbar transition-colors",
-                                    isDark ? "bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-white/20" : "bg-black/[0.02] border-black/10 text-[#111] placeholder:text-black/25 focus:border-black/20"
-                                )}
-                                placeholder="Email body..."
-                            />
-                        )}
+                    {/* Body Editor */}
+                    <div className="flex flex-col flex-1 min-h-0">
+                        <label className={cn("text-[10px] font-bold uppercase tracking-wider mb-1.5 px-0.5 block", isDark ? "text-white/30" : "text-black/30")}>
+                            Message
+                        </label>
+                        <textarea
+                            value={body}
+                            onChange={e => setBody(e.target.value)}
+                            className={cn(
+                                "w-full flex-1 px-3 py-2 rounded-xl border outline-none text-[13px] font-medium leading-relaxed resize-none custom-scrollbar transition-colors",
+                                isDark ? "bg-[#0a0a0a] border-white/10 text-white focus:border-white/20" : "bg-black/[0.01] border-black/10 text-[#111] focus:border-black/20"
+                            )}
+                            placeholder="Email body..."
+                        />
                     </div>
 
                     {/* Error */}
                     {error && (
                         <div className={cn(
-                            "flex items-start gap-2 px-3 py-2.5 rounded-xl border text-[12px]",
+                            "flex items-start gap-2 px-3 py-2 rounded-xl border text-[11px]",
                             isDark ? "bg-red-500/10 border-red-500/20 text-red-300" : "bg-red-50 border-red-200 text-red-600"
                         )}>
-                            <AlertCircle size={13} className="shrink-0 mt-0.5" />
+                            <AlertCircle size={12} className="shrink-0 mt-0.5" />
                             <span>{error}</span>
                         </div>
                     )}
                 </div>
+
+                {/* Right Side: Preview */}
+                {(
+                    <div className={cn(
+                        "flex-1 overflow-y-auto custom-scrollbar p-8 flex justify-center",
+                        isDark ? "bg-[#0c0c0c]" : "bg-[#f8f8f8]"
+                    )}>
+                        <div className="w-full max-w-[520px] h-fit border border-[#eaeaea] bg-white text-[#333] rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
+                            {/* Email Header */}
+                            {(() => {
+                                const accentColor = branding?.primary_color || '#10b981';
+                                const isAccentDark = getBrightness(accentColor) < 128;
+                                const logoUrl = isAccentDark ? branding?.logo_light_url : (branding?.logo_dark_url || branding?.logo_light_url);
+                                const headerTextColor = isAccentDark ? '#ffffff' : '#000000';
+                                
+                                return (
+                                    <div className="px-6 py-5 text-left flex items-center" style={{ backgroundColor: accentColor }}>
+                                        {logoUrl ? (
+                                            <img src={logoUrl} alt="Logo" className="max-h-[28px] object-contain block" />
+                                        ) : (
+                                            <span className="text-[15px] font-semibold" style={{ color: headerTextColor }}>{emailConfig?.from_name || '—'}</span>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                            {/* Body */}
+                            <div className="p-8 text-[14px] leading-[1.6] text-[#444] font-sans">
+                                <div dangerouslySetInnerHTML={{ __html: (() => {
+                                    const allVars = {
+                                        sender_name: emailConfig?.from_name || '',
+                                        document_title: documentTitle || '',
+                                        ...variables,
+                                    };
+                                    const renderedBody = renderTemplate(body, allVars);
+                                    const accentColor = branding?.primary_color || '#10b981';
+                                    let html = renderedBody.replace(/\n/g, '<br/>');
+                                    
+                                    if (variables.amount_due) {
+                                        html = html.replace(new RegExp(variables.amount_due.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_due}</strong>`);
+                                    }
+                                    if (variables.amount_paid) {
+                                        html = html.replace(new RegExp(variables.amount_paid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_paid}</strong>`);
+                                    }
+                                    if (variables.document_link) {
+                                        html = html.replace(
+                                            new RegExp(variables.document_link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+                                            `<div style="margin: 32px 0;">
+                                                <a href="#" onclick="return false;" style="display: inline-block; background-color: ${accentColor}; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                                                    View Document
+                                                </a>
+                                                <div style="margin-top: 16px; font-size: 12px; color: #888; line-height: 1.5;">
+                                                    If the button above doesn't work, copy and paste this link into your browser:<br/>
+                                                    <a href="#" onclick="return false;" style="color: ${accentColor}; text-decoration: none; word-break: break-all;">${variables.document_link}</a>
+                                                </div>
+                                            </div>`
+                                        );
+                                    }
+                                    return html;
+                                })() }} />
+                            </div>
+                            {/* Footer */}
+                            <div className="bg-white border-t border-[#f0f0f0] px-6 py-4 text-left">
+                                <p className="m-0 text-[11px] text-[#999]">Securely sent via <span className="font-medium text-[#777]">{emailConfig?.from_name || '—'}</span></p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
 
                 {/* Footer */}
                 <div className={cn(

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { SettingsCard } from '@/components/settings/SettingsCard';
-import { SettingsField, SettingsInput, SettingsToggle } from '@/components/settings/SettingsField';
+import { SettingsField, SettingsInput, SettingsToggle, SettingsTextarea, SettingsSelect } from '@/components/settings/SettingsField';
 import { useSettingsStore, UserProfile } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -17,13 +17,9 @@ export default function ProfileSettingsPage() {
     const isDark = theme === 'dark';
 
     const { user } = useAuthStore();
-    const [formData, setFormData] = useState<Partial<UserProfile>>({});
+    const [formData, setFormData] = useState<Partial<UserProfile & { linkedin: string; twitter: string; website: string }>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-    
-    // For password change
-    const [currentPassword, setCurrentPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
 
     useEffect(() => {
         fetchProfile();
@@ -31,35 +27,63 @@ export default function ProfileSettingsPage() {
 
     useEffect(() => {
         if (profile) {
+            let socialObj = { linkedin: '', twitter: '', website: '' };
+            try {
+                if (profile.social_links) {
+                    socialObj = profile.social_links as any;
+                }
+            } catch (e) {}
+
             setFormData({
                 full_name: profile.full_name || '',
-                avatar_url: profile.avatar_url || ''
-            });
-        } else if (user?.user_metadata?.full_name) {
-            // Fallback to auth metadata if profile record isn't loaded yet
-            setFormData({
-                full_name: user.user_metadata.full_name,
-                avatar_url: ''
+                avatar_url: profile.avatar_url || '',
+                phone: profile.phone || '',
+                address: profile.address || '',
+                timezone: profile.timezone || 'UTC',
+                language: profile.language || 'en',
+                ...socialObj
             });
         }
-    }, [profile, user]);
+    }, [profile]);
 
     const hasUnsavedChanges = () => {
-        const currentFullName = profile?.full_name || user?.user_metadata?.full_name || '';
-        const currentAvatarUrl = profile?.avatar_url || '';
+        if (!profile) return false;
         
+        let socialObj = { linkedin: '', twitter: '', website: '' };
+        try {
+            if (profile.social_links) {
+                socialObj = profile.social_links as any;
+            }
+        } catch (e) {}
+
         return (
-            (formData.full_name || '') !== currentFullName ||
-            (formData.avatar_url || '') !== currentAvatarUrl
+            (formData.full_name || '') !== (profile.full_name || '') ||
+            (formData.avatar_url || '') !== (profile.avatar_url || '') ||
+            (formData.phone || '') !== (profile.phone || '') ||
+            (formData.address || '') !== (profile.address || '') ||
+            (formData.timezone || 'UTC') !== (profile.timezone || 'UTC') ||
+            (formData.language || 'en') !== (profile.language || 'en') ||
+            (formData.linkedin || '') !== (socialObj.linkedin || '') ||
+            (formData.twitter || '') !== (socialObj.twitter || '') ||
+            (formData.website || '') !== (socialObj.website || '')
         );
     };
 
-    const handleSaveProfile = async () => {
+    const handleSave = async () => {
         setIsSaving(true);
         await appToast.promise(
             updateProfile({
                 full_name: formData.full_name,
                 avatar_url: formData.avatar_url,
+                phone: formData.phone,
+                address: formData.address,
+                timezone: formData.timezone,
+                language: formData.language,
+                social_links: {
+                    linkedin: formData.linkedin,
+                    twitter: formData.twitter,
+                    website: formData.website
+                }
             }),
             {
                 loading: 'Updating profile...',
@@ -79,7 +103,7 @@ export default function ProfileSettingsPage() {
             <SettingsCard
                 title="Public Profile"
                 description="This information will be displayed to your clients and team members."
-                onSave={handleSaveProfile}
+                onSave={handleSave}
                 isSaving={isSaving}
                 unsavedChanges={hasUnsavedChanges()}
             >
@@ -139,49 +163,94 @@ export default function ProfileSettingsPage() {
             />
 
             <SettingsCard
-                title="Security"
-                description="Manage your password and authentication methods."
+                title="Personal Information"
+                description="Your contact details used for internal accounts and defaults."
+                onSave={handleSave}
+                isSaving={isSaving}
+                unsavedChanges={hasUnsavedChanges()}
             >
-                <div className="flex flex-col gap-4 mb-6">
-                    <SettingsField label="Email Address" description="Used for sign-in and notifications.">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <SettingsField label="Phone Number">
                         <SettingsInput 
-                            value={user?.email || ''} 
-                            disabled
-                            className="opacity-50 cursor-not-allowed"
+                            value={formData.phone || ''} 
+                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                            placeholder="+1 (555) 000-0000"
                         />
                     </SettingsField>
-                </div>
-
-                <div className="flex flex-col gap-4 border-t pt-6" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
-                    <h3 className="font-semibold text-sm">Change Password</h3>
-                    <SettingsField label="Current Password">
-                        <SettingsInput 
-                            type="password"
-                            value={currentPassword}
-                            onChange={e => setCurrentPassword(e.target.value)}
-                            placeholder="Current password"
-                        />
-                    </SettingsField>
-                    <SettingsField label="New Password">
-                        <SettingsInput 
-                            type="password"
-                            value={newPassword}
-                            onChange={e => setNewPassword(e.target.value)}
-                            placeholder="New password (min 8 characters)"
-                        />
-                    </SettingsField>
-                    <div>
-                        <button className="bg-black text-white dark:bg-white dark:text-black hover:opacity-90 active:scale-95 transition-all text-xs font-bold px-4 py-2 rounded-lg">
-                            Update Password
-                        </button>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <SettingsField label="Timezone">
+                            <SettingsSelect
+                                isDark={isDark}
+                                value={formData.timezone || 'UTC'}
+                                onChange={val => setFormData({ ...formData, timezone: val })}
+                                options={[
+                                    { label: 'UTC', value: 'UTC' },
+                                    { label: 'America/New_York (EST)', value: 'America/New_York' },
+                                    { label: 'America/Los_Angeles (PST)', value: 'America/Los_Angeles' },
+                                    { label: 'Europe/London (GMT)', value: 'Europe/London' },
+                                    { label: 'Europe/Paris (CET)', value: 'Europe/Paris' },
+                                    { label: 'Asia/Tokyo (JST)', value: 'Asia/Tokyo' },
+                                    { label: 'Asia/Dubai (GST)', value: 'Asia/Dubai' }
+                                ]}
+                            />
+                        </SettingsField>
+                        <SettingsField label="Language">
+                            <SettingsSelect
+                                isDark={isDark}
+                                value={formData.language || 'en'}
+                                onChange={val => setFormData({ ...formData, language: val })}
+                                options={[
+                                    { label: 'English', value: 'en' },
+                                    { label: 'French', value: 'fr' },
+                                    { label: 'Spanish', value: 'es' },
+                                    { label: 'German', value: 'de' },
+                                    { label: 'Arabic', value: 'ar' }
+                                ]}
+                            />
+                        </SettingsField>
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-4 border-t pt-6" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
-                   <SettingsField layout="horizontal" label="Two-Factor Authentication" description="Require a secure code from your authenticator app when signing in.">
-                       <SettingsToggle checked={false} onChange={() => {}} disabled />
-                   </SettingsField>
+                <SettingsField label="Personal Address">
+                    <SettingsTextarea 
+                        value={formData.address || ''} 
+                        onChange={e => setFormData({ ...formData, address: e.target.value })}
+                        placeholder="123 Creator St&#10;San Francisco, CA 94105"
+                    />
+                </SettingsField>
+            </SettingsCard>
+
+            <SettingsCard
+                title="Social Presence"
+                description="Links to your professional profiles."
+                onSave={handleSave}
+                isSaving={isSaving}
+                unsavedChanges={hasUnsavedChanges()}
+            >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <SettingsField label="LinkedIn">
+                        <SettingsInput 
+                            value={formData.linkedin || ''} 
+                            onChange={e => setFormData({ ...formData, linkedin: e.target.value })}
+                            placeholder="linkedin.com/..."
+                        />
+                    </SettingsField>
+                    <SettingsField label="X (Twitter)">
+                        <SettingsInput 
+                            value={formData.twitter || ''} 
+                            onChange={e => setFormData({ ...formData, twitter: e.target.value })}
+                            placeholder="x.com/..."
+                        />
+                    </SettingsField>
                 </div>
+                <SettingsField label="Personal Website">
+                    <SettingsInput 
+                        value={formData.website || ''} 
+                        onChange={e => setFormData({ ...formData, website: e.target.value })}
+                        placeholder="https://..."
+                    />
+                </SettingsField>
             </SettingsCard>
         </div>
     );

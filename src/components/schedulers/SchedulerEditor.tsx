@@ -7,8 +7,9 @@ import {
     Check, Settings, Palette, ChevronRight, Clock, Calendar,
     MapPin, User, Mail, Phone, Globe, Bell, Tag, Sliders,
     Monitor, Smartphone, PenLine, Eye, ExternalLink, LayoutTemplate,
-    X, Upload, SquareCheck
+    X, Upload, SquareCheck, Send
 } from 'lucide-react';
+import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
@@ -47,6 +48,7 @@ interface SchedulerMeta {
     expirationDate: string;
     submissionLimit: number | null;
     logoUrl: string;
+    successIconUrl?: string;
     design: DocumentDesign;
     fields?: any[];
     availability?: Record<string, { active: boolean; start: string; end: string }>;
@@ -64,6 +66,7 @@ const DEFAULT_META: SchedulerMeta = {
     expirationDate: '',
     submissionLimit: null,
     logoUrl: '',
+    successIconUrl: '',
     design: DEFAULT_DOCUMENT_DESIGN,
     availability: {
         Monday:    { active: true,  start: '9:00 AM', end: '5:00 PM' },
@@ -339,7 +342,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
     const [showActions, setShowActions] = useState(false);
     const [copied, setCopied] = useState(false);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
-    const [uploadTarget, setUploadTarget] = useState<'logo' | 'background'>('logo');
+    const [uploadTarget, setUploadTarget] = useState<'logo' | 'background' | 'successIcon'>('logo');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
     const [selectedBookingIds, setSelectedBookingIds] = useState<Set<string>>(new Set());
@@ -401,6 +404,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
         a.click();
     };
     const [isPreview, setIsPreview] = useState(false);
+    const [isSendModalOpen, setIsSendModalOpen] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     // Preview calendar state (editor preview only)
     const [previewSelDate, setPreviewSelDate] = useState<string | null>(null);
@@ -751,6 +755,19 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                         {copied ? <Check size={14} className="text-primary" /> : <Link2 size={14} />}
                     </button>
 
+                    {/* Send button */}
+                    <Tooltip content="Send scheduler">
+                        <button
+                            onClick={() => setIsSendModalOpen(true)}
+                            className={cn(
+                                "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                            )}
+                        >
+                            <Send size={14} />
+                        </button>
+                    </Tooltip>
+
                     {/* Actions */}
                     <div className="relative" ref={actionsRef}>
                         <button onClick={() => setShowActions(v => !v)}
@@ -969,6 +986,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                                     updateFields={(newFields) => updateMeta({ fields: newFields })} 
                                                                     selectedFieldId={selectedFieldId}
                                                                     onSelectField={setSelectedFieldId}
+                                                                    isReadOnly={isPreview}
                                                                 />
                                                                 <div className="flex gap-3 pt-2">
                                                                     <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all"
@@ -990,10 +1008,27 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                         )}
 
                                                         {canvasStep === 'confirmation' && (
-                                                            <div className="flex flex-col items-center text-center py-8 gap-4">
-                                                                <div className="w-16 h-16 rounded-full flex items-center justify-center text-white"
-                                                                    style={{ background: design.primaryColor || '#4dbf39' }}>
-                                                                    <Check size={28} strokeWidth={2.5} />
+                                                            <div className="flex flex-col items-center text-center py-8 gap-4 px-6 scale-[0.9]">
+                                                                <div className="relative group/successicon">
+                                                                    {meta.successIconUrl ? (
+                                                                        <img 
+                                                                            src={meta.successIconUrl} 
+                                                                            alt="Success" 
+                                                                            className="object-contain cursor-pointer transition-transform hover:scale-105"
+                                                                            style={{ width: `${(design.successIconSize ?? 64) * 0.8}px`, height: `${(design.successIconSize ?? 64) * 0.8}px` }}
+                                                                            onClick={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="rounded-full flex items-center justify-center text-white cursor-pointer transition-transform hover:scale-105"
+                                                                            style={{ 
+                                                                                background: design.primaryColor || '#4dbf39',
+                                                                                width: `${(design.successIconSize ?? 64) * 0.8}px`, 
+                                                                                height: `${(design.successIconSize ?? 64) * 0.8}px` 
+                                                                            }}
+                                                                            onClick={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}>
+                                                                            <Check size={(design.successIconSize ?? 64) * 0.8 * 0.45} strokeWidth={2.5} />
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                                 <div>
                                                                     <div className="font-bold text-[18px] mb-2" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
@@ -1155,9 +1190,26 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
 
                                             {canvasStep === 'confirmation' && (
                                                 <div className="flex flex-col items-center text-center py-8 gap-4">
-                                                    <div className="w-16 h-16 rounded-full flex items-center justify-center text-white"
-                                                        style={{ background: design.primaryColor || '#4dbf39' }}>
-                                                        <Check size={28} strokeWidth={2.5} />
+                                                    <div className="relative group/successicon">
+                                                        {meta.successIconUrl ? (
+                                                            <img 
+                                                                src={meta.successIconUrl} 
+                                                                alt="Success" 
+                                                                className="object-contain cursor-pointer transition-transform hover:scale-105"
+                                                                style={{ width: `${design.successIconSize ?? 64}px`, height: `${design.successIconSize ?? 64}px` }}
+                                                                onClick={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}
+                                                            />
+                                                        ) : (
+                                                            <div className="rounded-full flex items-center justify-center text-white cursor-pointer transition-transform hover:scale-105"
+                                                                style={{ 
+                                                                    background: design.primaryColor || '#4dbf39',
+                                                                    width: `${design.successIconSize ?? 64}px`, 
+                                                                    height: `${design.successIconSize ?? 64}px` 
+                                                                }}
+                                                                onClick={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}>
+                                                                <Check size={(design.successIconSize ?? 64) * 0.45} strokeWidth={2.5} />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <div className="font-bold text-[18px] mb-2" style={{ color: isColorDark(design.blockBackgroundColor || '#fff') ? '#fff' : '#111' }}>
@@ -1388,12 +1440,14 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                     <div className="px-3 py-2">
                                         <DesignSettingsPanel
                                             isDark={isDark}
-                                            meta={{ logoUrl: meta.logoUrl, design: meta.design }}
+                                            meta={{ logoUrl: meta.logoUrl, successIconUrl: meta.successIconUrl, design: meta.design }}
                                             updateMeta={(patch) => {
                                                 if ('logoUrl' in patch) updateMeta({ logoUrl: patch.logoUrl });
+                                                if ('successIconUrl' in patch) updateMeta({ successIconUrl: patch.successIconUrl });
                                                 if ('design' in patch) updateMeta({ design: { ...meta.design, ...patch.design } });
                                             }}
                                             onUploadLogo={() => { setUploadTarget('logo'); setImageUploadOpen(true); }}
+                                            onUploadSuccessIcon={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}
                                             onUploadBackground={() => { setUploadTarget('background'); setImageUploadOpen(true); }}
                                             hideSignature={true}
                                             hideTable={true}
@@ -1641,6 +1695,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                     onClose={() => setImageUploadOpen(false)}
                     onUpload={(url: string) => {
                         if (uploadTarget === 'logo') updateMeta({ logoUrl: url });
+                        else if (uploadTarget === 'successIcon') updateMeta({ successIconUrl: url });
                         else updateDesign({ backgroundImage: url });
                         setImageUploadOpen(false);
                     }}
@@ -1665,9 +1720,22 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                     description={`Are you sure you want to permanently delete these ${selectedBookingIds.size} bookings? This action cannot be undone.`}
                     onConfirm={confirmBulkDeleteBookings}
                     onClose={() => setIsBulkDeleteOpen(false)}
-                    isDark={isDark}
                 />
             )}
+
+            <SendEmailModal
+                isOpen={isSendModalOpen}
+                onClose={() => setIsSendModalOpen(false)}
+                templateKey="scheduler"
+                to=""
+                variables={{
+                    client_name: 'Client',
+                    document_title: title || 'Scheduler',
+                    document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/scheduler/${id}` : '',
+                }}
+                workspaceId={activeWorkspaceId || ''}
+                documentTitle={title || 'Scheduler'}
+            />
         </div>
     );
 }

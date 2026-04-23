@@ -20,6 +20,7 @@ export interface DocumentDesign {
     tableFontSize?: number;
     tableCellPadding?: number;
     logoSize?: number;
+    successIconSize?: number;
     primaryColor?: string;
     actionButtonColor?: string;
     actionButtonMarginTop?: number;
@@ -53,6 +54,7 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     tableFontSize: 12,
     tableCellPadding: 12,
     logoSize: 48,
+    successIconSize: 64,
     primaryColor: '#4dbf39',
     actionButtonColor: '#111111',
     actionButtonMarginTop: 12,

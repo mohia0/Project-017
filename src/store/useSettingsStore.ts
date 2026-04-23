@@ -11,6 +11,7 @@ export interface UserProfile {
   address: string | null;
   timezone: string | null;
   language: string | null;
+  social_links: any | null;
 }
 
 export interface WorkspaceBranding {
@@ -76,6 +77,7 @@ export interface EmailTemplate {
   template_key: string;
   subject: string;
   body: string;
+  is_html: boolean;
 }
 
 export interface WorkspaceStatus {

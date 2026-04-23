@@ -18,6 +18,7 @@ import {
     Plus, X, GripVertical, Calendar, Mail, Phone, User, MapPin, Globe, PenLine
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ClientFieldPreview from '@/components/forms/FieldPreview';
 
 interface FieldTypeDef {
     type: FormFieldType;
@@ -174,91 +175,6 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
         zIndex: isDragging ? 50 : undefined,
     };
 
-    const renderInput = () => {
-        const inputProps = {
-            readOnly: true,
-            className: cn("w-full px-3 py-2 text-[13px] border outline-none transition-all pointer-events-none",
-                isDark ? "bg-white/[0.03] border-[#333] text-[#ddd]" : "bg-black/[0.02] border-[#e5e5e5] text-[#111]"
-            ),
-            style: { borderRadius: `${borderRadius}px` }
-        };
-
-        switch (field.type) {
-            case 'long_text':
-                return <textarea rows={3} placeholder={field.placeholder || 'Type your answer...'}
-                    {...inputProps} className={cn(inputProps.className, "resize-none")} />;
-            case 'dropdown':
-                return (
-                    <div className={cn(inputProps.className, "flex items-center justify-between")}>
-                        <span className="opacity-60">{field.placeholder || 'Select an option'}</span>
-                        <ChevronDownIcon size={12} className="opacity-40" />
-                    </div>
-                );
-            case 'multi_choice':
-                return (
-                    <div className="space-y-2">
-                        {(field.options || ['Option 1', 'Option 2', 'Option 3']).slice(0, 3).map((opt, i) => (
-                            <label key={i} className="flex items-center gap-2.5">
-                                <div className={cn("w-4 h-4 rounded border flex items-center justify-center transition-all", 
-                                    isDark ? "border-[#333]" : "border-[#ddd]")} />
-                                <span className={cn("text-[13px]", isDark ? "text-[#999]" : "text-[#555]")}>{opt}</span>
-                            </label>
-                        ))}
-                    </div>
-                );
-            case 'countries':
-                return (
-                    <div className="pointer-events-none opacity-80">
-                         <CountryPicker value="" onChange={() => {}} isDark={isDark} label={field.label} placeholder={field.placeholder || "Select country"} minimal />
-                    </div>
-                );
-            case 'slider':
-                return (
-                    <div className="space-y-1">
-                        <input type="range" min={field.min || 0} max={field.max || 100} defaultValue={50}
-                            className="w-full pointer-events-none"
-                            disabled={true} />
-                        <div className={cn("flex justify-between text-[10px]", isDark ? "text-[#555]" : "text-[#ccc]")}>
-                            <span>{field.min || 0}</span><span>{field.max || 100}</span>
-                        </div>
-                    </div>
-                );
-            case 'signature':
-                return (
-                    <div className={cn("w-full h-20 border-2 border-dashed flex items-center justify-center transition-all opacity-60",
-                        isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}
-                        style={{ borderRadius: `${borderRadius}px` }}>
-                        <span className="text-[12px]">Sign here</span>
-                    </div>
-                );
-            case 'file_upload':
-                return (
-                    <div className={cn("w-full py-6 border-2 border-dashed flex flex-col items-center gap-2 transition-all opacity-60",
-                        isDark ? "border-[#333] text-[#555]" : "border-[#e5e5e5] text-[#ccc]")}
-                        style={{ borderRadius: `${borderRadius}px` }}>
-                        <Upload size={18} />
-                        <span className="text-[12px]">Click to upload or drag & drop</span>
-                    </div>
-                );
-            case 'date':
-                return (
-                    <DatePicker 
-                        value="" 
-                        onChange={() => {}} 
-                        className="!h-[38px]" 
-                        isDark={isDark} 
-                        placeholder={field.placeholder || 'Select date'} 
-                        disabled={true} 
-                    />
-                );
-            default:
-                return (
-                    <input type="text" placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}...`} 
-                        {...inputProps} />
-                );
-        }
-    };
-
     return (
         <div
             ref={setNodeRef}
@@ -288,7 +204,7 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
             {!isReadOnly && (
                 <button
                     onClick={e => { e.stopPropagation(); onRemove(); }}
-                    className={cn("absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity",
+                    className={cn("absolute top-2 right-2 w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10",
                         isDark ? "bg-white/5 text-[#666] hover:text-red-400" : "bg-[#f5f5f5] text-[#bbb] hover:text-red-400")}>
                     <X size={11} />
                 </button>
@@ -298,25 +214,20 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
                 <div 
                     {...attributes}
                     {...listeners}
-                    className={cn("absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1",
+                    className={cn("absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-1 z-10",
                         isDark ? "text-[#666]" : "text-[#ccc]")}>
                     <GripVertical size={12} />
                 </div>
             )}
 
-            <div className="pl-4">
-                <div className="mb-3">
-                    <div className={cn("text-[13px] font-bold mb-1.5 px-2 py-0.5 inline-block", isDark ? "text-[#eee]" : "text-[#111]")}
-                         style={{ borderRadius: `${Math.max(0, borderRadius - 8)}px`, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }}>
-                        {field.label} {field.required && <span className="text-red-500 ml-1 mt-1">*</span>}
-                    </div>
-                    {field.description && (
-                         <div className={cn("text-[11px] opacity-60 px-2 mt-0.5", isDark ? "text-[#aaa]" : "text-[#555]")}>
-                            {field.description}
-                        </div>
-                    )}
-                </div>
-                {renderInput()}
+            <div className="pl-4 pointer-events-none">
+                <ClientFieldPreview
+                    field={field}
+                    isDark={isDark}
+                    primaryColor={primaryColor}
+                    borderRadius={borderRadius}
+                    isPreview={true}
+                />
             </div>
         </div>
     );

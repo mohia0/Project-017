@@ -10,9 +10,10 @@ import {
     Mail, Send, Activity, ShieldCheck, Globe, RotateCcw, CheckCircle2,
     Lightbulb, Receipt, FileText, FileSignature, UserPlus, Eye, EyeOff,
     Sparkles, ChevronDown, Check, AlertCircle, Zap,
-    AlertTriangle, CalendarCheck
+    AlertTriangle, CalendarCheck, Code2
 } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
 /* ─────────────── Constants ─────────────── */
 const TEMPLATE_DEFS = [
@@ -126,19 +127,23 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
     const { activeWorkspaceId } = useUIStore();
 
     const [activeKey, setActiveKey] = useState('invoice');
-    const [showPreview, setShowPreview] = useState(true);
+    const [editorMode, setEditorMode] = useState<'text' | 'html' | 'preview'>('preview');
     const [isSaving, setIsSaving] = useState(false);
     const [saved, setSaved] = useState(false);
-    const [templateData, setTemplateData] = useState<Record<string, { subject: string; body: string }>>({});
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
+    const [templateData, setTemplateData] = useState<Record<string, { subject: string; body: string; is_html: boolean }>>({});
 
     useEffect(() => {
-        const data: Record<string, { subject: string; body: string }> = {};
-        Object.keys(DEFAULT_TEMPLATES).forEach(k => { data[k] = { ...DEFAULT_TEMPLATES[k] }; });
+        const data: Record<string, { subject: string; body: string; is_html: boolean }> = {};
+        Object.keys(DEFAULT_TEMPLATES).forEach(k => { 
+            data[k] = { ...DEFAULT_TEMPLATES[k], is_html: false }; 
+        });
         if (emailTemplates?.length) {
             emailTemplates.forEach(t => {
                 if (data[t.template_key]) {
                     if (t.subject) data[t.template_key].subject = t.subject;
                     if (t.body) data[t.template_key].body = t.body;
+                    data[t.template_key].is_html = !!t.is_html;
                 }
             });
         }
@@ -163,22 +168,96 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
     const logoUrl = isAccentDark ? branding?.logo_light_url : (branding?.logo_dark_url || branding?.logo_light_url);
     const headerTextColor = isAccentDark ? '#ffffff' : '#000000';
 
+    const getBoilerplate = () => {
+        const textLines = (current.body || '')
+            .split('\n')
+            .map(line => line.trim())
+            .filter(l => l.length > 0 && !l.includes('{{document_link}}'))
+            .map(line => `              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.7; color: #374151;">${line}</p>`)
+            .join('\n');
+
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${current.subject || 'Email'}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background-color: ${accentColor}; padding: 32px 48px; text-align: left;">
+              <span style="font-size: 20px; font-weight: 700; color: ${headerTextColor}; letter-spacing: -0.3px;">${sampleVars.sender_name}</span>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="padding: 48px 48px 32px 48px;">
+${textLines || `              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.7; color: #374151;">Hi {{client_name}},</p>
+              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.7; color: #374151;">This is your professional email template. Customize this content as needed.</p>`}
+            </td>
+          </tr>
+
+          <!-- CTA BUTTON -->
+          <tr>
+            <td style="padding: 0 48px 48px 48px; text-align: center;">
+              <a href="{{document_link}}"
+                 style="display: inline-block; background-color: ${accentColor}; color: ${headerTextColor}; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.1px;">
+                View Document
+              </a>
+              <p style="margin: 16px 0 0 0; font-size: 12px; color: #9ca3af; line-height: 1.6;">
+                Or copy this link:<br>
+                <a href="{{document_link}}" style="color: ${accentColor}; word-break: break-all; text-decoration: none;">{{document_link}}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- DIVIDER -->
+          <tr>
+            <td style="padding: 0 48px;">
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 0;" />
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="padding: 24px 48px; color: #9ca3af; font-size: 12px; line-height: 1.6;">
+              <p style="margin: 0;">Securely sent via <strong style="color: #6b7280;">${sampleVars.sender_name}</strong></p>
+              <p style="margin: 4px 0 0 0;">&copy; ${new Date().getFullYear()} ${sampleVars.sender_name}. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+    };
+
     // Build the preview HTML logic safely
     let previewBody = current.body;
     previewBody = resolveVars(previewBody, sampleVars);
     
-    // Convert new lines to br
-    previewBody = previewBody.replace(/\n/g, '<br/>');
+    if (!current.is_html) {
+        // Convert new lines to br
+        previewBody = previewBody.replace(/\n/g, '<br/>');
 
     // Make amounts bold colored
-    previewBody = previewBody.replace(new RegExp(sampleVars.amount_due || 'XYZABC', 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${sampleVars.amount_due}</strong>`);
-    previewBody = previewBody.replace(new RegExp(sampleVars.amount_paid || 'XYZABC', 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${sampleVars.amount_paid}</strong>`);
-    
-    // Replace URL stub with the button matching the backend
-    if (sampleVars.document_link) {
-        previewBody = previewBody.replace(
-            new RegExp(sampleVars.document_link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-            `<div style="margin: 32px 0;">
+        previewBody = previewBody.replace(new RegExp(sampleVars.amount_due || 'XYZABC', 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${sampleVars.amount_due}</strong>`);
+        previewBody = previewBody.replace(new RegExp(sampleVars.amount_paid || 'XYZABC', 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${sampleVars.amount_paid}</strong>`);
+        
+        // Replace URL stub with the button matching the backend
+        if (sampleVars.document_link) {
+            previewBody = previewBody.replace(
+                new RegExp(sampleVars.document_link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+                `<div style="margin: 32px 0;">
                 <a href="#" onclick="return false;" style="display: inline-block; background-color: ${accentColor}; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                     View Document
                 </a>
@@ -187,7 +266,8 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                     <a href="#" onclick="return false;" style="color: ${accentColor}; text-decoration: none; word-break: break-all;">${sampleVars.document_link}</a>
                 </div>
             </div>`
-        );
+            );
+        }
     }
 
     const handleSave = async () => {
@@ -206,10 +286,15 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
     };
 
     const handleReset = () => {
-        setTemplateData(prev => ({ ...prev, [activeKey]: { ...DEFAULT_TEMPLATES[activeKey] } }));
+        setTemplateData(prev => ({ 
+            ...prev, 
+            [activeKey]: { ...DEFAULT_TEMPLATES[activeKey], is_html: false } 
+        }));
+        setEditorMode('text');
+        appToast.success('Template Reset', 'Reset to default built-in version');
     };
 
-    const update = (patch: Partial<{ subject: string; body: string }>) => {
+    const update = (patch: Partial<{ subject: string; body: string; is_html: boolean }>) => {
         setTemplateData(prev => ({ ...prev, [activeKey]: { ...prev[activeKey], ...patch } }));
     };
 
@@ -218,6 +303,27 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
             "flex flex-col h-full rounded-2xl border overflow-hidden",
             isDark ? "bg-[#111] border-[#252525]" : "bg-white border-[#e5e5e5]"
         )}>
+            {/* Section Header */}
+            <div className={cn(
+                "flex items-center justify-between px-5 py-4 border-b shrink-0",
+                isDark ? "border-[#252525]" : "border-[#f0f0f0]"
+            )}>
+                <div className="flex items-center gap-3">
+                    <div className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center",
+                        isDark ? "bg-white/5" : "bg-black/5"
+                    )}>
+                        <Mail size={15} className={cn(isDark ? "text-white/60" : "text-black/60")} />
+                    </div>
+                    <div>
+                        <h2 className="text-[14px] font-bold">Email Templates</h2>
+                        <p className={cn("text-[11px] mt-0.5", isDark ? "text-white/30" : "text-black/35")}>
+                            Customize message content and layout
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             {/* Template Selector Tabs */}
             <div className={cn(
                 "flex gap-1 p-2 border-b shrink-0 overflow-x-auto",
@@ -257,33 +363,50 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                     isDark ? "bg-white/5" : "bg-black/5"
                 )}>
                     <button
-                        onClick={() => setShowPreview(false)}
+                        onClick={() => setEditorMode('text')}
                         className={cn(
-                            "flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all",
-                            !showPreview
+                            "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all",
+                            editorMode === 'text'
                                 ? isDark ? "bg-white/10 text-white" : "bg-white text-black shadow-sm"
                                 : isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
                         )}
                     >
-                        <EyeOff size={10} /> Edit
+                        Body
                     </button>
                     <button
-                        onClick={() => setShowPreview(true)}
+                        onClick={() => {
+                            if (!current.is_html) {
+                                // Auto-generate full HTML from current text body
+                                update({ body: getBoilerplate(), is_html: true });
+                            }
+                            setEditorMode('html');
+                        }}
                         className={cn(
-                            "flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold transition-all",
-                            showPreview
+                            "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all",
+                            editorMode === 'html'
                                 ? isDark ? "bg-white/10 text-white" : "bg-white text-black shadow-sm"
                                 : isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
                         )}
                     >
-                        <Eye size={10} /> Preview
+                        HTML
+                    </button>
+                    <button
+                        onClick={() => setEditorMode('preview')}
+                        className={cn(
+                            "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all",
+                            editorMode === 'preview'
+                                ? isDark ? "bg-white/10 text-white" : "bg-white text-black shadow-sm"
+                                : isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
+                        )}
+                    >
+                        Preview
                     </button>
                 </div>
             </div>
 
             {/* Editor / Preview Body */}
             <div className="flex-1 overflow-y-auto">
-                {showPreview ? (
+                {editorMode === 'preview' ? (
                     /* Live Preview */
                     <div className="p-4 flex flex-col gap-3">
                         <div className={cn(
@@ -332,11 +455,57 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                             isDark ? "bg-blue-500/10 border-blue-500/20 text-blue-300" : "bg-blue-50 border-blue-200 text-blue-700"
                         )}>
                             <Lightbulb size={12} className="shrink-0 mt-0.5" />
-                            <span>Preview uses sample data. Real emails will use actual client and document values.</span>
+                            <span>Preview uses sample data. {current.is_html ? 'HTML variables are rendered as placeholders' : 'Real emails will use actual client and document values.'}</span>
+                        </div>
+                    </div>
+                ) : editorMode === 'html' ? (
+                    /* HTML mode */
+                    <div className="p-4 flex flex-col gap-4">
+                         <div className="flex items-center justify-between">
+                            <label className={cn("text-[11px] font-bold uppercase tracking-wider block", isDark ? "text-white/30" : "text-black/30")}>
+                                Raw HTML Email Template
+                            </label>
+                            <button
+                                onClick={() => {
+                                    if (confirm('This will replace your current body with a professional HTML boilerplate. Continue?')) {
+                                        update({ body: getBoilerplate(), is_html: true });
+                                    }
+                                }}
+                                className={cn(
+                                    "flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all",
+                                    isDark ? "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white" : "bg-black/5 text-black/50 hover:bg-black/10 hover:text-black"
+                                )}
+                            >
+                                <Code2 size={10} /> Insert Boilerplate
+                            </button>
+                        </div>
+                        <div className="relative group">
+                            <textarea
+                                value={current.body}
+                                onChange={e => update({ body: e.target.value, is_html: true })}
+                                rows={22}
+                                placeholder="<html><body>...</body></html>"
+                                className={cn(
+                                    "w-full px-4 py-4 rounded-xl border outline-none text-[12px] font-mono leading-relaxed resize-none transition-all custom-scrollbar",
+                                    isDark
+                                        ? "bg-[#080808] border-white/5 text-[#d4d4d4] placeholder:text-white/10 focus:border-purple-500/30"
+                                        : "bg-[#fcfcfc] border-black/5 text-[#222] placeholder:text-black/10 focus:border-purple-500/30"
+                                )}
+                            />
+                            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-[#555]">HTML5</span>
+                            </div>
+                        </div>
+                        <div className={cn(
+                            "flex items-start gap-2 px-3 py-2.5 rounded-xl border text-[11px]",
+                            isDark ? "bg-purple-500/10 border-purple-500/20 text-purple-300" : "bg-purple-50 border-purple-200 text-purple-700"
+                        )}>
+                            <Sparkles size={12} className="shrink-0 mt-0.5" />
+                            <span>You are in <strong>HTML Mode</strong>. This content will be sent as-is. Pro-tip: You can paste any AI-generated HTML email template here.</span>
                         </div>
                     </div>
                 ) : (
-                    /* Edit mode */
+                    /* Edit mode (Text) */
                     <div className="p-4 flex flex-col gap-4">
                         {/* Subject */}
                         <div>
@@ -362,7 +531,7 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                             </label>
                             <textarea
                                 value={current.body}
-                                onChange={e => update({ body: e.target.value })}
+                                onChange={e => update({ body: e.target.value, is_html: false })}
                                 rows={9}
                                 placeholder="Email body..."
                                 className={cn(
@@ -386,7 +555,7 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                                         onClick={() => {
                                             const body = current.body;
                                             const sep = body && !body.endsWith(' ') && !body.endsWith('\n') ? ' ' : '';
-                                            update({ body: body + sep + v });
+                                            update({ body: body + sep + v, is_html: false });
                                         }}
                                         className={cn(
                                             "px-2 py-1 rounded-lg border text-[10px] font-mono transition-all active:scale-95",
@@ -410,7 +579,7 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                 isDark ? "border-[#252525] bg-[#0d0d0d]" : "border-[#f0f0f0] bg-[#fafafa]"
             )}>
                 <button
-                    onClick={handleReset}
+                    onClick={() => setShowResetConfirm(true)}
                     className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors",
                         isDark ? "text-white/25 hover:text-white/60 hover:bg-white/5" : "text-black/30 hover:text-black/60 hover:bg-black/5"
@@ -418,6 +587,16 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
                 >
                     <RotateCcw size={11} /> Reset
                 </button>
+
+                <DeleteConfirmModal
+                    open={showResetConfirm}
+                    onClose={() => setShowResetConfirm(false)}
+                    onConfirm={handleReset}
+                    title="Reset Template?"
+                    description={`This will permanently delete your custom ${def.label} template and restore the original built-in version. This action cannot be undone.`}
+                    actionLabel="Reset to Default"
+                    isDark={isDark}
+                />
                 <button
                     onClick={handleSave}
                     disabled={isSaving}
@@ -710,7 +889,7 @@ export default function EmailsSettingsPage() {
                                             placeholder="hello@acme.com"
                                             hint="Should match your SMTP domain"
                                         />
-                                        {domains.filter(d => d.status === 'active').map(d => (
+                                        {domains.filter(d => d.status === 'active' && d.domain !== 'app.mohihassan.com').map(d => (
                                             <button
                                                 key={d.id}
                                                 type="button"

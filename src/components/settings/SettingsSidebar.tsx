@@ -3,13 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, UserSquare2, Building2, Palette, Globe, CreditCard, Mail, Tag, FileText, Receipt, FolderKanban, Zap } from 'lucide-react';
+import { User, UserSquare2, Building2, Palette, Globe, CreditCard, Mail, Tag, FileText, Receipt, FolderKanban, Zap, Key } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 
 export const ACCOUNT_LINKS = [
     { name: 'Profile', href: '/settings/profile', icon: User },
-    { name: 'Contact', href: '/settings/contact', icon: UserSquare2 },
+    { name: 'Account', href: '/settings/account', icon: Key },
 ];
 
 export const WORKSPACE_LINKS = [

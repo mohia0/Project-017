@@ -89,6 +89,7 @@ interface FormMeta {
     project: string;
     confirmationMessage: string;
     logoUrl: string;
+    successIconUrl?: string;
     design: DocumentDesign;
     confirmationBlocks?: any[];
     description?: string;
@@ -103,6 +104,7 @@ const DEFAULT_META: FormMeta = {
     publicTitle: '',
     confirmationMessage: "Thank you for your submission! We'll be in touch soon.",
     logoUrl: '',
+    successIconUrl: '',
     design: DEFAULT_DOCUMENT_DESIGN,
 };
 
@@ -785,7 +787,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
     const [showActions, setShowActions] = useState(false);
     const [copied, setCopied] = useState(false);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
-    const [uploadTarget, setUploadTarget] = useState<'logo' | 'background'>('logo');
+    const [uploadTarget, setUploadTarget] = useState<'logo' | 'background' | 'successIcon'>('logo');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [isResponsesDeleteOpen, setIsResponsesDeleteOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -1424,7 +1426,27 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                             )}
                                                             {canvasStep === 'confirmation' && (
                                                                 <div className="flex flex-col items-center text-center py-12 px-6 gap-4">
-                                                                    <div className="w-14 h-14 rounded-full flex items-center justify-center text-black shadow-lg" style={{ background: primaryColor }}><Check size={24} strokeWidth={2.5} /></div>
+                                                                    <div className="relative group/successicon">
+                                                                    {meta.successIconUrl ? (
+                                                                        <img 
+                                                                            src={meta.successIconUrl} 
+                                                                            alt="Success" 
+                                                                            className="object-contain cursor-pointer transition-transform hover:scale-105"
+                                                                            style={{ width: `${(design.successIconSize ?? 64) * 0.8}px`, height: `${(design.successIconSize ?? 64) * 0.8}px` }}
+                                                                            onClick={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="rounded-full flex items-center justify-center text-black shadow-lg cursor-pointer transition-transform hover:scale-105" 
+                                                                            style={{ 
+                                                                                background: primaryColor,
+                                                                                width: `${(design.successIconSize ?? 64) * 0.8}px`, 
+                                                                                height: `${(design.successIconSize ?? 64) * 0.8}px` 
+                                                                            }}
+                                                                            onClick={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}>
+                                                                            <Check size={(design.successIconSize ?? 64) * 0.8 * 0.45} strokeWidth={2.5} />
+                                                                        </div>
+                                                                    )}
+                                                                    </div>
                                                                     <div>
                                                                         <div className="font-bold text-[18px] mb-2" style={{ color: isFormDark ? '#fff' : '#111' }}>Thanks!</div>
                                                                         <div className="text-[13px] text-center opacity-60" style={{ color: isFormDark ? '#aaa' : '#555' }}>{meta.confirmationMessage}</div>
@@ -1588,6 +1610,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                         <ConfirmationBlockItem 
                                                                             block={block} 
                                                                             isDark={isFormDark} 
+                                                                            meta={meta}
                                                                             isSelected={selectedConfirmationBlockId === block.id}
                                                                             onClick={() => setSelectedConfirmationBlockId(block.id)}
                                                                             onRemove={() => {
@@ -1600,6 +1623,8 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                                             }}
                                                                             primaryColor={primaryColor}
                                                                             isPreview={isPreview}
+                                                                            setUploadTarget={setUploadTarget}
+                                                                            setImageUploadOpen={setImageUploadOpen}
                                                                         />
                                                                     </React.Fragment>
                                                                 ))}
@@ -1835,12 +1860,14 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                         <div className="px-3 py-2">
                                             <DesignSettingsPanel
                                                 isDark={isDark}
-                                                meta={{ logoUrl: meta.logoUrl, design: meta.design }}
+                                                meta={{ logoUrl: meta.logoUrl, successIconUrl: meta.successIconUrl, design: meta.design }}
                                                 updateMeta={(patch) => {
                                                     if ('logoUrl' in patch) updateMeta({ logoUrl: patch.logoUrl });
+                                                    if ('successIconUrl' in patch) updateMeta({ successIconUrl: patch.successIconUrl });
                                                     if ('design' in patch) updateMeta({ design: { ...meta.design, ...patch.design } });
                                                 }}
                                                 onUploadLogo={() => { setUploadTarget('logo'); setImageUploadOpen(true); }}
+                                                onUploadSuccessIcon={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}
                                                 onUploadBackground={() => { setUploadTarget('background'); setImageUploadOpen(true); }}
                                                 hideSignature={true}
                                                 hideTable={true}
@@ -2164,6 +2191,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                     onClose={() => setImageUploadOpen(false)}
                     onUpload={(url: string) => {
                         if (uploadTarget === 'logo') updateMeta({ logoUrl: url });
+                        else if (uploadTarget === 'successIcon') updateMeta({ successIconUrl: url });
                         else updateMeta({ design: { ...meta.design, backgroundImage: url } });
                         setImageUploadOpen(false);
                     }}
@@ -2242,7 +2270,7 @@ function MessageSquareIcon({ size, className }: { size: number; className?: stri
 
 // ── CONFIRMATION BLOCK HELPERS ──────────────────────────────────────
 
-function ConfirmationBlockItem({ block, isDark, isSelected, onClick, onRemove, updateBlock, primaryColor, isPreview }: any) {
+function ConfirmationBlockItem({ block, isDark, isSelected, onClick, onRemove, updateBlock, primaryColor, isPreview, meta, setUploadTarget, setImageUploadOpen }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
         id: block.id,
         disabled: isPreview 
@@ -2276,9 +2304,26 @@ function ConfirmationBlockItem({ block, isDark, isSelected, onClick, onRemove, u
             <div className="py-1 px-2">
                 {block.type === 'success' && (
                     <div className="flex flex-col items-center text-center py-4 gap-3">
-                        <div className="w-16 h-16 rounded-full flex items-center justify-center text-black shadow-lg shadow-black/5"
-                            style={{ background: primaryColor }}>
-                            <Check size={28} strokeWidth={2.5} />
+                        <div className="relative group/successicon">
+                            {meta.successIconUrl ? (
+                                <img 
+                                    src={meta.successIconUrl} 
+                                    alt="Success" 
+                                    className="object-contain cursor-pointer transition-transform hover:scale-105"
+                                    style={{ width: `${meta.design?.successIconSize ?? 64}px`, height: `${meta.design?.successIconSize ?? 64}px` }}
+                                    onClick={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}
+                                />
+                            ) : (
+                                <div className="rounded-full flex items-center justify-center text-black shadow-lg shadow-black/5 cursor-pointer transition-transform hover:scale-105"
+                                    style={{ 
+                                        background: primaryColor,
+                                        width: `${meta.design?.successIconSize ?? 64}px`, 
+                                        height: `${meta.design?.successIconSize ?? 64}px` 
+                                    }}
+                                    onClick={() => { setUploadTarget('successIcon'); setImageUploadOpen(true); }}>
+                                    <Check size={(meta.design?.successIconSize ?? 64) * 0.45} strokeWidth={2.5} />
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

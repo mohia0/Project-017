@@ -732,6 +732,19 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         {copied ? <Check size={14} className="text-primary" /> : <Link2 size={14} />}
                     </button>
 
+                    {/* Send button */}
+                    <Tooltip content="Send invoice">
+                        <button
+                            onClick={() => setIsSendModalOpen(true)}
+                            className={cn(
+                                "flex items-center justify-center w-[32px] h-[32px] rounded-[8px] transition-all",
+                                isDark ? "bg-[#2a2a2a] text-white/60 hover:text-white hover:bg-[#333]" : "bg-[#f0f0f0] text-[#555] hover:bg-[#e8e8e8] hover:text-[#111]"
+                            )}
+                        >
+                            <Send size={14} />
+                        </button>
+                    </Tooltip>
+
 
 
 
