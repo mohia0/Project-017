@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 interface AppLoaderProps {
@@ -128,10 +129,16 @@ export function FullScreenLoader({
   isDark?: boolean;
   className?: string;
 }) {
-  return (
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const content = (
     <div
       className={cn(
-        "fixed inset-0 z-[9999] flex flex-col items-center justify-center backdrop-blur-xl transition-colors duration-500",
+        "fixed top-0 left-0 w-screen h-screen z-[99999] flex flex-col items-center justify-center backdrop-blur-xl transition-colors duration-500",
         isDark ? "bg-[#000000]/95" : "bg-[#f5f5f5]/95",
         className
       )}
@@ -147,4 +154,11 @@ export function FullScreenLoader({
       )}
     </div>
   );
+
+  // Use a portal so the fixed container escapes any transform/overflow-hidden parent containers
+  if (!mounted || typeof document === 'undefined') {
+    return content;
+  }
+
+  return createPortal(content, document.body);
 }

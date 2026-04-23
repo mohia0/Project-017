@@ -695,42 +695,36 @@ export default function ProposalsPage() {
         setPendingStatusChange(null);
     };
     /* ... existing state ... */
-    const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-        const defaults = {
-            select: 44,
-            name: 240,
-            status: 160,
-            issue: 180,
-            due: 180,
-            client: 180,
-            amount: 220,
-            accepted: 160
-        };
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('proposal_col_widths');
-            if (saved) return { ...defaults, ...JSON.parse(saved) };
-        }
-        return defaults;
+    const [colWidths, setColWidths] = useState<Record<string, number>>({
+        select: 44,
+        name: 240,
+        status: 160,
+        issue: 180,
+        due: 180,
+        client: 180,
+        amount: 220,
+        accepted: 160
     });
-    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-        const defaults = ['name', 'client', 'status', 'issue', 'due', 'accepted'];
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('proposal_col_order');
-            if (saved) {
-                const parsed = JSON.parse(saved) as string[];
-                if (!parsed.includes('accepted')) {
-                    const dueIdx = parsed.indexOf('due');
-                    if (dueIdx !== -1) {
-                        parsed.splice(dueIdx + 1, 0, 'accepted');
-                    } else {
-                        parsed.push('accepted');
-                    }
+    const [columnOrder, setColumnOrder] = useState<string[]>(['name', 'client', 'status', 'issue', 'due', 'accepted']);
+
+    useEffect(() => {
+        const savedWidths = localStorage.getItem('proposal_col_widths');
+        if (savedWidths) setColWidths(prev => ({ ...prev, ...JSON.parse(savedWidths) }));
+        
+        const savedOrder = localStorage.getItem('proposal_col_order');
+        if (savedOrder) {
+            const parsed = JSON.parse(savedOrder) as string[];
+            if (!parsed.includes('accepted')) {
+                const dueIdx = parsed.indexOf('due');
+                if (dueIdx !== -1) {
+                    parsed.splice(dueIdx + 1, 0, 'accepted');
+                } else {
+                    parsed.push('accepted');
                 }
-                return parsed;
             }
+            setColumnOrder(parsed);
         }
-        return defaults;
-    });
+    }, []);
 
     useEffect(() => {
         localStorage.setItem('proposal_col_widths', JSON.stringify(colWidths));

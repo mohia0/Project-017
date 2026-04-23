@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -9,8 +9,15 @@ import 'goey-toast/styles.css';
 
 const theme = createTheme({});
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, session }: { children: React.ReactNode, session: any }) {
     const { theme: appTheme } = useUIStore();
+    const isHydrated = useRef(false);
+
+    // Synchronous hydration to prevent initial flicker 
+    if (!isHydrated.current) {
+        useAuthStore.getState().hydrate(session);
+        isHydrated.current = true;
+    }
     
     useEffect(() => {
         useAuthStore.getState().initialize();

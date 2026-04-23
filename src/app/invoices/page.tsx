@@ -672,45 +672,36 @@ export default function InvoicesPage() {
     const [importExportOpen, setImportExportOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     /* ... existing state ... */
-    const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-        const defaults = {
-            select: 44,
-            name: 240,
-            status: 160,
-            issue: 180,
-            due: 180,
-            paid: 180,
-            client: 180,
-            amount: 220
-        };
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('invoice_col_widths');
-            if (saved) {
-                return { ...defaults, ...JSON.parse(saved) };
-            }
-        }
-        return defaults;
+    const [colWidths, setColWidths] = useState<Record<string, number>>({
+        select: 44,
+        name: 240,
+        status: 160,
+        issue: 180,
+        due: 180,
+        paid: 180,
+        client: 180,
+        amount: 220
     });
-    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-        const defaults = ['name', 'client', 'status', 'issue', 'due', 'paid'];
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('invoice_col_order');
-            if (saved) {
-                const parsed = JSON.parse(saved) as string[];
-                // Auto-sync new columns
-                if (!parsed.includes('paid')) {
-                    const dueIdx = parsed.indexOf('due');
-                    if (dueIdx !== -1) {
-                        parsed.splice(dueIdx + 1, 0, 'paid');
-                    } else {
-                        parsed.push('paid');
-                    }
+    const [columnOrder, setColumnOrder] = useState<string[]>(['name', 'client', 'status', 'issue', 'due', 'paid']);
+
+    useEffect(() => {
+        const savedWidths = localStorage.getItem('invoice_col_widths');
+        if (savedWidths) setColWidths(prev => ({ ...prev, ...JSON.parse(savedWidths) }));
+
+        const savedOrder = localStorage.getItem('invoice_col_order');
+        if (savedOrder) {
+            const parsed = JSON.parse(savedOrder) as string[];
+            if (!parsed.includes('paid')) {
+                const dueIdx = parsed.indexOf('due');
+                if (dueIdx !== -1) {
+                    parsed.splice(dueIdx + 1, 0, 'paid');
+                } else {
+                    parsed.push('paid');
                 }
-                return parsed;
             }
+            setColumnOrder(parsed);
         }
-        return defaults;
-    });
+    }, []);
 
     useEffect(() => {
         localStorage.setItem('invoice_col_widths', JSON.stringify(colWidths));

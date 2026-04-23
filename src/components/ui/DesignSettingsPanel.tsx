@@ -167,12 +167,17 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
 
     // Persist collapsed state per storageKey
     const lsKey = `${storageKey}_collapsed`;
-    const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>(() => {
+    const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
+
+    React.useEffect(() => {
         try {
             const stored = localStorage.getItem(lsKey);
-            return stored ? JSON.parse(stored) : {};
-        } catch { return {}; }
-    });
+            if (stored) {
+                setCollapsed(JSON.parse(stored));
+            }
+        } catch {}
+    }, [lsKey]);
+
     const toggle = (section: string) => setCollapsed(prev => {
         const next = { ...prev, [section]: !prev[section] };
         try { localStorage.setItem(lsKey, JSON.stringify(next)); } catch {}

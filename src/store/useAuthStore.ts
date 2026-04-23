@@ -9,39 +9,45 @@ interface AuthState {
     isLoading: boolean;
     isAuthModalOpen: boolean;
     setAuthModalOpen: (isOpen: boolean) => void;
-    initialize: () => Promise<void>;
+    hydrate: (session: Session | null) => void;
+    initialize: () => void;
     signOut: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     session: null,
-    isLoading: true,
+    // Initialize with false because SSR already hydrates the user
+    isLoading: false,
     isAuthModalOpen: false,
 
     setAuthModalOpen: (isOpen) => set({ isAuthModalOpen: isOpen }),
 
-    initialize: async () => {
-        set({ isLoading: true });
-        
-        // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
+    hydrate: (session) => {
         set({ session, user: session?.user || null, isLoading: false });
+    },
 
-        // Listen for auth changes
+    initialize: () => {
+        // We no longer call getSession() here because it hits the DB/cookies and causes a delay.
+        // It's already hydrated via layout.tsx -> Providers.tsx -> hydrate(session).
+        
+        // Listen for auth changes to keep UI reactive across tabs
         supabase.auth.onAuthStateChange((_event, session) => {
-            set({ session, user: session?.user || null });
+            if (_event === 'SIGNED_OUT') {
+                set({ session: null, user: null });
+                useUIStore.getState().setActiveWorkspaceId(null);
+                if (typeof window !== 'undefined') {
+                    localStorage.removeItem('ui-storage');
+                    window.location.href = '/login';
+                }
+            } else {
+                set({ session, user: session?.user || null, isLoading: false });
+            }
         });
     },
 
     signOut: async () => {
         await supabase.auth.signOut();
-        set({ session: null, user: null });
-        
-        // Clear workspace UI and persisted preferences to prevent leakage
-        useUIStore.getState().setActiveWorkspaceId(null);
-        if (typeof window !== 'undefined') {
-            localStorage.removeItem('ui-storage');
-        }
+        // The onAuthStateChange listener will handle the cleanup and redirect
     }
 }));

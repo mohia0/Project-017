@@ -1,7 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabaseClient } from './supabase/client';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder_key';
-
-// Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Re-export the browser client for all legacy files explicitly
+// This prevents having to update imports across the codebase.
+export const supabase = supabaseClient;

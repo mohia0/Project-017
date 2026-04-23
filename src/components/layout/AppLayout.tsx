@@ -21,13 +21,12 @@ import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
-// Lazy-load heavy layout panels — they will be compiled once on first render
-// instead of eagerly on every route, dramatically reducing initial compile time.
-const LeftSystemMenu   = dynamic(() => import('./LeftSystemMenu'),   { ssr: false });
-const RightPanel       = dynamic(() => import('./RightPanel'),       { ssr: false });
-const RightToolsMenu   = dynamic(() => import('./RightToolsMenu'),   { ssr: false });
-const MobileNavBar          = dynamic(() => import('./MobileNav').then(m => ({ default: m.MobileNavBar })),          { ssr: false });
-const MobileRightPanelDrawer = dynamic(() => import('./MobileNav').then(m => ({ default: m.MobileRightPanelDrawer })), { ssr: false });
+import LeftSystemMenu from './LeftSystemMenu';
+import RightPanel from './RightPanel';
+import RightToolsMenu from './RightToolsMenu';
+import { MobileNavBar, MobileRightPanelDrawer } from './MobileNav';
+
+// Lazy-load heavy modals
 const CreateEntryModal = dynamic(() => import('@/components/modals/CreateEntryModal'), { ssr: false });
 const CSVImportModal   = dynamic(() => import('@/components/modals/CSVImportModal'),   { ssr: false });
 
@@ -81,27 +80,15 @@ function WorkspaceDataSync() {
     
     useEffect(() => {
         if (activeWorkspaceId) {
-            useProposalStore.getState().fetchProposals();
-            useInvoiceStore.getState().fetchInvoices();
-            useClientStore.getState().fetchClients();
-            useTemplateStore.getState().fetchTemplates();
-            useProjectStore.getState().fetchProjects();
-            useFormStore.getState().fetchForms();
-            useSchedulerStore.getState().fetchSchedulers();
-            useHookStore.getState().fetchHooks();
-            useFileStore.getState().fetchFiles();
+            // Only fetch the absolute essentials for the root layout to prevent network flooding (Phase 2)
+            // Individual item fetches (Proposals, Invoices, Clients) are handled by their respective 'page.tsx' components.
             
-            // Settings Preload
+            // Settings Preload (Global features)
             const settingsStore = useSettingsStore.getState();
-            settingsStore.fetchProfile();
             settingsStore.fetchStatuses(activeWorkspaceId);
             settingsStore.fetchBranding(activeWorkspaceId);
-            settingsStore.fetchPayments(activeWorkspaceId);
-            settingsStore.fetchDomains(activeWorkspaceId);
-            settingsStore.fetchEmailConfig(activeWorkspaceId);
-            settingsStore.fetchEmailTemplates(activeWorkspaceId);
             
-            // Notifications
+            // Notifications (Global icon)
             useNotificationStore.getState().fetchNotifications();
             useNotificationStore.getState().subscribe();
             
@@ -146,7 +133,8 @@ function WorkspaceDataSync() {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { theme, isRightPanelCollapsed, rightPanel } = useUIStore();
-    const { user, isLoading } = useAuthStore();
+    // Removed isLoading since session is synchronously hydrated and middleware handles redirects
+    const { user } = useAuthStore();
     const { fetchMenu } = useMenuStore();
     const { fetchWorkspaces, workspaces, isLoading: wsLoading, hasFetched: wsFetched } = useWorkspaceStore();
     const isDark = theme === 'dark';
@@ -166,18 +154,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }, [user, fetchWorkspaces, fetchMenu]);
 
     useEffect(() => {
-        if (!isLoading && !user && !isAuthRoute && !isPublicPreview && !isOnboarding) {
-            router.push('/login');
-        } else if (user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview) {
+        // AppLayout only handles application-flow redirects now, NOT auth redirects (done by middleware)
+        if (user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview) {
             router.push('/onboarding');
         }
-    }, [user, isLoading, wsFetched, workspaces, isAuthRoute, isPublicPreview, isOnboarding, router]);
+    }, [user, wsFetched, workspaces, isPublicPreview, isOnboarding, router]);
 
-    // Don't render until we know auth state, or if we are about to redirect
-    const isRedirectingToLogin = !isLoading && !user && !isAuthRoute && !isPublicPreview && !isOnboarding;
     const isRedirectingToOnboarding = user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview;
+    const isProtectedRoute = !isAuthRoute && !isPublicPreview && !isOnboarding;
 
-    if ((isLoading && !isAuthRoute) || isRedirectingToLogin || isRedirectingToOnboarding) {
+    // Show full screen loader until workspaces are fetched on ALL protected routes
+    // to prevent the UI from flickering (sidebars showing before workspace context is ready).
+    // EVEN IF user is technically null on the very first SSR tick, if we're on a protected
+    // route, we MUST wait for the data sequence (hydrate -> fetch workspaces) to finish.
+    const isInitialLoading = isProtectedRoute && !wsFetched;
+
+    if (isInitialLoading || isRedirectingToOnboarding) {
         return <FullScreenLoader isDark={isDark} />;
     }
 
