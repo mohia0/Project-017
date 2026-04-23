@@ -1,263 +1,314 @@
 "use client";
 
-import React, { useState, useRef, useEffect, ReactNode } from 'react';
+import React, { useMemo, useState, useEffect, ReactNode } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import { Circle, CheckCircle2 } from 'lucide-react';
+import { ContextMenuRow } from './RowContextMenu';
 
-export interface ColumnDef<T> {
+export function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
+    return (
+        <div className={cn("w-[13px] h-[13px] rounded-[3px] border flex items-center justify-center transition-all shrink-0 cursor-pointer",
+            checked ? "bg-primary border-primary"
+                : indeterminate ? "bg-primary/40 border-primary/60"
+                    : isDark ? "border-[#3a3a3a] bg-transparent" : "border-[#d0d0d0] bg-white")}>
+            {(checked || indeterminate) && (
+                <svg width="7" height="5" viewBox="0 0 8 6" fill="none">
+                    {indeterminate && !checked
+                        ? <line x1="1" y1="3" x2="7" y2="3" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                        : <polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />}
+                </svg>
+            )}
+        </div>
+    );
+}
+
+export function SortableHeader({ id, children, onResizeStart, isDark, width, flexible, noBorder }: { 
+    id: string; 
+    children: ReactNode; 
+    onResizeStart?: (e: React.MouseEvent) => void;
+    isDark: boolean;
+    width?: number;
+    flexible?: boolean;
+    noBorder?: boolean;
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 20 : 1,
+    };
+    return (
+        <div ref={setNodeRef} style={style} className={cn("relative px-4 py-2 flex items-center select-none group/header", isDragging ? "bg-blue-500/10" : "", isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]")}>
+            <div {...attributes} {...listeners} className="flex-1 cursor-grab active:cursor-grabbing truncate">
+                {children}
+            </div>
+            {onResizeStart && (
+                <div onMouseDown={onResizeStart} className="absolute -right-3 top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-10 group/resizer transition-colors hover:bg-primary/10">
+                    <div className="w-[2px] h-[50%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
+                </div>
+            )}
+        </div>
+    );
+}
+
+export type DataTableColumn<T> = {
     id: string;
-    header: ReactNode | string;
+    label: string | ReactNode;
+    defaultWidth: number;
+    flexible?: boolean; // if true, uses minmax(width, 1fr)
+    noBorder?: boolean;
     cell: (item: T) => ReactNode;
-    width?: number;    // default width in px
-    minWidth?: number; // min width in px
-    maxWidth?: number; // max width in px
-}
+};
 
-interface DataTableProps<T> {
+export type DataTableProps<T> = {
     data: T[];
-    columns: ColumnDef<T>[];
-    keyExtractor: (item: T) => string;
+    columns: DataTableColumn<T>[];
+    storageKeyPrefix: string;
+    selectedIds: Set<string>;
+    onToggleAll: () => void;
+    onToggleRow: (id: string, e: React.MouseEvent) => void;
     onRowClick?: (item: T) => void;
-    getRowColor?: (item: T, theme: 'light' | 'dark') => string;
-    theme: 'light' | 'dark';
-
-    // Empty state
-    emptyState?: ReactNode;
+    rowMenuItems?: (item: T) => any[];
+    isDark: boolean;
+    rightHeaderSlot?: ReactNode; // e.g. "Total" column
+    rightHeaderWidth?: number; // width of the fixed right slot
+    rightCellSlot?: (item: T) => ReactNode;
     isLoading?: boolean;
-    loadingState?: ReactNode;
+    emptyState?: ReactNode;
+    afterRows?: ReactNode; // e.g. "Create New" row at bottom
+};
 
-    // Selection
-    enableSelection?: boolean;
-    selectedIds?: Set<string>;
-    onSelectionChange?: (ids: Set<string>) => void;
-
-    // Bottom Action
-    bottomAction?: ReactNode;
-}
-
-export function DataTable<T>({
-    data,
-    columns,
-    keyExtractor,
-    onRowClick,
-    getRowColor,
-    theme,
-    emptyState,
-    isLoading,
-    loadingState,
-    enableSelection,
-    selectedIds,
-    onSelectionChange,
-    bottomAction,
+export function DataTable<T extends { id: string }>({
+    data, columns, storageKeyPrefix, selectedIds, onToggleAll, onToggleRow, onRowClick,
+    rowMenuItems, isDark, rightHeaderSlot, rightHeaderWidth, rightCellSlot, isLoading, emptyState, afterRows
 }: DataTableProps<T>) {
-    // Column widths state
-    const [colWidths, setColWidths] = useState<Record<string, number>>({});
 
-    // Initialize default widths
+    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+        const saved = typeof window !== 'undefined' ? localStorage.getItem(`${storageKeyPrefix}_col_order`) : null;
+        return saved ? JSON.parse(saved) : columns.map(c => c.id);
+    });
+
+    const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+        const saved = typeof window !== 'undefined' ? localStorage.getItem(`${storageKeyPrefix}_col_widths`) : null;
+        if (saved) return JSON.parse(saved);
+        const initial: Record<string, number> = { select: 44, right_slot: rightHeaderWidth || 80 };
+        columns.forEach(c => initial[c.id] = c.defaultWidth);
+        return initial;
+    });
+
     useEffect(() => {
-        const initial: Record<string, number> = {};
-        columns.forEach(col => {
-            initial[col.id] = col.width || 120;
-        });
-        // We do not overwrite user-adjusted widths if data changes, only on mount
-        setColWidths(prev => Object.keys(prev).length ? prev : initial);
-    }, [columns]);
+        localStorage.setItem(`${storageKeyPrefix}_col_order`, JSON.stringify(columnOrder));
+    }, [columnOrder, storageKeyPrefix]);
 
-    // Resizing Logic
-    const [isResizing, setIsResizing] = useState(false);
-    const resizingCol = useRef<string | null>(null);
-    const startX = useRef<number>(0);
-    const startWidth = useRef<number>(0);
+    useEffect(() => {
+        localStorage.setItem(`${storageKeyPrefix}_col_widths`, JSON.stringify(colWidths));
+    }, [colWidths, storageKeyPrefix]);
 
-    const handleMouseDown = (e: React.MouseEvent, colId: string) => {
+    const handleResizeStart = (key: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setIsResizing(true);
-        resizingCol.current = colId;
-        startX.current = e.clientX;
-        startWidth.current = colWidths[colId] || 120;
+        const startX = e.clientX;
+        const startWidth = colWidths[key] || 150;
 
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            const delta = startX - moveEvent.clientX; // reversed drag for standard left->right widen logic
+            const newWidth = Math.max(30, startWidth - delta);
+            setColWidths(prev => ({ ...prev, [key]: newWidth }));
+        };
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
-        if (!resizingCol.current) return;
-        const diff = e.clientX - startX.current;
-        const colDef = columns.find(c => c.id === resizingCol.current);
-        const minW = colDef?.minWidth || 60;
-        const maxW = colDef?.maxWidth || 800; // Adding max limit safely
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
 
-        const newW = Math.max(minW, Math.min(maxW, startWidth.current + diff));
-        setColWidths(prev => ({ ...prev, [resizingCol.current!]: newW }));
-    };
-
-    const handleMouseUp = () => {
-        setIsResizing(false);
-        resizingCol.current = null;
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    // Selection Logic
-    const toggleSelection = (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!enableSelection || !onSelectionChange || !selectedIds) return;
-
-        const next = new Set(selectedIds);
-        if (next.has(id)) {
-            next.delete(id);
-        } else {
-            next.add(id);
-        }
-        onSelectionChange(next);
-    };
-
-    const toggleAll = () => {
-        if (!enableSelection || !onSelectionChange || !selectedIds) return;
-        if (selectedIds.size === data.length && data.length > 0) {
-            onSelectionChange(new Set()); // deselect all
-        } else {
-            onSelectionChange(new Set(data.map(keyExtractor))); // select all
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setColumnOrder((items) => {
+                const oldIndex = items.indexOf(active.id as string);
+                const newIndex = items.indexOf(over.id as string);
+                return arrayMove(items, oldIndex, newIndex);
+            });
         }
     };
 
-    const isAllSelected = data.length > 0 && selectedIds?.size === data.length;
+    const gridTemplate = useMemo(() => {
+        const parts = [`${colWidths.select || 44}px`];
+        columnOrder.forEach(id => {
+            const col = columns.find(c => c.id === id);
+            if (col?.flexible) parts.push(`minmax(${colWidths[id] || col?.defaultWidth || 150}px, 1fr)`);
+            else parts.push(`${colWidths[id] || col?.defaultWidth || 150}px`);
+        });
+        if (rightHeaderSlot || rightCellSlot) {
+            parts.push(`${colWidths['right_slot'] || rightHeaderWidth || 80}px`);
+        }
+        return parts.join(' ');
+    }, [columnOrder, colWidths, columns, rightHeaderSlot, rightCellSlot, rightHeaderWidth]);
 
-    // We build a template string for columns: e.g. "40px 100px 120px ..."
-    const selectionWidth = enableSelection ? 40 : 0;
-    const gridTemplateColumns = [
-        ...(enableSelection ? [`${selectionWidth}px`] : []),
-        ...columns.map(c => `${colWidths[c.id] || 120}px`)
-    ].join(' ');
+    const isAllSelected = selectedIds.size > 0 && selectedIds.size === data.length && data.length > 0;
+
+    // Loading Shimmer Block
+    const renderShimmer = () => (
+        <div className="flex flex-col">{Array.from({ length: 15 }).map((_, i) => (
+            <div key={i} className={cn("grid px-0 border-b items-center h-[45px]", isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")} style={{ gridTemplateColumns: gridTemplate }}>
+                <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
+                {columnOrder.map(colId => (
+                    <div key={colId} className="px-4"><div className={cn("h-3 w-3/4 max-w-[120px] rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
+                ))}
+                {(rightHeaderSlot || rightCellSlot) && <div className="px-4"><div className={cn("h-3 w-8 flex-none rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>}
+            </div>
+        ))}</div>
+    );
+
+    if (!isLoading && data.length === 0 && emptyState) {
+        return <>{emptyState}</>;
+    }
 
     return (
-        <div className={cn(
-            "flex-1 flex flex-col relative transition-all duration-700 container-styled max-w-full overflow-hidden",
-            "border rounded-xl",
-            theme === 'dark' ? "border-[#252525] bg-[#1a1a1a]" : "border-[#ebebeb] bg-[#fbfbfc]"
-        )}>
-            {/* Header Row */}
-            <div
-                className={cn(
-                    "grid items-stretch border-b text-[12px] font-semibold sticky top-0 z-30 transition-colors",
-                    theme === 'dark' ? "border-[#252525] text-[#ccc] bg-[#222]" : "border-[#ebebeb] text-[#111] bg-[#f4f5f8]",
-                    isResizing && "pointer-events-none"
-                )}
-                style={{ gridTemplateColumns }}
-            >
-                {enableSelection && (
-                    <div className={cn(
-                        "flex justify-center items-center py-3",
-                        theme === 'dark' ? "border-r border-[#333]" : "border-r border-[#ebebeb]"
-                    )} onClick={toggleAll}>
-                        <div className="cursor-pointer group flex items-center justify-center">
-                            {isAllSelected ? (
-                                <div className="w-[14px] h-[14px] rounded-full bg-[var(--primary)] flex items-center justify-center">
-                                    <CheckCircle2 size={10} className="text-white stroke-[3px]" />
-                                </div>
-                            ) : (
-                                <Circle size={14} className={cn("transition-all opacity-20 group-hover:opacity-60", theme === 'dark' ? "text-white" : "text-[#111]")} />
-                            )}
+        <div className={cn("overflow-x-auto no-scrollbar rounded-xl border", isDark ? "border-[#222]" : "border-[#ebebeb]")}>
+            <div className="min-w-full w-max flex flex-col">
+                {/* Header */}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <div className={cn("grid border-b text-[10px] font-semibold uppercase tracking-wider sticky top-0 z-30",
+                        isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}
+                        style={{ gridTemplateColumns: gridTemplate }}>
+                        
+                        <div className={cn("relative px-0 py-2 flex items-center justify-center shrink-0", isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]")}>
+                            <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); onToggleAll(); }}>
+                                <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
+                            </div>
+                            <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute -right-3 top-0 bottom-0 w-[24px] cursor-col-resize z-20 group/resizer">
+                                <div className="absolute right-3 top-1.5 bottom-1.5 w-[1px] group-hover/resizer:bg-blue-400 transition-colors" />
+                            </div>
                         </div>
-                    </div>
-                )}
-                {columns.map((col, idx) => (
-                    <div key={col.id} className={cn(
-                        "relative flex items-center h-full px-4 group/col",
-                        idx < columns.length - 1 && (theme === 'dark' ? "border-r border-[#333]" : "border-r border-[#ececec]")
-                    )}>
-                        <div className="flex-1 truncate select-none py-3">{col.header}</div>
 
-                        {/* Minimalist Resizer */}
-                        {idx < columns.length - 1 && (
-                            <div
-                                className={cn(
-                                    "absolute -right-3 top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-40 group/resizer transition-colors hover:bg-primary/10"
-                                )}
-                                onMouseDown={(e) => handleMouseDown(e, col.id)}
-                            >
-                                <div className={cn(
-                                    "w-[2px] h-[50%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity",
-                                    "bg-primary"
-                                )} />
+                        <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+                            {columnOrder.map(colId => {
+                                const col = columns.find(c => c.id === colId);
+                                if (!col) return null;
+                                return (
+                                    <SortableHeader 
+                                        key={col.id} 
+                                        id={col.id} 
+                                        isDark={isDark} 
+                                        width={colWidths[col.id]}
+                                        flexible={col.flexible}
+                                        noBorder={col.noBorder}
+                                        onResizeStart={(e) => handleResizeStart(col.id, e)}
+                                    >
+                                        {col.label}
+                                    </SortableHeader>
+                                );
+                            })}
+                        </SortableContext>
+
+                        {(rightHeaderSlot || rightCellSlot) && (
+                            <div className={cn("relative px-4 py-2 flex items-center justify-end font-semibold sticky right-0 z-40", 
+                                isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]")}>
+                                <div onMouseDown={(e) => handleResizeStart('right_slot', e)} className="absolute -left-3 top-0 bottom-0 w-[24px] cursor-col-resize z-20 group/resizer">
+                                    <div className="absolute left-3 top-1.5 bottom-1.5 w-[1px] group-hover/resizer:bg-blue-400 transition-colors" />
+                                </div>
+                                {rightHeaderSlot || ''}
                             </div>
                         )}
                     </div>
-                ))}
-            </div>
+                </DndContext>
 
-            {/* Body */}
-            <div className="flex-1 overflow-auto no-scrollbar pb-0 min-w-max">
-                {isLoading ? (
-                    loadingState || <div className="p-8 text-center text-sm text-[#999]">Loading...</div>
-                ) : data.length === 0 ? (
-                    emptyState || <div className="p-16 text-center text-[#666]">No records found.</div>
-                ) : (
-                    data.map((item) => {
-                        const id = keyExtractor(item);
-                        const isSelected = selectedIds?.has(id);
-                        const rowColor = getRowColor ? getRowColor(item, theme) : "";
-
-                        return (
-                            <div
-                                key={id}
-                                onClick={() => onRowClick && onRowClick(item)}
-                                className={cn(
-                                    "grid items-stretch border-b text-[13px] group/row transition-all duration-300",
-                                    onRowClick ? "cursor-pointer" : "",
-                                    theme === 'dark' ? "border-[#252525] bg-[#1a1a1a] hover:bg-[#222]" : "border-[#ebebeb] bg-white hover:bg-[#fcfcd0]/10",
-                                    isSelected ? (theme === 'dark' ? "bg-[#2a2a2a]" : "bg-[#f5f7fa]") : "",
-                                    rowColor
-                                )}
-                                style={{ gridTemplateColumns }}
-                            >
-                                {enableSelection && (
-                                    <div className={cn(
-                                        "flex justify-center items-center py-4",
-                                        theme === 'dark' ? "border-r border-[#252525]" : "border-r border-[#f5f5f5]"
-                                    )} onClick={(e) => toggleSelection(id, e)}>
-                                        <div className="cursor-pointer transition-all active:scale-90">
-                                            {isSelected ? (
-                                                <div className="w-[14px] h-[14px] rounded-full bg-[var(--primary)] flex items-center justify-center animate-in zoom-in-75 duration-300">
-                                                    <CheckCircle2 size={10} className="text-white stroke-[3px]" />
-                                                </div>
-                                            ) : (
-                                                <Circle size={14} className={cn("transition-all opacity-10 group-hover/row:opacity-40", theme === 'dark' ? "text-white" : "text-[#111]")} />
-                                            )}
+                {isLoading ? renderShimmer() : (
+                    <div className="flex flex-col">
+                        <AnimatePresence mode="popLayout">
+                            {data.map((item, i) => {
+                                const isSelected = selectedIds.has(item.id);
+                                const isLastRow = i === data.length - 1 && !afterRows;
+                                const renderRow = () => (
+                                    <>
+                                        <div className={cn("flex items-center justify-center px-0 py-1.5 self-stretch", isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]") } onClick={(e) => { e.stopPropagation(); onToggleRow(item.id, e); }}>
+                                            <Chk checked={isSelected} isDark={isDark} />
                                         </div>
-                                    </div>
-                                )}
+                                        {columnOrder.map((colId, idx) => {
+                                            const col = columns.find(c => c.id === colId);
+                                            if (!col) return null;
+                                            const isLastCol = idx === columnOrder.length - 1 && !rightHeaderSlot && !rightCellSlot;
+                                            return (
+                                                <div key={colId} className={cn(
+                                                    "min-w-0 self-stretch flex items-center h-full"
+                                                )}>
+                                                    {col.cell(item)}
+                                                </div>
+                                            );
+                                        })}
+                                        {(rightHeaderSlot || rightCellSlot) && (
+                                            <div className="px-3 py-1.5 self-stretch flex items-center justify-end sticky right-0 z-10" 
+                                                style={{ 
+                                                    borderColor: isDark ? (isDark ? '#252525' : '#ebebeb') : (isDark ? '#252525' : '#ebebeb'),
+                                                    backgroundColor: isDark ? '#1a1a1a' : '#fafafa'
+                                                }} 
+                                                onClick={e => e.stopPropagation()}>
+                                                {rightCellSlot ? rightCellSlot(item) : <div />}
+                                            </div>
+                                        )}
+                                    </>
+                                );
 
-                                {columns.map((col, colIdx) => (
-                                    <div key={col.id} className={cn(
-                                        "truncate px-4 py-4 font-medium text-inherit tracking-tight flex items-center",
-                                        colIdx < columns.length - 1 && (theme === 'dark' ? "border-r border-[#252525]" : "border-r border-[#f5f5f5]")
-                                    )}>
-                                        {col.cell(item)}
-                                    </div>
-                                ))}
-                            </div>
-                        );
-                    })
-                )}
+                                if (rowMenuItems) {
+                                    return (
+                                        <ContextMenuRow 
+                                            key={item.id}
+                                            items={rowMenuItems(item)}
+                                            isDark={isDark}
+                                            onRowClick={onRowClick ? () => onRowClick(item) : undefined}
+                                            component={motion.div}
+                                            layout
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.15 }}
+                                            className={cn("grid px-0 text-[12px] cursor-pointer group transition-colors",
+                                                !isLastRow && (isDark ? "border-b border-[#1f1f1f]" : "border-b border-[#f0f0f0]"),
+                                                isDark ? "hover:bg-white/[0.025]" : "bg-white hover:bg-[#fafafa]",
+                                                isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
+                                            style={{ gridTemplateColumns: gridTemplate }}
+                                        >
+                                            {renderRow()}
+                                        </ContextMenuRow>
+                                    );
+                                }
 
-                {/* Bottom Action (e.g. Create new row) */}
-                {!isLoading && bottomAction && (
-                    <div className={cn(
-                        "p-2", 
-                        theme === 'dark' ? "bg-[#1a1a1a]" : "bg-white"
-                    )}>
-                        {bottomAction}
+                                return (
+                                    <motion.div
+                                        key={item.id}
+                                        onClick={onRowClick ? () => onRowClick(item) : undefined}
+                                        layout
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.15 }}
+                                        className={cn("grid px-0 text-[12px] cursor-pointer group transition-colors",
+                                            !isLastRow && (isDark ? "border-b border-[#1f1f1f]" : "border-b border-[#f0f0f0]"),
+                                            isDark ? "hover:bg-white/[0.025]" : "bg-white hover:bg-[#fafafa]",
+                                            isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
+                                        style={{ gridTemplateColumns: gridTemplate }}
+                                    >
+                                        {renderRow()}
+                                    </motion.div>
+                                );
+                            })}
+                            {afterRows}
+                        </AnimatePresence>
                     </div>
                 )}
             </div>
         </div>
     );
 }
-

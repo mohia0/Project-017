@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/store/useUIStore';
 import { useHookStore, Hook, HookStatus } from '@/store/useHookStore';
 import { SettingsToggle } from '@/components/settings/SettingsField';
@@ -14,12 +15,31 @@ import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { SearchInput } from '@/components/ui/SearchInput';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { formatDistanceToNow } from 'date-fns';
+import { ContextMenuRow } from '@/components/ui/RowContextMenu';
+import { 
+    DndContext, 
+    closestCenter, 
+    KeyboardSensor, 
+    PointerSensor, 
+    useSensor, 
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import { 
+    arrayMove, 
+    SortableContext, 
+    sortableKeyboardCoordinates, 
+    horizontalListSortingStrategy, 
+    useSortable 
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 function fmtDate(d: string) {
     const date = new Date(d);
@@ -99,17 +119,10 @@ function TbBtn({ label, icon, active, hasArrow, onClick, isDark }: {
 
 function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
     return (
-        <div className={cn("w-[13px] h-[13px] rounded-[3px] border flex items-center justify-center transition-all shrink-0",
-            checked ? "bg-primary border-primary"
-                : indeterminate ? "bg-primary/40 border-primary/60"
-                    : isDark ? "border-[#3a3a3a] bg-transparent" : "border-[#d0d0d0] bg-white")}>
-            {(checked || indeterminate) && (
-                <svg width="7" height="5" viewBox="0 0 8 6" fill="none">
-                    {indeterminate && !checked
-                        ? <line x1="1" y1="3" x2="7" y2="3" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                        : <polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />}
-                </svg>
-            )}
+        <div className={cn("w-4 h-4 rounded border flex items-center justify-center transition-colors",
+            checked || indeterminate ? "bg-primary border-primary" : (isDark ? "border-[#333] bg-[#1a1a1a]" : "border-[#ddd] bg-white"))}>
+            {checked && <Check size={10} className="text-white" />}
+            {indeterminate && <div className="w-2 h-0.5 bg-white rounded-full" />}
         </div>
     );
 }
@@ -120,9 +133,31 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
 }) {
     const [deleting, setDeleting] = useState(false);
 
+    const menuItems = [
+        { label: 'Open', icon: <ExternalLink size={12} />, onClick: onOpen },
+        { label: h.status === 'Active' ? 'Deactivate' : 'Activate', 
+          icon: <Activity size={12} />, 
+          onClick: () => useHookStore.getState().updateHook(h.id, { status: h.status === 'Active' ? 'Inactive' : 'Active' }) 
+        },
+        { label: 'Duplicate', icon: <Copy size={12} />, onClick: async () => {
+            const { duplicateHook } = useHookStore.getState();
+            await duplicateHook(h.id);
+            appToast.success('Duplicated', 'Hook has been duplicated successfully');
+        }},
+        { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: onDelete, separator: true }
+    ];
+
     return (
-        <div
-            onClick={onOpen}
+        <ContextMenuRow
+            items={menuItems}
+            isDark={isDark}
+            onRowClick={onOpen}
+            component={motion.div}
+            layout
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
             className={cn(
                 "relative rounded-xl border cursor-pointer transition-all duration-150 group flex flex-col overflow-hidden",
                 isDark ? "bg-[#1a1a1a] border-[#2e2e2e] hover:border-[#444]"
@@ -139,7 +174,7 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
                             <div className={cn("font-bold text-[13px] truncate", isDark ? "text-white" : "text-[#111]")}>
                                 {h.name}
                             </div>
-                            <div className={cn("text-[10px] mt-0.5 flex items-center gap-1.5", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                            <div className={cn("text-[10px] mt-0.5 flex items-center gap-1.5", isDark ? "text-[#555] " : "text-[#aaa]")}>
                                 <span>Created {fmtDate(h.created_at)}</span>
                             </div>
                         </div>
@@ -194,11 +229,6 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
                             isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
                         <Copy size={12} />
                     </button>
-                    <button onClick={() => useUIStore.getState().openRightPanel({ type: 'hook', id: h.id, editing: true })}
-                        className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all",
-                            isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
-                        <Pencil size={12} />
-                    </button>
                     {deleting ? (
                         <InlineDeleteButton onDelete={onDelete} isDark={isDark} />
                     ) : (
@@ -210,7 +240,7 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
                     )}
                 </div>
             </div>
-        </div>
+        </ContextMenuRow>
     );
 }
 
@@ -228,6 +258,72 @@ export default function HooksPage() {
     const [orderOpen, setOrderOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const columns: DataTableColumn<Hook>[] = [
+        {
+            id: 'name',
+            label: 'Name',
+            defaultWidth: 260,
+            flexible: true,
+            noBorder: true,
+            cell: (h) => (
+                <div className="flex items-center px-4 py-1.5 min-w-0 self-center">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Zap size={12} style={{ color: h.color }} className="shrink-0" fill="currentColor" />
+                        <div className={cn("font-bold truncate", isDark ? "text-white" : "text-black")}>
+                            {h.name}
+                        </div>
+                    </div>
+                </div>
+            )
+        },
+        {
+            id: 'title',
+            label: 'Description',
+            defaultWidth: 200,
+            cell: (h) => (
+                <div className="flex items-center px-4 py-1.5 truncate self-center">
+                    <span className={isDark ? "text-[#888]" : "text-[#666]"}>{h.title}</span>
+                </div>
+            )
+        },
+        {
+            id: 'triggers',
+            label: 'Triggers',
+            defaultWidth: 120,
+            cell: (h) => (
+                <div className="flex items-center px-4 py-1.5 self-center">
+                    <span className={isDark ? "text-[#888]" : "text-[#666]"}>{h.event_count ?? 0}</span>
+                </div>
+            )
+        },
+        {
+            id: 'created',
+            label: 'Created',
+            defaultWidth: 140,
+            cell: (h) => (
+                <div className="flex items-center px-4 py-1.5 self-center">
+                    <span className={isDark ? "text-[#555]" : "text-[#aaa]"}>{fmtDate(h.created_at)}</span>
+                </div>
+            )
+        },
+        {
+            id: 'placement',
+            label: 'Placement',
+            defaultWidth: 150,
+            cell: (h) => (
+                <div className="flex items-center px-4 py-1.5 min-w-0 self-center overflow-hidden">
+                    {h.link ? (
+                        <span className={cn(isDark ? "text-[#555]" : "text-[#aaa] truncate")}>
+                            {h.link}
+                        </span>
+                    ) : (
+                        <span className={cn("opacity-20", isDark ? "text-white" : "text-black")}>—</span>
+                    )}
+                </div>
+            )
+        }
+    ];
 
     useEffect(() => { fetchHooks(); }, [fetchHooks]);
 
@@ -402,7 +498,7 @@ export default function HooksPage() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-auto pb-44">
+            <div className={cn("flex-1 overflow-auto p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
                 {isLoading && hooks.length === 0 ? (
                     <div className="flex items-center justify-center h-40">
                         <AppLoader size="md" />
@@ -430,120 +526,60 @@ export default function HooksPage() {
                     </div>
                 ) : view === 'cards' ? (
                     <div className="p-3 grid gap-2 grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(220px,320px))]">
-                        {filtered.map(h => (
-                            <HookCard
-                                key={h.id} h={h}
-                                onOpen={() => openRightPanel({ type: 'hook', id: h.id })}
-                                onDelete={() => handleDelete(h.id)}
-                                isDark={isDark}
-                                isSelected={selectedIds.has(h.id)}
-                                onToggle={() => {
-                                    const n = new Set(selectedIds);
-                                    n.has(h.id) ? n.delete(h.id) : n.add(h.id);
-                                    setSelectedIds(n);
-                                }}
-                            />
-                        ))}
+                        <AnimatePresence mode="popLayout">
+                            {filtered.map(h => (
+                                <HookCard
+                                    key={h.id} h={h}
+                                    onOpen={() => openRightPanel({ type: 'hook', id: h.id })}
+                                    onDelete={() => handleDelete(h.id)}
+                                    isDark={isDark}
+                                    isSelected={selectedIds.has(h.id)}
+                                    onToggle={() => {
+                                        const n = new Set(selectedIds);
+                                        n.has(h.id) ? n.delete(h.id) : n.add(h.id);
+                                        setSelectedIds(n);
+                                    }}
+                                />
+                            ))}
+                        </AnimatePresence>
                     </div>
                 ) : (
-                    <div className="w-full overflow-x-auto">
-                        <table className="w-full border-collapse text-[12.5px]">
-                            <thead>
-                                <tr className={cn("border-b text-[10.5px] uppercase tracking-wider",
-                                    isDark ? "border-[#252525] text-[#444]" : "border-[#ebebeb] text-[#bbb]")}>
-                                    <th className="px-4 py-2.5 w-[44px] text-center">
-                                        <div className="cursor-pointer flex justify-center" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
-                                            <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
-                                        </div>
-                                    </th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[260px]">Name</th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[200px]">Description</th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[120px]">Triggers</th>
-                                    <th className="text-left font-semibold px-4 py-2.5 w-[140px]">Created</th>
-                                    <th className="text-left font-semibold px-4 py-2.5">Placement</th>
-                                    <th className="w-[80px]" />
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filtered.map(h => {
-                                    const isSelected = selectedIds.has(h.id);
-                                    return (
-                                        <tr key={h.id}
-                                            onClick={() => openRightPanel({ type: 'hook', id: h.id })}
-                                            className={cn("border-b cursor-pointer transition-colors group",
-                                                isDark
-                                                    ? "border-[#1e1e1e] hover:bg-white/[0.025]"
-                                                    : "border-[#f0f0f0] hover:bg-[#fafafa]",
-                                                isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}>
-                                            <td className="px-4 py-3 text-center" onClick={e => toggleRow(h.id, e)}>
-                                                <div className="flex justify-center">
-                                                    <Chk checked={isSelected} isDark={isDark} />
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <Zap size={12} style={{ color: h.color }} className="shrink-0" fill="currentColor" />
-                                                    <div className={cn("font-semibold truncate", isDark ? "text-[#e0e0e0]" : "text-[#111]")}>
-                                                        {h.name}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#666]" : "text-[#888]")}>
-                                                    {h.title}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#666]" : "text-[#888]")}>
-                                                    {h.event_count ?? 0}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className={cn(isDark ? "text-[#555]" : "text-[#aaa]")}>
-                                                    {fmtDate(h.created_at)}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {h.link ? (
-                                                    <span className={cn(isDark ? "text-[#555]" : "text-[#aaa] truncate max-w-[120px] block")}>
-                                                        {h.link}
-                                                    </span>
-                                                ) : (
-                                                    <span className={cn("opacity-20", isDark ? "text-white" : "text-black")}>—</span>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                                                    <div className="mr-2">
-                                                        <SettingsToggle
-                                                            checked={h.status === 'Active'}
-                                                            onChange={(checked) => updateHook(h.id, { status: checked ? 'Active' : 'Inactive' })}
-                                                        />
-                                                    </div>
-                                                    <Tooltip content="Hook Settings" side="top">
-                                                        <button onClick={(e) => { e.stopPropagation(); openRightPanel({ type: 'hook', id: h.id, editing: true }); }}
-                                                            className={cn("p-1.5 rounded-lg transition-colors",
-                                                                isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#ccc] hover:text-[#888] hover:bg-[#f0f0f0]")}>
-                                                            <Pencil size={12} />
-                                                        </button>
-                                                    </Tooltip>
-                                                    {deletingId === h.id ? (
-                                                        <InlineDeleteButton onDelete={() => handleDelete(h.id)} isDark={isDark} />
-                                                    ) : (
-                                                        <button onClick={() => setDeletingId(h.id)}
-                                                            className={cn("p-1.5 rounded-lg transition-colors text-red-400",
-                                                                isDark ? "hover:bg-red-500/10" : "hover:bg-red-50")}>
-                                                            <Trash2 size={12} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable
+                        data={filtered}
+                        columns={columns}
+                        storageKeyPrefix="hooks"
+                        selectedIds={selectedIds}
+                        onToggleAll={toggleAll}
+                        onToggleRow={toggleRow}
+                        onRowClick={(h) => openRightPanel({ type: 'hook', id: h.id })}
+                        isDark={isDark}
+                        isLoading={isLoading}
+                        rightHeaderWidth={80}
+                        rightCellSlot={(h) => (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end pr-3">
+                                <div>
+                                    <SettingsToggle
+                                        checked={h.status === 'Active'}
+                                        onChange={(c) => {
+                                            useHookStore.getState().updateHook(h.id, { status: c ? 'Active' : 'Inactive' })
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        rowMenuItems={(h) => [
+                            { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => openRightPanel({ type: 'hook', id: h.id }) },
+                            { label: h.status === 'Active' ? 'Deactivate' : 'Activate', 
+                                icon: <Activity size={12} />, 
+                                onClick: () => useHookStore.getState().updateHook(h.id, { status: h.status === 'Active' ? 'Inactive' : 'Active' }) 
+                            },
+                            { label: 'Duplicate', icon: <Copy size={12} />, onClick: async () => {
+                                await useHookStore.getState().duplicateHook(h.id);
+                                appToast.success('Duplicated', 'Hook duplicated successfully');
+                            }},
+                            { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(h.id), separator: true }
+                        ]}
+                    />
                 )}
             </div>
 

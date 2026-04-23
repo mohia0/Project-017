@@ -434,7 +434,7 @@ export function CreateInvoiceModal({ open, onClose }: Props) {
                             <Plus size={13} className={isDark ? "text-[#555]" : "text-[#bbb]"} />
                             <span className={isDark ? "text-[#555]" : "text-[#bbb]"}>Add custom field</span>
                         </div>
-                        <CircleHelp size={14} className="text-[#3b82f6] opacity-70" />
+                        <CircleHelp size={14} className="text-primary opacity-70" />
                     </div>
                 </div>
 

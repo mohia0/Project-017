@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { motion } from 'framer-motion';
 import { MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -64,7 +66,7 @@ export function ContextMenuPopup({ items, isDark, pos, onClose }: ContextMenuPro
 
     const displayPos = adjustedPos || pos;
 
-    return (
+    return createPortal(
         <div
             ref={ref}
             className={cn(
@@ -109,7 +111,8 @@ export function ContextMenuPopup({ items, isDark, pos, onClose }: ContextMenuPro
                     </React.Fragment>
                 ))}
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
@@ -193,13 +196,15 @@ interface ContextMenuRowProps extends React.HTMLAttributes<HTMLDivElement> {
     isDark: boolean;
     onRowClick?: () => void;
     children: React.ReactNode;
+    component?: any; // e.g. motion.div
+    [key: string]: any; // Allow motion props
 }
 
 /**
  * Drop-in div wrapper that adds right-click context menu to any table row.
  * The div forwards all other HTML div props (className, style, etc.).
  */
-export function ContextMenuRow({ items, isDark, onRowClick, children, onClick, ...rest }: ContextMenuRowProps) {
+export function ContextMenuRow({ items, isDark, onRowClick, children, onClick, component: Component = 'div', ...rest }: ContextMenuRowProps) {
     const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
 
     const handleContextMenu = (e: React.MouseEvent) => {
@@ -215,13 +220,13 @@ export function ContextMenuRow({ items, isDark, onRowClick, children, onClick, .
 
     return (
         <>
-            <div
+            <Component
                 {...rest}
                 onClick={handleClick}
                 onContextMenu={handleContextMenu}
             >
                 {children}
-            </div>
+            </Component>
             {menuPos && (
                 <ContextMenuPopup
                     items={items}

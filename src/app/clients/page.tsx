@@ -79,18 +79,47 @@ function TbBtn({ label, icon, active, onClick, isDark, hasArrow }: { label: stri
     );
 }
 
-function Dropdown({ open, onClose, isDark, children }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode }) {
+function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth = '180px' }: { 
+    open: boolean; 
+    onClose: () => void; 
+    isDark: boolean; 
+    children: React.ReactNode; 
+    align?: 'left' | 'right' | 'center';
+    minWidth?: string;
+}) {
     const ref = React.useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = React.useState<{ top: number; left: number } | null>(null);
+
+    React.useLayoutEffect(() => {
+        if (open && ref.current?.parentElement) {
+            const rect = ref.current.parentElement.getBoundingClientRect();
+            let left = rect.left;
+            if (align === 'center') left = rect.left + rect.width / 2;
+            if (align === 'right') left = rect.right;
+            setCoords({ top: rect.bottom + 4, left });
+        }
+    }, [open, align]);
+
     React.useEffect(() => {
         if (!open) return;
         const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+        const s = () => onClose();
         document.addEventListener('mousedown', h);
-        return () => document.removeEventListener('mousedown', h);
+        window.addEventListener('scroll', s, true);
+        return () => {
+            document.removeEventListener('mousedown', h);
+            window.removeEventListener('scroll', s, true);
+        };
     }, [open, onClose]);
+
     if (!open) return null;
     return (
-        <div ref={ref} className={cn("absolute top-full right-0 mt-1 z-50 min-w-[180px] rounded-xl border shadow-xl overflow-hidden",
-            isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
+        <div ref={ref}
+            style={coords ? { top: `${coords.top}px`, left: `${coords.left}px`, minWidth } : { opacity: 0 }}
+            className={cn("fixed z-[1000] rounded-xl border shadow-xl overflow-hidden",
+                align === 'center' && "-translate-x-1/2",
+                align === 'right' && "-translate-x-full",
+                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
             {children}
         </div>
     );
@@ -589,8 +618,9 @@ export default function ClientsPage() {
                             </div>
                         ) : (
                             /* List view */
-                            <div className="overflow-x-auto no-scrollbar">
-                                <div className={cn("rounded-xl border overflow-hidden min-w-[900px]", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
+                            <div className={cn("p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
+                                <div className="overflow-x-auto no-scrollbar">
+                                    <div className={cn("rounded-xl border overflow-hidden min-w-full w-max", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
                                     <div className={cn(
                                         "grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider",
                                         isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]"
@@ -658,6 +688,7 @@ export default function ClientsPage() {
                                         </ContextMenuRow>
                                     );
                                 })}
+                                    </div>
                                 </div>
                             </div>
                         )}

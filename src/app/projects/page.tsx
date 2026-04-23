@@ -99,7 +99,7 @@ function StatusCell({ status, onStatusChange, isDark }: { status: ProjectStatus;
                 <span className={isDark ? '' : cfg.badgeText}>{status}</span>
                 <ChevronDown size={10} className="opacity-50" />
             </button>
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="left">
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center">
                 <div className="py-1">
                     {STATUS_ORDER.map(s => {
                         const sCfg = STATUS_CFG[s];

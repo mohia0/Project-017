@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/store/useUIStore';
 import { useFormStore, Form, FormStatus } from '@/store/useFormStore';
 import { cn } from '@/lib/utils';
@@ -55,13 +56,14 @@ function fmtDate(d: string) {
     return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
 }
 
-function SortableHeader({ id, children, onResizeStart, isDark, width, flexible }: { 
+function SortableHeader({ id, children, onResizeStart, isDark, width, flexible, noBorder }: { 
     id: string; 
     children: React.ReactNode; 
     onResizeStart?: (e: React.MouseEvent) => void;
     isDark: boolean;
     width?: number;
     flexible?: boolean;
+    noBorder?: boolean;
 }) {
     const {
         attributes,
@@ -85,7 +87,8 @@ function SortableHeader({ id, children, onResizeStart, isDark, width, flexible }
             ref={setNodeRef} 
             style={style} 
             className={cn(
-                "relative px-4 py-2 flex items-center border-r select-none group/header",
+                "relative px-4 py-2 flex items-center select-none group/header",
+                !noBorder && "border-r",
                 isDragging ? "bg-blue-500/10" : "",
                 isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]"
             )}
@@ -105,19 +108,30 @@ function SortableHeader({ id, children, onResizeStart, isDark, width, flexible }
     );
 }
 
-function Dropdown({ open, onClose, isDark, children, side = 'bottom' }: { open: boolean; onClose: () => void; isDark: boolean; children: React.ReactNode; side?: 'top' | 'bottom' }) {
+function Dropdown({ open, onClose, isDark, children, align = 'center', minWidth = '140px' }: { 
+    open: boolean; 
+    onClose: () => void; 
+    isDark: boolean; 
+    children: React.ReactNode; 
+    align?: 'left' | 'right' | 'center';
+    minWidth?: string;
+}) {
     const ref = useRef<HTMLDivElement>(null);
     const [coords, setCoords] = React.useState<{ top: number; left: number } | null>(null);
 
     React.useLayoutEffect(() => {
         if (open && ref.current?.parentElement) {
             const rect = ref.current.parentElement.getBoundingClientRect();
+            let left = rect.left;
+            if (align === 'center') left = rect.left + rect.width / 2;
+            if (align === 'right') left = rect.right;
+
             setCoords({
-                top: side === 'bottom' ? rect.bottom + 4 : rect.top - 4,
-                left: rect.left + rect.width / 2
+                top: rect.bottom + 4,
+                left: left
             });
         }
-    }, [open, side]);
+    }, [open, align]);
 
     useEffect(() => {
         if (!open) return;
@@ -136,15 +150,17 @@ function Dropdown({ open, onClose, isDark, children, side = 'bottom' }: { open: 
     return (
         <div 
             ref={ref} 
-            className={cn(
-                "fixed -translate-x-1/2 z-[1000] min-w-[160px] rounded-xl border shadow-xl overflow-hidden",
-                side === 'top' && "-translate-y-full",
-                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
-            )}
             style={coords ? {
                 top: `${coords.top}px`,
                 left: `${coords.left}px`,
+                minWidth
             } : { opacity: 0 }}
+            className={cn(
+                "fixed z-[1000] rounded-xl border shadow-xl overflow-hidden",
+                align === 'center' && "-translate-x-1/2",
+                align === 'right' && "-translate-x-full",
+                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+            )}
         >
             {children}
         </div>
@@ -175,7 +191,7 @@ function StatusCell({ status, onStatusChange, isDark }: {
                 <ChevronDown size={10} className="opacity-40" />
             </button>
 
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} side="bottom">
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center">
                 <div className="py-1 min-w-[120px]">
                     {STATUSES.map(s => {
                         const sCfg = STATUS_CFG[s];
@@ -187,10 +203,7 @@ function StatusCell({ status, onStatusChange, isDark }: {
                                     isActive ? (isDark ? "bg-white/10" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
                                 )}
                             >
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: isDark ? sDark.dot : sCfg.dot }} />
-                                    <span className="font-medium" style={isDark ? { color: sDark.text } : { color: sCfg.text }}>{s}</span>
-                                </span>
+                                <span className="font-medium" style={isDark ? { color: sDark.text } : { color: sCfg.text }}>{s}</span>
                                 {isActive && <Check size={11} className="text-primary" />}
                             </button>
                         );
@@ -239,15 +252,18 @@ function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }:
     const fields = Array.isArray(f.fields) ? f.fields : [];
 
     return (
-        <div
+        <motion.div
+            layout
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
             onClick={onOpen}
             className={cn(
                 "relative rounded-xl border cursor-pointer transition-all duration-150 group flex flex-col overflow-hidden",
                 isDark ? "bg-[#1a1a1a] border-[#2e2e2e] hover:border-[#444]"
                     : "bg-white border-[#f0f0f0] hover:shadow-md hover:border-[#e0e0e0]"
             )}>
-            {/* Color strip */}
-            <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #4dbf39, #7de86a)' }} />
 
             <div className="p-4 flex flex-col gap-3 flex-1">
                 {/* Header */}
@@ -317,7 +333,7 @@ function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }:
                     </button>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -364,30 +380,25 @@ export default function FormsPage() {
     useEffect(() => { localStorage.setItem('forms_col_widths', JSON.stringify(colWidths)); }, [colWidths]);
     useEffect(() => { localStorage.setItem('forms_col_order', JSON.stringify(columnOrder)); }, [columnOrder]);
 
-    const isResizing = useRef<string | null>(null);
-    const startX = useRef<number>(0);
-    const startWidth = useRef<number>(0);
-
     const handleResizeStart = (key: string, e: React.MouseEvent) => {
         e.preventDefault();
-        isResizing.current = key;
-        startX.current = e.clientX;
-        startWidth.current = colWidths[key];
-        document.addEventListener('mousemove', handleResizeMove);
-        document.addEventListener('mouseup', handleResizeEnd);
-    };
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startWidth = colWidths[key];
 
-    const handleResizeMove = (e: MouseEvent) => {
-        if (!isResizing.current) return;
-        const delta = e.clientX - startX.current;
-        const newWidth = Math.max(50, startWidth.current + delta);
-        setColWidths(prev => ({ ...prev, [isResizing.current as string]: newWidth }));
-    };
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            const delta = startX - moveEvent.clientX;
+            const newWidth = Math.max(30, startWidth - delta);
+            setColWidths(prev => ({ ...prev, [key]: newWidth }));
+        };
 
-    const handleResizeEnd = () => {
-        isResizing.current = null;
-        document.removeEventListener('mousemove', handleResizeMove);
-        document.removeEventListener('mouseup', handleResizeEnd);
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
     };
 
     const sensors = useSensors(
@@ -663,10 +674,10 @@ export default function FormsPage() {
 
 
             {/* Content */}
-            <div className="flex-1 overflow-auto pb-44">
+            <div className={cn("flex-1 overflow-auto p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
                 {isLoading && forms.length === 0 ? (
                     view === 'cards' ? (
-                        <div className="p-4 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-20">
                             {Array.from({ length: 12 }).map((_, i) => (
                                 <div key={i} className={cn("rounded-xl border flex flex-col pointer-events-none", isDark ? "border-[#2e2e2e] bg-[#1a1a1a]" : "border-[#f0f0f0] bg-white")}>
                                     <div className="h-1.5 w-full bg-primary/20" />
@@ -695,7 +706,8 @@ export default function FormsPage() {
                             ))}
                         </div>
                     ) : (
-                        <div className="flex flex-col">
+                        <div className="overflow-x-auto no-scrollbar">
+                            <div className={cn("rounded-xl border overflow-hidden min-w-[1000px]", isDark ? "border-[#222]" : "border-[#ebebeb]")}>
                             <div className={cn("grid border-b h-10 items-center bg-[#1a1a1a] shadow-sm", isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#f5f5f7] border-[#ebebeb]")} style={{ gridTemplateColumns: gridTemplate }}>
                                 <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[5px] animate-pulse", isDark ? "bg-white/[0.1]" : "bg-black/[0.1]")} /></div>
                                 {columnOrder.map(colId => (
@@ -720,10 +732,11 @@ export default function FormsPage() {
                                     <div />
                                 </div>
                             ))}
+                            </div>
                         </div>
                     )
                 ) : filtered.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 gap-4">
+                    <div className="flex flex-col items-center justify-center py-24 gap-4">
                         <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
                             isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
                             <ClipboardList size={24} className={isDark ? "text-[#444]" : "text-[#ccc]"} />
@@ -745,36 +758,40 @@ export default function FormsPage() {
                     </div>
                 ) : view === 'cards' ? (
                     <div className="p-4 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {filtered.map(f => (
-                            <FormCard
-                                key={f.id} f={f}
-                                onOpen={() => router.push(`/forms/${f.id}`)}
-                                onDelete={() => handleDelete(f.id)}
-                                isDark={isDark}
-                                isSelected={selectedIds.has(f.id)}
-                                onToggle={() => {
-                                    const n = new Set(selectedIds);
-                                    n.has(f.id) ? n.delete(f.id) : n.add(f.id);
-                                    setSelectedIds(n);
-                                }}
-                                onCopy={(e: any) => copyLink(f.id, e)}
-                            />
-                        ))}
+                        <AnimatePresence mode="popLayout">
+                            {filtered.map(f => (
+                                <FormCard
+                                    key={f.id} f={f}
+                                    onOpen={() => router.push(`/forms/${f.id}`)}
+                                    onDelete={() => handleDelete(f.id)}
+                                    isDark={isDark}
+                                    isSelected={selectedIds.has(f.id)}
+                                    onToggle={() => {
+                                        const n = new Set(selectedIds);
+                                        n.has(f.id) ? n.delete(f.id) : n.add(f.id);
+                                        setSelectedIds(n);
+                                    }}
+                                    onCopy={(e: any) => copyLink(f.id, e)}
+                                />
+                            ))}
+                        </AnimatePresence>
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-x-auto w-full">
-                        <div className="min-w-[1000px] flex flex-col">
+                    <div className="overflow-x-auto no-scrollbar">
+                        <div className={cn("rounded-xl border min-w-full w-max overflow-hidden", isDark ? "border-[#222]" : "border-[#ebebeb]")}>
                             {/* Header */}
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-30",
-                                    isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
+                                <div className={cn("grid border-b text-[10px] font-semibold uppercase tracking-wider sticky top-0 z-30",
+                                    isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}
                                     style={{ gridTemplateColumns: gridTemplate }}>
                                     
-                                    <div className="relative px-0 py-2 flex items-center justify-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
+                                    <div className="relative px-0 py-2 flex items-center justify-center" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
                                         <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
                                             <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
                                         </div>
-                                        <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
+                                        <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute -right-3 top-0 bottom-0 w-[24px] cursor-col-resize z-20 group/resizer">
+                                            <div className="absolute right-3 top-1.5 bottom-1.5 w-[1px] group-hover/resizer:bg-blue-400 transition-colors" />
+                                        </div>
                                     </div>
 
                                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
@@ -794,6 +811,7 @@ export default function FormsPage() {
                                                     isDark={isDark} 
                                                     width={colId === 'name' ? undefined : colWidths[colId]}
                                                     flexible={colId === 'name'}
+                                                    noBorder={colId === 'name'}
                                                     onResizeStart={(e) => handleResizeStart(colId, e)}
                                                 >
                                                     {label}
@@ -807,79 +825,100 @@ export default function FormsPage() {
 
                             {/* Rows */}
                             <div className="flex flex-col">
-                                {filtered.map(f => {
-                                    const fields = Array.isArray(f.fields) ? f.fields : [];
-                                    const isSelected = selectedIds.has(f.id);
+                                <AnimatePresence mode="popLayout">
+                                    {filtered.map(f => {
+                                        const fields = Array.isArray(f.fields) ? f.fields : [];
+                                        const isSelected = selectedIds.has(f.id);
 
-                                    const menuItems = [
-                                        { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/forms/${f.id}`) },
-                                        { label: 'Open Public Link', icon: <ExternalLink size={12} />, onClick: () => window.open(window.location.origin + '/p/form/' + f.id, '_blank') },
-                                        { label: 'Copy Public Link', icon: <Link size={12} />, onClick: (e: any) => copyLink(f.id, e as any) },
-                                        { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(f.id) },
-                                        { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(f.id), separator: true },
-                                    ];
+                                        const menuItems = [
+                                            { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/forms/${f.id}`) },
+                                            { label: 'Open Public Link', icon: <ExternalLink size={12} />, onClick: () => window.open(window.location.origin + '/p/form/' + f.id, '_blank') },
+                                            { label: 'Copy Public Link', icon: <Link size={12} />, onClick: (e: any) => copyLink(f.id, e as any) },
+                                            { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(f.id) },
+                                            { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(f.id), separator: true },
+                                        ];
 
-                                    return (
-                                        <ContextMenuRow
-                                            key={f.id}
-                                            items={menuItems}
-                                            isDark={isDark}
-                                            onRowClick={() => router.push(`/forms/${f.id}`)}
-                                            className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
-                                                isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
-                                                isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
-                                            style={{ gridTemplateColumns: gridTemplate }}
-                                        >
-                                            <div className="flex items-center justify-center px-0 py-1.5 self-stretch" onClick={e => toggleRow(f.id, e)}>
-                                                <Chk checked={isSelected} isDark={isDark} />
+                                        return (
+                                            <ContextMenuRow
+                                                key={f.id}
+                                                items={menuItems}
+                                                isDark={isDark}
+                                                onRowClick={() => router.push(`/forms/${f.id}`)}
+                                                component={motion.div}
+                                                layout
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ duration: 0.15 }}
+                                                className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
+                                                    isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
+                                                    isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
+                                                style={{ gridTemplateColumns: gridTemplate }}
+                                            >
+                                                <div className="flex items-center justify-center px-0 py-1.5 self-stretch" onClick={e => toggleRow(f.id, e)}>
+                                                    <Chk checked={isSelected} isDark={isDark} />
+                                                </div>
+
+                                                {columnOrder.map(colId => {
+                                                    if (colId === 'name') return (
+                                                        <div key={colId} className="flex items-center px-4 py-1.5 font-bold truncate self-center">
+                                                            <span className={isDark ? "text-white" : "text-black"}>{f.title || 'Untitled Form'}</span>
+                                                        </div>
+                                                    );
+                                                    if (colId === 'status') return (
+                                                        <div key={colId} className="flex items-center px-4 py-1.5 self-center">
+                                                            <StatusCell
+                                                                status={f.status}
+                                                                onStatusChange={(s) => updateForm(f.id, { status: s })}
+                                                                isDark={isDark}
+                                                            />
+                                                        </div>
+                                                    );
+                                                    if (colId === 'fields') return (
+                                                        <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                            <span className="text-[12px]">{fields.length}</span>
+                                                        </div>
+                                                    );
+                                                    if (colId === 'responses') return (
+                                                        <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                            <span className="text-[12px]">{f.responses_count || 0}</span>
+                                                        </div>
+                                                    );
+                                                    if (colId === 'created') return (
+                                                        <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                            <span className="text-[12px]">{fmtDate(f.created_at)}</span>
+                                                        </div>
+                                                    );
+                                                    if (colId === 'expires') return (
+                                                        <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                            <span className="text-[12px]">{f.meta?.expirationDate ? fmtDate(f.meta.expirationDate) : '—'}</span>
+                                                        </div>
+                                                    );
+                                                    return null;
+                                                })}
+                                                <div />
+                                            </ContextMenuRow>
+                                        );
+                                    })}
+
+                                    {!isLoading && (
+                                        <motion.button 
+                                            layout 
+                                            onClick={handleNew}
+                                            className={cn("flex items-center gap-1.5 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors border-b",
+                                                isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
+                                            <div className={cn("w-4 h-4 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
+                                                <Plus size={10} />
                                             </div>
-
-                                            {columnOrder.map(colId => {
-                                                if (colId === 'name') return (
-                                                    <div key={colId} className="flex items-center px-4 py-1.5 font-bold truncate self-center">
-                                                        <span className={isDark ? "text-white" : "text-black"}>{f.title || 'Untitled Form'}</span>
-                                                    </div>
-                                                );
-                                                if (colId === 'status') return (
-                                                    <div key={colId} className="flex items-center px-4 py-1.5 self-center">
-                                                        <StatusCell
-                                                            status={f.status}
-                                                            onStatusChange={(s) => updateForm(f.id, { status: s })}
-                                                            isDark={isDark}
-                                                        />
-                                                    </div>
-                                                );
-                                                if (colId === 'fields') return (
-                                                    <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                        <span className="text-[12px]">{fields.length}</span>
-                                                    </div>
-                                                );
-                                                if (colId === 'responses') return (
-                                                    <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                        <span className="text-[12px]">{f.responses_count || 0}</span>
-                                                    </div>
-                                                );
-                                                if (colId === 'created') return (
-                                                    <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                        <span className="text-[12px]">{fmtDate(f.created_at)}</span>
-                                                    </div>
-                                                );
-                                                if (colId === 'expires') return (
-                                                    <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 self-center", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                        <span className="text-[12px]">{f.meta?.expirationDate ? fmtDate(f.meta.expirationDate) : '—'}</span>
-                                                    </div>
-                                                );
-                                                return null;
-                                            })}
-                                            <div />
-                                        </ContextMenuRow>
-                                    );
-                                })}
+                                            New Form
+                                        </motion.button>
+                                    )}
+                                </AnimatePresence>
                             </div>
                         </div>
                     </div>
                 )}
-            </div>
+                </div>
 
             {/* CreateFormModal removed */}
             <DeleteConfirmModal

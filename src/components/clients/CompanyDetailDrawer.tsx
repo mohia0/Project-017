@@ -43,7 +43,7 @@ function Field({
                             className={cn("bg-transparent outline-none text-[13px] w-full", isDark ? "text-white placeholder:text-[#444]" : "text-[#111] placeholder:text-[#ccc]")} />
                 ) : isLink && value ? (
                     <a href={value.startsWith('http') ? value : `https://${value}`} target="_blank" rel="noopener noreferrer"
-                        className="text-[13px] text-[#3b82f6] hover:underline flex items-center gap-1 group">
+                        className="text-[13px] text-primary hover:underline flex items-center gap-1 group">
                         {value}
                         <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>

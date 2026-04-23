@@ -15,6 +15,7 @@ import {
     Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
     FileJson, FileSpreadsheet, Link2, ExternalLink
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { ThreeDotMenu, ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { useRouter } from 'next/navigation';
@@ -25,6 +26,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
 import {
     DndContext,
@@ -138,22 +140,45 @@ function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth =
     minWidth?: string;
 }) {
     const ref = useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = React.useState<{ top: number; left: number } | null>(null);
+
+    React.useLayoutEffect(() => {
+        if (open && ref.current?.parentElement) {
+            const rect = ref.current.parentElement.getBoundingClientRect();
+            let left = rect.left;
+            if (align === 'center') left = rect.left + rect.width / 2;
+            if (align === 'right') left = rect.right;
+            setCoords({ top: rect.bottom + 4, left });
+        }
+    }, [open, align]);
+
     useEffect(() => {
         if (!open) return;
         const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+        const s = () => onClose();
         document.addEventListener('mousedown', h);
-        return () => document.removeEventListener('mousedown', h);
+        window.addEventListener('scroll', s, true);
+        return () => {
+            document.removeEventListener('mousedown', h);
+            window.removeEventListener('scroll', s, true);
+        };
     }, [open, onClose]);
+
     if (!open) return null;
     return (
         <div 
             ref={ref} 
-            style={{ minWidth }}
-            className={cn("absolute top-full mt-1 z-50 rounded-xl border shadow-xl overflow-hidden",
-                align === 'right' && "right-0",
-                align === 'left' && "left-0",
-                align === 'center' && "left-1/2 -translate-x-1/2",
-                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}
+            style={coords ? {
+                top: `${coords.top}px`,
+                left: `${coords.left}px`,
+                minWidth
+            } : { opacity: 0 }}
+            className={cn(
+                "fixed z-[1000] rounded-xl border shadow-xl overflow-hidden",
+                align === 'center' && "-translate-x-1/2",
+                align === 'right' && "-translate-x-full",
+                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+            )}
         >
             {children}
         </div>
@@ -188,12 +213,13 @@ function CardRow({ label, children, isDark, noBorder }: { label: string; childre
 /* ─── Config ─────────────────────────────────────────────────────── */
 
 
-function SortableHeader({ id, children, onResizeStart, isDark, width }: { 
+function SortableHeader({ id, children, onResizeStart, isDark, width, noBorder }: { 
     id: string; 
     children: React.ReactNode; 
     onResizeStart?: (e: React.MouseEvent) => void;
     isDark: boolean;
     width: number;
+    noBorder?: boolean;
 }) {
     const {
         attributes,
@@ -217,9 +243,9 @@ function SortableHeader({ id, children, onResizeStart, isDark, width }: {
             ref={setNodeRef} 
             style={style} 
             className={cn(
-                "relative px-4 py-2 flex items-center border-r select-none group/header",
-                isDragging ? "bg-blue-500/10" : "",
-                isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]"
+                "relative px-4 py-2 flex items-center select-none group/header",
+                !noBorder && (isDark ? "border-r border-[#2e2e2e]" : "border-r border-[#e0e0e0]"),
+                isDragging && "bg-blue-500/10"
             )}
         >
             <div {...attributes} {...listeners} className="flex-1 cursor-grab active:cursor-grabbing truncate">
@@ -414,7 +440,7 @@ function StatusCell({ status, onStatusChange, isDark, customStatuses = [] }: {
                 {status}
                 <ChevronDown size={10} className="opacity-50" />
             </button>
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark}>
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center">
                 <div className="py-1 min-w-[140px]">
                     {activeStatues.map(s => {
                         const sSc = getStatusColors(s.name, customStatuses);
@@ -1239,68 +1265,8 @@ export default function InvoicesPage() {
                     )}
                 </div>
             ) : view === 'table' ? (
-                <div className="flex-1 overflow-auto" style={{ backgroundColor: isDark ? '#141414' : '#f7f7f7' }}>
-                    {/* Header */}
-                    <DndContext 
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <div className={cn("grid border-b text-[11px] font-semibold tracking-tight sticky top-0 z-30",
-                            isDark ? "bg-[#1a1a1a] border-[#252525] text-[#888]" : "bg-[#f5f5f7] border-[#ebebeb] text-[#666]")}
-                            style={{ gridTemplateColumns: gridTemplate }}>
-                            
-                            <div className="relative px-0 py-2 flex items-center justify-center border-r" style={{ borderColor: isDark ? '#2e2e2e' : '#e0e0e0' }}>
-                                <div className="cursor-pointer" onClick={toggleAll}>
-                                    <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
-                                </div>
-                                <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute right-0 top-1.5 bottom-1.5 w-[1px] cursor-col-resize hover:bg-blue-400 transition-colors" />
-                            </div>
-
-                            <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                                {columnOrder.map(colId => {
-                                    let label = '';
-                                    if (colId === 'client') label = 'Client';
-                                    if (colId === 'name') label = 'Name';
-                                    if (colId === 'status') label = 'Status';
-                                    if (colId === 'issue') label = 'Issue date';
-                                    if (colId === 'due') label = 'Due date';
-                                    if (colId === 'paid') label = 'Paid date';
-
-                                    return (
-                                        <SortableHeader 
-                                            key={colId} 
-                                            id={colId} 
-                                            isDark={isDark} 
-                                            width={colWidths[colId as keyof typeof colWidths]}
-                                            onResizeStart={(e) => handleResizeStart(colId as keyof typeof colWidths, e)}
-                                        >
-                                            {label}
-                                        </SortableHeader>
-                                    );
-                                })}
-                            </SortableContext>
-
-                            <div className={cn("sticky right-0 px-4 py-2 flex items-center justify-end z-40",
-                                isDark ? "bg-[#1a1a1a]" : "bg-[#f5f5f7]")}>
-                                Total: <MoneyAmount amount={stats[statusFilter]?.amount ?? 0} currency={displayCurrency} className="ml-1" />
-                            </div>
-                        </div>
-                    </DndContext>
-
-                    {isLoading ? (
-                        <div className="flex flex-col">{Array.from({ length: 25 }).map((_, i) => (
-                            <div key={i} className={cn("grid px-0 border-b items-center h-[45px]", isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")} style={{ gridTemplateColumns: gridTemplate }}>
-                                <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
-                                <div className="px-4 flex items-center gap-1.5"><div className={cn("w-3 h-3 rounded-full animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /><div className={cn("h-3 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
-                                <div className="px-4"><div className={cn("h-3 w-10 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
-                                <div className="px-4"><div className={cn("h-5 w-16 rounded-[4px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
-                                <div className="px-4"><div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
-                                <div className="px-4"><div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
-                                <div className="px-4 flex justify-end pr-5"><div className={cn("h-3 w-12 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
-                            </div>
-                        ))}</div>
-                    ) : filtered.length === 0 ? (
+                <div className={cn("flex-1 overflow-auto p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
+                    {filtered.length === 0 && !isLoading ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-3">
                             {showArchived
                                 ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived invoices.</p>
@@ -1311,103 +1277,119 @@ export default function InvoicesPage() {
                                 </>}
                         </div>
                     ) : (
-                        <>
-                            {filtered.map(inv => {
-                                const isSelected = selectedIds.has(inv.id);
-                                const menuItems = [
+                        <div className="flex-1 min-h-0 relative">
+                            <DataTable
+                                data={filtered}
+                                columns={[
+                                    {
+                                        id: 'client',
+                                        label: 'Client',
+                                        defaultWidth: 150,
+                                        cell: (inv) => (
+                                            <div className="flex items-stretch h-full w-full">
+                                                <ClientCell currentName={inv.client_name} currentId={inv.client_id} onClientChange={(id, name) => updateInvoice(inv.id, { client_id: id, client_name: name })} isDark={isDark} variant="table" />
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        id: 'name',
+                                        label: 'Name',
+                                        defaultWidth: 150,
+                                        flexible: true,
+                                        noBorder: true,
+                                        cell: (inv) => (
+                                            <div className={cn("flex items-center px-4 py-1.5 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
+                                                <span className="truncate">{inv.title || 'New Invoice'}</span>
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        id: 'status',
+                                        label: 'Status',
+                                        defaultWidth: 120,
+                                        cell: (inv) => (
+                                            <div className="flex items-center px-4 py-1.5 h-full">
+                                                <StatusCell status={inv.status} onStatusChange={(s) => updateInvoice(inv.id, { status: s })} isDark={isDark} customStatuses={customStatuses} />
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        id: 'issue',
+                                        label: 'Issue date',
+                                        defaultWidth: 120,
+                                        cell: (inv) => (
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 leading-tight h-full", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                <span className="text-[12px]">{fmtDate(inv.issue_date)}</span>
+                                                <span className="text-[10px] opacity-50">{timeAgo(inv.issue_date)}</span>
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        id: 'due',
+                                        label: 'Due date',
+                                        defaultWidth: 120,
+                                        cell: (inv) => (
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 leading-tight h-full", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                {inv.due_date ? (
+                                                    <>
+                                                        <span className="text-[12px]">{fmtDate(inv.due_date)}</span>
+                                                        <span className="text-[10px] opacity-50">{timeAgo(inv.due_date)}</span>
+                                                    </>
+                                                ) : <span className="text-[12px]">—</span>}
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        id: 'paid',
+                                        label: 'Paid date',
+                                        defaultWidth: 120,
+                                        cell: (inv) => (
+                                            <div className={cn("flex flex-col justify-center px-4 py-1.5 leading-tight h-full", isDark ? "text-[#777]" : "text-[#888]")}>
+                                                {inv.paid_at ? (
+                                                    <>
+                                                        <span className="text-[12px]">{fmtDate(inv.paid_at)}</span>
+                                                        <span className="text-[10px] opacity-50">{timeAgo(inv.paid_at)}</span>
+                                                    </>
+                                                ) : <span className="text-[12px] opacity-20">—</span>}
+                                            </div>
+                                        )
+                                    }
+                                ]}
+                                storageKeyPrefix="invoices"
+                                selectedIds={selectedIds}
+                                onToggleAll={toggleAll}
+                                onToggleRow={toggleRow}
+                                onRowClick={(inv) => router.push(`/invoices/${inv.id}`)}
+                                isDark={isDark}
+                                isLoading={isLoading}
+                                rightHeaderWidth={60}
+                                rightHeaderSlot={<>Total: <MoneyAmount amount={stats[statusFilter]?.amount ?? 0} currency={displayCurrency} className="ml-1" /></>}
+                                rightCellSlot={(inv) => (
+                                    <div className={cn("flex items-center justify-end px-1 py-1.5 gap-1 font-semibold tabular-nums w-full",
+                                        isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                        <MoneyAmount amount={Number(inv.amount || 0)} currency={inv.meta?.currency} />
+                                    </div>
+                                )}
+                                rowMenuItems={(inv) => [
                                     { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/invoices/${inv.id}`) },
                                     { label: 'Open Public Link', icon: <Link2 size={12} />, onClick: () => window.open(window.location.origin + '/p/invoice/' + inv.id, '_blank') },
                                     { label: 'Copy Public Link', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(window.location.origin + '/p/invoice/' + inv.id); appToast.success('Link copied'); } },
                                     { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(inv.id) },
                                     { label: archivedIds.has(inv.id) ? 'Unarchive' : 'Archive', icon: archivedIds.has(inv.id) ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: () => handleArchive(inv.id), separator: true },
-                                    { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(inv.id), separator: true },
-                                ];
-                                return (
-                                    <ContextMenuRow
-                                        key={inv.id}
-                                        items={menuItems}
-                                        isDark={isDark}
-                                        onRowClick={() => router.push(`/invoices/${inv.id}`)}
-                                        className={cn("grid px-0 border-b text-[12px] cursor-pointer group transition-colors",
-                                            isDark ? "border-[#1f1f1f] hover:bg-white/[0.025]" : "bg-white border-[#f0f0f0] hover:bg-[#fafafa]",
-                                            isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
-                                        style={{ gridTemplateColumns: gridTemplate }}
-                                    >
-                                        <div className="flex items-center justify-center px-0 py-1.5 self-stretch" onClick={e => toggleRow(inv.id, e)}>
-                                            <Chk checked={isSelected} isDark={isDark} />
+                                    { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(inv.id), separator: true }
+                                ]}
+                                afterRows={!isLoading && !showArchived ? (
+                                    <button onClick={() => setCreateModalOpen(true, 'Invoice')}
+                                        className={cn("flex items-center gap-1 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors",
+                                            isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
+                                        <div className={cn("w-4 h-4 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
+                                            <Plus size={10} />
                                         </div>
-
-                                        {columnOrder.map(colId => {
-                                            if (colId === 'client') return (
-                                                <div key={colId} className={cn("flex items-stretch", isDark ? "text-[#888]" : "text-[#666]")}>
-                                                    <ClientCell
-                                                        currentName={inv.client_name}
-                                                        currentId={inv.client_id}
-                                                        onClientChange={(id, name) => updateInvoice(inv.id, { client_id: id, client_name: name })}
-                                                        isDark={isDark}
-                                                        variant="table"
-                                                    />
-                                                </div>
-                                            );
-                                            if (colId === 'name') return (
-                                                <div key={colId} className={cn("flex items-center px-4 py-1.5 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
-                                                    <span className="truncate">{inv.title || 'New Invoice'}</span>
-                                                </div>
-                                            );
-                                            if (colId === 'status') return (
-                                                <div key={colId} className="flex items-center px-4 py-1.5">
-                                                    <StatusCell status={inv.status} onStatusChange={(s) => updateInvoice(inv.id, { status: s })} isDark={isDark} customStatuses={customStatuses} />
-                                                </div>
-                                            );
-                                            if (colId === 'issue') return (
-                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                    <span className="text-[12px]">{fmtDate(inv.issue_date)}</span>
-                                                    <span className="text-[10px] opacity-50">{timeAgo(inv.issue_date)}</span>
-                                                </div>
-                                            );
-                                            if (colId === 'due') return (
-                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 leading-tight", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                    {inv.due_date ? (
-                                                        <>
-                                                            <span className="text-[12px]">{fmtDate(inv.due_date)}</span>
-                                                            <span className="text-[10px] opacity-50">{timeAgo(inv.due_date)}</span>
-                                                        </>
-                                                    ) : <span className="text-[12px]">—</span>}
-                                                </div>
-                                            );
-                                            if (colId === 'paid') return (
-                                                <div key={colId} className={cn("flex flex-col justify-center px-4 py-1.5 leading-tight animate-in fade-in slide-in-from-left-2 duration-500", isDark ? "text-[#777]" : "text-[#888]")}>
-                                                    {inv.paid_at ? (
-                                                        <>
-                                                            <span className="text-[12px]">{fmtDate(inv.paid_at)}</span>
-                                                            <span className="text-[10px] opacity-50">{timeAgo(inv.paid_at)}</span>
-                                                        </>
-                                                    ) : <span className="text-[12px] opacity-20">—</span>}
-                                                </div>
-                                            );
-                                            return null;
-                                        })}
-
-                                        <div className={cn("flex items-center justify-end px-4 py-1.5 gap-1 font-semibold tabular-nums sticky right-0 z-20 transition-colors",
-                                            isSelected ? (isDark ? "bg-[#1c1c1c]" : "bg-[#f0f7ff]") : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]"),
-                                            isDark ? "text-[#ccc]" : "text-[#333]")} onClick={e => e.stopPropagation()}>
-                                            <MoneyAmount amount={Number(inv.amount || 0)} currency={inv.meta?.currency} />
-                                        </div>
-                                    </ContextMenuRow>
-                                );
-                            })}
-                            
-                            {!isLoading && !showArchived && (
-                                <button onClick={() => setCreateModalOpen(true, 'Invoice')}
-                                    className={cn("flex items-center gap-1 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors border-b",
-                                        isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
-                                    <div className={cn("w-4 h-4 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
-                                        <Plus size={10} />
-                                    </div>
-                                    <span>Create invoice</span>
-                                </button>
-                            )}
-                        </>
+                                        <span>Create invoice</span>
+                                    </button>
+                                ) : undefined}
+                            />
+                        </div>
                     )}
                 </div>
             ) : (
