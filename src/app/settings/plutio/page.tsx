@@ -154,18 +154,24 @@ export default function PlutioSettingsPage() {
                                     <div>
                                         <h4 className="text-[15px] font-bold">Copy your Webhook URL</h4>
                                         <p className={cn("text-xs mt-1", isDark ? "text-[#666]" : "text-[#999]")}>
-                                            Go to your Plutio dashboard → <span className="font-semibold">Settings</span> → <span className="font-semibold">Integrations</span> and paste this URL.
+                                            Go to your Plutio dashboard → <span className="font-semibold">Settings</span> → <span className="font-semibold">API</span> and paste this URL into the Webhook field.
                                         </p>
+                                        {!webhookUrl.startsWith('https') && (
+                                            <div className="mt-2 flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-500 font-medium">
+                                                <AlertCircle size={12} />
+                                                Plutio requires a public HTTPS URL. Localhost URLs will not work.
+                                            </div>
+                                        )}
                                     </div>
                                     <div className={cn(
                                         "flex items-center gap-2 p-2 rounded-[12px] border group",
                                         isDark ? "bg-black/20 border-[#252525]" : "bg-[#f9f9fb] border-[#ebebeb]"
                                     )}>
                                         <code className={cn("flex-1 text-[11px] font-mono px-2 truncate", isDark ? "text-primary" : "text-primary")}>
-                                            {webhookUrl || 'Loading URL...'}
+                                            {webhookUrl ? `${webhookUrl}?workspace_id=${activeWorkspaceId}` : 'Loading URL...'}
                                         </code>
                                         <button 
-                                            onClick={() => copyToClipboard(webhookUrl, setCopiedUrl)}
+                                            onClick={() => copyToClipboard(webhookUrl ? `${webhookUrl}?workspace_id=${activeWorkspaceId}` : '', setCopiedUrl)}
                                             className={cn(
                                                 "w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95",
                                                 isDark ? "hover:bg-white/5 text-[#555] hover:text-white" : "hover:bg-white text-[#999] hover:text-black shadow-sm"
@@ -178,53 +184,20 @@ export default function PlutioSettingsPage() {
                             </div>
                         </div>
 
-                        {/* Step 2: Webhook Secret */}
+                        {/* Advanced (Optional) */}
                         <div className={cn(
-                            "p-5 rounded-[20px] border",
-                            isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]"
+                            "p-5 rounded-[20px] border border-dashed opacity-70",
+                            isDark ? "bg-black/10 border-[#252525]" : "bg-black/[0.02] border-[#ebebeb]"
                         )}>
                             <div className="flex items-start gap-4">
                                 <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0", 
                                     isDark ? "bg-[#333] text-[#888]" : "bg-[#f0f0f0] text-[#777]")}>2</div>
-                                <div className="flex-1 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <h4 className="text-[15px] font-bold">Set Webhook Secret</h4>
-                                            <p className={cn("text-xs mt-1", isDark ? "text-[#666]" : "text-[#999]")}>
-                                                Use this secret in Plutio to sign requests and secure your integration.
-                                            </p>
-                                        </div>
-                                        <button 
-                                            onClick={generateSecret}
-                                            className={cn(
-                                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-tight transition-all active:scale-95",
-                                                isDark ? "bg-white/5 hover:bg-white/10 text-white" : "bg-black/5 hover:bg-black/10 text-black"
-                                            )}
-                                        >
-                                            <RefreshCcw size={10} />
-                                            Rotate
-                                        </button>
-                                    </div>
-                                    <div className={cn(
-                                        "flex items-center gap-2 p-2 rounded-[12px] border group",
-                                        isDark ? "bg-black/20 border-[#252525]" : "bg-[#f9f9fb] border-[#ebebeb]"
-                                    )}>
-                                        <div className="flex-1 px-2 flex items-center gap-2 min-w-0">
-                                            <ShieldCheck size={12} className="text-emerald-500" />
-                                            <code className={cn("text-[11px] font-mono truncate", isDark ? "text-[#aaa]" : "text-[#444]")}>
-                                                {plutioSettings.webhook_secret || '••••••••••••••••'}
-                                            </code>
-                                        </div>
-                                        <button 
-                                            onClick={() => copyToClipboard(plutioSettings.webhook_secret, setCopiedSecret)}
-                                            className={cn(
-                                                "w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-95",
-                                                isDark ? "hover:bg-white/5 text-[#555] hover:text-white" : "hover:bg-white text-[#999] hover:text-black shadow-sm"
-                                            )}
-                                        >
-                                            {copiedSecret ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                                        </button>
-                                    </div>
+                                <div className="flex-1">
+                                     <h4 className="text-[13px] font-bold">Advanced: Security (Optional)</h4>
+                                     <p className={cn("text-[11px] mt-1 pr-4", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                                         If you use the standalone **Webhooks** section in Plutio, you can add a custom header `x-plutio-secret` with the value:
+                                         <span className="font-mono ml-2 text-primary">{plutioSettings.webhook_secret}</span>
+                                     </p>
                                 </div>
                             </div>
                         </div>

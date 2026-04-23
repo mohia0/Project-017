@@ -21,21 +21,42 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Config not found' }, { status: 500 });
         }
 
-        // 2. Identify the correct workspace by verifying the secret header
-        let activeWorkspaceId = null;
+        // 2. Identify the correct workspace
+        const { searchParams } = new URL(req.url);
+        const queryWorkspaceId = searchParams.get('workspace_id');
+        let activeWorkspaceId = queryWorkspaceId;
         let payload = null;
 
-        for (const entry of allSettings) {
-            const settings = entry.settings as any;
-            if (!settings.enabled || !settings.webhook_secret) continue;
+        // If workspace_id is in query, we can find the settings for it
+        if (activeWorkspaceId) {
+            const { data: entry, error: entryError } = await supabaseService
+                .from('workspace_tool_settings')
+                .select('settings')
+                .eq('workspace_id', activeWorkspaceId)
+                .eq('tool', 'plutio')
+                .single();
 
-            // Plutio doesn't have system signatures, we use a custom header e.g. x-plutio-secret
-            const headerSecret = req.headers.get('x-plutio-secret');
-
-            if (headerSecret === settings.webhook_secret) {
-                activeWorkspaceId = entry.workspace_id;
+            if (!entryError && entry) {
+                const settings = entry.settings as any;
+                // Optional secret check if they managed to set it
+                const headerSecret = req.headers.get('x-plutio-secret');
+                if (settings.webhook_secret && headerSecret && headerSecret !== settings.webhook_secret) {
+                    return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
+                }
                 payload = JSON.parse(bodyText);
-                break;
+            }
+        }
+
+        // If still no workspace/payload, try the header-based search (legacy/advanced)
+        if (!payload) {
+            for (const entry of allSettings) {
+                const settings = entry.settings as any;
+                const headerSecret = req.headers.get('x-plutio-secret');
+                if (settings.enabled && settings.webhook_secret && headerSecret === settings.webhook_secret) {
+                    activeWorkspaceId = entry.workspace_id;
+                    payload = JSON.parse(bodyText);
+                    break;
+                }
             }
         }
 
