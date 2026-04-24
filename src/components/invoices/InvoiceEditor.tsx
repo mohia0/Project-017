@@ -81,6 +81,9 @@ interface BlockData {
     hideQty?: boolean;
     url?: string;
     backgroundColor?: string;
+    // section spacing
+    paddingTop?: number;
+    paddingBottom?: number;
 }
 
 interface InvoiceMeta {
@@ -1672,6 +1675,8 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     onDuplicate?: () => void;
+    onPaddingTopChange?: (value: number | undefined) => void;
+    onPaddingBottomChange?: (value: number | undefined) => void;
     onSaveAsTemplate?: (id: string) => void;
 }) {
     const { setNodeRef, transform, transition } = useSortable({ id: block.id });
@@ -1685,6 +1690,12 @@ function SortableBlock({ block, isDark, isPreview, updateBlock, removeBlock, add
             isLast={isLast}
             backgroundColor={block.backgroundColor}
             onBackgroundColorChange={(color) => updateBlock(block.id, { backgroundColor: color })}
+            paddingTop={block.paddingTop}
+            paddingBottom={block.paddingBottom}
+            globalMarginTop={meta.design?.marginTop ?? 0}
+            globalMarginBottom={meta.design?.marginBottom ?? 0}
+            onPaddingTopChange={(paddingTop) => updateBlock(block.id, { paddingTop })}
+            onPaddingBottomChange={(paddingBottom) => updateBlock(block.id, { paddingBottom })}
             onDuplicate={onDuplicate}
             onMoveUp={onMoveUp}
             onMoveDown={onMoveDown}

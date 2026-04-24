@@ -3,7 +3,7 @@
 import React, { ReactNode, useState, useRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2, Copy, Palette, X, LayoutPanelTop, ChevronUp, ChevronDown } from 'lucide-react';
+import { GripVertical, Trash2, Copy, Palette, X, LayoutPanelTop, ChevronUp, ChevronDown, ArrowUpDown, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { ColorisInput } from '@/components/ui/ColorisInput';
@@ -22,6 +22,12 @@ interface SectionBlockWrapperProps {
     isLast?: boolean;
     backgroundColor?: string;
     onBackgroundColorChange?: (color: string) => void;
+    paddingTop?: number;
+    paddingBottom?: number;
+    globalMarginTop?: number;
+    globalMarginBottom?: number;
+    onPaddingTopChange?: (value: number | undefined) => void;
+    onPaddingBottomChange?: (value: number | undefined) => void;
     onSaveAsTemplate?: (id: string) => void;
 }
 
@@ -54,6 +60,12 @@ export function SectionBlockWrapper({
     isLast = false,
     backgroundColor,
     onBackgroundColorChange,
+    paddingTop,
+    paddingBottom,
+    globalMarginTop = 0,
+    globalMarginBottom = 0,
+    onPaddingTopChange,
+    onPaddingBottomChange,
     onSaveAsTemplate,
 }: SectionBlockWrapperProps) {
     const { theme } = useUIStore();
@@ -64,6 +76,8 @@ export function SectionBlockWrapper({
     const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
     const deleteResetTimerRef = useRef<NodeJS.Timeout | null>(null);
     const paletteRef = useRef<HTMLDivElement>(null);
+    const spacingRef = useRef<HTMLDivElement>(null);
+    const [showSpacing, setShowSpacing] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
@@ -76,12 +90,15 @@ export function SectionBlockWrapper({
 
     const handleMouseLeave = () => {
         hoverTimerRef.current = setTimeout(() => {
-            if (!showPalette) {
+            if (!showPalette && !showSpacing) {
                 setHovered(false);
                 setIsConfirmingDelete(false);
             }
         }, 150); // Small delay to allow crossing the gap
     };
+
+    const currentPaddingTop = paddingTop !== undefined ? paddingTop : globalMarginTop;
+    const currentPaddingBottom = paddingBottom !== undefined ? paddingBottom : globalMarginBottom;
 
     // The section bg colour — all blocks use current document default (var(--document-bg)); only change when user picks a color
     const sectionBg = backgroundColor || 'var(--document-bg, #ffffff)';
@@ -95,23 +112,26 @@ export function SectionBlockWrapper({
         position: 'relative',
     };
 
-    // Close palette on outside click
+    // Close palette/spacing on outside click
     React.useEffect(() => {
-        if (!showPalette) return;
         const handler = (e: MouseEvent) => {
-            if (paletteRef.current && !paletteRef.current.contains(e.target as Node)) {
+            if (showPalette && paletteRef.current && !paletteRef.current.contains(e.target as Node)) {
                 // Prevent closing if the click is inside the ColorisInput portal
                 const portal = document.getElementById('color-picker-portal-content');
                 if (portal && portal.contains(e.target as Node)) {
                     return;
                 }
                 setShowPalette(false);
-                setHovered(false);
+                if (!showSpacing) setHovered(false);
+            }
+            if (showSpacing && spacingRef.current && !spacingRef.current.contains(e.target as Node)) {
+                setShowSpacing(false);
+                if (!showPalette) setHovered(false);
             }
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
-    }, [showPalette]);
+    }, [showPalette, showSpacing]);
 
     // The full-bleed background layer — extends horizontally beyond document padding (px-12 = 3rem = 48px)
     const bgLayerStyle: React.CSSProperties = {
@@ -131,8 +151,8 @@ export function SectionBlockWrapper({
         return (
             <div
                 style={{
-                    paddingTop: 'var(--block-margin-top)',
-                    paddingBottom: 'var(--block-margin-bottom)',
+                    paddingTop: currentPaddingTop,
+                    paddingBottom: currentPaddingBottom,
                     position: 'relative',
                 }}
             >
@@ -171,11 +191,11 @@ export function SectionBlockWrapper({
                 }}
             />
 
-            {/* Spacing from CSS variable */}
+            {/* Spacing from CSS variable or block local setting */}
             <div
                 style={{
-                    paddingTop: 'var(--block-margin-top)',
-                    paddingBottom: 'var(--block-margin-bottom)',
+                    paddingTop: currentPaddingTop,
+                    paddingBottom: currentPaddingBottom,
                     position: 'relative',
                 }}
             >
@@ -183,7 +203,7 @@ export function SectionBlockWrapper({
                 {hovered && (
                     <div
                         className={cn(
-                            'absolute right-0 flex items-center gap-0 z-[9990]',
+                            'absolute right-0 flex items-center gap-0.5 z-[9990]',
                             'rounded-lg border px-1.5 py-0.5 transition-all animate-in fade-in zoom-in-95 duration-200',
                             isDark
                                 ? 'bg-[#1a1a1a] border-white/[0.1] text-[#999]'
@@ -195,32 +215,32 @@ export function SectionBlockWrapper({
                     >
                         {/* Move Up/Down buttons */}
                         <div className="flex items-center gap-0.5">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onMoveUp?.();
-                                }}
-                                disabled={isFirst}
-                                className={cn(
-                                    "p-0.5 rounded transition-all",
-                                    isFirst ? "opacity-20 cursor-not-allowed" : isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
-                                )}
-                            >
-                                <ChevronUp size={12} strokeWidth={3} />
-                            </button>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onMoveDown?.();
-                                }}
-                                disabled={isLast}
-                                className={cn(
-                                    "p-1 rounded transition-all",
-                                    isLast ? "opacity-20 cursor-not-allowed" : isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
-                                )}
-                            >
-                                <ChevronDown size={12} strokeWidth={3} />
-                            </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onMoveUp?.();
+                                    }}
+                                    disabled={isFirst}
+                                    className={cn(
+                                        "px-1.5 py-1 rounded-md transition-all min-w-[28px] flex items-center justify-center",
+                                        isFirst ? "opacity-20 cursor-not-allowed" : isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
+                                    )}
+                                >
+                                    <ChevronUp size={12} strokeWidth={3} />
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onMoveDown?.();
+                                    }}
+                                    disabled={isLast}
+                                    className={cn(
+                                        "px-1.5 py-1 rounded-md transition-all min-w-[28px] flex items-center justify-center",
+                                        isLast ? "opacity-20 cursor-not-allowed" : isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
+                                    )}
+                                >
+                                    <ChevronDown size={12} strokeWidth={3} />
+                                </button>
                         </div>
 
                         <span className="w-px h-3 bg-white/10 mx-1" />
@@ -228,11 +248,14 @@ export function SectionBlockWrapper({
                         {/* Section background colour picker */}
                         {onBackgroundColorChange && (
                             <div className="relative" ref={paletteRef}>
-                                <Tooltip content="Section Style" side={isFirst ? "bottom" : "top"}>
+                                <Tooltip content="Section Color" side={isFirst ? "bottom" : "top"}>
                                     <button
-                                        onClick={() => setShowPalette(s => !s)}
+                                        onClick={() => setShowPalette(s => {
+                                            if (!s) setShowSpacing(false);
+                                            return !s;
+                                        })}
                                         className={cn(
-                                            'p-1 rounded-md transition-all flex items-center gap-1',
+                                            'px-1.5 py-1 rounded-md transition-all flex items-center gap-1.5 min-w-[28px] justify-center',
                                             isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
                                             showPalette && (isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-black'),
                                         )}
@@ -292,24 +315,95 @@ export function SectionBlockWrapper({
                             </div>
                         )}
 
-                        <Tooltip content="Duplicate Section" side={isFirst ? "bottom" : "top"}>
-                            <button
-                                onClick={() => onDuplicate?.(id)}
-                                className={cn(
-                                    'p-1 rounded-md transition-all',
-                                    isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
+                        {/* Section Spacing */}
+                        {(onPaddingTopChange || onPaddingBottomChange) && (
+                            <div className="relative" ref={spacingRef}>
+                                <Tooltip content="Section Spacing" side={isFirst ? "bottom" : "top"}>
+                                    <button
+                                        onClick={() => setShowSpacing(s => {
+                                            if (!s) setShowPalette(false);
+                                            return !s;
+                                        })}
+                                        className={cn(
+                                            'px-1.5 py-1 rounded-md transition-all flex items-center gap-1 min-w-[28px] justify-center',
+                                            isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
+                                            showSpacing && (isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-black'),
+                                        )}
+                                    >
+                                        <ArrowUpDown size={13} />
+                                    </button>
+                                </Tooltip>
+
+                                {showSpacing && (
+                                    <div className={cn(
+                                        'absolute right-0 top-full mt-2 rounded-xl border shadow-xl z-[200] p-3 min-w-[200px]',
+                                        isDark ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-[#e8e8e8]',
+                                    )}>
+                                        <p className={cn('text-[9px] uppercase tracking-widest font-bold mb-3 px-0.5', isDark ? 'text-[#555]' : 'text-[#bbb]')}>
+                                            Block Spacing
+                                        </p>
+                                        
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between px-0.5">
+                                                    <span className={cn("text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Top Padding</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className={cn("text-[9.5px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{currentPaddingTop}px</span>
+                                                        {paddingTop !== undefined && (
+                                                            <button
+                                                                onClick={() => onPaddingTopChange?.(undefined)}
+                                                                title="Reset to global"
+                                                                className={cn("rounded transition-all", isDark ? "text-[#444] hover:text-[#888]" : "text-[#ccc] hover:text-[#888]")}
+                                                            >
+                                                                <RotateCcw size={9} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <input 
+                                                    type="range" min="0" max="150" step="4" 
+                                                    value={currentPaddingTop} 
+                                                    onChange={e => onPaddingTopChange?.(Number(e.target.value))}
+                                                    className="w-full cursor-pointer" 
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between px-0.5">
+                                                    <span className={cn("text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Bottom Padding</span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className={cn("text-[9.5px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{currentPaddingBottom}px</span>
+                                                        {paddingBottom !== undefined && (
+                                                            <button
+                                                                onClick={() => onPaddingBottomChange?.(undefined)}
+                                                                title="Reset to global"
+                                                                className={cn("rounded transition-all", isDark ? "text-[#444] hover:text-[#888]" : "text-[#ccc] hover:text-[#888]")}
+                                                            >
+                                                                <RotateCcw size={9} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <input 
+                                                    type="range" min="0" max="150" step="4" 
+                                                    value={currentPaddingBottom} 
+                                                    onChange={e => onPaddingBottomChange?.(Number(e.target.value))}
+                                                    className="w-full cursor-pointer" 
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
-                            >
-                                <Copy size={13} />
-                            </button>
-                        </Tooltip>
+                            </div>
+                        )}
+
+
 
                         {onSaveAsTemplate && (
                             <Tooltip content="Save as Template" side={isFirst ? "bottom" : "top"}>
                                 <button
                                     onClick={() => onSaveAsTemplate(id)}
                                     className={cn(
-                                        'p-1 rounded-md transition-all',
+                                        'px-1.5 py-1 rounded-md transition-all min-w-[28px] flex items-center justify-center',
                                         isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
                                     )}
                                 >
@@ -317,6 +411,18 @@ export function SectionBlockWrapper({
                                 </button>
                             </Tooltip>
                         )}
+                        
+                        <Tooltip content="Duplicate Section" side={isFirst ? "bottom" : "top"}>
+                            <button
+                                onClick={() => onDuplicate?.(id)}
+                                className={cn(
+                                    'px-1.5 py-1 rounded-md transition-all min-w-[28px] flex items-center justify-center',
+                                    isDark ? 'hover:bg-white/10 text-white/40 hover:text-white' : 'hover:bg-black/5 text-black/40 hover:text-black',
+                                )}
+                            >
+                                <Copy size={13} />
+                            </button>
+                        </Tooltip>
                         <button
                             onClick={() => {
                                 if (isConfirmingDelete) {

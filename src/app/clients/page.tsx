@@ -24,6 +24,10 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { ExternalLink, Mail as MailIcon, Phone as PhoneIcon } from 'lucide-react';
+import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/FilterPanel';
+import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterUtils';
+import { useSavedFilters } from '@/hooks/useSavedFilters';
+import { usePersistentState } from '@/hooks/usePersistentState';
 
 type Tab = 'people' | 'companies';
 type ViewMode = 'grid' | 'list';
@@ -143,18 +147,58 @@ export default function ClientsPage() {
     const { companies, fetchCompanies, isLoading: isCompaniesLoading } = useCompanyStore();
     const { theme, openRightPanel, rightPanel, setImportModalOpen, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const isDark = theme === 'dark';
-    const [tab, setTab] = useState<Tab>('people');
+    const [tab, setTab] = usePersistentState<Tab>('clients_filter_tab', 'people');
     const view = (pageViews['clients'] as ViewMode) || 'grid';
     const setView = (v: ViewMode) => setPageView('clients', v);
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = usePersistentState('clients_filter_search', '');
     const [importExportOpen, setImportExportOpen] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
-    const [orderBy, setOrderBy] = useState<'name' | 'name-desc' | 'recent' | 'oldest'>('recent');
+    const [orderBy, setOrderBy] = usePersistentState<'name' | 'name-desc' | 'recent' | 'oldest'>('clients_filter_order', 'recent');
     const [orderOpen, setOrderOpen] = useState(false);
+    const [filterOpen, setFilterOpen] = useState(false);
+
+    /* ── Advanced Filters ── */
+    const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false);
+    const [peopleFilterRows, setPeopleFilterRows] = usePersistentState<FilterRow[]>('clients_people_filter_rows', []);
+    const [companyFilterRows, setCompanyFilterRows] = usePersistentState<FilterRow[]>('clients_companies_filter_rows', []);
+    const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
+
+    const filterRows = tab === 'people' ? peopleFilterRows : companyFilterRows;
+    const setFilterRows = tab === 'people' ? setPeopleFilterRows : setCompanyFilterRows;
+    const { saved: savedPeopleFilters, save: savePeopleFilter, remove: deletePeopleFilter } = useSavedFilters('clients_people');
+    const { saved: savedCompanyFilters, save: saveCompanyFilter, remove: deleteCompanyFilter } = useSavedFilters('clients_companies');
+
+    const savedFilters = tab === 'people' ? savedPeopleFilters : savedCompanyFilters;
+    const saveFilter = tab === 'people' ? savePeopleFilter : saveCompanyFilter;
+    const deleteSavedFilter = tab === 'people' ? deletePeopleFilter : deleteCompanyFilter;
+
+
+
+    const CLIENT_FILTER_FIELDS = useMemo<FilterField[]>(() => [
+        { key: 'contact_person', label: 'Name', type: 'text' },
+        { key: 'company_name', label: 'Company', type: 'enum', options: Array.from(new Set(companies.map(c => c.name).filter(Boolean))).sort() },
+        { key: 'email', label: 'Email', type: 'text' },
+        { key: 'phone', label: 'Phone', type: 'text' },
+        { key: 'address', label: 'Address', type: 'text' },
+        { key: 'tax_number', label: 'Tax number', type: 'text' },
+        { key: 'created_at', label: 'Date added', type: 'date' },
+    ], [companies]);
+
+    const COMPANY_FILTER_FIELDS = useMemo<FilterField[]>(() => [
+        { key: 'name', label: 'Name', type: 'text' },
+        { key: 'industry', label: 'Industry', type: 'text' },
+        { key: 'email', label: 'Email', type: 'text' },
+        { key: 'phone', label: 'Phone', type: 'text' },
+        { key: 'website', label: 'Website', type: 'text' },
+        { key: 'address', label: 'Address', type: 'text' },
+        { key: 'created_at', label: 'Date added', type: 'date' },
+    ], []);
+
+    const filterFields = tab === 'people' ? CLIENT_FILTER_FIELDS : COMPANY_FILTER_FIELDS;
 
     useEffect(() => { fetchClients(); fetchCompanies(); }, [fetchClients, fetchCompanies]);
 
@@ -305,6 +349,8 @@ export default function ClientsPage() {
             c.email?.toLowerCase().includes(search.toLowerCase())
         );
 
+        items = applyFilters(items, filterRows, CLIENT_FILTER_FIELDS);
+
         if (orderBy === 'name') {
             items = [...items].sort((a, b) => (a.contact_person || '').localeCompare(b.contact_person || ''));
         } else if (orderBy === 'name-desc') {
@@ -317,7 +363,7 @@ export default function ClientsPage() {
         }
 
         return items;
-    }, [clients, search, orderBy]);
+    }, [clients, search, filterRows, CLIENT_FILTER_FIELDS, orderBy]);
 
     const filteredCompanies = useMemo(() => {
         let items = companies.filter(c =>
@@ -325,6 +371,8 @@ export default function ClientsPage() {
             c.industry?.toLowerCase().includes(search.toLowerCase()) ||
             c.email?.toLowerCase().includes(search.toLowerCase())
         );
+
+        items = applyFilters(items, filterRows, COMPANY_FILTER_FIELDS);
 
         if (orderBy === 'name') {
             items = [...items].sort((a, b) => a.name.localeCompare(b.name));
@@ -338,7 +386,7 @@ export default function ClientsPage() {
         }
 
         return items;
-    }, [companies, search, orderBy]);
+    }, [companies, search, filterRows, COMPANY_FILTER_FIELDS, orderBy]);
 
     /* ── Theme tokens ── */
     const pageBg     = isDark ? 'bg-[#141414]' : 'bg-white';
@@ -403,6 +451,60 @@ export default function ClientsPage() {
                 <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
                 <div className="flex items-center gap-1">
+                    {/* Advanced filter */}
+                    <div className="relative">
+                        <FilterButton
+                            activeCount={filterRows.filter(r => r.field && r.value != null && r.value !== '' && !(Array.isArray(r.value) && r.value.length === 0)).length}
+                            onClick={() => setFilterOpen(v => !v)}
+                            isDark={isDark}
+                        />
+                        
+                        <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark} align="left">
+                            <div className="py-1 min-w-[160px]">
+                                <div 
+                                    onClick={() => { setFilterOpen(false); setAdvancedFilterOpen(true); }}
+                                    className={cn("flex items-center gap-2 px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-black/5", isDark ? "hover:bg-white/5" : "")}>
+                                    <Plus size={11} className="opacity-40" />
+                                    <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
+                                </div>
+                                
+                                {savedFilters.length > 0 && (
+                                    <>
+                                        <div className={cn("h-px my-1", isDark ? "bg-[#252525]" : "bg-[#efefef]")} />
+                                        <SavedFilterPills
+                                            saved={savedFilters}
+                                            activeId={activeFilterId}
+                                            onLoad={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setFilterOpen(false); }}
+                                            onDelete={(id) => { deleteSavedFilter(id); if (activeFilterId === id) { setActiveFilterId(null); } }}
+                                            isDark={isDark}
+                                        />
+                                    </>
+                                )}
+
+                                
+                            </div>
+                        </Dropdown>
+
+                        {advancedFilterOpen && (
+                            <FilterPanel
+                                fields={filterFields}
+                                rows={filterRows}
+                                savedFilters={savedFilters}
+                                onChange={setFilterRows}
+                                onApply={(rows) => { setFilterRows(rows); }}
+                                onSave={(name, rows) => { saveFilter(name, rows); setFilterRows(rows); }}
+                                onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }}
+                                onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }}
+                                isDark={isDark}
+                                onClose={() => setAdvancedFilterOpen(false)}
+                            />
+                        )}
+                    </div>
+
+                    {savedFilters.length > 0 && (
+                        <div className={cn("w-[1px] h-4 mx-1.5", isDark ? "bg-[#2e2e2e]" : "bg-[#e0e0e0]")} />
+                    )}
+
                     <div className="relative">
                     <TbBtn 
                         label="Order by"

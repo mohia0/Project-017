@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LayoutTemplate, Plus, Trash2, Calendar, FileText as ProposalIcon, Receipt as InvoiceIcon, RotateCcw, BookmarkCheck, ClipboardList, Clock, Briefcase, LayoutPanelTop, Zap, Search, PanelTop, Table, PenLine, FileText, Tag } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { usePersistentState } from '@/hooks/usePersistentState';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { appToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -29,12 +30,12 @@ export default function TemplatesPage() {
     const { addScheduler } = useSchedulerStore();
     
     const [isCreating, setIsCreating] = useState(false);
-    const [activeTool, setActiveTool] = useState<'proposal' | 'invoice' | 'form' | 'scheduler' | 'project'>('proposal');
+    const [activeTool, setActiveTool] = usePersistentState<'proposal' | 'invoice' | 'form' | 'scheduler' | 'project'>('templates_filter_active_tool', 'proposal');
     const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
-    const [activeCategory, setActiveCategory] = useState<'document' | 'section' | 'snippet'>('document');
-    const [sectionSearch, setSectionSearch] = useState('');
-    const [sectionTypeFilter, setSectionTypeFilter] = useState('all');
-    const [snippetSearch, setSnippetSearch] = useState('');
+    const [activeCategory, setActiveCategory] = usePersistentState<'document' | 'section' | 'snippet'>('templates_filter_active_category', 'document');
+    const [sectionSearch, setSectionSearch] = usePersistentState('templates_filter_section_search', '');
+    const [sectionTypeFilter, setSectionTypeFilter] = usePersistentState('templates_filter_section_type_filter', 'all');
+    const [snippetSearch, setSnippetSearch] = usePersistentState('templates_filter_snippet_search', '');
     const [sectionToDelete, setSectionToDelete] = useState<string | null>(null);
     const [snippetToDelete, setSnippetToDelete] = useState<string | null>(null);
 

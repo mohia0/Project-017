@@ -252,8 +252,8 @@ export function DataTable<T extends { id: string }>({
                         </SortableContext>
 
                         {(rightHeaderSlot || rightCellSlot) && (
-                            <div className={cn("relative px-4 py-2 flex items-center justify-end font-semibold sticky right-0 z-40 group/header border-l border-transparent", 
-                                isDark ? "bg-[#1a1a1a] border-[#252525] hover:border-[#2e2e2e]" : "bg-[#fafafa] border-[#ebebeb] hover:border-[#e0e0e0]")}
+                            <div className={cn("relative px-4 py-2 flex items-center justify-end font-semibold sticky right-0 z-40 group/header", 
+                                isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]")}
                                 style={{ width: colWidths.right_slot }}
                             >
                                 {columnOrder.length > 0 && (

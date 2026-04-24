@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/store/useUIStore';
 import { useHookStore, Hook, HookStatus } from '@/store/useHookStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { SettingsToggle } from '@/components/settings/SettingsField';
 import { cn } from '@/lib/utils';
 import {
@@ -23,6 +24,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import { ContextMenuRow } from '@/components/ui/RowContextMenu';
+import { usePersistentState } from '@/hooks/usePersistentState';
 import { 
     DndContext, 
     closestCenter, 
@@ -45,6 +47,9 @@ function fmtDate(d: string) {
     const date = new Date(d);
     return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
 }
+
+/* ─── Constants ─────────────────────────────────────────── */
+const DEFAULT_PALETTE = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316'];
 
 /* ─── Status config ─────────────────────────────────────────── */
 const STATUS_CFG: Record<HookStatus, { bg: string; text: string; border: string; dot: string }> = {
@@ -139,11 +144,57 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
           icon: <Activity size={12} />, 
           onClick: () => useHookStore.getState().updateHook(h.id, { status: h.status === 'Active' ? 'Inactive' : 'Active' }) 
         },
+        {
+            separator: true,
+            render: (onClose: () => void) => {
+                const { branding } = useSettingsStore.getState();
+                const colors = ((branding?.branding_colors && branding.branding_colors.length > 0) 
+                    ? branding.branding_colors 
+                    : DEFAULT_PALETTE).filter(c => c.toLowerCase() !== '#ffffff' && c.toLowerCase() !== '#000000');
+
+                return (
+                    <div className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-2">
+                            <span className={cn('text-[9px] font-bold uppercase tracking-[0.12em]', isDark ? 'text-[#3a3a3a]' : 'text-[#c0c0c0]')}>
+                                Hook Color
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap max-w-[170px]">
+                            {colors.map(c => (
+                                <button
+                                    key={c}
+                                    onClick={(e) => { 
+                                        e.stopPropagation();
+                                        useHookStore.getState().updateHook(h.id, { color: c }); 
+                                        onClose(); 
+                                    }}
+                                    className={cn(
+                                        'w-4 h-4 rounded-full transition-all hover:scale-110 duration-150',
+                                        h.color === c && 'ring-1 ring-offset-1 ' + (isDark ? 'ring-white/40 ring-offset-[#1c1c1c]' : 'ring-black/40 ring-offset-white')
+                                    )}
+                                    style={{ backgroundColor: c }}
+                                />
+                            ))}
+                            <button
+                                onClick={(e) => { 
+                                    e.stopPropagation();
+                                    useHookStore.getState().updateHook(h.id, { color: '#4dbf39' }); 
+                                    onClose(); 
+                                }}
+                                className={cn('w-4 h-4 rounded-full border flex items-center justify-center transition-colors', isDark ? 'border-white/10 hover:bg-white/5 text-white/40' : 'border-black/10 hover:bg-black/5 text-black/40')}
+                            >
+                                <X size={8} strokeWidth={3} />
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+        },
         { label: 'Duplicate', icon: <Copy size={12} />, onClick: async () => {
             const { duplicateHook } = useHookStore.getState();
             await duplicateHook(h.id);
             appToast.success('Duplicated', 'Hook has been duplicated successfully');
-        }},
+        }, separator: true },
         { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: onDelete, separator: true }
     ];
 
@@ -252,9 +303,9 @@ export default function HooksPage() {
 
     const view = (pageViews['hooks'] as 'table' | 'cards') || 'cards';
     const setView = (v: 'table' | 'cards') => setPageView('hooks', v);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<HookStatus | 'All'>('All');
-    const [orderBy, setOrderBy] = useState<'created_at' | 'name'>('created_at');
+    const [searchQuery, setSearchQuery] = usePersistentState('hooks_filter_search', '');
+    const [statusFilter, setStatusFilter] = usePersistentState<HookStatus | 'All'>('hooks_filter_status', 'All');
+    const [orderBy, setOrderBy] = usePersistentState<'created_at' | 'name'>('hooks_filter_order', 'created_at');
     const [orderOpen, setOrderOpen] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -571,10 +622,56 @@ export default function HooksPage() {
                                 icon: <Activity size={12} />, 
                                 onClick: () => useHookStore.getState().updateHook(h.id, { status: h.status === 'Active' ? 'Inactive' : 'Active' }) 
                             },
+                            {
+                                separator: true,
+                                render: (onClose: () => void) => {
+                                    const { branding } = useSettingsStore.getState();
+                                    const colors = ((branding?.branding_colors && branding.branding_colors.length > 0) 
+                                        ? branding.branding_colors 
+                                        : DEFAULT_PALETTE).filter(c => c.toLowerCase() !== '#ffffff' && c.toLowerCase() !== '#000000');
+
+                                    return (
+                                        <div className="px-3 py-2">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className={cn('text-[9px] font-bold uppercase tracking-[0.12em]', isDark ? 'text-[#3a3a3a]' : 'text-[#c0c0c0]')}>
+                                                    Hook Color
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 flex-wrap max-w-[170px]">
+                                                {colors.map(c => (
+                                                    <button
+                                                        key={c}
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation();
+                                                            useHookStore.getState().updateHook(h.id, { color: c }); 
+                                                            onClose(); 
+                                                        }}
+                                                        className={cn(
+                                                            'w-4 h-4 rounded-full transition-all hover:scale-110 duration-150',
+                                                            h.color === c && 'ring-1 ring-offset-1 ' + (isDark ? 'ring-white/40 ring-offset-[#1c1c1c]' : 'ring-black/40 ring-offset-white')
+                                                        )}
+                                                        style={{ backgroundColor: c }}
+                                                    />
+                                                ))}
+                                                <button
+                                                    onClick={(e) => { 
+                                                        e.stopPropagation();
+                                                        useHookStore.getState().updateHook(h.id, { color: '#4dbf39' }); 
+                                                        onClose(); 
+                                                    }}
+                                                    className={cn('w-4 h-4 rounded-full border flex items-center justify-center transition-colors', isDark ? 'border-white/10 hover:bg-white/5 text-white/40' : 'border-black/10 hover:bg-black/5 text-black/40')}
+                                                >
+                                                    <X size={8} strokeWidth={3} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                            },
                             { label: 'Duplicate', icon: <Copy size={12} />, onClick: async () => {
                                 await useHookStore.getState().duplicateHook(h.id);
                                 appToast.success('Duplicated', 'Hook duplicated successfully');
-                            }},
+                            }, separator: true },
                             { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(h.id), separator: true }
                         ]}
                     />

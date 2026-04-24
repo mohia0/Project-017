@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { usePersistentState } from '@/hooks/usePersistentState';
 import { 
     DndContext, 
     closestCenter, 
@@ -360,9 +361,9 @@ export default function FormsPage() {
 
     const view = (pageViews['forms'] as 'table' | 'cards') || 'table';
     const setView = (v: 'table' | 'cards') => setPageView('forms', v);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<FormStatus | 'All'>('All');
-    const [orderBy, setOrderBy] = useState<'created_at' | 'title'>('created_at');
+    const [searchQuery, setSearchQuery] = usePersistentState('forms_filter_search', '');
+    const [statusFilter, setStatusFilter] = usePersistentState<FormStatus | 'All'>('forms_filter_status', 'All');
+    const [orderBy, setOrderBy] = usePersistentState<'created_at' | 'title'>('forms_filter_order', 'created_at');
     const [orderOpen, setOrderOpen] = useState(false);
     const [filterOpen, setFilterOpen] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);

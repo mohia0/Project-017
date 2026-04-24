@@ -89,6 +89,9 @@ interface BlockData {
     signatureImage?: string;
     // section background
     backgroundColor?: string;
+    // section spacing
+    paddingTop?: number;
+    paddingBottom?: number;
 }
 
 interface ProposalMeta {
@@ -1781,6 +1784,12 @@ function SortableBlock({
             isLast={isLast}
             backgroundColor={block.backgroundColor}
             onBackgroundColorChange={(color) => updateBlock(block.id, { backgroundColor: color })}
+            paddingTop={block.paddingTop}
+            paddingBottom={block.paddingBottom}
+            globalMarginTop={meta.design?.marginTop ?? 0}
+            globalMarginBottom={meta.design?.marginBottom ?? 0}
+            onPaddingTopChange={(paddingTop) => updateBlock(block.id, { paddingTop })}
+            onPaddingBottomChange={(paddingBottom) => updateBlock(block.id, { paddingBottom })}
             onSaveAsTemplate={onSaveAsTemplate}
         >
             <BlockRenderer

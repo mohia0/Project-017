@@ -428,14 +428,15 @@ export default function CSVImportModal() {
                             return {
                                 workspace_id: workspaceId,
                                 contact_person: name, 
-                                company_name: ''
+                                company_name: '',
+                                email: ''
                             };
                         }
                     });
 
                     const table = createUnknownAs === 'company' ? 'companies' : 'clients';
                     const { error } = await supabase.from(table).insert(entityPayloads);
-                    if (error) console.error(`Error auto-creating ${table}:`, error);
+                    if (error) console.error(`Error auto-creating ${table}:`, error.message, error.details, error.hint);
 
                     // Refresh stores to get the newly created IDs
                     if (createUnknownAs === 'company') {

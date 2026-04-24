@@ -19,6 +19,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { ContextMenuRow } from '@/components/ui/RowContextMenu';
+import { usePersistentState } from '@/hooks/usePersistentState';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -428,15 +429,15 @@ export default function ProjectsPage() {
     const { profile: currentUser } = useSettingsStore();
     const allTasks = useMemo(() => Object.values(tasksByProject).flat(), [tasksByProject]);
 
-    const [view, setView]             = useState<'cards' | 'table'>('cards');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'All'>('All');
-    const [showArchived, setShowArchived] = useState(false);
+    const [view, setView]             = usePersistentState<'cards' | 'table'>('projects_filter_view', 'cards');
+    const [searchQuery, setSearchQuery] = usePersistentState('projects_filter_search', '');
+    const [statusFilter, setStatusFilter] = usePersistentState<ProjectStatus | 'All'>('projects_filter_status', 'All');
+    const [showArchived, setShowArchived] = usePersistentState('projects_filter_show_archived', false);
     const [archivedIds, setArchivedIds]   = useState<Set<string>>(new Set());
     const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
 // Removed showCreate state
     const [deletingId, setDeletingId]     = useState<string | null>(null);
-    const [orderBy, setOrderBy]           = useState<'created_at' | 'name' | 'deadline'>('created_at');
+    const [orderBy, setOrderBy]           = usePersistentState<'created_at' | 'name' | 'deadline'>('projects_filter_order', 'created_at');
 
     const [viewOpen, setViewOpen]         = useState(false);
     const [filterOpen, setFilterOpen]     = useState(false);

@@ -16,6 +16,7 @@ import {
     Package, Globe, ExternalLink as OpenExternal, Info,
 } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { usePersistentState } from '@/hooks/usePersistentState';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -1184,12 +1185,12 @@ export default function FilesPage() {
     const { theme, activeWorkspaceId } = useUIStore();
     const { items, setItems, isLoading, fetchFiles } = useFileStore();
     const isDark = theme === 'dark';
-    const [currentFolderId, setCurrentFolderId] = useState('root');
-    const [view, setView] = useState<ViewMode>('grid');
-    const [sortKey, setSortKey] = useState<SortKey>('name');
-    const [sortDir, setSortDir] = useState<SortDir>('asc');
-    const [filter, setFilter] = useState<FilterType>('all');
-    const [search, setSearch] = useState('');
+    const [currentFolderId, setCurrentFolderId] = usePersistentState('files_filter_folder_id', 'root');
+    const [view, setView] = usePersistentState<ViewMode>('files_filter_view', 'grid');
+    const [sortKey, setSortKey] = usePersistentState<SortKey>('files_filter_sort_key', 'name');
+    const [sortDir, setSortDir] = usePersistentState<SortDir>('files_filter_sort_dir', 'asc');
+    const [filter, setFilter] = usePersistentState<FilterType>('files_filter_type', 'all');
+    const [search, setSearch] = usePersistentState('files_filter_search', '');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(['root']));
@@ -1200,7 +1201,7 @@ export default function FilesPage() {
     const [showUpload, setShowUpload] = useState(false);
     const [history, setHistory] = useState<string[]>(['root']);
     const [histIdx, setHistIdx] = useState(0);
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = usePersistentState('files_filter_sidebar_open', true);
     const [previewItem, setPreviewItem] = useState<FileItem | null>(null);
     const [deleteWarning, setDeleteWarning] = useState<string[] | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1213,15 +1214,6 @@ export default function FilesPage() {
         fetchFiles();
     }, [activeWorkspaceId, fetchFiles]);
 
-    // Persistence: Sidebar
-    useEffect(() => {
-        const saved = localStorage.getItem('fm_sidebar_expanded');
-        if (saved !== null) setSidebarOpen(saved === 'true');
-    }, []);
-
-    useEffect(() => {
-        localStorage.setItem('fm_sidebar_expanded', sidebarOpen.toString());
-    }, [sidebarOpen]);
 
     // Click-away listener for deletingId confirmation
     useEffect(() => {

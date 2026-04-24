@@ -9,11 +9,12 @@ import { cn } from '@/lib/utils';
 /* ─── Types ──────────────────────────────────────────────────────────── */
 
 export interface ContextMenuItem {
-    label: string;
+    label?: string;
     icon?: React.ReactNode;
-    onClick: (e: React.MouseEvent | MouseEvent) => void;
+    onClick?: (e: React.MouseEvent | MouseEvent) => void;
     danger?: boolean;
     separator?: boolean; // render a divider BEFORE this item
+    render?: (onClose: () => void) => React.ReactNode;
 }
 
 interface ContextMenuProps {
@@ -84,30 +85,34 @@ export function ContextMenuPopup({ items, isDark, pos, onClose }: ContextMenuPro
                         {item.separator && (
                             <div className={cn("my-1 h-px mx-3", isDark ? "bg-[#2e2e2e]" : "bg-[#f0f0f0]")} />
                         )}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                item.onClick(e);
-                                onClose();
-                            }}
-                            className={cn(
-                                "w-full flex items-center gap-2.5 px-3.5 py-[7px] text-[12px] font-medium text-left transition-colors",
-                                item.danger
-                                    ? isDark
-                                        ? "text-red-400 hover:bg-red-500/10"
-                                        : "text-red-500 hover:bg-red-50"
-                                    : isDark
-                                        ? "text-[#ccc] hover:bg-white/[0.06]"
-                                        : "text-[#333] hover:bg-[#f5f5f5]"
-                            )}
-                        >
-                            {item.icon && (
-                                <span className={cn("shrink-0", item.danger ? "" : "opacity-50")}>
-                                    {item.icon}
-                                </span>
-                            )}
-                            {item.label}
-                        </button>
+                        {item.render ? (
+                            item.render(onClose)
+                        ) : (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    item.onClick?.(e);
+                                    onClose();
+                                }}
+                                className={cn(
+                                    "w-full flex items-center gap-2.5 px-3.5 py-[7px] text-[12px] font-medium text-left transition-colors",
+                                    item.danger
+                                        ? isDark
+                                            ? "text-red-400 hover:bg-red-500/10"
+                                            : "text-red-500 hover:bg-red-50"
+                                        : isDark
+                                            ? "text-[#ccc] hover:bg-white/[0.06]"
+                                            : "text-[#333] hover:bg-[#f5f5f5]"
+                                )}
+                            >
+                                {item.icon && (
+                                    <span className={cn("shrink-0", item.danger ? "" : "opacity-50")}>
+                                        {item.icon}
+                                    </span>
+                                )}
+                                {item.label}
+                            </button>
+                        )}
                     </React.Fragment>
                 ))}
             </div>

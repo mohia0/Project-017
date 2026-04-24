@@ -25,6 +25,10 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { Avatar } from '@/components/ui/Avatar';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/FilterPanel';
+import { usePersistentState } from '@/hooks/usePersistentState';
+import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterUtils';
+import { useSavedFilters } from '@/hooks/useSavedFilters';
 
 /* ─── Status config ─────────────────────────────────────────── */
 const STATUS_CFG: Record<SchedulerStatus, { bg: string; text: string; border: string; dot: string }> = {
@@ -485,13 +489,25 @@ export default function SchedulersPage() {
 
     const view = (pageViews['schedulers'] as 'table' | 'cards') || 'table';
     const setView = (v: 'table' | 'cards') => setPageView('schedulers', v);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<SchedulerStatus | 'All'>('All');
+    const [searchQuery, setSearchQuery] = usePersistentState('schedulers_filter_search', '');
+    const [statusFilter, setStatusFilter] = usePersistentState<SchedulerStatus | 'All'>('schedulers_filter_status', 'All');
     const [filterOpen, setFilterOpen] = useState(false);
     const [orderOpen, setOrderOpen] = useState(false);
-    const [orderBy, setOrderBy] = useState<'created_at' | 'title'>('created_at');
+    const [orderBy, setOrderBy] = usePersistentState<'created_at' | 'title'>('schedulers_filter_order', 'created_at');
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    /* ── Advanced Filters ── */
+    const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false);
+    const [filterRows, setFilterRows] = usePersistentState<FilterRow[]>('schedulers_filter_rows', []);
+    const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
+    const { saved: savedFilters, save: saveFilter, remove: deleteSavedFilter } = useSavedFilters('schedulers');
+
+    const SCHEDULER_FILTER_FIELDS = useMemo<FilterField[]>(() => [
+        { key: 'status',     label: 'Status',       type: 'enum', options: ['Active', 'Draft', 'Inactive'] },
+        { key: 'title',      label: 'Title',        type: 'text' },
+        { key: 'created_at', label: 'Date created', type: 'date' },
+    ], []);
 
     useEffect(() => { fetchSchedulers(); }, [fetchSchedulers]);
 
@@ -507,10 +523,14 @@ export default function SchedulersPage() {
             }
             return true;
         });
+
+        // Apply advanced filters
+        r = applyFilters(r, filterRows, SCHEDULER_FILTER_FIELDS);
+
         if (orderBy === 'title') r = [...r].sort((a, b) => a.title.localeCompare(b.title));
         else r = [...r].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         return r;
-    }, [schedulers, statusFilter, searchQuery, orderBy]);
+    }, [schedulers, statusFilter, searchQuery, filterRows, SCHEDULER_FILTER_FIELDS, orderBy]);
 
     const handleNew = () => setCreateModalOpen(true, 'Scheduler');
 
@@ -629,7 +649,8 @@ export default function SchedulersPage() {
                             <SlidersHorizontal size={14} />
                         </button>
                         <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
-                            <div className={cn("px-3.5 py-2.5 border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>STATUS</div>
+                            <div className={cn("px-3.5 py-2.5 border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>FILTER</div>
+
                             <div className="py-1">
                                 {STATUSES.map(s => (
                                     <button key={s} onClick={() => { setStatusFilter(s); setFilterOpen(false); }}

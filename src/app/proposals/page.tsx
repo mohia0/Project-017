@@ -27,6 +27,10 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/FilterPanel';
+import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterUtils';
+import { useSavedFilters } from '@/hooks/useSavedFilters';
+import { usePersistentState } from '@/hooks/usePersistentState';
 
 /* ─── Config ─────────────────────────────────────────────────────── */
 const STATUS_ORDER: ProposalStatus[] = ['Draft', 'Pending', 'Accepted', 'Overdue', 'Declined', 'Cancelled'];
@@ -624,6 +628,8 @@ export default function ProposalsPage() {
     const { proposals, fetchProposals, updateProposal, addProposal, deleteProposal, isLoading } = useProposalStore();
     const { statuses, fetchStatuses } = useSettingsStore();
 
+    const { clients } = useClientStore();
+
     useEffect(() => {
         if (activeWorkspaceId) fetchStatuses(activeWorkspaceId);
     }, [activeWorkspaceId]);
@@ -670,8 +676,8 @@ export default function ProposalsPage() {
         setPendingStatusChange(null);
     };
     /* ... existing state ... */
-    const [statusFilter, setStatusFilter] = useState<string | 'All'>('All');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = usePersistentState<string | 'All'>('proposals_filter_status', 'All');
+    const [searchQuery, setSearchQuery] = usePersistentState('proposals_filter_search', '');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showArchived, setShowArchived] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -679,10 +685,24 @@ export default function ProposalsPage() {
     const [filterOpen, setFilterOpen] = useState(false);
     const [orderOpen, setOrderOpen] = useState(false);
     const [viewOpen, setViewOpen] = useState(false);
-    const [dateFilter, setDateFilter] = useState<'all' | 'month' | 'year'>('year');
-    const [orderBy, setOrderBy] = useState<'created_at' | 'issue_date' | 'amount'>('created_at');
+    const [dateFilter, setDateFilter] = usePersistentState<'all' | 'month' | 'year'>('proposals_filter_date', 'all');
+    const [orderBy, setOrderBy] = usePersistentState<'created_at' | 'issue_date' | 'amount'>('proposals_filter_order', 'created_at');
     /* Local archive state (optimistic) */
     const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
+
+    /* ── Advanced Filters ── */
+    const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false);
+    const [filterRows, setFilterRows] = usePersistentState<FilterRow[]>('proposals_filter_rows', []);
+    const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
+    const { saved: savedFilters, save: saveFilter, remove: deleteSavedFilter } = useSavedFilters('proposals');
+
+    const PROPOSAL_FILTER_FIELDS = useMemo<FilterField[]>(() => [
+        { key: 'status',      label: 'Status',          type: 'enum',   options: activeStatues.map(s => s.name) },
+        { key: 'client_name', label: 'Client',          type: 'enum',   options: Array.from(new Set(clients.map(c => c.contact_person || c.company_name).filter(Boolean))).sort() },
+        { key: 'issue_date',  label: 'Issue date',      type: 'date' },
+        { key: 'due_date',    label: 'Expiration date', type: 'date' },
+        { key: 'amount',      label: 'Amount',          type: 'number' },
+    ], [activeStatues, clients]);
 
     useEffect(() => { fetchProposals(); }, [fetchProposals]);
 
@@ -698,15 +718,15 @@ export default function ProposalsPage() {
                 const numMatch = p.proposal_number?.toLowerCase().includes(q);
                 if (!p.title?.toLowerCase().includes(q) && !p.client_name?.toLowerCase().includes(q) && !idMatch && !numMatch) return false;
             }
-            if (dateFilter === 'month' && !isThisMonth(p.issue_date)) return false;
-            if (dateFilter === 'year' && !isThisYear(p.issue_date)) return false;
             return true;
         });
+        // Apply advanced filters
+        r = applyFilters(r, filterRows, PROPOSAL_FILTER_FIELDS);
         if (orderBy === 'issue_date') r = [...r].sort((a, b) => new Date(b.issue_date || 0).getTime() - new Date(a.issue_date || 0).getTime());
         else if (orderBy === 'amount') r = [...r].sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
         else r = [...r].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         return r;
-    }, [proposals, statusFilter, searchQuery, dateFilter, orderBy, archivedIds, showArchived]);
+    }, [proposals, statusFilter, searchQuery, filterRows, PROPOSAL_FILTER_FIELDS, orderBy, archivedIds, showArchived]);
 
     const stats = useMemo(() => {
         const s: Record<string, { count: number; amount: number }> = {
@@ -917,6 +937,12 @@ export default function ProposalsPage() {
                         </button>
                         <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
                             <div className={cn("px-3.5 py-2.5 border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>FILTER</div>
+                            <div 
+                                onClick={() => { setFilterOpen(false); setAdvancedFilterOpen(true); }}
+                                className={cn("flex items-center gap-2 px-3.5 py-2.5 border-b cursor-pointer transition-colors", isDark ? "border-[#2e2e2e] hover:bg-white/5 text-[#ccc]" : "border-[#f0f0f0] hover:bg-black/5 text-[#444]")}>
+                                <Plus size={12} className="opacity-70" />
+                                <span className={cn("text-[12px] font-medium")}>Create filter</span>
+                            </div>
                             <div className="py-1">
                                 <DItem label="This Month" active={dateFilter === 'month'} onClick={() => { setDateFilter('month'); setFilterOpen(false); }} isDark={isDark} />
                                 <DItem label="This Year" active={dateFilter === 'year'} onClick={() => { setDateFilter('year'); setFilterOpen(false); }} isDark={isDark} />
@@ -937,34 +963,52 @@ export default function ProposalsPage() {
                 <div className={cn("flex items-center gap-1 px-4 py-1.5 shrink-0", isDark ? "border-b border-[#252525]" : "")}>
                     {/* View Settings on Left */}
                     <div className="flex items-center gap-1">
-                        {/* Filter / date */}
                         <div className="relative">
-                            <button onClick={() => setFilterOpen(v => !v)} className={cn(
-                                "flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded border transition-all",
-                                filterOpen
-                                    ? isDark ? "bg-[#252525] border-[#444] text-[#ccc]" : "bg-white border-[#aaa] text-[#444] shadow-xs"
-                                    : isDark ? "bg-[#252525] border-[#333] text-[#ccc] hover:border-[#444]" : "bg-white border-[#d0d0d0] text-[#444] hover:border-[#bbb] shadow-xs"
-                            )}>
-                                <Calendar size={11} className="opacity-60" />
-                                {datePill}
-                                {dateFilter !== 'all' && (
-                                    <span onClick={e => { e.stopPropagation(); setDateFilter('all'); }}
-                                        className={cn("ml-0.5 opacity-50 hover:opacity-100 transition-opacity")}>
-                                        <X size={9} />
-                                    </span>
-                                )}
-                            </button>
+                            <FilterButton
+                                activeCount={filterRows.filter(r => r.field && r.value != null && r.value !== '' && !(Array.isArray(r.value) && r.value.length === 0)).length}
+                                onClick={() => setFilterOpen(v => !v)}
+                                isDark={isDark}
+                            />
+                            
                             <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark} align="left">
-                                <div className={cn("flex items-center gap-2 px-3.5 py-2.5 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
-                                    <Plus size={11} className="opacity-40" />
-                                    <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
-                                </div>
-                                <div className="py-1">
-                                    <DItem label="This Month" active={dateFilter === 'month'} onClick={() => { setDateFilter('month'); setFilterOpen(false); }} isDark={isDark} />
-                                    <DItem label="This Year" active={dateFilter === 'year'} onClick={() => { setDateFilter('year'); setFilterOpen(false); }} isDark={isDark} />
-                                    <DItem label="All time" active={dateFilter === 'all'} onClick={() => { setDateFilter('all'); setFilterOpen(false); }} isDark={isDark} />
+                                <div className="py-1 min-w-[160px]">
+                                    <div 
+                                        onClick={() => { setFilterOpen(false); setAdvancedFilterOpen(true); }}
+                                        className={cn("flex items-center gap-2 px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-black/5", isDark ? "hover:bg-white/5" : "")}>
+                                        <Plus size={11} className="opacity-40" />
+                                        <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
+                                    </div>
+                                    
+                                    {savedFilters.length > 0 && (
+                                        <>
+                                            <div className={cn("h-px my-1", isDark ? "bg-[#252525]" : "bg-[#efefef]")} />
+                                            <SavedFilterPills
+                                                saved={savedFilters}
+                                                activeId={activeFilterId}
+                                                onLoad={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setFilterOpen(false); }}
+                                                onDelete={(id) => { deleteSavedFilter(id); if (activeFilterId === id) { setActiveFilterId(null); } }}
+                                                onClear={() => { setFilterRows([]); setActiveFilterId(null); setFilterOpen(false); }}
+                                                isDark={isDark}
+                                            />
+                                        </>
+                                    )}
                                 </div>
                             </Dropdown>
+
+                            {advancedFilterOpen && (
+                                <FilterPanel
+                                    fields={PROPOSAL_FILTER_FIELDS}
+                                    rows={filterRows}
+                                    savedFilters={savedFilters}
+                                    onChange={setFilterRows}
+                                    onApply={(rows) => { setFilterRows(rows); }}
+                                    onSave={(name, rows) => { saveFilter(name, rows); setFilterRows(rows); }}
+                                    onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }}
+                                    onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }}
+                                    isDark={isDark}
+                                    onClose={() => setAdvancedFilterOpen(false)}
+                                />
+                            )}
                         </div>
 
                         <div className={cn("w-[1px] h-4 mx-0.5", isDark ? "bg-[#2e2e2e]" : "bg-[#e0e0e0]")} />
