@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from './useUIStore';
+import { appToast } from '@/lib/toast';
 import { 
     LayoutGrid, 
     Users, 
@@ -37,6 +38,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
 interface MenuState {
     navItems: NavItem[];
     isLoading: boolean;
+    hasFetched: boolean;
     fetchMenu: () => Promise<void>;
     updateMenu: (items: NavItem[]) => Promise<void>;
 }
@@ -56,6 +58,7 @@ export const DEFAULT_NAV = [
 export const useMenuStore = create<MenuState>((set) => ({
     navItems: DEFAULT_NAV,
     isLoading: false,
+    hasFetched: false,
     fetchMenu: async () => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) return;
@@ -66,6 +69,7 @@ export const useMenuStore = create<MenuState>((set) => ({
                 .from('system_config')
                 .select('value')
                 .eq('key', `left_menu_${workspaceId}`)
+                .eq('workspace_id', workspaceId)
                 .single();
 
             if (data && data.value) {
@@ -87,7 +91,7 @@ export const useMenuStore = create<MenuState>((set) => ({
             console.error('Error fetching menu:', err);
             set({ navItems: DEFAULT_NAV });
         } finally {
-            set({ isLoading: false });
+            set({ isLoading: false, hasFetched: true });
         }
     },
     updateMenu: async (items) => {
@@ -96,14 +100,18 @@ export const useMenuStore = create<MenuState>((set) => ({
 
         set({ navItems: items });
         try {
-            await supabase
+            const { error } = await supabase
                 .from('system_config')
                 .upsert({ 
                     key: `left_menu_${workspaceId}`, 
+                    workspace_id: workspaceId,
                     value: items 
                 });
+            
+            if (error) throw error;
         } catch (err) {
             console.error('Error updating menu:', err);
+            appToast.error('Failed to save menu changes. Please try again.');
         }
     },
 }));

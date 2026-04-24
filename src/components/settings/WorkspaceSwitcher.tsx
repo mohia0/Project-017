@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { Check, ChevronDown, Plus } from 'lucide-react';
+import { Check, ChevronRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 
@@ -107,7 +107,7 @@ export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLig
                                     : (isLightSidebar ? "text-black/40" : "text-white/40")
                             )}>Free Plan</span>
                         </div>
-                        <ChevronDown size={14} className={cn(
+                        <ChevronRight size={13} strokeWidth={2.5} className={cn(
                             "transition-transform shrink-0",
                             isBranded
                                 ? (isLightSidebar ? "text-black" : "text-white")

@@ -213,55 +213,7 @@ function CardRow({ label, children, isDark, noBorder }: { label: string; childre
 /* ─── Config ─────────────────────────────────────────────────────── */
 
 
-function SortableHeader({ id, children, onResizeStart, isDark, width, noBorder }: { 
-    id: string; 
-    children: React.ReactNode; 
-    onResizeStart?: (e: React.MouseEvent) => void;
-    isDark: boolean;
-    width: number;
-    noBorder?: boolean;
-}) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id });
 
-    const style = {
-        transform: CSS.Translate.toString(transform),
-        transition,
-        width: `${width}px`,
-        opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 20 : 1,
-    };
-
-    return (
-        <div 
-            ref={setNodeRef} 
-            style={style} 
-            className={cn(
-                "relative px-4 py-2 flex items-center select-none group/header",
-                !noBorder && (isDark ? "border-r border-[#2e2e2e]" : "border-r border-[#e0e0e0]"),
-                isDragging && "bg-blue-500/10"
-            )}
-        >
-            <div {...attributes} {...listeners} className="flex-1 cursor-grab active:cursor-grabbing truncate">
-                {children}
-            </div>
-            {onResizeStart && (
-                <div 
-                    onMouseDown={onResizeStart} 
-                    className="absolute -right-3 top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-10 group/resizer transition-colors hover:bg-primary/10"
-                >
-                    <div className="w-[2px] h-[50%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
-                </div>
-            )}
-        </div>
-    );
-}
 
 function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onClientChange, customStatuses = [] }: {
     i: Invoice; onOpen: () => void; onArchive: () => void; isDark: boolean;
@@ -753,31 +705,7 @@ export default function InvoicesPage() {
         localStorage.setItem('invoice_col_order', JSON.stringify(columnOrder));
     }, [columnOrder]);
 
-    const isResizing = useRef<keyof typeof colWidths | null>(null);
-    const startX = useRef<number>(0);
-    const startWidth = useRef<number>(0);
 
-    const handleResizeStart = (key: keyof typeof colWidths, e: React.MouseEvent) => {
-        e.preventDefault();
-        isResizing.current = key;
-        startX.current = e.clientX;
-        startWidth.current = colWidths[key];
-        document.addEventListener('mousemove', handleResizeMove);
-        document.addEventListener('mouseup', handleResizeEnd);
-    };
-
-    const handleResizeMove = (e: MouseEvent) => {
-        if (!isResizing.current) return;
-        const delta = e.clientX - startX.current;
-        const newWidth = Math.max(30, startWidth.current + delta);
-        setColWidths(prev => ({ ...prev, [isResizing.current as string]: newWidth }));
-    };
-
-    const handleResizeEnd = () => {
-        isResizing.current = null;
-        document.removeEventListener('mousemove', handleResizeMove);
-        document.removeEventListener('mouseup', handleResizeEnd);
-    };
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -1282,24 +1210,25 @@ export default function InvoicesPage() {
                                 data={filtered}
                                 columns={[
                                     {
-                                        id: 'client',
-                                        label: 'Client',
-                                        defaultWidth: 150,
-                                        cell: (inv) => (
-                                            <div className="flex items-stretch h-full w-full">
-                                                <ClientCell currentName={inv.client_name} currentId={inv.client_id} onClientChange={(id, name) => updateInvoice(inv.id, { client_id: id, client_name: name })} isDark={isDark} variant="table" />
-                                            </div>
-                                        )
-                                    },
-                                    {
                                         id: 'name',
                                         label: 'Name',
                                         defaultWidth: 150,
                                         flexible: true,
-                                        noBorder: true,
                                         cell: (inv) => (
-                                            <div className={cn("flex items-center px-4 py-1.5 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
-                                                <span className="truncate">{inv.title || 'New Invoice'}</span>
+                                            <div className="flex flex-col px-4 py-1.5 h-full justify-center">
+                                                <div className={cn("font-bold truncate leading-tight uppercase", isDark ? "text-white" : "text-[#111]")}>
+                                                    {inv.invoice_number || inv.id?.slice(-6).toUpperCase() || '—'}
+                                                </div>
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        id: 'client',
+                                        label: 'Client',
+                                        defaultWidth: 240,
+                                        cell: (inv) => (
+                                            <div className="flex items-stretch h-full w-full">
+                                                <ClientCell currentName={inv.client_name} currentId={inv.client_id} onClientChange={(id, name) => updateInvoice(inv.id, { client_id: id, client_name: name })} isDark={isDark} variant="table" />
                                             </div>
                                         )
                                     },

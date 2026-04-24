@@ -15,7 +15,7 @@ export default function LoginPage() {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
 
-    const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+    const [mode, setMode] = useState<'signin' | 'signup' | 'forgot_password'>('signin');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -42,6 +42,12 @@ export default function LoginPage() {
             if (mode === 'signin') {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
+            } else if (mode === 'forgot_password') {
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/settings/account`,
+                });
+                if (error) throw error;
+                setSuccessMsg("Reset link sent! Please check your email.");
             } else {
                 // Sign Up flow
                 if (password !== confirmPassword) {
@@ -116,13 +122,17 @@ export default function LoginPage() {
 
                     <div className="w-full flex flex-col mb-8">
                         <h1 className="text-3xl font-bold tracking-tight mb-2.5">
-                            {mode === 'signin' ? 'Sign in to portal.' : 'Create your account.'}
+                            {mode === 'signin' ? 'Sign in to portal.' : mode === 'signup' ? 'Create your account.' : 'Reset password.'}
                         </h1>
                         <p className={cn(
                             "text-[15px] font-medium transition-colors",
                             isDark ? "text-white/50" : "text-black/50"
                         )}>
-                            {mode === 'signin' ? 'Enter your details below to proceed.' : 'Join the platform to run your operations.'}
+                            {mode === 'signin' 
+                                ? 'Enter your details below to proceed.' 
+                                : mode === 'signup' 
+                                    ? 'Join the platform to run your operations.' 
+                                    : 'Enter your email to receive a reset link.'}
                         </p>
                     </div>
 
@@ -161,34 +171,57 @@ export default function LoginPage() {
                             />
                         </div>
 
-                        <div className="flex flex-col relative group">
-                            <input 
-                                type={showPassword ? "text" : "password"}
-                                required
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                className={cn(
-                                    "w-full h-12 px-4 pr-12 rounded-xl text-[14px] font-medium transition-all focus:outline-none focus:ring-2",
-                                    isDark 
-                                        ? "bg-[#141414] border border-white/10 hover:border-white/20 focus:border-white/30 focus:ring-white/10 placeholder:text-white/30" 
-                                        : "bg-white border border-black/10 hover:border-black/20 focus:border-black/30 focus:ring-black/5 placeholder:text-black/40 shadow-sm"
+                        {mode !== 'forgot_password' && (
+                            <div className="flex flex-col gap-2">
+                                <div className="relative group">
+                                    <input 
+                                        type={showPassword ? "text" : "password"}
+                                        required
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        className={cn(
+                                            "w-full h-12 px-4 pr-12 rounded-xl text-[14px] font-medium transition-all focus:outline-none focus:ring-2",
+                                            isDark 
+                                                ? "bg-[#141414] border border-white/10 hover:border-white/20 focus:border-white/30 focus:ring-white/10 placeholder:text-white/30" 
+                                                : "bg-white border border-black/10 hover:border-black/20 focus:border-black/30 focus:ring-black/5 placeholder:text-black/40 shadow-sm"
+                                        )}
+                                        placeholder="••••••••"
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className={cn(
+                                            "absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors",
+                                            isDark ? "text-white/20 hover:text-white/60 hover:bg-white/5" : "text-black/20 hover:text-black/60 hover:bg-black/5"
+                                        )}
+                                    >
+                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+
+                                {mode === 'signin' && (
+                                    <div className="flex justify-end pr-1">
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                setMode('forgot_password');
+                                                setError('');
+                                                setSuccessMsg('');
+                                            }}
+                                            className={cn(
+                                                "text-[12px] font-semibold opacity-60 hover:opacity-100 transition-opacity",
+                                                isDark ? "text-white" : "text-black"
+                                            )}
+                                        >
+                                            Forgot password?
+                                        </button>
+                                    </div>
                                 )}
-                                placeholder="••••••••"
-                            />
-                            <button 
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className={cn(
-                                    "absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors",
-                                    isDark ? "text-white/20 hover:text-white/60 hover:bg-white/5" : "text-black/20 hover:text-black/60 hover:bg-black/5"
-                                )}
-                            >
-                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
-                        </div>
+                            </div>
+                        )}
 
                         {mode === 'signup' && (
-                            <div className="flex flex-col relative group">
+                            <div className="relative group">
                                 <input 
                                     type={showConfirmPassword ? "text" : "password"}
                                     required
@@ -243,31 +276,57 @@ export default function LoginPage() {
                                 <AppLoader size="xs" color="currentColor" />
                             ) : (
                                 <>
-                                    {mode === 'signin' ? 'Sign in securely' : 'Create account'}
+                                    {mode === 'signin' ? 'Sign in securely' : mode === 'signup' ? 'Create account' : 'Send reset link'}
                                     <ArrowRight size={16} />
                                 </>
                             )}
                         </button>
                     </form>
 
-                    <div className="mt-8 flex items-center gap-2 text-[13px] font-medium">
-                        <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
-                            {mode === 'signin' ? "Don't have an account?" : "Already have an account?"}
-                        </span>
-                        <button 
-                            type="button"
-                            onClick={() => {
-                                setMode(mode === 'signin' ? 'signup' : 'signin');
-                                setError('');
-                                setSuccessMsg('');
-                            }}
-                            className={cn(
-                                "hover:underline underline-offset-4 decoration-2",
-                                isDark ? "text-white" : "text-black"
-                            )}
-                        >
-                            {mode === 'signin' ? 'Sign up' : 'Sign in'}
-                        </button>
+                    <div className="mt-8 flex flex-col gap-2.5">
+                        {(mode === 'signin' || mode === 'forgot_password') && (
+                            <div className="flex items-center gap-2 text-[13px] font-medium">
+                                <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
+                                    Don't have an account?
+                                </span>
+                                <button 
+                                    type="button"
+                                    onClick={() => {
+                                        setMode('signup');
+                                        setError('');
+                                        setSuccessMsg('');
+                                    }}
+                                    className={cn(
+                                        "hover:underline underline-offset-4 decoration-2",
+                                        isDark ? "text-white" : "text-black"
+                                    )}
+                                >
+                                    Sign up
+                                </button>
+                            </div>
+                        )}
+
+                        {(mode === 'signup' || mode === 'forgot_password') && (
+                            <div className="flex items-center gap-2 text-[13px] font-medium">
+                                <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
+                                    {mode === 'signup' ? "Already have an account?" : "Remember your password?"}
+                                </span>
+                                <button 
+                                    type="button"
+                                    onClick={() => {
+                                        setMode('signin');
+                                        setError('');
+                                        setSuccessMsg('');
+                                    }}
+                                    className={cn(
+                                        "hover:underline underline-offset-4 decoration-2",
+                                        isDark ? "text-white" : "text-black"
+                                    )}
+                                >
+                                    Sign in
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

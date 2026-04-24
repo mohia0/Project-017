@@ -56,14 +56,14 @@ function fmtDate(d: string) {
     return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
 }
 
-function SortableHeader({ id, children, onResizeStart, isDark, width, flexible, noBorder }: { 
+function SortableHeader({ id, children, onLeftResizeStart, onRightResizeStart, isDark, width, flexible }: { 
     id: string; 
     children: React.ReactNode; 
-    onResizeStart?: (e: React.MouseEvent) => void;
+    onLeftResizeStart?: (e: React.MouseEvent) => void;
+    onRightResizeStart?: (e: React.MouseEvent) => void;
     isDark: boolean;
-    width?: number;
+    width: number;
     flexible?: boolean;
-    noBorder?: boolean;
 }) {
     const {
         attributes,
@@ -87,21 +87,34 @@ function SortableHeader({ id, children, onResizeStart, isDark, width, flexible, 
             ref={setNodeRef} 
             style={style} 
             className={cn(
-                "relative px-4 py-2 flex items-center select-none group/header",
-                !noBorder && "border-r",
+                "relative px-4 py-2 flex items-center select-none group/header border-x border-transparent",
                 isDragging ? "bg-blue-500/10" : "",
-                isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]"
+                isDark ? "hover:border-[#2e2e2e]" : "hover:border-[#e0e0e0]"
             )}
         >
+            {onLeftResizeStart && (
+                <div 
+                    onMouseDown={onLeftResizeStart} 
+                    className={cn(
+                        "absolute -left-[12px] top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-20 group/resizer transition-colors",
+                        "hover:bg-primary/5 active:bg-primary/10"
+                    )}
+                >
+                    <div className="w-[2px] h-5 rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
+                </div>
+            )}
             <div {...attributes} {...listeners} className="flex-1 cursor-grab active:cursor-grabbing truncate">
                 {children}
             </div>
-            {onResizeStart && (
+            {onRightResizeStart && (
                 <div 
-                    onMouseDown={onResizeStart} 
-                    className="absolute -right-3 top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-10 group/resizer transition-colors hover:bg-primary/10"
+                    onMouseDown={onRightResizeStart} 
+                    className={cn(
+                        "absolute -right-[12px] top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-20 group/resizer transition-colors",
+                        "hover:bg-primary/5 active:bg-primary/10"
+                    )}
                 >
-                    <div className="w-[2px] h-[50%] rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
+                    <div className="w-[2px] h-5 rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
                 </div>
             )}
         </div>
@@ -380,23 +393,31 @@ export default function FormsPage() {
     useEffect(() => { localStorage.setItem('forms_col_widths', JSON.stringify(colWidths)); }, [colWidths]);
     useEffect(() => { localStorage.setItem('forms_col_order', JSON.stringify(columnOrder)); }, [columnOrder]);
 
-    const handleResizeStart = (key: string, e: React.MouseEvent) => {
+    const handleResizeStart = (leftKey: string, rightKey: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         const startX = e.clientX;
-        const startWidth = colWidths[key];
+        const startWidthLeft = colWidths[leftKey];
+        const startWidthRight = colWidths[rightKey];
 
         const onMouseMove = (moveEvent: MouseEvent) => {
-            const delta = startX - moveEvent.clientX;
-            const newWidth = Math.max(30, startWidth - delta);
-            setColWidths(prev => ({ ...prev, [key]: newWidth }));
-        };
+            const delta = moveEvent.clientX - startX;
+            let newWidthLeft = Math.max(30, startWidthLeft + delta);
+            let finalDelta = newWidthLeft - startWidthLeft;
+            let newWidthRight = Math.max(30, startWidthRight - finalDelta);
+            finalDelta = startWidthRight - newWidthRight;
+            newWidthLeft = startWidthLeft + finalDelta;
 
+            setColWidths(prev => ({ 
+                ...prev, 
+                [leftKey]: newWidthLeft,
+                [rightKey]: newWidthRight 
+            }));
+        };
         const onMouseUp = () => {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
         };
-
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     };
@@ -789,13 +810,10 @@ export default function FormsPage() {
                                         <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleAll(); }}>
                                             <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
                                         </div>
-                                        <div onMouseDown={(e) => handleResizeStart('select', e)} className="absolute -right-3 top-0 bottom-0 w-[24px] cursor-col-resize z-20 group/resizer">
-                                            <div className="absolute right-3 top-1.5 bottom-1.5 w-[1px] group-hover/resizer:bg-blue-400 transition-colors" />
-                                        </div>
                                     </div>
 
                                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
-                                        {columnOrder.map(colId => {
+                                        {columnOrder.map((colId, index) => {
                                             let label = '';
                                             if (colId === 'name') label = 'Name';
                                             if (colId === 'status') label = 'Status';
@@ -804,22 +822,45 @@ export default function FormsPage() {
                                             if (colId === 'created') label = 'Created';
                                             if (colId === 'expires') label = 'Expires';
 
+                                            const prevColId = index > 0 ? columnOrder[index - 1] : null;
+                                            const nextColId = index < columnOrder.length - 1 ? columnOrder[index + 1] : null;
+
                                             return (
                                                 <SortableHeader 
                                                     key={colId} 
                                                     id={colId} 
                                                     isDark={isDark} 
-                                                    width={colId === 'name' ? undefined : colWidths[colId]}
+                                                    width={colWidths[colId] || 150}
                                                     flexible={colId === 'name'}
-                                                    noBorder={colId === 'name'}
-                                                    onResizeStart={(e) => handleResizeStart(colId, e)}
+                                                    onLeftResizeStart={prevColId ? (e: React.MouseEvent) => handleResizeStart(prevColId, colId, e) : undefined}
+                                                    onRightResizeStart={
+                                                        nextColId 
+                                                            ? (e: React.MouseEvent) => handleResizeStart(colId, nextColId, e) 
+                                                            : (e: React.MouseEvent) => handleResizeStart(colId, 'actions', e)
+                                                    }
                                                 >
                                                     {label}
                                                 </SortableHeader>
                                             );
                                         })}
                                     </SortableContext>
-                                    <div />
+                                    <div 
+                                        className={cn("relative px-4 py-2 flex items-center justify-end group/header border-l border-transparent", 
+                                            isDark ? "hover:border-[#2e2e2e]" : "hover:border-[#e0e0e0]")}
+                                        style={{ width: colWidths.actions }}
+                                    >
+                                        {columnOrder.length > 0 && (
+                                            <div 
+                                                onMouseDown={(e) => handleResizeStart(columnOrder[columnOrder.length - 1], 'actions', e)} 
+                                                className={cn(
+                                                    "absolute -left-[12px] top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-20 group/resizer transition-colors",
+                                                    "hover:bg-primary/5 active:bg-primary/10"
+                                                )}
+                                            >
+                                                <div className="w-[2px] h-5 rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </DndContext>
 

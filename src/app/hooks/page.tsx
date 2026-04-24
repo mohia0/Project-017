@@ -556,15 +556,13 @@ export default function HooksPage() {
                         isLoading={isLoading}
                         rightHeaderWidth={80}
                         rightCellSlot={(h) => (
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end pr-3">
-                                <div>
-                                    <SettingsToggle
-                                        checked={h.status === 'Active'}
-                                        onChange={(c) => {
-                                            useHookStore.getState().updateHook(h.id, { status: c ? 'Active' : 'Inactive' })
-                                        }}
-                                    />
-                                </div>
+                            <div className="flex items-center justify-end pr-4 h-full">
+                                <SettingsToggle
+                                    checked={h.status === 'Active'}
+                                    onChange={(c) => {
+                                        useHookStore.getState().updateHook(h.id, { status: c ? 'Active' : 'Inactive' })
+                                    }}
+                                />
                             </div>
                         )}
                         rowMenuItems={(h) => [

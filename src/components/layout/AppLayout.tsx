@@ -132,7 +132,7 @@ function WorkspaceDataSync() {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-    const { theme, isRightPanelCollapsed, rightPanel } = useUIStore();
+    const { theme, isRightPanelCollapsed, rightPanel, activeWorkspaceId } = useUIStore();
     // Removed isLoading since session is synchronously hydrated and middleware handles redirects
     const { user } = useAuthStore();
     const { fetchMenu } = useMenuStore();
@@ -145,13 +145,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const isOnboarding = pathname === '/onboarding';
     const isMobile = useIsMobile();
 
-    // Fetch workspaces and nav menu on mount
+    // Fetch workspaces on mount
     useEffect(() => {
         if (user) {
             fetchWorkspaces();
+        }
+    }, [user, fetchWorkspaces]);
+
+    // Fetch nav menu whenever active workspace changes
+    useEffect(() => {
+        if (user && activeWorkspaceId) {
             fetchMenu();
         }
-    }, [user, fetchWorkspaces, fetchMenu]);
+    }, [user, activeWorkspaceId, fetchMenu]);
 
     useEffect(() => {
         // AppLayout only handles application-flow redirects now, NOT auth redirects (done by middleware)

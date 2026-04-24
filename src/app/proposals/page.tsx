@@ -1180,24 +1180,23 @@ export default function ProposalsPage() {
                                 data={filtered}
                                 columns={[
                                     {
+                                        id: 'name',
+                                        label: 'Name',
+                                        defaultWidth: 150,
+                                        flexible: true,
+                                        cell: (p) => (
+                                            <div className={cn("flex items-center px-4 py-1.5 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
+                                                <span className="truncate">{p.title || 'New Proposal'}</span>
+                                            </div>
+                                        )
+                                    },
+                                    {
                                         id: 'client',
                                         label: 'Client',
                                         defaultWidth: 150,
                                         cell: (p) => (
                                             <div className="flex items-stretch h-full w-full">
                                                 <ClientCell currentName={p.client_name} currentId={p.client_id} onClientChange={(id, name) => updateProposal(p.id, { client_id: id, client_name: name })} isDark={isDark} variant="table" />
-                                            </div>
-                                        )
-                                    },
-                                    {
-                                        id: 'name',
-                                        label: 'Name',
-                                        defaultWidth: 150,
-                                        flexible: true,
-                                        noBorder: true,
-                                        cell: (p) => (
-                                            <div className={cn("flex items-center px-4 py-1.5 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
-                                                <span className="truncate">{p.title || 'New Proposal'}</span>
                                             </div>
                                         )
                                     },
