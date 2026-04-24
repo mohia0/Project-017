@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Upload, X, RotateCcw, ChevronDown } from 'lucide-react';
 import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import { ColorisInput } from './ColorisInput';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 // ── Utility: dynamically inject a Google Fonts <link> for a given family ──
 const LOADED_FONTS = new Set<string>();
@@ -147,7 +148,10 @@ export function ShadowPicker({ value, onChange, isDark }: any) {
     return <ShadowSelect options={options} value={value} onChange={onChange} isDark={isDark} />;
 }
 
-export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadSuccessIcon, onUploadBackground, hideSignature, hideTable, hideActionBar, storageKey = 'design_panel' }: DesignSettingsPanelProps) {
+export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadSuccessIcon, onUploadBackground, hideSignature, hideTable, hideActionBar, 
+    storageKey = 'design_panel',
+    hideAccentColor = false
+}: DesignSettingsPanelProps & { hideAccentColor?: boolean }) {
     // Always read latest design so we don't get stale closures on rapid changes
     const metaRef = React.useRef(meta);
     React.useEffect(() => { metaRef.current = meta; }, [meta]);
@@ -470,22 +474,27 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             />
                         </MetaField>
 
-                        <MetaField 
-                            label="Accent Color" 
-                            isDark={isDark}
-                            onReset={() => updateDesign({ primaryColor: DEFAULT_DOCUMENT_DESIGN.primaryColor })}
-                        >
-                            <div className="flex flex-col gap-2">
-                                <ColorisInput 
-                                    value={design.primaryColor || 'var(--brand-primary)'} 
-                                    onChange={val => updateDesign({ primaryColor: val })}
-                                    className="w-fit min-w-[120px]"
-                                />
-                                <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
-                                    Affects insert buttons, active states & toggles.
-                                </p>
-                            </div>
-                        </MetaField>
+                        {!hideAccentColor && (
+                            <MetaField 
+                                label="Accent Color" 
+                                isDark={isDark}
+                                onReset={() => {
+                                    const brandColor = useSettingsStore.getState().branding?.primary_color || DEFAULT_DOCUMENT_DESIGN.primaryColor;
+                                    updateDesign({ primaryColor: brandColor });
+                                }}
+                            >
+                                <div className="flex flex-col gap-2">
+                                    <ColorisInput 
+                                        value={design.primaryColor || 'var(--brand-primary)'} 
+                                        onChange={val => updateDesign({ primaryColor: val })}
+                                        className="w-fit min-w-[120px]"
+                                    />
+                                    <p className={cn("text-[9px] opacity-60 px-1 italic", isDark ? "text-white" : "text-black")}>
+                                        Affects insert buttons, active states & toggles.
+                                    </p>
+                                </div>
+                            </MetaField>
+                        )}
                         
                         <MetaField 
                             label="Main Canvas Background" 
@@ -677,7 +686,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                         "w-10 h-5 rounded-full relative transition-all duration-200",
                                         design.tableShowRowBorders === false ? (isDark ? "bg-[#333]" : "bg-[#e5e5e5]") : ""
                                     )}
-                                    style={{ backgroundColor: design.tableShowRowBorders !== false ? (design.primaryColor || 'var(--brand-primary)') : undefined }}
+                                    style={{ backgroundColor: design.tableShowRowBorders !== false ? 'var(--brand-primary)' : undefined }}
                                 >
                                     <div className={cn(
                                         "absolute top-1 w-3 h-3 bg-white rounded-full transition-all duration-200",

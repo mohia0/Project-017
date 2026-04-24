@@ -756,6 +756,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                         setUploadTarget({ type: 'background' });
                                         setImageUploadOpen(true);
                                     }}
+                                    hideAccentColor={true}
                                 />
                             )}
                         </div>

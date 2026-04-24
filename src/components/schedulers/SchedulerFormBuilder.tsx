@@ -233,9 +233,9 @@ function FieldPreview({ field, isDark, isSelected, onClick, onRemove, primaryCol
     );
 }
 
-export function SchedulerFormBuilder({ isDark, design, fields, updateFields, selectedFieldId, onSelectField, isReadOnly }: {
+export function SchedulerFormBuilder({ isDark, design, fields, updateFields, selectedFieldId, onSelectField, isReadOnly, primaryColor }: {
     isDark: boolean; design: any; fields: FormField[]; updateFields: (fields: FormField[]) => void;
-    selectedFieldId: string | null; onSelectField: (id: string | null) => void; isReadOnly?: boolean;
+    selectedFieldId: string | null; onSelectField: (id: string | null) => void; isReadOnly?: boolean; primaryColor: string;
 }) {
     const [openFieldIndex, setOpenFieldIndex] = useState<number | null>(null);
 
@@ -276,7 +276,7 @@ export function SchedulerFormBuilder({ isDark, design, fields, updateFields, sel
                         if (!isReadOnly) onSelectField(null);
                     }}
                     style={{
-                        '--primary-color': design.primaryColor || '#4dbf39',
+                        '--primary-color': primaryColor,
                         '--block-button-radius': `${Math.max(0, (design.borderRadius || 16) - 4)}px`,
                     } as React.CSSProperties}>
                     {fields.length === 0 ? (
@@ -304,7 +304,7 @@ export function SchedulerFormBuilder({ isDark, design, fields, updateFields, sel
                                         </button>
                                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0 h-0">
                                             <div className={cn("transition-opacity duration-300", openFieldIndex === 0 ? "opacity-100" : "opacity-0")}>
-                                                <FieldInsertArea index={0} totalFields={0} openIndex={openFieldIndex} setOpenIndex={setOpenFieldIndex} onAdd={addField} isDark={isDark} primaryColor={design.primaryColor || '#4dbf39'} borderRadius={design.borderRadius ?? 16} hideLine centered />
+                                                <FieldInsertArea index={0} totalFields={0} openIndex={openFieldIndex} setOpenIndex={setOpenFieldIndex} onAdd={addField} isDark={isDark} primaryColor={primaryColor} borderRadius={design.borderRadius ?? 16} hideLine centered />
                                             </div>
                                         </div>
                                     </div>
@@ -318,7 +318,7 @@ export function SchedulerFormBuilder({ isDark, design, fields, updateFields, sel
                                     {!isReadOnly && (
                                         <FieldInsertArea index={i} totalFields={fields.length} openIndex={openFieldIndex}
                                             setOpenIndex={setOpenFieldIndex} onAdd={addField} isDark={isDark}
-                                            primaryColor={design.primaryColor || '#4dbf39'} borderRadius={design.borderRadius || 16} />
+                                            primaryColor={primaryColor} borderRadius={design.borderRadius || 16} />
                                     )}
                                     
                                     <FieldPreview
@@ -329,7 +329,7 @@ export function SchedulerFormBuilder({ isDark, design, fields, updateFields, sel
                                             updateFields(fields.filter(x => x.id !== f.id));
                                             if (selectedFieldId === f.id) onSelectField(null);
                                         }}
-                                        primaryColor={design.primaryColor || '#4dbf39'}
+                                        primaryColor={primaryColor}
                                         borderRadius={design.borderRadius || 16}
                                         isReadOnly={isReadOnly}
                                         marginTop={design.marginTop}
@@ -340,7 +340,7 @@ export function SchedulerFormBuilder({ isDark, design, fields, updateFields, sel
                             {!isReadOnly && (
                                 <FieldInsertArea index={fields.length} totalFields={fields.length} openIndex={openFieldIndex}
                                     setOpenIndex={setOpenFieldIndex} onAdd={addField} isDark={isDark}
-                                    primaryColor={design.primaryColor || '#4dbf39'} borderRadius={design.borderRadius || 16} />
+                                    primaryColor={primaryColor} borderRadius={design.borderRadius || 16} />
                             )}
                         </div>
                     )}

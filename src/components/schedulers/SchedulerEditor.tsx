@@ -27,6 +27,7 @@ import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
 import { appToast } from '@/lib/toast';
 import DatePicker from '@/components/ui/DatePicker';
 import { SchedulerFormBuilder } from './SchedulerFormBuilder';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { SettingsSelect, SettingsToggle } from '@/components/settings/SettingsField';
 
 /* ══════════════════════════════════════════════════════════
@@ -625,7 +626,12 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
     };
 
     const sc = STATUS_COLORS[status];
+    const branding = useSettingsStore(s => s.branding);
+    const brandColor = branding?.primary_color || '#4dbf39';
+
     const design = meta.design || DEFAULT_DOCUMENT_DESIGN;
+    const primaryColor = design.primaryColor || brandColor;
+
 
     const STEPS: { id: CanvasStep; label: string }[] = [
         { id: 'scheduler', label: 'Scheduler' },
@@ -923,8 +929,8 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                                     <button key={d}
                                                                         className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10.5px] font-semibold transition-all"
                                                                         style={{
-                                                                            background: design.primaryColor || '#4dbf39',
-                                                                            color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000'
+                                                                            background: primaryColor,
+                                                                            color: isColorDark(primaryColor) ? '#fff' : '#000'
                                                                         }}>
                                                                         <Clock size={10} />
                                                                         {d >= 60 ? `${d / 60} hr` : `${d} min`}
@@ -941,7 +947,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                             <div className="flex flex-col gap-4">
                                                                 <CalendarPreview
                                                                     isDark={isColorDark(design.blockBackgroundColor || '#fff')}
-                                                                    primaryColor={design.primaryColor || '#4dbf39'}
+                                                                    primaryColor={primaryColor}
                                                                     selDate={previewSelDate}
                                                                     meta={meta}
                                                                     workspaceTimezone={workspaceTimezone}
@@ -960,7 +966,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                                                     onClick={() => setPreviewSelTime(t)}
                                                                                     className="px-2 py-1.5 rounded-lg text-[11.5px] font-medium border transition-all text-center"
                                                                                     style={previewSelTime === t
-                                                                                        ? { background: design.primaryColor || '#4dbf39', color: isColorDark(design.primaryColor || '#4dbf39') ? '#fff' : '#000', borderColor: 'transparent' }
+                                                                                        ? { background: primaryColor, color: isColorDark(primaryColor) ? '#fff' : '#000', borderColor: 'transparent' }
                                                                                         : { borderColor: isColorDark(design.blockBackgroundColor || '#fff') ? '#333' : '#e5e5e5', color: isColorDark(design.blockBackgroundColor || '#fff') ? '#aaa' : '#555' }
                                                                                     }>
                                                                                     {t}
@@ -987,6 +993,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                                     selectedFieldId={selectedFieldId}
                                                                     onSelectField={setSelectedFieldId}
                                                                     isReadOnly={isPreview}
+                                                                    primaryColor={primaryColor}
                                                                 />
                                                                 <div className="flex gap-3 pt-2">
                                                                     <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all"

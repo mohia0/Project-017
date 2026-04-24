@@ -1397,6 +1397,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         setUploadTarget({ type: 'background' });
                                         setImageUploadOpen(true);
                                     }}
+                                    hideAccentColor={true}
                                 />
                             )}
                         </div>
@@ -1724,14 +1725,14 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
             const { branding } = useSettingsStore();
             const logoToUse = meta.logoUrl || (isDark ? branding?.logo_light_url : branding?.logo_dark_url);
             return (
-                <div className="mb-4">
+                <div className="mb-4 pt-[7%]">
                     <div className="flex justify-between items-start mb-10">
                         {logoToUse ? (
                             <img 
                                 src={logoToUse} 
                                 alt="Logo" 
                                 className="w-auto transition-all duration-300 ease-out" 
-                                style={{ height: `${meta.design?.logoSize ?? 48}px` }} 
+                                style={{ height: `${(meta.design?.logoSize ?? 48) * 1.42}px` }} 
                             />
                         ) : (
                             <div className={cn(

@@ -1429,29 +1429,46 @@ function FormResponsePanel({ id, formId, isDark }: { id: string; formId: string;
                                     isEmpty ? "italic opacity-20" : (isDark ? "text-[#eee]" : "text-[#222]")
                                 )}>
                                     {isEmpty ? 'No answer' : (() => {
+                                        const renderValue = (v: any, key?: any) => {
+                                            let displayValue = String(v);
+                                            let imageUrl = '';
+                                            
+                                            if (field.type === 'picture_choice' && typeof v === 'string') {
+                                                const parts = v.split('|');
+                                                imageUrl = parts[0];
+                                                displayValue = parts.slice(1).join('|') || (imageUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) ? '' : imageUrl);
+                                            } else if (isImageUrl(v)) {
+                                                imageUrl = v;
+                                                displayValue = '';
+                                            }
+
+                                            if (imageUrl) {
+                                                return (
+                                                    <div key={key} className="flex flex-col gap-1.5">
+                                                        <a href={imageUrl} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                                                            <img src={imageUrl} alt={displayValue} className="max-w-full h-auto rounded-lg border border-black/5 dark:border-white/5 max-h-[160px] object-contain bg-black/5" />
+                                                        </a>
+                                                        {displayValue && <span className="text-[12px] opacity-60 ml-1">{displayValue}</span>}
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <span key={key} className={cn(Array.isArray(value) ? "px-2 py-1 rounded bg-black/5 dark:bg-white/5 text-[12px]" : "")}>
+                                                    {displayValue}
+                                                </span>
+                                            );
+                                        };
+
                                         if (Array.isArray(value)) {
                                             return (
                                                 <div className="flex flex-wrap gap-2 mt-1">
-                                                    {value.map((v, i) => (
-                                                        isImageUrl(v) ? (
-                                                            <a key={i} href={v} target="_blank" rel="noopener noreferrer" className="block">
-                                                                <img src={v} alt="" className="max-w-full h-auto rounded-lg border border-black/5 dark:border-white/5 max-h-[200px] object-contain bg-black/5" />
-                                                            </a>
-                                                        ) : (
-                                                            <span key={i} className={cn("px-2 py-1 rounded bg-black/5 dark:bg-white/5 text-[12px]")}>{String(v)}</span>
-                                                        )
-                                                    ))}
+                                                    {value.map((v, i) => renderValue(v, i))}
                                                 </div>
                                             );
                                         }
-                                        if (isImageUrl(value)) {
-                                            return (
-                                                <a href={value} target="_blank" rel="noopener noreferrer" className="block mt-1">
-                                                    <img src={value} alt="" className="max-w-full h-auto rounded-lg border border-black/5 dark:border-white/5 max-h-[300px] object-contain bg-black/5" />
-                                                </a>
-                                            );
-                                        }
-                                        return String(value);
+                                        
+                                        return renderValue(value);
                                     })()}
                                 </div>
                             </div>

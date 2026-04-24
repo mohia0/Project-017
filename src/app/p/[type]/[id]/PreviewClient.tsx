@@ -146,26 +146,37 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
 
     // Controlled values keyed by field id
     const [values, setValues] = useState<Record<string, string>>({});
-    const [errors, setErrors] = useState<Record<string, boolean>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
 
     const setValue = (id: string, val: string) => {
         setValues(prev => ({ ...prev, [id]: val }));
-        if (errors[id]) setErrors(prev => ({ ...prev, [id]: false }));
+        if (errors[id]) setErrors(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
     };
 
     const handleSubmit = async () => {
-        // Validate required fields
-        const newErrors: Record<string, boolean> = {};
+        // Validate fields
+        const newErrors: Record<string, string> = {};
         let hasError = false;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
         for (const f of fields) {
-            if (f.required && !values[f.id]?.trim()) {
-                newErrors[f.id] = true;
+            const val = values[f.id]?.trim();
+            if (f.required && !val) {
+                newErrors[f.id] = 'This field is required';
+                hasError = true;
+            } else if (f.type === 'email' && val && !emailRegex.test(val)) {
+                newErrors[f.id] = 'Please enter a valid email address';
                 hasError = true;
             }
         }
+
         if (hasError) {
             setErrors(newErrors);
             return;
@@ -382,7 +393,7 @@ function FormPreview({ liveData, data }: { liveData: any; data: any }) {
                                             />
                                             {errors[f.id] && (
                                                 <p className="text-[11px] text-red-500 mt-1 mb-1 font-medium">
-                                                    This field is required
+                                                    {errors[f.id]}
                                                 </p>
                                             )}
                                         </div>

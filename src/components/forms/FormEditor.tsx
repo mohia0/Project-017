@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation';
 import {
     ArrowLeft, ChevronDown, Link2, MoreHorizontal, Trash2, Copy,
-    Check, Settings, Palette, ChevronRight, Plus, Search,
+    Check, Settings, Palette, ChevronRight, ChevronLeft, Plus, Search,
     Type, AlignLeft, ChevronDown as ChevronDownIcon, SquareCheck,
     Image, Upload, Mail, Phone, User, MapPin, Globe, Hash,
     Sliders as SlidersIcon, Calendar, LinkIcon, PenLine, Filter,
@@ -31,6 +31,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { useFormStore, FormStatus, FormField, FormFieldType } from '@/store/useFormStore';
 import { useTemplateStore, Template } from '@/store/useTemplateStore';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import { CountryPicker } from '@/components/ui/CountryPicker';
 import FileUploadModal from '@/components/modals/ImageUploadModal';
@@ -266,9 +267,9 @@ function PictureOptionEditorItem({ opt, idx, isDark, onUpdate, onUploadClick, fi
                 className={cn("w-full h-24 rounded-lg flex-shrink-0 cursor-pointer overflow-hidden border-2 border-dashed flex items-center justify-center transition-all group-hover:border-primary/50 relative", isDark ? "border-[#444] bg-black/20" : "border-[#ccc] bg-black/5")}
             >
                 {url ? <img src={url} className="w-full h-full object-cover" /> : <Image size={18} className="opacity-50" />}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity gap-3 backdrop-blur-sm">
-                    <button onClick={moveUp} disabled={idx === 0} className={cn("text-white p-2 rounded-full hover:bg-white/20 transition-colors", idx === 0 && "opacity-30 cursor-default hover:bg-transparent")}><ChevronUp size={20} /></button>
-                    <button onClick={moveDown} disabled={idx === options.length - 1} className={cn("text-white p-2 rounded-full hover:bg-white/20 transition-colors", idx === options.length - 1 && "opacity-30 cursor-default hover:bg-transparent")}><ChevronDown size={20} /></button>
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-2">
+                    <button onClick={moveUp} disabled={idx === 0} className={cn("text-white p-2 rounded-xl bg-black/60 backdrop-blur-sm hover:bg-black/80 transition-all", idx === 0 && "opacity-20 cursor-default")}><ChevronLeft size={20} /></button>
+                    <button onClick={moveDown} disabled={idx === options.length - 1} className={cn("text-white p-2 rounded-xl bg-black/60 backdrop-blur-sm hover:bg-black/80 transition-all", idx === options.length - 1 && "opacity-20 cursor-default")}><ChevronRight size={20} /></button>
                 </div>
             </div>
             <input 
@@ -546,8 +547,12 @@ function FieldPreview({
                     />
                 );
             default:
+                const inputType = field.type === 'email' ? 'email' :
+                                field.type === 'phone' ? 'tel' :
+                                field.type === 'number' ? 'number' :
+                                field.type === 'link' ? 'url' : 'text';
                 return (
-                    <input type="text" placeholder={field.placeholder || 'Type your answer...'} 
+                    <input type={inputType} placeholder={field.placeholder || 'Type your answer...'} 
                         {...inputProps} />
                 );
         }
@@ -995,8 +1000,12 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
     };
 
     const selectedField = fields.find(f => f.id === selectedFieldId);
+    
+    const branding = useSettingsStore(s => s.branding);
+    const brandColor = branding?.primary_color || '#4dbf39';
+
     const design = meta.design || DEFAULT_DOCUMENT_DESIGN;
-    const primaryColor = design.primaryColor || '#4dbf39';
+    const primaryColor = design.primaryColor || brandColor;
     const isFormDark = isColorDark(design.blockBackgroundColor || '#fff');
 
     const filteredFieldTypes = FIELD_TYPES.filter(ft => {
@@ -2124,9 +2133,13 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                         {selectedResponseIds.size === filteredResponses.length && filteredResponses.length > 0 && <Check size={10} strokeWidth={4} className="text-black" />}
                                                     </div>
                                                 </th>
-                                                <th className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px]", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>Submission Date</th>
-                                                <th className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px]", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>Identity</th>
-                                                <th className={cn("px-4 py-2 border-b rounded-tr-xl", isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]")} />
+                                                <th className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px] w-[140px]", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>Submission Date</th>
+                                                {fields.slice(0, 4).map((f) => (
+                                                    <th key={f.id} className={cn("px-4 py-2 border-b font-bold tracking-tight uppercase text-[10px] truncate max-w-[200px]", isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}>
+                                                        {f.label || 'Untitled'}
+                                                    </th>
+                                                ))}
+                                                <th className={cn("px-4 py-2 border-b rounded-tr-xl w-[60px]", isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]")} />
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -2137,12 +2150,10 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                         key={r.id} 
                                                         className={cn(
                                                             "transition-colors cursor-pointer group",
-                                                            isSelected ? (isDark ? "bg-primary/5" : "bg-primary/5") : (isDark ? "hover:bg-white/[0.02]" : "hover:bg-black/[0.02]"),
-                                                            isDark ? "border-[#222]" : "border-[#f5f5f5]",
-                                                            i !== filteredResponses.length - 1 && "border-b"
+                                                            isSelected ? (isDark ? "bg-primary/5" : "bg-primary/5") : (isDark ? "hover:bg-white/[0.02]" : "hover:bg-black/[0.02]")
                                                         )}
                                                     >
-                                                        <td className="px-4 py-3" onClick={() => toggleResponseSelection(r.id)}>
+                                                        <td className={cn("px-4 py-3", i !== filteredResponses.length - 1 && "border-b", isDark ? "border-[#252525]" : "border-[#ebebeb]")} onClick={() => toggleResponseSelection(r.id)}>
                                                             <div className={cn("w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all",
                                                                 isSelected ? "bg-primary border-primary" : isDark ? "border-white/10 opacity-0 group-hover:opacity-100" : "border-[#ccc] opacity-0 group-hover:opacity-100")}>
                                                                 {isSelected && <Check size={10} strokeWidth={4} className="text-black" />}
@@ -2150,20 +2161,24 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                         </td>
                                                         <td 
                                                             onClick={() => openRightPanel({ type: 'form_response', id: r.id, formId: id || '' })}
-                                                            className={cn("px-4 py-3 whitespace-nowrap font-medium", isDark ? "text-[#888]" : "text-[#666]")}
+                                                            className={cn("px-4 py-3 whitespace-nowrap font-medium", i !== filteredResponses.length - 1 && "border-b", isDark ? "border-[#252525] text-[#888]" : "border-[#ebebeb] text-[#666]")}
                                                         >
                                                             {new Date(r.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                                         </td>
-                                                        <td 
-                                                            onClick={() => openRightPanel({ type: 'form_response', id: r.id, formId: id || '' })}
-                                                            className="px-4 py-3"
-                                                        >
-                                                            {(() => {
-                                                                const primaryIdentity = getResponseIdentity(r);
-                                                                return <span className={cn("font-bold", isDark ? "text-white" : "text-black")}>{primaryIdentity}</span>;
-                                                            })()}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right">
+                                                        {fields.slice(0, 4).map((f) => {
+                                                            const val = r.data?.[f.id];
+                                                            const str = Array.isArray(val) ? val.join(', ') : (typeof val === 'object' ? JSON.stringify(val) : String(val || '—'));
+                                                            return (
+                                                                <td 
+                                                                    key={f.id}
+                                                                    onClick={() => openRightPanel({ type: 'form_response', id: r.id, formId: id || '' })}
+                                                                    className={cn("px-4 py-3 truncate max-w-[200px]", i !== filteredResponses.length - 1 && "border-b", isDark ? "border-[#252525] text-[#ccc]" : "border-[#ebebeb] text-[#444]")}
+                                                                >
+                                                                    {str}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className={cn("px-4 py-3 text-right", i !== filteredResponses.length - 1 && "border-b", isDark ? "border-[#252525]" : "border-[#ebebeb]")}>
                                                             <button 
                                                                 onClick={(e) => { e.stopPropagation(); handleCopyAll(r.data); }}
                                                                 className={cn("p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all", isDark ? "text-[#444] hover:text-white" : "text-[#ccc] hover:text-black")}

@@ -368,7 +368,7 @@ export function PricingBlock({
                                 <button
                                     onClick={() => handleSaveSettings(settings)}
                                     className="flex-1 py-4 px-6 rounded-2xl text-black font-bold text-[15px] hover:opacity-90 transition-all"
-                                    style={{ backgroundColor: data.design?.primaryColor || 'var(--brand-primary)' }}
+                                    style={{ backgroundColor: 'var(--brand-primary)' }}
                                 >
                                     Save
                                 </button>

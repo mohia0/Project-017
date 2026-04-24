@@ -1330,6 +1330,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         setUploadTarget({ type: 'background' });
                                         setImageUploadOpen(true);
                                     }}
+                                    hideAccentColor={true}
                                 />
                             )}
 
@@ -1386,10 +1387,14 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         </>
                                     )}
                                     {rightTab === 'appearance' && (
-                                        <DesignSettingsPanel isDark={isDark} meta={meta} updateMeta={updateMeta}
+                                        <DesignSettingsPanel 
+                                            isDark={isDark} 
+                                            meta={meta} 
+                                            updateMeta={updateMeta}
                                             storageKey="proposal_design"
                                             onUploadLogo={() => { setUploadTarget({ type: 'logo' }); setImageUploadOpen(true); }}
                                             onUploadBackground={() => { setUploadTarget({ type: 'background' }); setImageUploadOpen(true); }}
+                                            hideAccentColor={true}
                                         />
                                     )}
                                 </div>
@@ -1926,7 +1931,7 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
     const logoToUse = meta.logoUrl || (isDark ? branding?.logo_light_url : branding?.logo_dark_url);
 
     return (
-        <div className="mb-4">
+        <div className="mb-4 pt-[7%]">
             <div className="flex justify-between items-start mb-10">
                 <div className="space-y-4">
                     {/* Branding Logo */}
@@ -1935,7 +1940,7 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
                             src={logoToUse} 
                             alt="Logo" 
                             className="w-auto transition-all duration-300 ease-out" 
-                            style={{ height: `${meta.design?.logoSize ?? 48}px` }} 
+                            style={{ height: `${(meta.design?.logoSize ?? 48) * 1.42}px` }} 
                         />
                     ) : (
                         <div className={cn(
