@@ -431,9 +431,14 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 type: 'template_browser',
                 onInsert: (bd: any) => {
                     setBlocks(prev => {
-                        const next = [...prev];
-                        next.splice(idx + 1, 0, bd);
-                        return next;
+                        const newBlocks = [...prev];
+                        if (afterId === 'top') {
+                            newBlocks.unshift(bd);
+                        } else {
+                            const insertIdx = afterId ? prev.findIndex(b => b.id === afterId) : prev.length - 1;
+                            newBlocks.splice(insertIdx + 1, 0, bd);
+                        }
+                        return newBlocks;
                     });
                 }
             });
@@ -447,6 +452,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             ...(type === 'pricing'   ? { rows: [{ id: uuidv4(), description: '', qty: 1, rate: 0 }], taxRate: 0, discountRate: 0, showTax: false, showDiscount: false } : {}),
         };
         setBlocks(prev => {
+            if (afterId === 'top') return [nb, ...prev];
             if (!afterId) return [...prev, nb];
             const idx = prev.findIndex(b => b.id === afterId);
             const next = [...prev];
@@ -1648,7 +1654,7 @@ export function InvoiceDocument({
         )}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blocks.map((b: any) => b.id)} strategy={verticalListSortingStrategy}>
-                    {!isPreview && <InsertZone idx={-1} isDark={false} isOpen={openInsertMenu === -1} onOpen={() => setOpenInsertMenu(-1)} onClose={() => setOpenInsertMenu(null)} onAdd={(type) => addBlock(type)} isFirst={true} /> }
+                    {!isPreview && <InsertZone idx={-1} isDark={false} isOpen={openInsertMenu === -1} onOpen={() => setOpenInsertMenu(-1)} onClose={() => setOpenInsertMenu(null)} onAdd={(type) => addBlock(type as any, 'top')} isFirst={true} /> }
                     <div>
                         {blocks.map((block: any, idx: number) => (
                             <React.Fragment key={block.id}>

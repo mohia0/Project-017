@@ -9,7 +9,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useUIStore } from '@/store/useUIStore';
-import { useMenuStore, ICON_MAP, NavItem } from '@/store/useMenuStore';
+import { useMenuStore, ICON_MAP, NavItem, DEFAULT_NAV } from '@/store/useMenuStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import WorkspaceSwitcher from '@/components/settings/WorkspaceSwitcher';
 import {
@@ -420,7 +420,18 @@ export default function LeftSystemMenu() {
     };
 
     const handleReset = () => {
-        setTempItems([...navItems]);
+        setTempItems(prev => prev.map(item => {
+            const def = DEFAULT_NAV.find(d => d.id === item.id);
+            if (def) {
+                return { 
+                    ...item, 
+                    label: def.label, 
+                    icon: def.icon,
+                    isHidden: false
+                };
+            }
+            return item;
+        }));
     };
 
     const applyBrandColor = branding?.apply_color_to_sidebar;

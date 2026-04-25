@@ -466,11 +466,16 @@ export default function ProposalEditor({ id }: { id?: string }) {
             useUIStore.getState().openRightPanel({
                 type: 'template_browser',
                 onInsert: (bd: any) => {
-                    setBlocks(prev => {
-                        const newBlocks = [...prev];
-                        newBlocks.splice(idx + 1, 0, bd);
-                        return newBlocks;
-                    });
+            setBlocks(prev => {
+                const newBlocks = [...prev];
+                if (afterId === 'top') {
+                    newBlocks.unshift(bd);
+                } else {
+                    const insertIdx = afterId ? prev.findIndex(b => b.id === afterId) : prev.length - 1;
+                    newBlocks.splice(insertIdx + 1, 0, bd);
+                }
+                return newBlocks;
+            });
                 }
             });
             setOpenInsertMenu(null);
@@ -492,6 +497,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
             ...(type === 'signature' ? { signerName: '', signerRole: 'Client', signed: false } : {}),
         };
         setBlocks(prev => {
+            if (afterId === 'top') return [nb, ...prev];
             if (!afterId) return [...prev, nb];
             const idx = prev.findIndex(b => b.id === afterId);
             const next = [...prev];
@@ -1764,7 +1770,7 @@ export function ProposalDocument({
                             isOpen={openInsertMenu === -1}
                             onOpen={() => setOpenInsertMenu(-1)}
                             onClose={() => setOpenInsertMenu(null)}
-                            onAdd={(type) => addBlock(type)}
+                            onAdd={(type) => addBlock(type as any, 'top')}
                             hasHeader={blocks.some((b: any) => b.type === 'header')}
                             isFirst={true}
                         />

@@ -731,7 +731,6 @@ export default function ProposalsPage() {
     const [filterOpen, setFilterOpen] = useState(false);
     const [orderOpen, setOrderOpen] = useState(false);
     const [viewOpen, setViewOpen] = useState(false);
-    const [dateFilter, setDateFilter] = usePersistentState<'all' | 'month' | 'year'>('proposals_filter_date', 'all');
     const [orderBy, setOrderBy] = usePersistentState<'created_at' | 'issue_date' | 'amount'>('proposals_filter_order', 'created_at');
     /* Local archive state (optimistic) */
     const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
@@ -753,11 +752,10 @@ export default function ProposalsPage() {
     useEffect(() => { fetchProposals(); }, [fetchProposals]);
 
     /* ── Derived data ── */
-    const filtered = useMemo(() => {
+    const baseFiltered = useMemo(() => {
         let r = proposals.filter(p => {
             if (showArchived) return archivedIds.has(p.id);
             if (archivedIds.has(p.id)) return false;
-            if (statusFilter !== 'All' && p.status !== statusFilter) return false;
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 const idMatch = p.id?.toLowerCase().slice(-6).includes(q);
@@ -767,12 +765,20 @@ export default function ProposalsPage() {
             return true;
         });
         // Apply advanced filters
-        r = applyFilters(r, filterRows, PROPOSAL_FILTER_FIELDS);
+        return applyFilters(r, filterRows, PROPOSAL_FILTER_FIELDS);
+    }, [proposals, searchQuery, filterRows, PROPOSAL_FILTER_FIELDS, archivedIds, showArchived]);
+
+    const filtered = useMemo(() => {
+        let r = baseFiltered;
+        if (statusFilter !== 'All') {
+            r = r.filter(p => p.status === statusFilter);
+        }
+
         if (orderBy === 'issue_date') r = [...r].sort((a, b) => new Date(b.issue_date || 0).getTime() - new Date(a.issue_date || 0).getTime());
         else if (orderBy === 'amount') r = [...r].sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0));
         else r = [...r].sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         return r;
-    }, [proposals, statusFilter, searchQuery, filterRows, PROPOSAL_FILTER_FIELDS, orderBy, archivedIds, showArchived]);
+    }, [baseFiltered, statusFilter, orderBy]);
 
     const stats = useMemo(() => {
         const s: Record<string, { count: number; amount: number }> = {
@@ -782,19 +788,13 @@ export default function ProposalsPage() {
         // Initialize with active statuses
         activeStatues.forEach(st => s[st.name] = { count: 0, amount: 0 });
 
-        proposals.filter(p => {
-            if (showArchived) return archivedIds.has(p.id);
-            if (archivedIds.has(p.id)) return false;
-            if (dateFilter === 'month' && !isThisMonth(p.issue_date)) return false;
-            if (dateFilter === 'year' && !isThisYear(p.issue_date)) return false;
-            return true;
-        }).forEach(p => {
+        baseFiltered.forEach(p => {
             s.All.count++; s.All.amount += Number(p.amount || 0);
             if (!s[p.status]) s[p.status] = { count: 0, amount: 0 };
             s[p.status].count++; s[p.status].amount += Number(p.amount || 0);
         });
         return s;
-    }, [proposals, archivedIds, dateFilter, showArchived, activeStatues]);
+    }, [baseFiltered, activeStatues]);
 
     const handleDuplicate = async (id: string) => {
         const original = proposals.find(p => p.id === id);
@@ -936,7 +936,6 @@ export default function ProposalsPage() {
     };
 
     const border = isDark ? "border-[#252525]" : "border-[#ebebeb]";
-    const datePill = dateFilter === 'month' ? 'This Month' : dateFilter === 'year' ? 'This Year' : 'All time';
 
     return (
         <div className={cn("flex flex-col h-full overflow-hidden font-sans text-[13px]",
@@ -974,7 +973,7 @@ export default function ProposalsPage() {
                             onClick={() => setFilterOpen(v => !v)}
                             className={cn(
                                 "w-[34px] h-[34px] rounded-[8px] flex items-center justify-center border transition-all",
-                                filterOpen || dateFilter !== 'all'
+                                filterOpen
                                     ? "bg-primary/15 border-primary/40 text-primary"
                                     : isDark ? "bg-white/[0.05] border-white/10 text-[#888]" : "bg-[#f5f5f5] border-transparent text-[#888]"
                             )}
@@ -988,11 +987,6 @@ export default function ProposalsPage() {
                                 className={cn("flex items-center gap-2 px-3.5 py-2.5 border-b cursor-pointer transition-colors", isDark ? "border-[#2e2e2e] hover:bg-white/5 text-[#ccc]" : "border-[#f0f0f0] hover:bg-black/5 text-[#444]")}>
                                 <Plus size={12} className="opacity-70" />
                                 <span className={cn("text-[12px] font-medium")}>Create filter</span>
-                            </div>
-                            <div className="py-1">
-                                <DItem label="This Month" active={dateFilter === 'month'} onClick={() => { setDateFilter('month'); setFilterOpen(false); }} isDark={isDark} />
-                                <DItem label="This Year" active={dateFilter === 'year'} onClick={() => { setDateFilter('year'); setFilterOpen(false); }} isDark={isDark} />
-                                <DItem label="All time" active={dateFilter === 'all'} onClick={() => { setDateFilter('all'); setFilterOpen(false); }} isDark={isDark} />
                             </div>
                             <div className={cn("px-3.5 py-2.5 border-t border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>SORT BY</div>
                             <div className="py-1">
@@ -1018,20 +1012,41 @@ export default function ProposalsPage() {
                             
                             <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark} align="left">
                                 <div className="py-1 min-w-[160px]">
+                                    <div className={cn("px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider", isDark ? "text-[#666]" : "text-[#aaa]")}>Custom Filter</div>
                                     <div 
                                         onClick={() => { setFilterOpen(false); setAdvancedFilterOpen(true); }}
                                         className={cn("flex items-center gap-2 px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-black/5", isDark ? "hover:bg-white/5" : "")}>
                                         <Plus size={11} className="opacity-40" />
-                                        <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
+                                        <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>
+                                            {filterRows.length > 0 ? "Edit active filter" : "New filter"}
+                                        </span>
                                     </div>
                                     
+                                    {filterRows.length > 0 && !activeFilterId && (
+                                        <div 
+                                            onClick={() => { setFilterRows([]); setFilterOpen(false); }}
+                                            className={cn("flex items-center gap-2 px-3.5 py-2 cursor-pointer transition-colors hover:bg-black/5", isDark ? "hover:bg-white/5 text-red-400" : "text-red-500")}>
+                                            <X size={11} className="opacity-70" />
+                                            <span className="text-[11px] font-medium">Clear active filters</span>
+                                        </div>
+                                    )}
+
                                     {savedFilters.length > 0 && (
                                         <>
                                             <div className={cn("h-px my-1", isDark ? "bg-[#252525]" : "bg-[#efefef]")} />
                                             <SavedFilterPills
                                                 saved={savedFilters}
                                                 activeId={activeFilterId}
-                                                onLoad={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setFilterOpen(false); }}
+                                                onLoad={(f) => { 
+                                                    if (activeFilterId === f.id) {
+                                                        setFilterRows([]); 
+                                                        setActiveFilterId(null);
+                                                    } else {
+                                                        setFilterRows(f.rows); 
+                                                        setActiveFilterId(f.id); 
+                                                    }
+                                                    setFilterOpen(false); 
+                                                }}
                                                 onDelete={(id) => { deleteSavedFilter(id); if (activeFilterId === id) { setActiveFilterId(null); } }}
                                                 onClear={() => { setFilterRows([]); setActiveFilterId(null); setFilterOpen(false); }}
                                                 isDark={isDark}
@@ -1246,8 +1261,8 @@ export default function ProposalsPage() {
                                         isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa]" : "text-[#bbb] border-[#f0f0f0] hover:text-[#666]"
                                     )}
                                 >
-                                    <Plus size={13} className="opacity-60" />
-                                    Create proposal
+                                    <Plus size={13} className="opacity-60 shrink-0" />
+                                    <span className="leading-none">Create proposal</span>
                                 </button>
                             )}
                         </div>
@@ -1275,8 +1290,10 @@ export default function ProposalsPage() {
                                         defaultWidth: 150,
                                         flexible: true,
                                         cell: (p) => (
-                                            <div className={cn("flex items-center px-4 py-1.5 font-bold truncate gap-2", isDark ? "text-white" : "text-black")}>
-                                                <span className="truncate">{p.title || 'New Proposal'}</span>
+                                            <div className="flex flex-col px-4 py-1.5 h-full justify-center">
+                                                <div className={cn("font-bold truncate leading-tight", isDark ? "text-white" : "text-black")}>
+                                                    {p.title || 'New Proposal'}
+                                                </div>
                                             </div>
                                         )
                                     },
@@ -1367,12 +1384,12 @@ export default function ProposalsPage() {
                                 ]}
                                 afterRows={!isLoading && !showArchived ? (
                                     <button onClick={() => setCreateModalOpen(true, 'Proposal')}
-                                        className={cn("flex items-center gap-1 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors",
+                                        className={cn("flex items-center gap-1.5 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors",
                                             isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
-                                        <div className={cn("w-4 h-4 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
+                                        <div className={cn("w-4 h-4 shrink-0 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
                                             <Plus size={10} />
                                         </div>
-                                        <span>Create proposal</span>
+                                        <span className="leading-none">Create proposal</span>
                                     </button>
                                 ) : undefined}
                             />

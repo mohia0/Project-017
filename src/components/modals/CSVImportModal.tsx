@@ -518,22 +518,26 @@ export default function CSVImportModal() {
                         due_date: item.due_date || new Date().toISOString().split('T')[0],
                         status: item.status || 'Draft',
                         notes: item.notes || '',
-                        blocks: item.amount > 0 ? [{
-                            id: `import-b-${Math.random().toString(36).substring(2, 9)}`,
-                            type: 'pricing',
-                            rows: [{
-                                id: `import-r-${Math.random().toString(36).substring(2, 9)}`,
-                                title: 'Imported Amount',
-                                description: 'Amount imported from CSV',
-                                qty: 1,
-                                rate: item.amount
-                            }],
-                            taxRate: 0,
-                            discountRate: 0,
-                            showTax: false,
-                            showDiscount: false,
-                            note: ''
-                        }] : []
+                        meta: { is_imported: true },
+                        blocks: item.amount > 0 ? [
+                            { id: `import-h-${Math.random().toString(36).substring(2, 9)}`, type: 'header' },
+                            {
+                                id: `import-b-${Math.random().toString(36).substring(2, 9)}`,
+                                type: 'pricing',
+                                rows: [{
+                                    id: `import-r-${Math.random().toString(36).substring(2, 9)}`,
+                                    title: 'Imported Amount',
+                                    description: 'Amount imported from CSV',
+                                    qty: 1,
+                                    rate: item.amount
+                                }],
+                                taxRate: 0,
+                                discountRate: 0,
+                                showTax: false,
+                                showDiscount: false,
+                                note: ''
+                            }
+                        ] : [{ id: `import-h-${Math.random().toString(36).substring(2, 9)}`, type: 'header' }]
                     };
                     if (importType === 'Invoice') {
                         return { ...base, paid_at: item.paid_at || null };

@@ -34,7 +34,7 @@ export const DEFAULT_NAV = [
     { id: 'schedulers',  href: '/schedulers',  icon: 'CalendarDays', label: 'Schedulers' },
     { id: 'forms',       href: '/forms',       icon: 'ClipboardList',label: 'Forms' },
     { id: 'files',       href: '/files',       icon: 'Folder',       label: 'File Manager' },
-    { id: 'hooks',       href: '/hooks',       icon: 'Zap',          label: 'Hook Generator' },
+    { id: 'hooks',       href: '/hooks',       icon: 'Zap',          label: 'Hooks' },
 ];
 
 export const useMenuStore = create<MenuState>((set) => ({
