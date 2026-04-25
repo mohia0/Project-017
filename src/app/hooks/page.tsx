@@ -25,6 +25,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { useMenuStore } from '@/store/useMenuStore';
 import { 
     DndContext, 
     closestCenter, 
@@ -78,7 +79,10 @@ function Dropdown({ open, onClose, isDark, children, side = 'bottom' }: { open: 
     useEffect(() => {
         if (!open) return;
         const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-        const s = () => onClose();
+        const s = (e: Event) => {
+            if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
+            onClose();
+        };
         document.addEventListener('mousedown', h);
         window.addEventListener('scroll', s, true);
         return () => {
@@ -297,6 +301,7 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
 
 export default function HooksPage() {
     const { theme, openRightPanel, closeRightPanel, rightPanel, setCreateModalOpen, pageViews, setPageView } = useUIStore();
+    const { navItems } = useMenuStore();
     const { hooks, fetchHooks, addHook, updateHook, deleteHook, bulkDeleteHooks, isLoading } = useHookStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
@@ -417,7 +422,7 @@ export default function HooksPage() {
             {/* Header */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0",
                 isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
-                <h1 className="text-[15px] font-semibold tracking-tight">Hooks</h1>
+                <h1 className="text-[15px] font-semibold tracking-tight">{navItems.find(item => item.href === '/hooks')?.label || 'Hook Generator'}</h1>
             </div>
 
             {/* Toolbar */}

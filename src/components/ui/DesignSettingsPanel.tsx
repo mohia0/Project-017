@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Upload, X, RotateCcw, ChevronDown } from 'lucide-react';
+import { Upload, X, RotateCcw, ChevronDown, Palette, Move, Type, Table, PenLine, MousePointer2 } from 'lucide-react';
 import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import { ColorisInput } from './ColorisInput';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -38,6 +38,7 @@ interface DesignSettingsPanelProps {
     hideActionBar?: boolean;
     /** Key used to persist collapsed state in localStorage. Defaults to 'design_panel'. */
     storageKey?: string;
+    hideSuccessIcon?: boolean;
 }
 
 export function MetaField({ label, children, isDark, icon, onReset, valueLabel }: any) {
@@ -150,7 +151,8 @@ export function ShadowPicker({ value, onChange, isDark }: any) {
 
 export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, onUploadSuccessIcon, onUploadBackground, hideSignature, hideTable, hideActionBar, 
     storageKey = 'design_panel',
-    hideAccentColor = false
+    hideAccentColor = false,
+    hideSuccessIcon = false
 }: DesignSettingsPanelProps & { hideAccentColor?: boolean }) {
     // Always read latest design so we don't get stale closures on rapid changes
     const metaRef = React.useRef(meta);
@@ -194,7 +196,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
         return next;
     });
 
-    const SectionHeader = ({ id, label }: { id: string, label: string }) => (
+    const SectionHeader = ({ id, label, icon }: { id: string, label: string, icon?: React.ReactNode }) => (
         <button 
             onClick={() => toggle(id)}
             className={cn(
@@ -202,12 +204,15 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                 isDark ? "hover:text-white" : "hover:text-black"
             )}
         >
-            <span 
-                className={cn("text-[9px] uppercase tracking-widest font-black", isDark ? "text-[#555]" : "text-[#bbb]")}
-                style={{ color: !collapsed[id] ? 'var(--brand-primary)' : undefined }}
-            >
-                {label}
-            </span>
+            <div className="flex items-center gap-2">
+                {icon && <span className={cn(isDark ? "text-white/20 group-hover:text-white/40" : "text-black/20 group-hover:text-black/40")}>{icon}</span>}
+                <span 
+                    className={cn("text-[9px] uppercase tracking-widest font-black", isDark ? "text-[#555]" : "text-[#bbb]")}
+                    style={{ color: !collapsed[id] ? 'var(--brand-primary)' : undefined }}
+                >
+                    {label}
+                </span>
+            </div>
             <div className={cn("transition-transform duration-200", collapsed[id] ? "-rotate-90" : "rotate-0")}>
                 <ChevronDown size={10} className={isDark ? "text-white/20 group-hover:text-white/40" : "text-black/20 group-hover:text-black/40"} />
             </div>
@@ -218,7 +223,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
         <div className="space-y-2.5 pt-1">
             {/* ── BRANDING ── */}
             <div>
-                <SectionHeader id="branding" label="Branding" />
+                <SectionHeader id="branding" label="Branding" icon={<Palette size={12} />} />
                 {!collapsed['branding'] && (
                     <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
                         <MetaField 
@@ -323,67 +328,69 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                 </button>
                             </div>
                         </MetaField>
-                        <MetaField 
-                            label="Success Icon" 
-                            isDark={isDark}
-                            onReset={() => {
-                                updateMeta({ successIconUrl: '' });
-                                updateDesign({ successIconSize: DEFAULT_DOCUMENT_DESIGN.successIconSize });
-                            }}
-                        >
-                            <div className="flex flex-col gap-3">
-                                {meta.successIconUrl && (
-                                    <div className="relative group/successicon w-fit">
-                                        <img 
-                                            src={meta.successIconUrl} 
-                                            alt="Success Icon" 
-                                            className="h-12 w-auto rounded border border-white/5 bg-white/5 p-1 transition-all" 
-                                        />
-                                        <button 
-                                            onClick={() => updateMeta({ successIconUrl: '' })}
-                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/successicon:opacity-100 transition-opacity"
-                                        >
-                                            <X size={10} />
-                                        </button>
-                                    </div>
-                                )}
-                                
-                                {meta.successIconUrl && (
-                                    <div className="space-y-1 px-0.5">
-                                        <div className="flex items-center justify-between mb-0.5 px-0.5">
-                                            <span className={cn("text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Size</span>
-                                            <span className={cn("text-[9.5px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.successIconSize ?? 64}px</span>
-                                        </div>
-                                        <input 
-                                            type="range" min="20" max="250" step="2" 
-                                            value={design.successIconSize ?? 64} 
-                                            onChange={e => updateDesign({ successIconSize: Number(e.target.value) })}
-                                            className="w-full cursor-pointer" 
-                                        />
-                                    </div>
-                                )}
+                                {!hideSuccessIcon && (
+                                    <MetaField 
+                                        label="Success Icon" 
+                                        isDark={isDark}
+                                        onReset={() => {
+                                            updateMeta({ successIconUrl: '' });
+                                            updateDesign({ successIconSize: DEFAULT_DOCUMENT_DESIGN.successIconSize });
+                                        }}
+                                    >
+                                        <div className="flex flex-col gap-3">
+                                            {meta.successIconUrl && (
+                                                <div className="relative group/successicon w-fit">
+                                                    <img 
+                                                        src={meta.successIconUrl} 
+                                                        alt="Success Icon" 
+                                                        className="h-12 w-auto rounded border border-white/5 bg-white/5 p-1 transition-all" 
+                                                    />
+                                                    <button 
+                                                        onClick={() => updateMeta({ successIconUrl: '' })}
+                                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/successicon:opacity-100 transition-opacity"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            
+                                            {meta.successIconUrl && (
+                                                <div className="space-y-1 px-0.5">
+                                                    <div className="flex items-center justify-between mb-0.5 px-0.5">
+                                                        <span className={cn("text-[10px] font-semibold tracking-wide", isDark ? "text-[#555]" : "text-[#bbb]")}>Size</span>
+                                                        <span className={cn("text-[9.5px] font-mono", isDark ? "text-[#444]" : "text-[#ccc]")}>{design.successIconSize ?? 64}px</span>
+                                                    </div>
+                                                    <input 
+                                                        type="range" min="20" max="250" step="2" 
+                                                        value={design.successIconSize ?? 64} 
+                                                        onChange={e => updateDesign({ successIconSize: Number(e.target.value) })}
+                                                        className="w-full cursor-pointer" 
+                                                    />
+                                                </div>
+                                            )}
 
-                                <button 
-                                    onClick={onUploadSuccessIcon}
-                                    className={cn(
-                                        "w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border-2 border-dashed transition-all",
-                                        isDark ? "border-white/5 hover:border-[var(--brand-primary)]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[var(--brand-primary)]/30 hover:bg-gray-50 text-gray-500"
-                                    )}
-                                >
-                                    <Upload size={12} />
-                                    <span className="text-[11px] font-medium">
-                                        {meta.successIconUrl ? "Change Success Icon" : "Upload Success Icon"}
-                                    </span>
-                                </button>
-                            </div>
-                        </MetaField>
+                                            <button 
+                                                onClick={onUploadSuccessIcon}
+                                                className={cn(
+                                                    "w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border-2 border-dashed transition-all",
+                                                    isDark ? "border-white/5 hover:border-[var(--brand-primary)]/30 hover:bg-white/5 text-white/40" : "border-gray-200 hover:border-[var(--brand-primary)]/30 hover:bg-gray-50 text-gray-500"
+                                                )}
+                                            >
+                                                <Upload size={12} />
+                                                <span className="text-[11px] font-medium">
+                                                    {meta.successIconUrl ? "Change Success Icon" : "Upload Success Icon"}
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </MetaField>
+                                )}
                     </div>
                 )}
             </div>
 
             {/* ── SPACING & CORNERS ── */}
             <div>
-                <SectionHeader id="spacing" label="Spacing & Corners" />
+                <SectionHeader id="spacing" label="Spacing & Corners" icon={<Move size={12} />} />
                 {!collapsed['spacing'] && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                         <MetaField 
@@ -443,7 +450,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
 
             {/* ── TYPOGRAPHY & COLORS ── */}
             <div>
-                <SectionHeader id="typo" label="Typography & Colors" />
+                <SectionHeader id="typo" label="Typography & Colors" icon={<Type size={12} />} />
                 {!collapsed['typo'] && (
                     <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                         <MetaField 
@@ -551,7 +558,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
             {/* ── TABLE STYLING ── */}
             {!hideTable && (
                 <div>
-                    <SectionHeader id="table" label="Table Styling" />
+                    <SectionHeader id="table" label="Table Styling" icon={<Table size={12} />} />
                     {!collapsed['table'] && (
                         <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                             <MetaField 
@@ -744,7 +751,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
             {/* ── SIGNATURE BLOCK ── */}
             {!hideSignature && (
                 <div>
-                    <SectionHeader id="signature" label="Signature Block" />
+                    <SectionHeader id="signature" label="Signature Block" icon={<PenLine size={12} />} />
                     {!collapsed['signature'] && (
                         <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                             <MetaField 
@@ -811,7 +818,7 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
             {/* ── ACTION BAR ── */}
             {!hideActionBar && (
                 <div>
-                    <SectionHeader id="actionbar" label="Action Bar" />
+                    <SectionHeader id="actionbar" label="Action Bar" icon={<MousePointer2 size={12} />} />
                     {!collapsed['actionbar'] && (
                         <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                             <MetaField 

@@ -20,6 +20,7 @@ import { ViewToggle } from '@/components/ui/ViewToggle';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { useMenuStore } from '@/store/useMenuStore';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -423,6 +424,7 @@ function DeleteModal({ name, onConfirm, onCancel, isDark }: { name: string; onCo
 
 export default function ProjectsPage() {
     const router  = useRouter();
+    const { navItems } = useMenuStore();
     const { theme, setCreateModalOpen } = useUIStore();
     const isDark  = theme === 'dark';
     const { projects, fetchProjects, updateProject, deleteProject, bulkDuplicateProjects, isLoading, tasksByProject } = useProjectStore();
@@ -530,7 +532,7 @@ export default function ProjectsPage() {
 
             {/* ── Page header — hidden on mobile (MobileTopBar handles title) ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
-                <h1 className="text-[15px] font-semibold tracking-tight">Projects</h1>
+                <h1 className="text-[15px] font-semibold tracking-tight">{navItems.find(item => item.href === '/projects')?.label || 'Projects'}</h1>
             </div>
 
             {/* ── Toolbar ── */}

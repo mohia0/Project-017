@@ -22,6 +22,7 @@ import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { useMenuStore } from '@/store/useMenuStore';
 import { 
     DndContext, 
     closestCenter, 
@@ -150,7 +151,10 @@ function Dropdown({ open, onClose, isDark, children, align = 'center', minWidth 
     useEffect(() => {
         if (!open) return;
         const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-        const s = () => onClose();
+        const s = (e: Event) => {
+            if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
+            onClose();
+        };
         document.addEventListener('mousedown', h);
         window.addEventListener('scroll', s, true);
         return () => {
@@ -354,6 +358,7 @@ function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }:
 /* ─── Main page ─────────────────────────────────────────────── */
 export default function FormsPage() {
     const router = useRouter();
+    const { navItems } = useMenuStore();
     const { theme, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const { forms, fetchForms, addForm, updateForm, deleteForm, isLoading } = useFormStore();
     const isDark = theme === 'dark';
@@ -531,7 +536,7 @@ export default function FormsPage() {
             {/* Header */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0",
                 isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
-                <h1 className="text-[15px] font-semibold tracking-tight">Forms</h1>
+                <h1 className="text-[15px] font-semibold tracking-tight">{navItems.find(item => item.href === '/forms')?.label || 'Forms'}</h1>
             </div>
 
             {/* Toolbar */}

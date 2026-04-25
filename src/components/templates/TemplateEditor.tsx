@@ -757,6 +757,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                         setImageUploadOpen(true);
                                     }}
                                     hideAccentColor={true}
+                                    hideSuccessIcon={true}
                                 />
                             )}
                         </div>

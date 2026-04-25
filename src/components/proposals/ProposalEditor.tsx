@@ -109,6 +109,7 @@ interface ProposalMeta {
     logoUrl?: string;
     documentTitle?: string;
     design?: DocumentDesign;
+    assignedClients?: { id: string; name: string; avatar_url?: string | null }[];
 }
 
 type RightPanelTab = 'details' | 'appearance' | 'automation';
@@ -156,6 +157,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     }, [fetchClients]);
 
     const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+    const [clientSearchQuery, setClientSearchQuery] = useState('');
 
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -371,16 +373,24 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
         if (!isLoaded) {
             // Initial Full Load
-            setMeta(prev => ({
-                ...prev,
-                clientName: proposal.client_name || '',
-                projectName: proposal.title || '',
-                issueDate: proposal.issue_date ? proposal.issue_date.split('T')[0] : prev.issueDate,
-                expirationDate: proposal.due_date ? proposal.due_date.split('T')[0] : prev.expirationDate,
-                status: proposal.status as any,
-                proposalNumber: proposal.proposal_number || proposal.id.slice(0, 8).toUpperCase(),
-                ...((proposal.meta as any) || {})
-            }));
+            setMeta(prev => {
+                const parsedMeta = (proposal.meta as any) || {};
+                let assignedClients = parsedMeta.assignedClients;
+                if ((!assignedClients || assignedClients.length === 0) && proposal.client_name) {
+                    assignedClients = [{ id: proposal.client_id || 'proposal_compat', name: proposal.client_name }];
+                }
+                return {
+                    ...prev,
+                    clientName: proposal.client_name || '',
+                    projectName: proposal.title || '',
+                    issueDate: proposal.issue_date ? proposal.issue_date.split('T')[0] : prev.issueDate,
+                    expirationDate: proposal.due_date ? proposal.due_date.split('T')[0] : prev.expirationDate,
+                    status: proposal.status as any,
+                    proposalNumber: proposal.proposal_number || proposal.id.slice(0, 8).toUpperCase(),
+                    ...parsedMeta,
+                    assignedClients: assignedClients || []
+                };
+            });
             if (proposal.blocks && Array.isArray(proposal.blocks) && proposal.blocks.length > 0) {
                 setBlocks(proposal.blocks);
             }
@@ -431,9 +441,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
         }, 0);
 
         // setSaveStatus('saving');
+        const primaryClient = debouncedMeta.assignedClients?.[0];
         updateProposal(id, {
             title: debouncedMeta.projectName || 'New Proposal',
-            client_name: debouncedMeta.clientName,
+            client_name: primaryClient?.name || debouncedMeta.clientName,
+            client_id: primaryClient?.id || null,
             status: debouncedMeta.status,
             issue_date: debouncedMeta.issueDate,
             due_date: debouncedMeta.expirationDate,
@@ -530,8 +542,10 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const handleCreateClient = async (data: any) => {
         const client = await useClientStore.getState().addClient(data);
         if (client) {
+            const nextClients = [...(meta.assignedClients || []), { id: client.id, name: client.company_name || client.contact_person, avatar_url: client.avatar_url }];
             updateMeta({
-                clientName: client.company_name || client.contact_person,
+                assignedClients: nextClients,
+                clientName: '',
                 clientEmail: client.email || '',
                 clientPhone: client.phone || '',
                 clientAddress: client.address || ''
@@ -1020,7 +1034,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         </div>
 
                         {/* Panel content */}
-                        <div className="flex-1 overflow-auto py-3 px-3 space-y-1.5">
+                        <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-3 space-y-1.5">
 
                             {rightTab === 'details' && (
                                 <>
@@ -1045,77 +1059,130 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         label="Client"
                                         isDark={isDark}
                                         icon={<User size={11} className="opacity-50" />}
-                                        onReset={() => updateMeta({ clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' })}
+                                        onReset={() => updateMeta({ clientName: '', clientEmail: '', clientPhone: '', clientAddress: '', assignedClients: [] })}
                                     >
-                                        <div className="relative">
-                                            <input
-                                                value={meta.clientName}
-                                                onChange={e => updateMeta({ clientName: e.target.value })}
-                                                onFocus={() => setClientDropdownOpen(true)}
-                                                onBlur={() => setTimeout(() => setClientDropdownOpen(false), 200)}
-                                                placeholder="Select client..."
-                                                className={cn(
-                                                    "w-full text-[12px] bg-transparent outline-none font-medium",
-                                                    isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
-                                                )}
-                                            />
-                                            {clientDropdownOpen && (
-                                                <div className={cn(
-                                                    "absolute top-full left-0 w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-b-lg border border-t-0 shadow-xl overflow-hidden z-50 max-h-[220px] overflow-y-auto",
-                                                    isDark ? "bg-[#1f1f1f] border-[#252525]" : "bg-white border-[#ebebeb]"
-                                                )}>
-                                                    {clients.filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()) || (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase()))).length === 0 && !meta.clientName ? (
-                                                        <div className={cn("px-4 py-3 text-[11px] opacity-40 text-center", isDark ? "text-white" : "text-black")}>No clients found</div>
-                                                    ) : (
-                                                        <>
-                                                            {clients
-                                                                .filter(c => c.company_name.toLowerCase().includes(meta.clientName.toLowerCase()) || c.contact_person.toLowerCase().includes(meta.clientName.toLowerCase()) || (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase())))
-                                                                .map(c => (
-                                                                    <button
-                                                                        key={c.id}
-                                                                        onMouseDown={(e) => {
-                                                                            e.preventDefault();
-                                                                            updateMeta({ 
-                                                                                clientName: c.contact_person || c.company_name,
-                                                                                clientEmail: c.email || '',
-                                                                                clientPhone: c.phone || '',
-                                                                                clientAddress: c.address || ''
-                                                                            });
-                                                                            setClientDropdownOpen(false);
-                                                                        }}
-                                                                        className={cn(
-                                                                            "w-full text-left px-3 py-2 text-[12px] transition-colors border-b last:border-0",
-                                                                            isDark ? "hover:bg-[#2a2a2a] border-[#252525]" : "hover:bg-[#f5f5f5] border-[#f0f0f0]"
-                                                                        )}
-                                                                    >
-                                                                        <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")}>
-                                                                            {c.contact_person || c.company_name}
-                                                                        </div>
-                                                                        {(c.contact_person && c.company_name) && (
-                                                                            <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")}>
-                                                                                {c.company_name}
-                                                                            </div>
-                                                                        )}
-                                                                    </button>
-                                                                ))}
-                                                            <div className={cn("border-t", isDark ? "border-white/5" : "border-black/5")} />
-                                                            <button
-                                                                onMouseDown={(e) => {
-                                                                    e.preventDefault();
-                                                                    setIsClientEditorOpen(true);
+                                        <div className="flex flex-col gap-1.5 w-full">
+                                            {meta.assignedClients && meta.assignedClients.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {meta.assignedClients.map((ac, idx) => (
+                                                        <div key={idx} className={cn("flex items-center gap-1.5 px-2 py-1 rounded-[6px] text-[11px] font-semibold border", isDark ? "bg-white/[0.05] border-white/10" : "bg-[#f5f5f5] border-[#e5e5e5]")}>
+                                                            {ac.avatar_url ? (
+                                                                <img src={ac.avatar_url} alt="av" className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
+                                                            ) : (
+                                                                <User size={10} className="opacity-50 shrink-0" />
+                                                            )}
+                                                            <span className={cn("truncate max-w-[120px]", isDark ? "text-white/80" : "text-[#333]")}>{ac.name}</span>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const next = meta.assignedClients!.filter((_, i) => i !== idx);
+                                                                    updateMeta({ assignedClients: next, clientName: next.map(a => a.name).join(', ') });
                                                                 }}
-                                                                className={cn(
-                                                                    "w-full text-left px-3 py-2.5 text-[11px] font-bold transition-colors flex items-center gap-2",
-                                                                    isDark ? "text-[var(--brand-primary)] hover:bg-white/5" : "text-[var(--brand-primary-hover)] hover:bg-black/5"
-                                                                )}
+                                                                className={cn("p-0.5 rounded-full hover:bg-black/10 shrink-0", isDark ? "hover:bg-white/10" : "")}
                                                             >
-                                                                <Plus size={14} strokeWidth={3} />
-                                                                {meta.clientName ? `Create "${meta.clientName}"` : 'Create new contact'}
+                                                                <X size={10} className="opacity-60" />
                                                             </button>
-                                                        </>
-                                                    )}
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             )}
+                                            <div className="relative">
+                                                <input
+                                                    value={meta.assignedClients?.length ? clientSearchQuery : meta.clientName}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        setClientSearchQuery(val);
+                                                        if (!meta.assignedClients?.length) updateMeta({ clientName: val });
+                                                    }}
+                                                    onFocus={() => { setClientDropdownOpen(true); setClientSearchQuery(''); }}
+                                                    onBlur={() => setTimeout(() => setClientDropdownOpen(false), 200)}
+                                                    placeholder={meta.assignedClients?.length ? "Add another..." : "Search client..."}
+                                                    className={cn(
+                                                        "w-full text-[12px] bg-transparent outline-none font-medium",
+                                                        isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
+                                                    )}
+                                                />
+                                                {clientDropdownOpen && (
+                                                    <div className={cn(
+                                                        "absolute top-full left-0 w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-b-lg border border-t-0 shadow-xl overflow-hidden z-[100] max-h-[220px] overflow-y-auto",
+                                                        isDark ? "bg-[#1f1f1f] border-[#252525]" : "bg-white border-[#ebebeb]"
+                                                    )}>
+                                                        {clients.filter(c => {
+                                                            const query = (meta.assignedClients?.length ? clientSearchQuery : meta.clientName).replace(/.*,\s*/, '').toLowerCase();
+                                                            return c.company_name.toLowerCase().includes(query) || c.contact_person.toLowerCase().includes(query) || (c.email && c.email.toLowerCase().includes(query));
+                                                        }).length === 0 && !(meta.assignedClients?.length ? clientSearchQuery : meta.clientName) ? (
+                                                            <div className={cn("px-4 py-3 text-[11px] opacity-40 text-center", isDark ? "text-white" : "text-black")}>No clients found</div>
+                                                        ) : (
+                                                            <>
+                                                                {clients
+                                                                    .filter(c => {
+                                                                        const query = (meta.assignedClients?.length ? clientSearchQuery : meta.clientName).replace(/.*,\s*/, '').toLowerCase();
+                                                                        return c.company_name.toLowerCase().includes(query) || c.contact_person.toLowerCase().includes(query) || (c.email && c.email.toLowerCase().includes(query));
+                                                                    })
+                                                                    .map(c => (
+                                                                        <button
+                                                                            key={c.id}
+                                                                            onMouseDown={(e) => {
+                                                                                e.preventDefault();
+                                                                                const name = c.contact_person || c.company_name;
+                                                                                const isDup = meta.assignedClients?.some(ac => ac.id === c.id);
+                                                                                if (!isDup) {
+                                                                                    const nextClients = [...(meta.assignedClients || []), { id: c.id, name, avatar_url: c.avatar_url }];
+                                                                                    if (nextClients.length === 1) {
+                                                                                        updateMeta({ 
+                                                                                            assignedClients: nextClients,
+                                                                                            clientName: name, 
+                                                                                            clientEmail: c.email || '',
+                                                                                            clientPhone: c.phone || '',
+                                                                                            clientAddress: c.address || ''
+                                                                                        });
+                                                                                    } else {
+                                                                                        updateMeta({ assignedClients: nextClients });
+                                                                                    }
+                                                                                }
+                                                                                setClientSearchQuery('');
+                                                                                setClientDropdownOpen(false);
+                                                                            }}
+                                                                            className={cn(
+                                                                                "w-full flex items-center gap-2 text-left px-3 py-2 text-[12px] transition-colors border-b last:border-0",
+                                                                                isDark ? "hover:bg-[#2a2a2a] border-[#252525]" : "hover:bg-[#f5f5f5] border-[#f0f0f0]"
+                                                                            )}
+                                                                        >
+                                                                            {c.avatar_url ? (
+                                                                                <img src={c.avatar_url} alt="av" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                                                                            ) : (
+                                                                                <User size={14} className="opacity-40 shrink-0" />
+                                                                            )}
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <div className={cn("font-bold truncate", isDark ? "text-[#ccc]" : "text-[#333]")}>
+                                                                                    {c.contact_person || c.company_name}
+                                                                                </div>
+                                                                                {(c.contact_person && c.company_name) && (
+                                                                                    <div className={cn("text-[9.5px] truncate mt-0.5", isDark ? "text-[#666]" : "text-[#aaa]")}>
+                                                                                        {c.company_name}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </button>
+                                                                    ))}
+                                                                <div className={cn("border-t", isDark ? "border-white/5" : "border-black/5")} />
+                                                                <button
+                                                                    onMouseDown={(e) => {
+                                                                        e.preventDefault();
+                                                                        setIsClientEditorOpen(true);
+                                                                    }}
+                                                                    className={cn(
+                                                                        "w-full text-left px-3 py-2.5 text-[11px] font-bold transition-colors flex items-center gap-2",
+                                                                        isDark ? "text-[var(--brand-primary)] hover:bg-white/5" : "text-[var(--brand-primary-hover)] hover:bg-black/5"
+                                                                    )}
+                                                                >
+                                                                    <Plus size={14} strokeWidth={3} />
+                                                                    Create new contact
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </MetaField>
 
@@ -1331,6 +1398,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         setImageUploadOpen(true);
                                     }}
                                     hideAccentColor={true}
+                                    hideSuccessIcon={true}
                                 />
                             )}
 
@@ -1362,8 +1430,48 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                 )}>
                                     {rightTab === 'details' && (
                                         <>
-                                            <MetaField label="Client" isDark={isDark} icon={<User size={11} className="opacity-50" />} onReset={() => updateMeta({ clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' })}>
-                                                <input value={meta.clientName} onChange={e => updateMeta({ clientName: e.target.value })} placeholder="Select client..." className={cn("w-full text-[12px] bg-transparent outline-none font-medium", isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]")} />
+                                            <MetaField label="Client" isDark={isDark} icon={<User size={11} className="opacity-50" />} onReset={() => updateMeta({ clientName: '', clientEmail: '', clientPhone: '', clientAddress: '', assignedClients: [] })}>
+                                                <div className="flex flex-col gap-1.5 w-full">
+                                                    {meta.assignedClients && meta.assignedClients.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {meta.assignedClients.map((ac, idx) => (
+                                                                <div key={idx} className={cn("flex items-center gap-1.5 px-2 py-1 rounded-[6px] text-[11px] font-semibold border", isDark ? "bg-white/[0.05] border-white/10" : "bg-[#f5f5f5] border-[#e5e5e5]")}>
+                                                                    {ac.avatar_url ? (
+                                                                        <img src={ac.avatar_url} alt="av" className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
+                                                                    ) : (
+                                                                        <User size={10} className="opacity-50 shrink-0" />
+                                                                    )}
+                                                                    <span className={cn("truncate max-w-[120px]", isDark ? "text-white/80" : "text-[#333]")}>{ac.name}</span>
+                                                                    <button 
+                                                                        onClick={() => {
+                                                                            const next = meta.assignedClients!.filter((_, i) => i !== idx);
+                                                                            if (next.length === 0) {
+                                                                                updateMeta({ assignedClients: next, clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' });
+                                                                            } else if (idx === 0) {
+                                                                                updateMeta({ assignedClients: next, clientName: next[0].name });
+                                                                            } else {
+                                                                                updateMeta({ assignedClients: next });
+                                                                            }
+                                                                        }}
+                                                                        className={cn("p-0.5 rounded-full hover:bg-black/10 shrink-0", isDark ? "hover:bg-white/10" : "")}
+                                                                    >
+                                                                        <X size={10} className="opacity-60" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    <input 
+                                                        value={meta.assignedClients?.length ? clientSearchQuery : meta.clientName}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setClientSearchQuery(val);
+                                                            if (!meta.assignedClients?.length) updateMeta({ clientName: val });
+                                                        }}
+                                                        placeholder={meta.assignedClients?.length ? "Add another..." : "Search client..."} 
+                                                        className={cn("w-full text-[12px] bg-transparent outline-none font-medium", isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]")} 
+                                                    />
+                                                </div>
                                             </MetaField>
                                             <MetaField label="Project" isDark={isDark} icon={<FileText size={11} className="opacity-50" />} onReset={() => updateMeta({ projectName: '' })}>
                                                 <input value={meta.projectName} onChange={e => updateMeta({ projectName: e.target.value })} placeholder="Set project..." className={cn("w-full text-[12px] bg-transparent outline-none font-medium", isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]")} />

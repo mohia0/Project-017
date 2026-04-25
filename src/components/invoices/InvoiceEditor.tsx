@@ -17,7 +17,8 @@ import {
     User, Calendar, DollarSign, Tag, AlignLeft,
     Table, PenLine, Zap, Palette, Info,
     Check, MoreHorizontal, FileText, Image, SeparatorHorizontal,
-    Settings, ChevronRight, ChevronLeft, RotateCcw, Monitor, Smartphone, PanelTop,
+    Settings, ChevronRight, ChevronLeft, RotateCcw, Monitor, Smartphone, PanelTop, X,
+
     Printer, LayoutTemplate, CreditCard, ExternalLink, Hash
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -87,6 +88,7 @@ interface BlockData {
 }
 
 interface InvoiceMeta {
+    assignedClients?: { id: string; name: string; avatar_url?: string | null }[];
     clientName: string;
     clientEmail?: string;
     clientPhone?: string;
@@ -146,6 +148,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     }, [fetchClients]);
 
     const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+    const [clientSearchQuery, setClientSearchQuery] = useState('');
     const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -351,16 +354,24 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
         if (!isLoaded) {
             // Initial Full Load
-            setMeta(prev => ({
-                ...prev,
-                clientName: invoice.client_name || '',
-                projectName: invoice.title || '',
-                issueDate: invoice.issue_date ? invoice.issue_date.split('T')[0] : prev.issueDate,
-                dueDate: invoice.due_date ? invoice.due_date.split('T')[0] : prev.dueDate,
-                status: invoice.status as any,
-                invoiceNumber: invoice.invoice_number || invoice.id.slice(0, 8).toUpperCase(),
-                ...((invoice.meta as any) || {})
-            }));
+            setMeta(prev => {
+                const parsedMeta = (invoice.meta as any) || {};
+                let assignedClients = parsedMeta.assignedClients;
+                if ((!assignedClients || assignedClients.length === 0) && invoice.client_name) {
+                    assignedClients = [{ id: invoice.client_id || 'invoice_compat', name: invoice.client_name }];
+                }
+                return {
+                    ...prev,
+                    clientName: invoice.client_name || '',
+                    projectName: invoice.title || '',
+                    issueDate: invoice.issue_date ? invoice.issue_date.split('T')[0] : prev.issueDate,
+                    dueDate: invoice.due_date ? invoice.due_date.split('T')[0] : prev.dueDate,
+                    status: invoice.status as any,
+                    invoiceNumber: invoice.invoice_number || invoice.id.slice(0, 8).toUpperCase(),
+                    ...parsedMeta,
+                    assignedClients: assignedClients || []
+                };
+            });
             if (invoice.blocks && Array.isArray(invoice.blocks) && invoice.blocks.length > 0) {
                 setBlocks(invoice.blocks);
             }
@@ -394,9 +405,11 @@ export default function InvoiceEditor({ id }: { id?: string }) {
         }, 0);
 
         // setSaveStatus('saving');
+        const primaryClient = debouncedMeta.assignedClients?.[0];
         updateInvoice(id, {
             title: debouncedMeta.projectName || 'New Invoice',
-            client_name: debouncedMeta.clientName,
+            client_name: primaryClient?.name || debouncedMeta.clientName,
+            client_id: primaryClient?.id || null,
             status: debouncedMeta.status,
             issue_date: debouncedMeta.issueDate,
             due_date: debouncedMeta.dueDate,
@@ -996,7 +1009,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 </button>
                             ))}
                         </div>
-                        <div className="flex-1 overflow-auto py-3 px-3 space-y-1.5">
+                        <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-3 space-y-1.5">
                             {rightTab === 'details' && (
                                 <>
                                     <MetaField
@@ -1037,15 +1050,49 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         label="Client" 
                                         isDark={isDark} 
                                         icon={<User size={11} className="opacity-50" />}
-                                        onReset={() => updateMeta({ clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' })}
+                                        onReset={() => updateMeta({ clientName: '', clientEmail: '', clientPhone: '', clientAddress: '', assignedClients: [] })}
                                     >
+                                        <div className="flex flex-col gap-1.5 w-full">
+                                            {meta.assignedClients && meta.assignedClients.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {meta.assignedClients.map((ac: any, idx: number) => (
+                                                        <div key={idx} className={cn("flex items-center gap-1.5 px-2 py-1 rounded-[6px] text-[11px] font-semibold border", isDark ? "bg-white/[0.05] border-white/10" : "bg-[#f5f5f5] border-[#e5e5e5]")}>
+                                                            {ac.avatar_url ? (
+                                                                <img src={ac.avatar_url} alt="av" className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
+                                                            ) : (
+                                                                <User size={10} className="opacity-50 shrink-0" />
+                                                            )}
+                                                            <span className={cn("truncate max-w-[120px]", isDark ? "text-white/80" : "text-[#333]")}>{ac.name}</span>
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const next = meta.assignedClients!.filter((_: any, i: number) => i !== idx);
+                                                                    if (next.length === 0) {
+                                                                        updateMeta({ assignedClients: next, clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' });
+                                                                    } else if (idx === 0) {
+                                                                        updateMeta({ assignedClients: next, clientName: next[0].name });
+                                                                    } else {
+                                                                        updateMeta({ assignedClients: next });
+                                                                    }
+                                                                }}
+                                                                className={cn("p-0.5 rounded-full hover:bg-black/10 shrink-0", isDark ? "hover:bg-white/10" : "")}
+                                                            >
+                                                                <X size={10} className="opacity-60" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         <div className="relative">
                                             <input 
-                                                value={meta.clientName} 
-                                                onChange={e => updateMeta({ clientName: e.target.value })} 
-                                                onFocus={() => setClientDropdownOpen(true)}
+                                                value={meta.assignedClients?.length ? clientSearchQuery : meta.clientName} 
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setClientSearchQuery(val);
+                                                    if (!meta.assignedClients?.length) updateMeta({ clientName: val });
+                                                }} 
+                                                onFocus={() => { setClientDropdownOpen(true); setClientSearchQuery(''); }}
                                                 onBlur={() => setTimeout(() => setClientDropdownOpen(false), 200)}
-                                                placeholder="Select client..." 
+                                                placeholder={meta.assignedClients?.length ? "Add another..." : "Search client..."} 
                                                 className={cn(
                                                     "w-full bg-transparent outline-none text-[12px] font-medium",
                                                     isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
@@ -1056,31 +1103,40 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                     "absolute top-full left-0 w-[calc(100%+24px)] -ml-3 mt-[11px] rounded-b-lg border border-t-0 shadow-xl overflow-hidden z-50 max-h-[220px] overflow-y-auto",
                                                     isDark ? "bg-[#1f1f1f] border-[#252525]" : "bg-white border-[#ebebeb]"
                                                 )}>
-                                                    {clients.filter(c => 
-                                                        (c.company_name || '').toLowerCase().includes(meta.clientName.toLowerCase()) || 
-                                                        (c.contact_person || '').toLowerCase().includes(meta.clientName.toLowerCase()) || 
-                                                        (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase()))
-                                                    ).length === 0 && !meta.clientName ? (
+                                                    {clients.filter(c => {
+                                                        const query = (meta.assignedClients?.length ? clientSearchQuery : meta.clientName).toLowerCase();
+                                                        return (c.company_name || '').toLowerCase().includes(query) || (c.contact_person || '').toLowerCase().includes(query) || (c.email && c.email.toLowerCase().includes(query));
+                                                    }).length === 0 && !(meta.assignedClients?.length ? clientSearchQuery : meta.clientName) ? (
                                                         <div className={cn("px-4 py-3 text-[11px] opacity-40 text-center", isDark ? "text-white" : "text-black")}>No clients found</div>
                                                     ) : (
                                                         <>
                                                             {clients
-                                                                .filter(c => 
-                                                                    (c.company_name || '').toLowerCase().includes(meta.clientName.toLowerCase()) || 
-                                                                    (c.contact_person || '').toLowerCase().includes(meta.clientName.toLowerCase()) || 
-                                                                    (c.email && c.email.toLowerCase().includes(meta.clientName.toLowerCase()))
-                                                                )
+                                                                .filter(c => {
+                                                                    const query = (meta.assignedClients?.length ? clientSearchQuery : meta.clientName).toLowerCase();
+                                                                    return (c.company_name || '').toLowerCase().includes(query) || (c.contact_person || '').toLowerCase().includes(query) || (c.email && c.email.toLowerCase().includes(query));
+                                                                })
                                                                 .map(c => (
                                                                     <button
                                                                         key={c.id}
                                                                         onMouseDown={(e) => {
                                                                             e.preventDefault();
-                                                                            updateMeta({ 
-                                                                                clientName: c.company_name || c.contact_person,
-                                                                                clientEmail: c.email || '',
-                                                                                clientPhone: c.phone || '',
-                                                                                clientAddress: c.address || ''
-                                                                            });
+                                                                            const name = c.company_name || c.contact_person;
+                                                                            const isDup = meta.assignedClients?.some((ac: any) => ac.id === c.id);
+                                                                            if (!isDup) {
+                                                                                const nextClients = [...(meta.assignedClients || []), { id: c.id, name, avatar_url: c.avatar_url }];
+                                                                                if (nextClients.length === 1) {
+                                                                                    updateMeta({ 
+                                                                                        assignedClients: nextClients,
+                                                                                        clientName: name,
+                                                                                        clientEmail: c.email || '',
+                                                                                        clientPhone: c.phone || '',
+                                                                                        clientAddress: c.address || ''
+                                                                                    });
+                                                                                } else {
+                                                                                    updateMeta({ assignedClients: nextClients });
+                                                                                }
+                                                                            }
+                                                                            setClientSearchQuery('');
                                                                             setClientDropdownOpen(false);
                                                                         }}
                                                                         className={cn(
@@ -1092,7 +1148,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                                             {c.contact_person || c.company_name}
                                                                         </div>
                                                                         {(c.contact_person && c.company_name) && (
-                                                                            <div className={cn("text-[10.5px] truncate mt-0.5", isDark ? "text-[#888]" : "text-[#777]")}>
+                                                                            <div className={cn("text-[9.5px] truncate mt-0.5", isDark ? "text-[#666]" : "text-[#aaa]")}>
                                                                                 {c.company_name}
                                                                             </div>
                                                                         )}
@@ -1116,6 +1172,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                     )}
                                                 </div>
                                             )}
+                                        </div>
                                         </div>
                                     </MetaField>
                                     <MetaField 
@@ -1398,6 +1455,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         setImageUploadOpen(true);
                                     }}
                                     hideAccentColor={true}
+                                    hideSuccessIcon={true}
                                 />
                             )}
                         </div>

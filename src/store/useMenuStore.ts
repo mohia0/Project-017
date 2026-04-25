@@ -2,18 +2,8 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from './useUIStore';
 import { appToast } from '@/lib/toast';
-import { 
-    LayoutGrid, 
-    Users, 
-    FileText, 
-    Receipt, 
-    Folder,
-    Briefcase,
-    Zap,
-    CalendarDays,
-    ClipboardList,
-    LucideIcon
-} from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
+import { FULL_ICON_MAP } from '@/components/ui/IconPicker';
 
 export interface NavItem {
     id: string;
@@ -21,19 +11,11 @@ export interface NavItem {
     icon: string; // Stored as name
     label: string;
     isHidden?: boolean;
+    isCustomLink?: boolean;
 }
 
-export const ICON_MAP: Record<string, LucideIcon> = {
-    LayoutGrid,
-    Users,
-    FileText,
-    Receipt,
-    Folder,
-    Briefcase,
-    Zap,
-    CalendarDays,
-    ClipboardList,
-};
+// All 170 curated icons – re-exported from IconPicker for convenience
+export const ICON_MAP: Record<string, LucideIcon> = FULL_ICON_MAP;
 
 interface MenuState {
     navItems: NavItem[];

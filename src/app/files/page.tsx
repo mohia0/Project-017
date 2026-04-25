@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { useMenuStore } from '@/store/useMenuStore';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -921,13 +922,15 @@ function TreeNode({
 function Breadcrumb({ folderId, items, onNavigate, isDark }: {
     folderId: string; items: FileItem[]; onNavigate: (id: string) => void; isDark: boolean;
 }) {
+    const { navItems } = useMenuStore();
     const path: FileItem[] = [];
     let current: FileItem | undefined = items.find(i => i.id === folderId);
     while (current) { path.unshift(current); current = current.parentId ? items.find(i => i.id === current!.parentId) : undefined; }
     return (
         <div className="flex items-center gap-0.5 min-w-0">
-            <button onClick={() => onNavigate('root')} className={cn('flex items-center justify-center w-6 h-6 rounded-md transition-colors shrink-0', isDark ? 'text-[#666] hover:text-white hover:bg-white/5' : 'text-[#aaa] hover:text-[#333] hover:bg-[#f0f0f0]')}>
+            <button onClick={() => onNavigate('root')} className={cn('flex items-center gap-1.5 px-2 py-0.5 rounded-md transition-colors shrink-0', isDark ? 'text-[#666] hover:text-white hover:bg-white/5' : 'text-[#aaa] hover:text-[#333] hover:bg-[#f0f0f0]')}>
                 <Home size={12}/>
+                <span className="text-[11px] font-semibold">{navItems.find(item => item.href === '/files')?.label || 'Home'}</span>
             </button>
             {path.map((item, i) => (
                 <React.Fragment key={item.id}>

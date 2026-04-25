@@ -34,6 +34,7 @@ function DocumentTitleSetter() {
     const pathname = usePathname();
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
     const { workspaces, hasFetched } = useWorkspaceStore();
+    const { navItems } = useMenuStore();
     
     useEffect(() => {
         // Do not touch document title on public previews, Next.js metadata handles it correctly
@@ -48,22 +49,24 @@ function DocumentTitleSetter() {
         const path = pathname || '/';
         let pageTitle = '';
 
-        if (path === '/') pageTitle = 'Dashboard';
-        else if (path === '/proposals') pageTitle = 'Proposals';
-        else if (path.startsWith('/proposals/')) pageTitle = 'Proposal Detail';
-        else if (path === '/invoices') pageTitle = 'Invoices';
-        else if (path.startsWith('/invoices/')) pageTitle = 'Invoice Detail';
-        else if (path === '/clients') pageTitle = 'Clients';
-        else if (path.startsWith('/clients/')) pageTitle = 'Client Detail';
-        else if (path === '/files') pageTitle = 'File Manager';
-        else if (path === '/templates') pageTitle = 'Templates';
-        else if (path === '/settings') pageTitle = 'Settings';
-        else if (path === '/onboarding') pageTitle = 'Onboarding';
-        else if (path === '/login') pageTitle = 'Login';
-        else if (path === '/projects') pageTitle = 'Projects';
-        else if (path.startsWith('/projects/')) pageTitle = 'Project Detail';
-        else if (path === '/hooks') pageTitle = 'Hook Generator';
-        else {
+        // Try to find the title in navItems first
+        const matchedItem = navItems.find(item => 
+            path === item.href || (item.href !== '/' && path.startsWith(item.href))
+        );
+
+        if (matchedItem) {
+            pageTitle = matchedItem.label;
+            // Handle sub-pages (e.g., /proposals/123)
+            if (path !== matchedItem.href && path.startsWith(matchedItem.href + '/')) {
+                pageTitle += ' Detail';
+            }
+        } else if (path === '/') {
+            pageTitle = 'Dashboard';
+        } else if (path === '/onboarding') {
+            pageTitle = 'Onboarding';
+        } else if (path === '/login') {
+            pageTitle = 'Login';
+        } else {
             const segment = path.split('/').filter(Boolean).pop() || '';
             pageTitle = segment.charAt(0).toUpperCase() + segment.slice(1);
         }

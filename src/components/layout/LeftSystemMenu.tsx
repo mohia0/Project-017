@@ -1,7 +1,9 @@
 "use client";
 
 import React from 'react';
-import { ChevronLeft, ChevronRight, Settings, LayoutGrid, GripVertical, RotateCcw, Check, X, Eye, EyeOff } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight, Settings, LayoutGrid, GripVertical, RotateCcw, Check, X, Eye, EyeOff, Plus, Trash } from 'lucide-react';
+import { IconPicker } from '@/components/ui/IconPicker';
 import { cn, isDarkColor } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -29,17 +31,23 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { motion, AnimatePresence } from 'framer-motion';
 
-function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onToggleVisibility, isLightBg, isBranded }: { 
+function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onToggleVisibility, onChangeIcon, onUpdateHref, onDelete, isLightBg, isBranded }: { 
     item: NavItem; 
     isExpanded: boolean; 
     isActive: boolean;
     isEditing: boolean;
     onUpdate: (id: string, label: string) => void;
     onToggleVisibility: (id: string) => void;
+    onChangeIcon: (id: string, icon: string) => void;
+    onUpdateHref?: (id: string, href: string) => void;
+    onDelete?: (id: string) => void;
     isLightBg?: boolean;
     isBranded?: boolean;
 }) {
     const [isHovered, setIsHovered] = React.useState(false);
+    const [pickerOpen, setPickerOpen] = React.useState(false);
+    const [pickerAnchor, setPickerAnchor] = React.useState<DOMRect | null>(null);
+    const iconBtnRef = React.useRef<HTMLDivElement>(null);
     const {
         attributes,
         listeners,
@@ -56,6 +64,13 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
 
     const Icon = ICON_MAP[item.icon] || LayoutGrid;
 
+    const openPicker = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const rect = iconBtnRef.current?.getBoundingClientRect() ?? null;
+        setPickerAnchor(rect);
+        setPickerOpen(true);
+    };
+
     if (isEditing) {
         return (
             <div
@@ -64,70 +79,132 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
                 className={cn(
-                    "w-full h-8 flex items-center transition-all relative group",
-                    isDragging ? "bg-white/[0.05] z-50 rounded-lg" : "rounded-lg",
+                    "w-full flex transition-all relative group rounded-lg",
+                    item.isCustomLink ? "flex-col pt-1 pb-1.5 gap-0" : "flex-row items-center h-8",
+                    isDragging ? "bg-white/[0.05] z-50" : "",
                     isExpanded ? "pl-1 pr-1.5" : "justify-center"
                 )}
             >
-                {isExpanded && (
-                    <div className="flex items-center gap-1.5 shrink-0 -ml-1.5">
-                        <div {...attributes} {...listeners} className={cn(
-                            "cursor-grab active:cursor-grabbing w-5 h-5 flex items-center justify-center shrink-0 rounded-[6px] transition-colors",
-                            isBranded
-                                ? (isLightBg ? "text-black/40 hover:text-black bg-black/5 hover:bg-black/10" : "text-white/40 hover:text-white bg-white/5 hover:bg-white/10")
-                                : (isLightBg ? "text-black/20 hover:text-black/60 bg-black/5 hover:bg-black/10" : "text-white/20 hover:text-white/60 bg-white/5 hover:bg-white/10")
-                        )}>
-                            <GripVertical size={10} />
-                        </div>
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); onToggleVisibility(item.id); }}
-                            className={cn(
-                                "w-5 h-5 flex items-center justify-center transition-colors rounded-[6px]",
+                {/* ── Top row: drag + visibility + icon + label ── */}
+                <div className="flex items-center w-full">
+                    {isExpanded && (
+                        <div className="flex items-center gap-1 shrink-0 -ml-1.5">
+                            <div {...attributes} {...listeners} className={cn(
+                                "cursor-grab active:cursor-grabbing w-5 h-5 flex items-center justify-center shrink-0 rounded-[6px] transition-colors",
                                 isBranded
-                                    ? (item.isHidden 
-                                        ? (isLightBg ? "text-orange-600 bg-black/5 hover:bg-black/10" : "text-orange-400 bg-white/5 hover:bg-white/10")
-                                        : (isLightBg ? "text-black/40 hover:text-black bg-black/5 hover:bg-black/10" : "text-white/40 hover:text-white bg-white/5 hover:bg-white/10"))
-                                    : (isLightBg 
-                                        ? (item.isHidden ? "text-orange-600/60 bg-black/5 hover:bg-black/10" : "text-black/20 bg-black/5 hover:bg-black/10")
-                                        : (item.isHidden ? "text-orange-400/60 bg-white/5 hover:bg-white/10" : "text-white/20 bg-white/5 hover:bg-white/10"))
+                                    ? (isLightBg ? "text-black/40 hover:text-black bg-black/5 hover:bg-black/10" : "text-white/40 hover:text-white bg-white/5 hover:bg-white/10")
+                                    : (isLightBg ? "text-black/20 hover:text-black/60 bg-black/5 hover:bg-black/10" : "text-white/20 hover:text-white/60 bg-white/5 hover:bg-white/10")
+                            )}>
+                                <GripVertical size={10} />
+                            </div>
+                            
+                            {/* Hide toggle – only show for nav items / custom links */}
+                            {!item.isCustomLink ? (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onToggleVisibility(item.id); }}
+                                    className={cn(
+                                        "w-5 h-5 flex items-center justify-center transition-colors rounded-[6px]",
+                                        isBranded
+                                            ? (item.isHidden 
+                                                ? (isLightBg ? "text-orange-600 bg-black/5 hover:bg-black/10" : "text-orange-400 bg-white/5 hover:bg-white/10")
+                                                : (isLightBg ? "text-black/40 hover:text-black bg-black/5 hover:bg-black/10" : "text-white/40 hover:text-white bg-white/5 hover:bg-white/10"))
+                                            : (isLightBg 
+                                                ? (item.isHidden ? "text-orange-600/60 bg-black/5 hover:bg-black/10" : "text-black/20 bg-black/5 hover:bg-black/10")
+                                                : (item.isHidden ? "text-orange-400/60 bg-white/5 hover:bg-white/10" : "text-white/20 bg-white/5 hover:bg-white/10"))
+                                    )}
+                                    title={item.isHidden ? "Show in Menu" : "Hide in Menu"}
+                                >
+                                    {item.isHidden ? <EyeOff size={10} /> : <Eye size={10} />}
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); onToggleVisibility(item.id); }}
+                                    className={cn(
+                                        "w-5 h-5 flex items-center justify-center transition-colors rounded-[6px]",
+                                        item.isHidden 
+                                            ? (isLightBg ? "text-orange-600/60 bg-black/5 hover:bg-black/10" : "text-orange-400/60 bg-white/5 hover:bg-white/10")
+                                            : (isLightBg ? "text-black/20 bg-black/5 hover:bg-black/10" : "text-white/20 bg-white/5 hover:bg-white/10")
+                                    )}
+                                    title={item.isHidden ? "Show" : "Hide"}
+                                >
+                                    {item.isHidden ? <EyeOff size={10} /> : <Eye size={10} />}
+                                </button>
                             )}
-                            title={item.isHidden ? "Show in Menu" : "Hide in Menu"}
-                        >
-                            {item.isHidden ? <EyeOff size={10} /> : <Eye size={10} />}
-                        </button>
-                    </div>
-                )}
-                <div className={cn(isExpanded && "ml-4")}>
-                    <motion.div
-                        animate={isHovered ? { scale: 1.1 } : { scale: 1 }}
-                        transition={{ 
-                            type: "spring", 
-                            stiffness: 400, 
-                            damping: 15,
-                        }}
-                        className={cn(item.isHidden && "opacity-30")}
+                        </div>
+                    )}
+
+                    {/* Icon – click to open picker */}
+                    <div 
+                        ref={iconBtnRef}
+                        onClick={openPicker}
+                        className="cursor-pointer ml-4 shrink-0"
+                        title="Change icon"
                     >
                         <Icon size={14} className={cn(
-                            "shrink-0 transition-opacity", 
+                            "shrink-0 transition-opacity hover:opacity-80", 
                             isBranded ? "opacity-100" : "opacity-40 group-hover:opacity-100",
-                            isExpanded ? "mr-2.5" : ""
                         )} />
-                    </motion.div>
+                    </div>
+
+                    {/* Icon picker portal */}
+                    {pickerOpen && typeof document !== 'undefined' && createPortal(
+                        <IconPicker
+                            value={item.icon}
+                            onChange={(iconName) => onChangeIcon(item.id, iconName)}
+                            onClose={() => setPickerOpen(false)}
+                            anchorRect={pickerAnchor}
+                        />,
+                        document.body
+                    )}
+
+                    {isExpanded && (
+                        <input 
+                            type="text"
+                            value={item.label}
+                            onChange={(e) => onUpdate(item.id, e.target.value)}
+                            className={cn(
+                                "flex-1 bg-transparent border-none text-[12px] font-medium focus:outline-none min-w-0 ml-2",
+                                isLightBg 
+                                    ? "text-black/80 focus:text-black" 
+                                    : "text-white/80 focus:text-white"
+                            )}
+                            onClick={e => e.stopPropagation()}
+                        />
+                    )}
                 </div>
-                {isExpanded && (
-                    <input 
-                        autoFocus
-                        type="text"
-                        value={item.label}
-                        onChange={(e) => onUpdate(item.id, e.target.value)}
-                        className={cn(
-                            "flex-1 bg-transparent border-none text-[12px] font-medium focus:outline-none min-w-0",
-                            isLightBg 
-                                ? "text-black/80 focus:text-black" 
-                                : "text-white/80 focus:text-white"
-                        )}
-                        onClick={e => e.stopPropagation()}
-                    />
+
+                {/* ── URL row for custom links only ── */}
+                {isExpanded && item.isCustomLink && (
+                    <div className="flex items-center w-full mt-0.5">
+                        <div className="flex items-center gap-1 shrink-0 -ml-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                            {/* Deleted button moved here under the grip/hide buttons */}
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDelete?.(item.id); }}
+                                className={cn(
+                                    "w-5 h-5 flex items-center justify-center shrink-0 rounded-[6px] transition-colors",
+                                    isLightBg ? "text-red-500/60 hover:text-red-600 hover:bg-black/10" : "text-red-400/60 hover:text-red-400 hover:bg-white/10"
+                                )}
+                                title="Delete Link"
+                            >
+                                <Trash size={10} />
+                            </button>
+                        </div>
+                        <div className="flex items-center ml-[22px] mr-1 flex-1">
+                            <input 
+                                type="text"
+                                placeholder="https://"
+                                value={item.href}
+                                onChange={(e) => onUpdateHref?.(item.id, e.target.value)}
+                                className={cn(
+                                    "flex-1 bg-transparent border-none text-[10px] focus:outline-none min-w-0 font-medium",
+                                    isLightBg 
+                                        ? "text-black/40 placeholder:text-black/25 focus:text-black/70" 
+                                        : "text-white/35 placeholder:text-white/20 focus:text-white/60"
+                                )}
+                                onClick={e => e.stopPropagation()}
+                            />
+                        </div>
+                    </div>
                 )}
             </div>
         );
@@ -140,7 +217,56 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
         };
     };
 
-    const content = (
+    const isExternal = item.href.startsWith('http');
+    const content = isExternal ? (
+        <a
+            ref={setNodeRef as any}
+            style={style}
+            href={item.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className={cn(
+                "w-full h-9 rounded-xl flex items-center transition-colors relative",
+                isExpanded ? (isEditing ? "justify-start gap-3 px-3" : "justify-start gap-3 px-3") : "justify-center px-1.5",
+                isActive
+                    ? (isLightBg ? "text-black" : "text-white")
+                    : isBranded 
+                        ? (isLightBg ? "text-black" : "text-white")
+                        : (isLightBg ? "text-black/30 hover:text-black" : "text-white/30 hover:text-white"),
+                item.isHidden && "hidden"
+            )}
+        >
+            <motion.div
+                animate={getIconAnimation()}
+                transition={{ 
+                    type: "spring", 
+                    stiffness: 400, 
+                    damping: 15,
+                    rotate: { type: "keyframes", duration: 0.3 },
+                    x: { type: "keyframes", duration: 0.3 },
+                    y: { type: "keyframes", duration: 0.3 },
+                    opacity: { type: "keyframes", duration: 0.4 }
+                }}
+                className="shrink-0 flex items-center justify-center"
+            >
+                <Icon size={16} strokeWidth={1.75} className="shrink-0" />
+            </motion.div>
+            <motion.div 
+                animate={isHovered && isExpanded ? { x: 2 } : { x: 0 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className={cn(
+                    "flex items-center transition-all duration-300 overflow-hidden whitespace-nowrap",
+                    isExpanded ? (isEditing ? "max-w-[150px] opacity-100" : "max-w-[120px] opacity-100") : "max-w-0 opacity-0"
+                )}
+            >
+                <span className="text-[13px] font-medium tracking-tight">
+                    {item.label}
+                </span>
+            </motion.div>
+        </a>
+    ) : (
         <Link
             ref={setNodeRef}
             style={style}
@@ -149,7 +275,7 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
             onMouseLeave={() => setIsHovered(false)}
             className={cn(
                 "w-full h-9 rounded-xl flex items-center transition-colors relative",
-                isExpanded ? (isEditing ? "justify-start gap-4 px-4" : "justify-start gap-3 px-3") : "justify-center px-1.5",
+                isExpanded ? (isEditing ? "justify-start gap-3 px-3" : "justify-start gap-3 px-3") : "justify-center px-1.5",
                 isActive
                     ? (isLightBg ? "text-black" : "text-white")
                     : isBranded 
@@ -178,11 +304,11 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
                 animate={isHovered && isExpanded ? { x: 2 } : { x: 0 }}
                 transition={{ type: "spring", stiffness: 400, damping: 20 }}
                 className={cn(
-                    "transition-all duration-300 overflow-hidden whitespace-nowrap",
+                    "flex items-center transition-all duration-300 overflow-hidden whitespace-nowrap",
                     isExpanded ? (isEditing ? "max-w-[150px] opacity-100" : "max-w-[120px] opacity-100") : "max-w-0 opacity-0"
                 )}
             >
-                <span className="text-[13px] font-medium">
+                <span className="text-[13px] font-medium tracking-tight">
                     {item.label}
                 </span>
             </motion.div>
@@ -233,7 +359,11 @@ export default function LeftSystemMenu() {
     }, [isEditing, navItems]);
 
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5,
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
@@ -253,9 +383,35 @@ export default function LeftSystemMenu() {
     const handleUpdateLabel = (id: string, label: string) => {
         setTempItems(prev => prev.map(i => i.id === id ? { ...i, label } : i));
     };
+
+    const handleUpdateHref = (id: string, href: string) => {
+        setTempItems(prev => prev.map(i => i.id === id ? { ...i, href } : i));
+    };
+
+    const handleChangeIcon = (id: string, icon: string) => {
+        setTempItems(prev => prev.map(i => i.id === id ? { ...i, icon } : i));
+    };
     
     const handleToggleVisibility = (id: string) => {
         setTempItems(prev => prev.map(i => i.id === id ? { ...i, isHidden: !i.isHidden } : i));
+    };
+
+    const handleDeleteLink = (id: string) => {
+        setTempItems(prev => prev.filter(i => i.id !== id));
+    };
+
+    const handleAddLink = () => {
+        const newId = `custom_${Date.now()}`;
+        setTempItems(prev => [
+            ...prev,
+            {
+                id: newId,
+                href: '',
+                icon: 'Link',
+                label: 'New Link',
+                isCustomLink: true
+            }
+        ]);
     };
 
     const handleSave = async () => {
@@ -288,7 +444,7 @@ export default function LeftSystemMenu() {
 
             {/* Nav icons */}
             <div className={cn(
-                "flex flex-col items-center gap-1.5 pt-4 flex-1 w-full overflow-hidden border-t",
+                "flex flex-col items-center gap-1.5 pt-4 flex-1 w-full overflow-y-auto scrollbar-none border-t pb-2",
                 isLightBg ? "border-black/5" : "border-white/5",
                 isLeftMenuExpanded ? (isEditing ? "px-3" : "px-2") : ""
             )}>
@@ -312,6 +468,9 @@ export default function LeftSystemMenu() {
                                     isEditing={isEditing}
                                     onUpdate={handleUpdateLabel}
                                     onToggleVisibility={handleToggleVisibility}
+                                    onChangeIcon={handleChangeIcon}
+                                    onUpdateHref={handleUpdateHref}
+                                    onDelete={handleDeleteLink}
                                     isLightBg={isLightBg}
                                     isBranded={applyBrandColor}
                                 />
@@ -319,6 +478,22 @@ export default function LeftSystemMenu() {
                         })}
                     </SortableContext>
                 </DndContext>
+                
+                {/* Add Link Button */}
+                {isEditing && isLeftMenuExpanded && (
+                    <button 
+                        onClick={handleAddLink}
+                        className={cn(
+                            "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all group shrink-0 mt-1",
+                            applyBrandColor
+                                ? (isLightBg ? "text-black/30 hover:text-black hover:bg-black/5" : "text-white/25 hover:text-white hover:bg-white/5")
+                                : (isLightBg ? "text-black/30 hover:text-black hover:bg-black/5" : "text-white/25 hover:text-white hover:bg-white/5")
+                        )}
+                    >
+                        <Plus size={11} className="shrink-0" />
+                        <span className="text-[11px] font-medium">Add link</span>
+                    </button>
+                )}
             </div>
 
             {/* Bottom Actions */}
@@ -328,42 +503,39 @@ export default function LeftSystemMenu() {
                 isLeftMenuExpanded ? (isEditing ? "px-3" : "px-2") : ""
             )}>
                 {isEditing ? (
-                    <div className={cn("flex flex-col w-full gap-1.5 items-center px-1.5", !isLeftMenuExpanded && "hidden")}>
+                    <div className={cn("flex w-full items-center gap-1 px-1", !isLeftMenuExpanded && "hidden")}>
+                        {/* Done – filled */}
                         <button 
                             onClick={handleSave} 
                             className={cn(
-                                "w-full h-8 flex items-center justify-center gap-2 rounded-xl text-[11px] font-bold active:scale-[0.98] transition-all",
-                                isLightBg ? "bg-black text-white hover:bg-black/90" : "bg-white text-black hover:bg-white/90"
+                                "flex-1 h-7 flex items-center justify-center gap-1.5 rounded-lg text-[11px] font-semibold active:scale-[0.97] transition-all",
+                                isLightBg ? "bg-black/90 text-white hover:bg-black" : "bg-white/90 text-black hover:bg-white"
                             )}
                         >
-                            <Check size={14} strokeWidth={3} /> Done
+                            <Check size={11} strokeWidth={2.5} /> Done
                         </button>
-                        <div className="flex w-full gap-1.5">
-                            <button 
-                                onClick={handleReset} 
-                                title="Reset to default"
-                                className={cn(
-                                    "flex-1 h-8 flex items-center justify-center rounded-xl transition-all active:scale-95",
-                                    applyBrandColor
-                                        ? (isLightBg ? "bg-black/5 text-black hover:bg-black/10" : "bg-white/5 text-white hover:bg-white/10")
-                                        : (isLightBg ? "bg-black/5 text-black/30 hover:text-black hover:bg-black/10" : "bg-white/5 text-white/30 hover:text-white hover:bg-white/10")
-                                )}
-                            >
-                                <RotateCcw size={13} />
-                            </button>
-                            <button 
-                                onClick={() => setIsEditing(false)} 
-                                title="Cancel"
-                                className={cn(
-                                    "flex-1 h-8 flex items-center justify-center rounded-xl transition-all active:scale-95",
-                                    applyBrandColor
-                                        ? (isLightBg ? "bg-black/5 text-black hover:bg-black/10" : "bg-white/5 text-white hover:bg-white/10")
-                                        : (isLightBg ? "bg-black/5 text-black/30 hover:text-black hover:bg-black/10" : "bg-white/5 text-white/30 hover:text-white hover:bg-white/10")
-                                )}
-                            >
-                                <X size={13} />
-                            </button>
-                        </div>
+                        {/* Reset */}
+                        <button 
+                            onClick={handleReset} 
+                            title="Reset"
+                            className={cn(
+                                "w-7 h-7 flex items-center justify-center rounded-lg transition-all active:scale-95",
+                                isLightBg ? "text-black/30 hover:text-black hover:bg-black/8" : "text-white/30 hover:text-white hover:bg-white/8"
+                            )}
+                        >
+                            <RotateCcw size={11} />
+                        </button>
+                        {/* Cancel */}
+                        <button 
+                            onClick={() => setIsEditing(false)} 
+                            title="Cancel"
+                            className={cn(
+                                "w-7 h-7 flex items-center justify-center rounded-lg transition-all active:scale-95",
+                                isLightBg ? "text-black/30 hover:text-black hover:bg-black/8" : "text-white/30 hover:text-white hover:bg-white/8"
+                            )}
+                        >
+                            <X size={11} />
+                        </button>
                     </div>
                 ) : (
                     <>

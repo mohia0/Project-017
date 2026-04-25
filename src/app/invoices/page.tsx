@@ -32,6 +32,7 @@ import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/Fil
 import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterUtils';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { useMenuStore } from '@/store/useMenuStore';
 import {
     DndContext,
     closestCenter,
@@ -135,13 +136,14 @@ function Chk({ checked, indeterminate, isDark }: { checked: boolean; indetermina
 }
 
 /* ─── Dropdown ──────────────────────────────────────────────────── */
-function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth = '180px' }: { 
+function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth = '180px', maxWidth }: { 
     open: boolean; 
     onClose: () => void; 
     isDark: boolean; 
     children: React.ReactNode; 
     align?: 'left' | 'right' | 'center';
     minWidth?: string;
+    maxWidth?: string;
 }) {
     const ref = useRef<HTMLDivElement>(null);
     const [coords, setCoords] = React.useState<{ top: number; left: number } | null>(null);
@@ -159,7 +161,10 @@ function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth =
     useEffect(() => {
         if (!open) return;
         const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-        const s = () => onClose();
+        const s = (e: Event) => {
+            if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
+            onClose();
+        };
         document.addEventListener('mousedown', h);
         window.addEventListener('scroll', s, true);
         return () => {
@@ -175,7 +180,8 @@ function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth =
             style={coords ? {
                 top: `${coords.top}px`,
                 left: `${coords.left}px`,
-                minWidth
+                minWidth,
+                maxWidth
             } : { opacity: 0 }}
             className={cn(
                 "fixed z-[1000] rounded-xl border shadow-xl overflow-hidden",
@@ -219,10 +225,10 @@ function CardRow({ label, children, isDark, noBorder }: { label: string; childre
 
 
 
-function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onClientChange, customStatuses = [] }: {
+function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onAssignClients, customStatuses = [] }: {
     i: Invoice; onOpen: () => void; onArchive: () => void; isDark: boolean;
     onStatusChange: (s: InvoiceStatus) => void; isSelected: boolean; onToggle: () => void;
-    onClientChange: (clientId: string, clientName: string) => void;
+    onAssignClients: (clients: { id: string; name: string; avatar_url?: string | null }[]) => void;
     customStatuses: any[];
 }) {
     const [statusOpen, setStatusOpen] = useState(false);
@@ -264,9 +270,10 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
             <div className="px-4 py-1.5 flex flex-col">
                 <CardRow label="Client" isDark={isDark}>
                     <ClientCell
+                        assignedClients={i.meta?.assignedClients}
                         currentName={i.client_name}
                         currentId={i.client_id}
-                        onClientChange={onClientChange}
+                        onAssignClients={onAssignClients}
                         isDark={isDark}
                         variant="card"
                     />
@@ -424,8 +431,9 @@ function StatusCell({ status, onStatusChange, isDark, customStatuses = [] }: {
     );
 }
 
-function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 'table' }: {
-    currentName: string; currentId?: string | null; onClientChange: (id: string, name: string) => void;
+function ClientCell({ assignedClients, currentName, currentId, onAssignClients, isDark, variant = 'table' }: {
+    assignedClients?: { id: string; name: string; avatar_url?: string | null }[];
+    currentName?: string; currentId?: string | null; onAssignClients: (clients: { id: string; name: string; avatar_url?: string | null }[]) => void;
     isDark: boolean; variant?: 'table' | 'card'
 }) {
     const [open, setOpen] = useState(false);
@@ -436,7 +444,7 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
     const handleCreateClient = async (data: any) => {
         const client = await addClient(data);
         if (client) {
-            onClientChange(client.id, client.contact_person || client.company_name);
+            onAssignClients([...activeClients, { id: client.id, name: client.contact_person || client.company_name || '', avatar_url: client.avatar_url }]);
             setIsClientEditorOpen(false);
             setOpen(false);
             appToast.success('Contact created and selected');
@@ -444,46 +452,71 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
     };
 
     useEffect(() => {
-        if (open) {
-            if (clients.length === 0) fetchClients();
-            setSearch('');
-        }
-    }, [open, clients.length, fetchClients]);
+        if (clients.length === 0) fetchClients();
+    }, [clients.length, fetchClients]);
+
+    useEffect(() => {
+        if (open) setSearch('');
+    }, [open]);
 
     const filtered = useMemo(() => {
         if (!search) return clients;
-        return clients.filter(c => c.company_name.toLowerCase().includes(search.toLowerCase()));
+        const s = search.toLowerCase();
+        return clients.filter(c => 
+            c.contact_person?.toLowerCase().includes(s) || 
+            c.company_name?.toLowerCase().includes(s)
+        );
     }, [clients, search]);
 
     const activeClient = useMemo(() => clients.find(c => c.id === currentId), [clients, currentId]);
 
-    const display = (
-        <div className={cn("flex items-center gap-2",
-            variant === 'card' ? cn("px-2 py-1.5 rounded-[8px]", isDark ? "bg-white/[0.03] border border-white/5" : "bg-[#f8f8f8] border border-[#f0f0f0]") : "truncate")}>
-            <div className="shrink-0">
-                <Avatar 
-                    src={activeClient?.avatar_url} 
-                    name={currentName} 
-                    className={cn("rounded-full", variant === 'card' ? "w-5 h-5" : "w-6 h-6")} 
-                    isDark={isDark} 
-                />
-            </div>
-            <span className={cn("truncate font-medium", variant === 'card' ? "text-[12px]" : "text-[13px]")}>{currentName || '—'}</span>
-            {currentName && (
-                <div 
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
-                        onClientChange('', ''); 
-                    }}
-                    className={cn(
-                        "ml-auto p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all cursor-pointer",
-                        isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
-                    )}
-                >
-                    <X size={10} />
+    const activeClients = assignedClients?.length 
+        ? assignedClients 
+        : (currentId ? [{ id: currentId, name: currentName || '', avatar_url: activeClient?.avatar_url }] : []);
+
+    const display = activeClients.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1.5 overflow-hidden">
+            {activeClients.map((ac, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 group/pill">
+                    <span
+                        className={cn(
+                            "flex items-center gap-1.5 px-2 py-1 rounded-[6px] text-[11px] font-semibold border transition-colors",
+                            isDark
+                                ? "bg-white/[0.05] border-white/10 text-white/80"
+                                : "bg-[#f5f5f5] border-[#e5e5e5] text-[#333]"
+                        )}
+                    >
+                        {ac.avatar_url ? (
+                            <img 
+                                src={ac.avatar_url} 
+                                alt={ac.name || "Avatar"} 
+                                className="w-4 h-4 rounded-full shrink-0 object-cover -ml-1" 
+                            />
+                        ) : (
+                            <User size={12} className="opacity-50 shrink-0 -ml-0.5" />
+                        )}
+                        <span className="truncate max-w-[120px]">{ac.name}</span>
+                    </span>
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onAssignClients(activeClients.filter((_, i) => i !== idx));
+                        }}
+                        className={cn(
+                            "p-1 rounded-full opacity-0 group-hover/pill:opacity-100 transition-all cursor-pointer",
+                            isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
+                        )}
+                    >
+                        <X size={10} />
+                    </div>
                 </div>
-            )}
+            ))}
         </div>
+    ) : (
+        <span className={cn(
+            "text-[12px]",
+            isDark ? "text-[#444]" : "text-[#ccc]"
+        )}>—</span>
     );
 
     return (
@@ -502,7 +535,8 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
                 onClose={() => setOpen(false)} 
                 isDark={isDark} 
                 align="center"
-                minWidth="280px"
+                minWidth="224px"
+                maxWidth="224px"
             >
                 <div className={cn("p-2 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
                     <div className="relative">
@@ -520,69 +554,81 @@ function ClientCell({ currentName, currentId, onClientChange, isDark, variant = 
                         />
                     </div>
                 </div>
-                <div className="py-1 max-h-[180px] overflow-y-auto">
-                    {filtered.length === 0 && !search ? (
-                        <div className="px-3 py-4 text-center opacity-40 text-[11px]">
-                            No clients found
-                        </div>
+                <div 
+                    className="py-1 max-h-[180px] overflow-y-auto"
+                    onWheel={(e) => e.stopPropagation()}
+                >
+                    {filtered.length === 0 ? (
+                        <div className="px-4 py-3 text-[11px] opacity-40 text-center">No clients found</div>
                     ) : (
-                        <>
-                            {filtered.map(c => (
-                                <button key={c.id} onClick={(e) => { e.stopPropagation(); onClientChange(c.id, c.contact_person || c.company_name); setOpen(false); }}
-                                    className={cn("w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors group",
-                                         c.id === currentId ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
-                                     )}
-                                 >
-                                     <div className="flex items-center gap-3 min-w-0">
-                                         <Avatar 
-                                             src={c.avatar_url} 
-                                             name={c.contact_person || c.company_name} 
-                                             className="w-7 h-7 rounded-full" 
-                                             isDark={isDark} 
-                                         />
-                                         <div className="flex flex-col min-w-0 leading-tight">
-                                             <span className={cn("text-[12px] font-bold truncate transition-colors", 
-                                                 c.id === currentId ? "text-primary" : (isDark ? "text-[#ddd]" : "text-[#111]"))}>
-                                                 {c.contact_person || '—'}
-                                             </span>
-                                             {c.company_name && (
-                                                 <span className={cn("text-[10px] truncate", isDark ? "text-[#555]" : "text-[#aaa]")}>
-                                                     {c.company_name}
-                                                 </span>
-                                             )}
-                                         </div>
-                                     </div>
-                                     {c.id === currentId && <Check size={12} className="text-primary opacity-60" />}
-                                 </button>
-                            ))}
-                            <div className={cn("mt-1 border-t", isDark ? "border-white/5" : "border-black/5")} />
-                            {(!search || !clients.some(c => (c.contact_person?.toLowerCase() === search.toLowerCase() || c.company_name?.toLowerCase() === search.toLowerCase()))) && (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setIsClientEditorOpen(true); }}
-                                    className={cn(
-                                        "w-full flex items-center gap-2 px-3.5 py-2.5 text-[12px] font-bold transition-colors text-left",
-                                        isDark ? "text-primary hover:bg-white/5" : "text-primary hover:bg-black/[0.02]"
+                        filtered.map(c => {
+                            const isSelected = activeClients.some(ac => ac.id === c.id);
+                            return (
+                                <button key={c.id} 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isSelected) {
+                                            onAssignClients(activeClients.filter(ac => ac.id !== c.id));
+                                        } else {
+                                            onAssignClients([...activeClients, { id: c.id, name: c.contact_person || c.company_name, avatar_url: c.avatar_url }]);
+                                        }
+                                        // Keep dropdown open for multi-select
+                                    }}
+                                    className={cn("w-full flex items-center justify-between text-left px-3 py-2 text-[12px] transition-colors border-b last:border-0",
+                                        isDark ? "border-[#333] hover:bg-white/5" : "border-[#f0f0f0] hover:bg-[#fafafa]"
                                     )}
                                 >
-                                    <Plus size={14} strokeWidth={2.5} />
-                                    {search ? `Create "${search}"` : 'Create new contact'}
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        {c.avatar_url ? (
+                                            <img src={c.avatar_url} alt="av" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                                        ) : (
+                                            <User size={14} className="opacity-40 shrink-0" />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <div className={cn("font-semibold truncate", isDark ? "text-white" : "text-black", isSelected ? "text-[var(--brand-primary)]" : "")}>
+                                                {c.contact_person || c.company_name}
+                                            </div>
+                                            {(c.contact_person && c.company_name) && (
+                                                <div className={cn("text-[9.5px] truncate", isDark ? "text-white/40" : "text-black/40")}>
+                                                    {c.company_name}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {isSelected && <Check size={14} className="text-[var(--brand-primary)] shrink-0 ml-2" />}
                                 </button>
-                            )}
-                        </>
+                            );
+                        })
                     )}
                 </div>
+                {(!search || !clients.some(c => (c.contact_person?.toLowerCase() === search.toLowerCase() || c.company_name?.toLowerCase() === search.toLowerCase()))) && (
+                    <div className={cn("border-t", isDark ? "border-white/5" : "border-black/5")}>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setIsClientEditorOpen(true); }}
+                            className={cn(
+                                "w-full flex items-center gap-2 px-3.5 py-2.5 text-[12px] font-bold transition-colors text-left",
+                                isDark ? "text-primary hover:bg-white/5" : "text-primary hover:bg-black/[0.02]"
+                            )}
+                        >
+                            <Plus size={14} strokeWidth={2.5} />
+                            {search ? `Create "${search}"` : 'Create new contact'}
+                        </button>
+                    </div>
+                )}
             </Dropdown>
 
             {isClientEditorOpen && (
-                <ClientEditor
-                    onClose={() => setIsClientEditorOpen(false)}
-                    onSave={handleCreateClient}
-                    initialData={{
-                        contact_person: '',
-                        company_name: search,
-                        email: ''
-                    }}
-                />
+                <div onClick={(e) => e.stopPropagation()}>
+                    <ClientEditor
+                        onClose={() => setIsClientEditorOpen(false)}
+                        onSave={handleCreateClient}
+                        initialData={{
+                            contact_person: search,
+                            company_name: '',
+                            email: ''
+                        }}
+                    />
+                </div>
             )}
         </div>
     );
@@ -652,6 +698,7 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
 /* ─── Main page ─────────────────────────────────────────────────── */
 export default function InvoicesPage() {
     const router = useRouter();
+    const { navItems } = useMenuStore();
     const { theme, setImportModalOpen, activeWorkspaceId, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const { invoices, fetchInvoices, updateInvoice, addInvoice, deleteInvoice, isLoading } = useInvoiceStore();
     const { statuses, fetchStatuses } = useSettingsStore();
@@ -748,7 +795,7 @@ export default function InvoicesPage() {
     /* ── Advanced Filters ── */
     const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false);
     const [filterRows, setFilterRows] = usePersistentState<FilterRow[]>('invoices_filter_rows', []);
-    const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
+    const [activeFilterId, setActiveFilterId] = usePersistentState<string | null>('invoices_active_filter_id', null);
     const { saved: savedFilters, save: saveFilter, remove: deleteSavedFilter } = useSavedFilters('invoices');
 
     const INVOICE_FILTER_FIELDS = useMemo<FilterField[]>(() => [
@@ -927,7 +974,7 @@ export default function InvoicesPage() {
 
             {/* ── Page header — hidden on mobile (MobileTopBar handles title) ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
-                <h1 className="text-[15px] font-semibold tracking-tight">Invoices</h1>
+                <h1 className="text-[15px] font-semibold tracking-tight">{navItems.find(item => item.href === '/invoices')?.label || 'Invoices'}</h1>
             </div>
 
             {/* ── Toolbar ── */}
@@ -1029,8 +1076,8 @@ export default function InvoicesPage() {
                                     rows={filterRows}
                                     savedFilters={savedFilters}
                                     onChange={setFilterRows}
-                                    onApply={(rows) => { setFilterRows(rows); }}
-                                    onSave={(name, rows) => { saveFilter(name, rows); setFilterRows(rows); }}
+                                    onApply={(rows) => { setFilterRows(rows); setActiveFilterId(null); }}
+                                    onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); setActiveFilterId(f.id); }}
                                     onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }}
                                     onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }}
                                     isDark={isDark}
@@ -1272,7 +1319,7 @@ export default function InvoicesPage() {
                                         defaultWidth: 240,
                                         cell: (inv) => (
                                             <div className="flex items-stretch h-full w-full">
-                                                <ClientCell currentName={inv.client_name} currentId={inv.client_id} onClientChange={(id, name) => updateInvoice(inv.id, { client_id: id, client_name: name })} isDark={isDark} variant="table" />
+                                                <ClientCell assignedClients={inv.meta?.assignedClients} currentName={inv.client_name} currentId={inv.client_id} onAssignClients={(clients) => updateInvoice(inv.id, { client_id: clients[0]?.id || null, client_name: clients[0]?.name || '', meta: { ...inv.meta, assignedClients: clients } as any })} isDark={isDark} variant="table" />
                                             </div>
                                         )
                                     },
@@ -1414,7 +1461,7 @@ export default function InvoicesPage() {
                                     onOpen={() => router.push(`/invoices/${inv.id}`)}
                                     onArchive={() => handleArchive(inv.id)}
                                     onStatusChange={(s) => updateInvoice(inv.id, { status: s })}
-                                    onClientChange={(id, name) => updateInvoice(inv.id, { client_id: id, client_name: name })}
+                                    onAssignClients={(clients) => updateInvoice(inv.id, { client_id: clients[0]?.id || null, client_name: clients[0]?.name || '', meta: { ...inv.meta, assignedClients: clients } as any })}
                                     isSelected={selectedIds.has(inv.id)}
                                     onToggle={() => {
                                         const n = new Set(selectedIds);

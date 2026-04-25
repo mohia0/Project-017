@@ -28,6 +28,7 @@ import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/Fil
 import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterUtils';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { useMenuStore } from '@/store/useMenuStore';
 
 type Tab = 'people' | 'companies';
 type ViewMode = 'grid' | 'list';
@@ -107,7 +108,10 @@ function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth =
     React.useEffect(() => {
         if (!open) return;
         const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-        const s = () => onClose();
+        const s = (e: Event) => {
+            if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
+            onClose();
+        };
         document.addEventListener('mousedown', h);
         window.addEventListener('scroll', s, true);
         return () => {
@@ -143,6 +147,7 @@ function DItem({ label, icon, active, onClick, isDark }: { label: string; icon?:
 }
 
 export default function ClientsPage() {
+    const { navItems } = useMenuStore();
     const { clients, addClient, fetchClients, isLoading: isClientsLoading } = useClientStore();
     const { companies, fetchCompanies, isLoading: isCompaniesLoading } = useCompanyStore();
     const { theme, openRightPanel, rightPanel, setImportModalOpen, setCreateModalOpen, pageViews, setPageView } = useUIStore();
@@ -165,7 +170,7 @@ export default function ClientsPage() {
     const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false);
     const [peopleFilterRows, setPeopleFilterRows] = usePersistentState<FilterRow[]>('clients_people_filter_rows', []);
     const [companyFilterRows, setCompanyFilterRows] = usePersistentState<FilterRow[]>('clients_companies_filter_rows', []);
-    const [activeFilterId, setActiveFilterId] = useState<string | null>(null);
+    const [activeFilterId, setActiveFilterId] = usePersistentState<string | null>('clients_active_filter_id', null);
 
     const filterRows = tab === 'people' ? peopleFilterRows : companyFilterRows;
     const setFilterRows = tab === 'people' ? setPeopleFilterRows : setCompanyFilterRows;
@@ -408,9 +413,9 @@ export default function ClientsPage() {
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]"
         )}>
 
-            {/* ── Page header — hidden on mobile (MobileTopBar handles it) ── */}
+            {/* ── Page header — hidden on mobile (MobileTopBar handles title) ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
-                <h1 className="text-[15px] font-semibold tracking-tight">Contacts</h1>
+                <h1 className="text-[15px] font-semibold tracking-tight">{navItems.find(item => item.href === '/clients')?.label || 'Contacts'}</h1>
             </div>
 
             {/* ── Toolbar ── */}
@@ -476,6 +481,7 @@ export default function ClientsPage() {
                                             activeId={activeFilterId}
                                             onLoad={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setFilterOpen(false); }}
                                             onDelete={(id) => { deleteSavedFilter(id); if (activeFilterId === id) { setActiveFilterId(null); } }}
+                                            onClear={() => { setFilterRows([]); setActiveFilterId(null); setFilterOpen(false); }}
                                             isDark={isDark}
                                         />
                                     </>
@@ -491,8 +497,8 @@ export default function ClientsPage() {
                                 rows={filterRows}
                                 savedFilters={savedFilters}
                                 onChange={setFilterRows}
-                                onApply={(rows) => { setFilterRows(rows); }}
-                                onSave={(name, rows) => { saveFilter(name, rows); setFilterRows(rows); }}
+                                onApply={(rows) => { setFilterRows(rows); setActiveFilterId(null); }}
+                                onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); setActiveFilterId(f.id); }}
                                 onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }}
                                 onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }}
                                 isDark={isDark}

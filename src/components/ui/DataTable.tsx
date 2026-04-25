@@ -298,8 +298,8 @@ export function DataTable<T extends { id: string }>({
                                         })}
                                         {(rightHeaderSlot || rightCellSlot) && (
                                             <div className={cn(
-                                                "px-3 py-1.5 self-stretch flex items-center justify-end sticky right-0 z-10 border-l transition-colors",
-                                                isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]"
+                                                "px-3 py-1.5 self-stretch flex items-center justify-end sticky right-0 z-10 transition-colors",
+                                                isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]"
                                             )}
                                             style={{ width: colWidths.right_slot }} 
                                             onClick={e => e.stopPropagation()}>

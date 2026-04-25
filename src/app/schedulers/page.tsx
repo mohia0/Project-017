@@ -27,6 +27,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/FilterPanel';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { useMenuStore } from '@/store/useMenuStore';
 import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterUtils';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 
@@ -76,7 +77,10 @@ function Dropdown({ open, onClose, isDark, children, align = 'center', minWidth 
     useEffect(() => {
         if (!open) return;
         const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-        const s = () => onClose();
+        const s = (e: Event) => {
+            if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
+            onClose();
+        };
         document.addEventListener('mousedown', h);
         window.addEventListener('scroll', s, true);
         return () => {
@@ -482,6 +486,7 @@ function OrganizerCell({ currentName, currentId, onUpdate, isDark, variant = 'ta
 /* ─── Main page ─────────────────────────────────────────────── */
 export default function SchedulersPage() {
     const router = useRouter();
+    const { navItems } = useMenuStore();
     const { theme, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const { schedulers, fetchSchedulers, addScheduler, updateScheduler, deleteScheduler, isLoading } = useSchedulerStore();
     const isDark = theme === 'dark';
@@ -611,7 +616,7 @@ export default function SchedulersPage() {
             {/* ── Page header ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0",
                 isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
-                <h1 className="text-[15px] font-semibold tracking-tight">Schedulers</h1>
+                <h1 className="text-[15px] font-semibold tracking-tight">{navItems.find(item => item.href === '/schedulers')?.label || 'Schedulers'}</h1>
             </div>
 
             {/* Toolbar */}

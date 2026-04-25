@@ -575,6 +575,10 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
         </div>
     );
 
+    const isLinked = (doc: any, c: any) => doc.client_id === c.id || doc.client_name === c.contact_person || (Array.isArray(doc.meta?.assignedClients) && doc.meta.assignedClients.some((ac: any) => ac.id === c.id));
+    const linkedProposals = proposals.filter(p => isLinked(p, client));
+    const linkedInvoices = invoices.filter(i => isLinked(i, client));
+
     const name = form.contact_person || form.company_name || '';
     const border = isDark ? "border-[#252525]" : "border-[#e4e4e4]";
 
@@ -717,8 +721,8 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                         <div>
                             <h3 className={cn("text-[10px] font-bold uppercase tracking-wider mb-3", isDark ? "text-white/20" : "text-gray-400")}>Proposals</h3>
                             <div className="space-y-1">
-                                {proposals.filter(p => p.client_id === client.id || p.client_name === client.contact_person).length > 0 ? (
-                                    proposals.filter(p => p.client_id === client.id || p.client_name === client.contact_person).map(p => (
+                                {linkedProposals.length > 0 ? (
+                                    linkedProposals.map(p => (
                                         <button 
                                             key={p.id} 
                                             onClick={() => { router.push(`/proposals/${p.id}`); closeRightPanel(); }}
@@ -744,8 +748,8 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                         <div>
                             <h3 className={cn("text-[10px] font-bold uppercase tracking-wider mb-3", isDark ? "text-white/20" : "text-gray-400")}>Invoices</h3>
                             <div className="space-y-1">
-                                {invoices.filter(i => i.client_id === client.id || i.client_name === client.contact_person).length > 0 ? (
-                                    invoices.filter(i => i.client_id === client.id || i.client_name === client.contact_person).map(i => (
+                                {linkedInvoices.length > 0 ? (
+                                    linkedInvoices.map(i => (
                                         <button 
                                             key={i.id} 
                                             onClick={() => { router.push(`/invoices/${i.id}`); closeRightPanel(); }}

@@ -48,7 +48,7 @@ export function AppLoader({
 
       <style jsx>{`
         .leap-frog-container {
-          --uib-dot-size: calc(var(--uib-size) * 0.18);
+          --uib-dot-size: calc(var(--uib-size) * 0.25);
           position: relative;
           display: flex;
           align-items: center;
@@ -66,16 +66,20 @@ export function AppLoader({
           justify-content: flex-start;
           width: 100%;
           height: 100%;
+          will-change: transform;
+          backface-visibility: hidden;
+          transform-style: preserve-3d;
         }
 
         .dot::before {
           content: '';
           display: block;
-          height: calc(var(--uib-size) * 0.22);
-          width: calc(var(--uib-size) * 0.22);
+          height: var(--uib-dot-size);
+          width: var(--uib-dot-size);
           border-radius: 50%;
           background-color: var(--uib-color);
           transition: background-color 0.3s ease;
+          box-shadow: 0 0 0 0.5px var(--uib-color); /* Subtle anti-aliasing fix */
         }
 
         .dot:nth-child(1) {
@@ -83,13 +87,13 @@ export function AppLoader({
         }
 
         .dot:nth-child(2) {
-          transform: translateX(calc(var(--uib-size) * 0.4));
+          transform: translateX(calc(var(--uib-size) * 0.375));
           animation: leapFrog var(--uib-speed) ease calc(var(--uib-speed) / -1.5)
             infinite;
         }
 
         .dot:nth-child(3) {
-          transform: translateX(calc(var(--uib-size) * 0.8)) rotate(0deg);
+          transform: translateX(calc(var(--uib-size) * 0.75)) rotate(0deg);
           animation: leapFrog var(--uib-speed) ease calc(var(--uib-speed) / -3) infinite;
         }
 
@@ -103,11 +107,11 @@ export function AppLoader({
           }
 
           66.666% {
-            transform: translateX(calc(var(--uib-size) * -0.38)) rotate(180deg);
+            transform: translateX(calc(var(--uib-size) * -0.375)) rotate(180deg);
           }
 
           99.999% {
-            transform: translateX(calc(var(--uib-size) * -0.78)) rotate(180deg);
+            transform: translateX(calc(var(--uib-size) * -0.75)) rotate(180deg);
           }
 
           100% {

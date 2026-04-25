@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { MoneyAmount } from '@/components/ui/MoneyAmount';
 import DashboardAnalytics from '@/components/layout/DashboardAnalytics';
+import { useMenuStore } from '@/store/useMenuStore';
 
 // Removed local fmt$ and fmtShort$ to use global MoneyAmount component
 
@@ -403,6 +404,7 @@ function StatusRow({ label, count, amount, icon, iconColor, barColor, isDark }: 
 
 /* ─── Main Dashboard ─────────────────────────────────────────────── */
 export default function DashboardPage() {
+    const { navItems } = useMenuStore();
     const { theme, activeWorkspaceId } = useUIStore();
     const { invoices, fetchInvoices } = useInvoiceStore();
     const { proposals, fetchProposals } = useProposalStore();
@@ -571,7 +573,7 @@ export default function DashboardPage() {
                 isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white border-b border-[#ebebeb]"
             )}>
                 <div>
-                    <h1 className="text-[15px] font-semibold tracking-tight">Dashboard</h1>
+                    <h1 className="text-[15px] font-semibold tracking-tight">{navItems.find(item => item.href === '/dashboard' || item.id === 'dashboard')?.label || 'Dashboard'}</h1>
                     <p className={cn("text-[11px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
                         {greeting}, {firstName} · {(() => {
                             const day = now.getDate();

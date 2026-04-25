@@ -17,9 +17,11 @@ import { useSchedulerStore } from '@/store/useSchedulerStore';
 import { useSectionTemplateStore, SectionTemplate } from '@/store/useSectionTemplateStore';
 import { useSnippetStore, Snippet } from '@/store/useSnippetStore';
 import { SnippetPreview } from '@/components/proposals/blocks/SnippetPreview';
+import { useMenuStore } from '@/store/useMenuStore';
 
 export default function TemplatesPage() {
     const router = useRouter();
+    const { navItems } = useMenuStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     
@@ -128,7 +130,7 @@ export default function TemplatesPage() {
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-black/5 dark:bg-white/5 font-sans">
                         <LayoutTemplate size={14} className="opacity-40" />
-                        <span className="text-[13px] font-semibold tracking-tight">Templates</span>
+                        <span className="text-[13px] font-semibold tracking-tight">{navItems.find(item => item.href === '/templates')?.label || 'Templates'}</span>
                     </div>
                 </div>
 

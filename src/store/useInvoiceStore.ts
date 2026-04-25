@@ -122,9 +122,10 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
         if (payload.due_date === '') payload.due_date = null;
         if (payload.issue_date === '') payload.issue_date = null;
 
-        if (current && current.meta) {
+        if (current) {
             let metaUpdated = false;
-            const newMeta = { ...current.meta };
+            let newMeta = updates.meta ? { ...updates.meta } : (current.meta ? { ...current.meta } : {});
+
             if (updates.status && newMeta.status !== updates.status) {
                 newMeta.status = updates.status;
                 metaUpdated = true;
@@ -133,7 +134,7 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
                 newMeta.clientName = updates.client_name;
                 metaUpdated = true;
             }
-            if (metaUpdated) {
+            if (metaUpdated || updates.meta) {
                 payload.meta = newMeta;
             }
         }
