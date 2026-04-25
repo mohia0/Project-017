@@ -44,7 +44,7 @@ const TEMPLATE_DEFS = [
     },
 ];
 
-const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
+const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string; is_html?: boolean }> = {
     invoice: {
         subject: "Invoice #{{invoice_number}} from {{sender_name}}",
         body: "Hi {{client_name}},\n\nYour invoice #{{invoice_number}} is now available.\n\nAmount Due: {{amount_due}}\nDue Date: {{due_date}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nThank you for your business!\n\nBest regards,\n{{sender_name}}"
@@ -55,7 +55,82 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
     },
     receipt: {
         subject: "Payment Receipt — Invoice #{{invoice_number}}",
-        body: "Hi {{client_name}},\n\nThank you for your payment! We have received your payment of {{amount_paid}} for Invoice #{{invoice_number}}.\n\nYou can view your receipt here:\n{{document_link}}\n\nYour business is much appreciated!\n\nBest regards,\n{{sender_name}}"
+        is_html: true,
+        body: `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Payment Receipt</title></head>
+<body style="margin:0;padding:0;background:#E8ECF2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table width="100%" bgcolor="#E8ECF2" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:48px 16px;">
+<div style="width:100%;max-width:400px;margin:0 auto;">
+
+  <!-- Badge sits above the card via relative/z-index in email-safe way -->
+  <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:0;line-height:0;">
+    <div style="display:inline-block;width:60px;height:60px;background:{{accent_color}};border-radius:50%;border:5px solid #E8ECF2;box-sizing:border-box;margin-bottom:-30px;">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:10px auto;"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+  </td></tr></table>
+
+  <!-- Card top (rounded corners) -->
+  <div style="background:#1C2333;border-radius:16px 16px 0 0;padding:44px 28px 28px;text-align:center;">
+
+    <h1 style="margin:0 0 8px;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.3px;">Payment Success!</h1>
+    <p style="margin:0 0 22px;color:#8892A4;font-size:13px;line-height:1.6;">Your payment has been successfully done.</p>
+    <div style="border-top:1px solid #2B3549;margin-bottom:22px;"></div>
+
+    <p style="margin:0 0 6px;color:#8892A4;font-size:10px;text-transform:uppercase;letter-spacing:2.5px;font-weight:700;">Total Payment</p>
+    <p style="margin:0 0 28px;color:#ffffff;font-size:30px;font-weight:800;letter-spacing:-0.5px;">{{amount_paid}}</p>
+
+    <!-- Info grid -->
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="50%" style="padding:0 4px 8px 0;vertical-align:top;">
+          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
+            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Ref Number</p>
+            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;font-family:monospace;text-align:left;word-break:break-all;">{{invoice_number}}</p>
+          </div>
+        </td>
+        <td width="50%" style="padding:0 0 8px 4px;vertical-align:top;">
+          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
+            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Payment Time</p>
+            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;text-align:left;">{{payment_date}}</p>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td width="50%" style="padding:0 4px 0 0;vertical-align:top;">
+          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
+            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Payment Method</p>
+            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;text-align:left;">Bank Transfer</p>
+          </div>
+        </td>
+        <td width="50%" style="padding:0 0 0 4px;vertical-align:top;">
+          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
+            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Sender Name</p>
+            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;text-align:left;">{{client_name}}</p>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- CTA link -->
+    <div style="margin-top:24px;padding-bottom:4px;">
+      <a href="{{document_link}}" style="display:inline-block;color:#8892A4;font-size:13px;font-weight:600;text-decoration:none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:6px;"><path d="M12 2v13"/><path d="M5 10l7 7 7-7"/><path d="M3 21h18"/></svg>
+        Get PDF Receipt
+      </a>
+    </div>
+  </div>
+
+  <!-- Scalloped receipt bottom teeth (same color as card, pointing down) -->
+  <svg width="100%" viewBox="0 0 400 20" xmlns="http://www.w3.org/2000/svg" style="display:block;margin-top:-1px;">
+    <path d="M0,0 L400,0 Q390,20,380,0 Q370,20,360,0 Q350,20,340,0 Q330,20,320,0 Q310,20,300,0 Q290,20,280,0 Q270,20,260,0 Q250,20,240,0 Q230,20,220,0 Q210,20,200,0 Q190,20,180,0 Q170,20,160,0 Q150,20,140,0 Q130,20,120,0 Q110,20,100,0 Q90,20,80,0 Q70,20,60,0 Q50,20,40,0 Q30,20,20,0 Q10,20,0,0 Z" fill="#1C2333"/>
+  </svg>
+
+  <!-- Footer -->
+  <p style="text-align:center;color:#9AA0AD;font-size:11px;margin:16px 0 0;">Thank you for your business &mdash; <strong>{{sender_name}}</strong></p>
+
+</div>
+</td></tr></table>
+</body></html>`
     },
     overdue_remind: {
         subject: "Action Required: Invoice #{{invoice_number}} is Overdue",
@@ -136,7 +211,7 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
     useEffect(() => {
         const data: Record<string, { subject: string; body: string; is_html: boolean }> = {};
         Object.keys(DEFAULT_TEMPLATES).forEach(k => { 
-            data[k] = { ...DEFAULT_TEMPLATES[k], is_html: false }; 
+            data[k] = { ...DEFAULT_TEMPLATES[k], is_html: !!DEFAULT_TEMPLATES[k].is_html, body: DEFAULT_TEMPLATES[k].body, subject: DEFAULT_TEMPLATES[k].subject }; 
         });
         if (emailTemplates?.length) {
             emailTemplates.forEach(t => {
@@ -161,9 +236,11 @@ function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any })
     };
 
     const def = TEMPLATE_DEFS.find(d => d.key === activeKey)!;
-    const current = templateData[activeKey] || { subject: '', body: '' };
-    const sampleVars = { ...def.sample, sender_name: emailConfig?.from_name || 'Acme Studio' };
+    const current = templateData[activeKey] || { subject: '', body: '', is_html: false };
+    const sampleVars: Record<string, any> = { ...def.sample, sender_name: emailConfig?.from_name || 'Acme Studio' };
     const accentColor = branding?.primary_color || '#10b981';
+    // Let the live preview also resolve custom accent colors
+    sampleVars.accent_color = accentColor;
     const isAccentDark = getBrightness(accentColor) < 128;
     const logoUrl = isAccentDark ? branding?.logo_light_url : (branding?.logo_dark_url || branding?.logo_light_url);
     const headerTextColor = isAccentDark ? '#ffffff' : '#000000';
@@ -288,7 +365,7 @@ ${textLines || `              <p style="margin: 0 0 16px 0; font-size: 15px; lin
     const handleReset = () => {
         setTemplateData(prev => ({ 
             ...prev, 
-            [activeKey]: { ...DEFAULT_TEMPLATES[activeKey], is_html: false } 
+            [activeKey]: { ...DEFAULT_TEMPLATES[activeKey], is_html: !!DEFAULT_TEMPLATES[activeKey].is_html, body: DEFAULT_TEMPLATES[activeKey].body, subject: DEFAULT_TEMPLATES[activeKey].subject } 
         }));
         setEditorMode('text');
         appToast.success('Template Reset', 'Reset to default built-in version');
@@ -427,27 +504,31 @@ ${textLines || `              <p style="margin: 0 0 16px 0; font-size: 15px; lin
                             </div>
                             
                             {/* True Email Container Render */}
-                            <div className={cn("px-4 py-8 flex flex-col items-center", isDark ? "bg-[#0a0a0a]" : "bg-[#ffffff]")}>
-                                <div className="w-full max-w-[500px] bg-white rounded-lg border border-[#eaeaea] overflow-hidden text-[#333]">
-                                    {/* Email Header */}
-                                    <div className="px-8 py-6 text-left flex items-center" style={{ backgroundColor: accentColor }}>
-                                        {logoUrl ? (
-                                            <img src={logoUrl} alt="Logo" className="max-h-[32px] object-contain block" />
-                                        ) : (
-                                            <span className="text-[16px] font-semibold" style={{ color: headerTextColor }}>{sampleVars.sender_name}</span>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Body */}
-                                    <div className="p-8 text-[15px] leading-[1.6] text-[#444] font-sans">
-                                        <div dangerouslySetInnerHTML={{ __html: previewBody }} />
-                                    </div>
+                            <div className={cn("flex flex-col items-center overflow-x-auto", isDark ? "bg-[#0a0a0a]" : "bg-[#ffffff]", current.is_html ? "py-0" : "px-4 py-8")}>
+                                {current.is_html ? (
+                                    <div className="w-full min-w-[500px]" dangerouslySetInnerHTML={{ __html: previewBody }} />
+                                ) : (
+                                    <div className="w-full max-w-[500px] bg-white rounded-lg border border-[#eaeaea] overflow-hidden text-[#333]">
+                                        {/* Email Header */}
+                                        <div className="px-8 py-6 text-left flex items-center" style={{ backgroundColor: accentColor }}>
+                                            {logoUrl ? (
+                                                <img src={logoUrl} alt="Logo" className="max-h-[32px] object-contain block" />
+                                            ) : (
+                                                <span className="text-[16px] font-semibold" style={{ color: headerTextColor }}>{sampleVars.sender_name}</span>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Body */}
+                                        <div className="p-8 text-[15px] leading-[1.6] text-[#444] font-sans">
+                                            <div dangerouslySetInnerHTML={{ __html: previewBody }} />
+                                        </div>
 
-                                    {/* Footer */}
-                                    <div className="bg-white border-t border-[#f0f0f0] px-8 py-6 text-left">
-                                        <p className="m-0 text-[12px] text-[#999]">Securely sent via <span className="font-medium text-[#777]">{sampleVars.sender_name}</span></p>
+                                        {/* Footer */}
+                                        <div className="bg-white border-t border-[#f0f0f0] px-8 py-6 text-left">
+                                            <p className="m-0 text-[12px] text-[#999]">Securely sent via <span className="font-medium text-[#777]">{sampleVars.sender_name}</span></p>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                         <div className={cn(

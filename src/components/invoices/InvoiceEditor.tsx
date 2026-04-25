@@ -100,7 +100,7 @@ interface InvoiceMeta {
     currency: string;
     discountCalc: 'before_tax' | 'after_tax';
     invoiceNumber: string;
-    status: 'Draft' | 'Pending' | 'Paid' | 'Overdue' | 'Cancelled';
+    status: 'Draft' | 'Pending' | 'Processing' | 'Paid' | 'Overdue' | 'Cancelled';
     logoUrl?: string;
     documentTitle?: string;
     design?: DocumentDesign;
@@ -493,6 +493,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 invoice_number: meta.invoiceNumber || '',
                 amount_paid: formatAmount(totals.total, meta.currency),
                 amount_due: formatAmount(totals.total, meta.currency),
+                payment_date: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
                 document_link: docLink,
                 sender_name: '',
             };
@@ -686,9 +687,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         )}
                     </div>
 
-                    <div className={cn("w-px h-5 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />
-
-                    <button
+                    <div className={cn("w-px h-5 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />                    <button
                         onClick={() => {
                             if (isPreview) {
                                 setIsPreview(false);
@@ -801,7 +800,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                             setIsDeleteModalOpen(true);
                                         } 
                                     },
-                                ].map(({ icon: Icon, label, action }) => (
+                                ].filter(item => item.label !== 'Download PDF' || meta.status !== 'Draft').map(({ icon: Icon, label, action }) => (
                                     <button
                                         key={label}
                                         onClick={() => {
@@ -830,7 +829,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                     {id && !isLoaded ? (
                         <div className="flex-1 flex flex-col items-center justify-center bg-[var(--color-bg-secondary)] gap-4">
                             <AppLoader size="sm" color={meta.design?.primaryColor || 'var(--primary)'} />
-                            <span className="text-[13px] opacity-40 font-medium">Loading document...</span>
+                            <span className={cn("text-[13px] font-medium", isDark ? "text-white/40" : "text-black/40")}>Loading document...</span>
                         </div>
                     ) : (
                     <div 

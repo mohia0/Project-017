@@ -99,6 +99,52 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
     const [filterUnread, setFilterUnread] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [receiptModal, setReceiptModal] = useState<{ isOpen: boolean; metadata?: Record<string, any>; notificationId?: string }>({ isOpen: false });
+    const [verifyLoading, setVerifyLoading] = useState<Record<string, boolean>>({});
+
+    const handleVerifyPayment = async (notif: any, action: 'Paid' | 'Pending') => {
+        const invoiceId = notif.metadata?.invoice_id;
+        if (!invoiceId || verifyLoading[notif.id]) return;
+        setVerifyLoading(prev => ({ ...prev, [notif.id]: true }));
+        try {
+            const { useInvoiceStore } = await import('@/store/useInvoiceStore');
+            await useInvoiceStore.getState().updateInvoice(invoiceId, { status: action });
+
+            // If collecting, trigger receipt
+            if (action === 'Paid') {
+                const { useSettingsStore } = await import('@/store/useSettingsStore');
+                const { useUIStore: uiStore } = await import('@/store/useUIStore');
+                const settings = useSettingsStore.getState();
+                const workspaceId = uiStore.getState().activeWorkspaceId;
+                const meta = notif.metadata || {};
+                if (settings.toolSettings?.invoices?.auto_receipt !== false && meta.to) {
+                    await fetch('/api/send-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            workspace_id: workspaceId,
+                            template_key: 'receipt',
+                            to: meta.to,
+                            variables: meta.variables || {},
+                        }),
+                    });
+                }
+            }
+
+            await updateNotification(notif.id, {
+                title: action === 'Paid' ? 'Payment Confirmed ✓' : 'Reverted to Pending',
+                message: action === 'Paid'
+                    ? 'Invoice marked as Paid. Receipt has been sent to the client.'
+                    : 'Invoice status has been reverted to Pending.',
+                read: true,
+                type: action === 'Paid' ? 'success' : 'info',
+                metadata: undefined,
+            });
+        } catch (err) {
+            console.error('Verify payment failed:', err);
+        } finally {
+            setVerifyLoading(prev => ({ ...prev, [notif.id]: false }));
+        }
+    };
 
     useEffect(() => {
         fetchNotifications();
@@ -366,19 +412,56 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                         </div>
                                     </div>
 
+                                    {/* Payment verification CTA */}
+                                    {notif.type === 'payment_verification' && !notif.read && (
+                                        <div className="flex items-center justify-center gap-1 px-3 pb-2.5">
+                                            <button
+                                                disabled={verifyLoading[notif.id]}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleVerifyPayment(notif, 'Pending');
+                                                }}
+                                                className={cn(
+                                                    "px-2.5 py-1 rounded-[5px] text-[10px] font-semibold transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap",
+                                                    isDark
+                                                        ? "bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80 border border-white/5"
+                                                        : "bg-black/5 hover:bg-black/10 text-black/50 hover:text-black/80 border border-black/5"
+                                                )}
+                                            >
+                                                Not Yet
+                                            </button>
+                                            <button
+                                                disabled={verifyLoading[notif.id]}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleVerifyPayment(notif, 'Paid');
+                                                }}
+                                                className={cn(
+                                                    "flex items-center gap-1.5 px-3 py-1 rounded-[5px] text-[10px] font-bold transition-all active:scale-95 disabled:opacity-50 whitespace-nowrap",
+                                                    isDark
+                                                        ? "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
+                                                        : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                                )}
+                                            >
+                                                <Check size={10} strokeWidth={3} className="text-emerald-500" />
+                                                {verifyLoading[notif.id] ? 'Verifying…' : 'Collected'}
+                                            </button>
+                                        </div>
+                                    )}
+
                                     {/* Receipt pending CTA */}
                                     {notif.type === 'receipt_pending' && !notif.read && (
-                                        <div className="flex items-center gap-2 px-4 pb-3">
+                                        <div className="flex items-center gap-1 px-3 pb-2">
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     markAsRead(notif.id);
                                                 }}
                                                 className={cn(
-                                                    "flex-1 flex items-center justify-center py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95",
+                                                    "flex-1 flex items-center justify-center py-1 rounded-md text-[9px] font-extrabold transition-all active:scale-95",
                                                     isDark
-                                                        ? "bg-white/5 hover:bg-white/10 text-[#aaa] border border-white/5"
-                                                        : "bg-black/5 hover:bg-black/10 text-[#555] border border-black/5"
+                                                        ? "bg-white/5 hover:bg-white/10 text-[#555] border border-white/5"
+                                                        : "bg-black/5 hover:bg-black/10 text-[#999] border border-black/5"
                                                 )}
                                             >
                                                 Dismiss
@@ -390,13 +473,13 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                     setReceiptModal({ isOpen: true, metadata: notif.metadata, notificationId: notif.id });
                                                 }}
                                                 className={cn(
-                                                    "flex-[2] flex items-center justify-center gap-2 py-2 rounded-xl text-[11px] font-bold transition-all active:scale-95",
+                                                    "flex-[1.8] flex items-center justify-center gap-1 py-1 rounded-md text-[9px] font-extrabold transition-all active:scale-95",
                                                     isDark
                                                         ? "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/20"
                                                         : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200"
                                                 )}
                                             >
-                                                <Mail size={11} />
+                                                <Mail size={9} />
                                                 Send Receipt
                                             </button>
                                         </div>

@@ -207,7 +207,10 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
 
     if (!isLoaded || !template) {
         return (
-            <div className="flex items-center justify-center h-full opacity-50 text-[12px]">
+            <div className={cn(
+                "flex items-center justify-center h-full text-[12px]",
+                isDark ? "text-white/40" : "text-black/40"
+            )}>
                 Loading template editor...
             </div>
         );

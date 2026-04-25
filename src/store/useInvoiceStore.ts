@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from './useUIStore';
 
-export type InvoiceStatus = 'Draft' | 'Pending' | 'Paid' | 'Overdue' | 'Cancelled';
+export type InvoiceStatus = 'Draft' | 'Pending' | 'Processing' | 'Paid' | 'Overdue' | 'Cancelled';
 
 export interface Invoice {
     id: string;

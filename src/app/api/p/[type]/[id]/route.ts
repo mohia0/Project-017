@@ -77,7 +77,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
         const updateData: any = {};
         
         // Allowed field: status
-        if (body.status && ['Accepted', 'Declined', 'Paid'].includes(body.status)) {
+        if (body.status && ['Accepted', 'Declined', 'Paid', 'Processing'].includes(body.status)) {
             updateData.status = body.status;
             if (body.status === 'Paid') {
                 updateData.paid_at = new Date().toISOString();
@@ -142,18 +142,56 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
                 } else if (type === 'proposal' && body.status === 'Declined') {
                     notifTitle = 'Proposal Declined 😞';
                     notifMsg = `${doc.client_name || 'A client'} just declined the proposal "${docName}"`;
+                } else if (type === 'invoice' && body.status === 'Processing') {
+                    notifTitle = 'Payment Received — Verify Now 💳';
+                    notifMsg = `${doc.client_name || 'A client'} reported a payment for "${docName}". Open the invoice to confirm collection or revert to pending.`;
                 } else if (type === 'invoice' && body.status === 'Paid') {
                     notifTitle = 'Invoice Paid 💸';
                     notifMsg = `${doc.client_name || 'A client'} just marked the invoice "${docName}" as paid`;
                 }
 
                 if (notifTitle) {
+                    // For payment_verification, fetch extra invoice data for receipt dispatch
+                    let notifType = 'info';
+                    let notifMetadata: Record<string, any> | null = null;
+
+                    if (type === 'invoice' && body.status === 'Processing') {
+                        notifType = 'payment_verification';
+                        // Fetch invoice meta for receipt vars
+                        const { data: invoiceData } = await supabaseService
+                            .from('invoices')
+                            .select('meta, amount, invoice_number')
+                            .eq('id', id)
+                            .single();
+
+                        const invoiceMeta = (invoiceData?.meta as any) || {};
+                        const clientEmail = invoiceMeta.clientEmail || invoiceMeta.assignedClients?.[0]?.email || '';
+                        const invoiceNumber = invoiceMeta.invoiceNumber || invoiceData?.invoice_number || id.slice(0, 8).toUpperCase();
+                        const amount = invoiceData?.amount ? `${invoiceData.amount}` : '';
+
+                        notifMetadata = {
+                            invoice_id: id,
+                            to: clientEmail,
+                            variables: {
+                                client_name: doc.client_name || '',
+                                invoice_number: invoiceNumber,
+                                amount_paid: amount,
+                                amount_due: amount,
+                                payment_date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+                                document_link: body.document_link || '',
+                                sender_name: '',
+                            },
+                        };
+                    }
+
                     await supabaseService.from('notifications').insert({
                         workspace_id: doc.workspace_id,
                         title: notifTitle,
                         message: notifMsg,
-                        link: `/${type}s/${id}`,
-                        read: false
+                        link: body.status === 'Processing' ? `/invoices/${id}` : `/${type}s/${id}`,
+                        read: false,
+                        type: notifType,
+                        metadata: notifMetadata,
                     });
                 }
             }

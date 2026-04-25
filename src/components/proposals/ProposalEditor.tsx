@@ -810,7 +810,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         label: 'Delete',            
                                         action: () => setIsDeleteModalOpen(true) 
                                     },
-                                ].map(({ icon: Icon, label, action }) => (
+                                ].filter(item => item.label !== 'Download PDF' || meta.status !== 'Draft').map(({ icon: Icon, label, action }) => (
                                     <button
                                         key={label}
                                         onClick={() => { action(); setShowActionsMenu(false); }}
@@ -837,7 +837,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     {id && !isLoaded ? (
                         <div className="flex-1 flex flex-col items-center justify-center bg-[var(--color-bg-secondary)] gap-4">
                             <AppLoader size="sm" color={meta.design?.primaryColor || 'var(--primary)'} />
-                            <span className="text-[13px] opacity-40 font-medium">Loading document...</span>
+                            <span className={cn("text-[13px] font-medium", isDark ? "text-white/40" : "text-black/40")}>Loading document...</span>
                         </div>
                     ) : (
                     <div 

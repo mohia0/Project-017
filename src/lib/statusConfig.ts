@@ -18,6 +18,7 @@
 export type StatusKey =
   | 'Draft'
   | 'Pending'
+  | 'Processing'
   | 'Accepted'
   | 'Paid'
   | 'Overdue'
@@ -74,6 +75,13 @@ export const STATUS_COLORS: Record<StatusKey | 'All', StatusColors> = {
     badgeBorder: 'border-[#dcfce7]',
     bar:         '#22c55e',
     label:       'Accepted',
+  },
+  Processing: {
+    badge:       'bg-[#eff6ff]',
+    badgeText:   'text-[#1d4ed8]',
+    badgeBorder: 'border-[#dbeafe]',
+    bar:         '#3b82f6',
+    label:       'Processing',
   },
   Paid: {
     badge:       'bg-[#f0fdf4]',

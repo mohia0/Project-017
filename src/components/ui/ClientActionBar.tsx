@@ -1,12 +1,13 @@
 import React from 'react';
-import { Download, ArrowDownToLine, Check, AlertTriangle, FileText, ArrowRight, Printer } from 'lucide-react';
+import { Download, ArrowDownToLine, Check, AlertTriangle, FileText, ArrowRight, Printer, FileQuestion } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { DocumentDesign } from '@/types/design';
 
 export type DocumentType = 'proposal' | 'invoice' | 'document';
-export type DocumentStatus = 'Draft' | 'Pending' | 'Accepted' | 'Declined' | 'Paid' | 'Overdue' | 'Cancelled';
+export type DocumentStatus = 'Draft' | 'Pending' | 'Processing' | 'Accepted' | 'Declined' | 'Paid' | 'Overdue' | 'Cancelled';
 
 interface ClientActionBarProps {
     type?: DocumentType;
@@ -57,7 +58,11 @@ export function ClientActionBar({
     design = {}
 }: ClientActionBarProps & { onPay?: () => void }) {
     const { theme } = useUIStore();
+    const { branding } = useSettingsStore();
+
     const isDark = design.actionTheme ? design.actionTheme === 'dark' : false; // Default to light if not specified, overriding app theme
+    const accentColor = branding?.primary_color || design.primaryColor || '#3b82f6'; // fallback to standard blue
+
 
     const isAccepted = status === 'Accepted' || status === 'Paid';
     const isPending = status === 'Pending';
@@ -82,16 +87,16 @@ export function ClientActionBar({
         return (
             <div 
                 className={cn(
-                    "relative w-full max-w-[850px] mx-auto z-10 flex transition-all no-print ClientActionBar",
+                    "relative w-full max-w-[850px] mx-auto z-10 flex justify-center transition-all no-print ClientActionBar",
                     inline 
-                        ? (isMobile ? "flex-row justify-between px-6 items-center" : "justify-between")
+                        ? (isMobile ? "flex-row justify-center px-6 items-center" : "justify-center")
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
-                           isMobile ? "top-14 flex-col items-center gap-2 px-6" : "top-6 max-w-[850px] mx-auto justify-between px-4"),
+                           isMobile ? "top-14 flex-col items-center gap-2 px-6" : "top-6 max-w-[850px] mx-auto justify-center px-4"),
                     className
                 )}
                 style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
             >
-                {/* Left Status Pill */}
+                {/* Status Pill */}
                 <div 
                     className={cn(
                         "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
@@ -105,26 +110,6 @@ export function ClientActionBar({
                     <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
                         This is a draft {type} and can't be {isInvoice ? 'paid' : 'accepted'} yet
                     </span>
-                </div>
-
-                {/* Right Action Icons Pill */}
-                <div 
-                    className={cn(
-                        "flex items-center shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
-                        isMobile ? "gap-1 px-2 py-1" : "gap-1.5 px-3 py-2",
-                        !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-[#ccc]" : "bg-white/70 border-white/50 text-[#555]"
-                    )}
-                    style={parentRadiusStyle}
-                >
-                    <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                        <ArrowDownToLine size={isMobile ? 13 : 15} />
-                    </button>
-                    {onPrint && (
-                        <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                            <Printer size={isMobile ? 13 : 15} />
-                        </button>
-                    )}
                 </div>
             </div>
         );
@@ -192,6 +177,16 @@ export function ClientActionBar({
                                 Invoice paid{paidAt ? ` on ${paidAt}` : ''}{paidBy ? ` by ${paidBy}` : ''}
                             </span>
                         </>
+                    ) : status === 'Processing' ? (
+                        <>
+                            <span className="relative flex h-2.5 w-2.5 shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentColor }}></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ backgroundColor: accentColor }}></span>
+                            </span>
+                            <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")} style={{ color: accentColor }}>
+                                {isMobile ? "PAYMENT UNDER REVIEW" : "Your payment has been noted. We'll confirm once verified."}
+                            </span>
+                        </>
                     ) : (
                         <div className="flex flex-row items-baseline gap-2">
                             <span className={cn("font-medium opacity-50 uppercase tracking-wider", isMobile ? "text-[9px]" : "text-[10px]")}>
@@ -215,13 +210,17 @@ export function ClientActionBar({
                     style={parentRadiusStyle}
                 >
                     <div className="flex items-center gap-0.5 px-1.5">
-                        <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                            <ArrowDownToLine size={15} />
-                        </button>
-                        {onPrint && (
-                            <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                <Printer size={15} />
+                        <Tooltip content="Download PDF" side="bottom">
+                            <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                <ArrowDownToLine size={15} />
                             </button>
+                        </Tooltip>
+                        {onPrint && (
+                            <Tooltip content="Print" side="bottom">
+                                <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                    <Printer size={15} />
+                                </button>
+                            </Tooltip>
                         )}
                     </div>
 
@@ -238,6 +237,16 @@ export function ClientActionBar({
                                 >
                                     View receipt
                                 </button>
+                        </>
+                    ) : status === 'Processing' ? (
+                        <>
+                            <div className={cn("w-px h-4 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />
+                             <span className={cn(
+                                "font-medium whitespace-nowrap tracking-wider",
+                                isMobile ? "px-2 py-1 text-[10px]" : "px-4 py-1.5 text-[12px]"
+                            )} style={{ color: accentColor }}>
+                                UNDER REVIEW
+                            </span>
                         </>
                     ) : (
                         <button 
@@ -297,13 +306,17 @@ export function ClientActionBar({
                     )}
                     style={parentRadiusStyle}
                 >
-                    <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                        <ArrowDownToLine size={isMobile ? 13 : 15} />
-                    </button>
-                    {onPrint && (
-                        <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                            <Printer size={isMobile ? 13 : 15} />
+                    <Tooltip content="Download PDF" side="bottom">
+                        <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <ArrowDownToLine size={isMobile ? 13 : 15} />
                         </button>
+                    </Tooltip>
+                    {onPrint && (
+                        <Tooltip content="Print" side="bottom">
+                            <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                <Printer size={isMobile ? 13 : 15} />
+                            </button>
+                        </Tooltip>
                     )}
                 </div>
             </div>
@@ -381,13 +394,17 @@ export function ClientActionBar({
                     )}
                     style={parentRadiusStyle}
                 >
-                    <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                        <ArrowDownToLine size={isMobile ? 13 : 15} />
-                    </button>
-                    {onPrint && (
-                        <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                            <Printer size={isMobile ? 13 : 15} />
+                    <Tooltip content="Download PDF" side="bottom">
+                        <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <ArrowDownToLine size={isMobile ? 13 : 15} />
                         </button>
+                    </Tooltip>
+                    {onPrint && (
+                        <Tooltip content="Print" side="bottom">
+                            <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                <Printer size={isMobile ? 13 : 15} />
+                            </button>
+                        </Tooltip>
                     )}
                 </div>
             </div>
@@ -421,13 +438,17 @@ export function ClientActionBar({
                     isMobile ? "gap-0" : "gap-0.5 px-2",
                     isDark ? "text-[#ccc]" : "text-[#777]"
                 )}>
-                    <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                        <ArrowDownToLine size={isMobile ? 16 : 18} strokeWidth={1.75} />
-                    </button>
-                    {onPrint && (
-                        <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                            <Printer size={isMobile ? 16 : 18} strokeWidth={1.75} />
+                    <Tooltip content="Download PDF" side="bottom">
+                        <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <ArrowDownToLine size={isMobile ? 16 : 18} strokeWidth={1.75} />
                         </button>
+                    </Tooltip>
+                    {onPrint && (
+                        <Tooltip content="Print" side="bottom">
+                            <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                <Printer size={isMobile ? 16 : 18} strokeWidth={1.75} />
+                            </button>
+                        </Tooltip>
                     )}
                 </div>
 

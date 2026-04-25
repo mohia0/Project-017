@@ -17,7 +17,7 @@ function getBrightness(hex: string) {
     return Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
 }
 
-const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
+const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string; is_html?: boolean }> = {
     proposal: {
         subject: 'Proposal: {{document_title}}',
         body: `Hi {{client_name}},\n\nPlease find your proposal attached below.\n\n{{document_title}}\n\nYou can view and accept it here:\n{{document_link}}\n\nFeel free to reach out if you have any questions.\n\nBest regards,\n{{sender_name}}`,
@@ -27,8 +27,83 @@ const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string }> = {
         body: `Hi {{client_name}},\n\nPlease find your invoice details below.\n\nInvoice #{{invoice_number}}\nAmount Due: {{amount_due}}\nDue Date: {{due_date}}\n\nYou can view and pay it here:\n{{document_link}}\n\nThank you for your business.\n\nBest regards,\n{{sender_name}}`,
     },
     receipt: {
-        subject: 'Payment Receipt — Invoice #{{invoice_number}}',
-        body: `Hi {{client_name}},\n\nThank you! We have received your payment.\n\nInvoice #{{invoice_number}}\nAmount Paid: {{amount_paid}}\n\nYou can view your receipt here:\n{{document_link}}\n\nWe appreciate your business!\n\nBest regards,\n{{sender_name}}`,
+        subject: 'Payment Receipt - Invoice #{{invoice_number}}',
+        is_html: true,
+        body: `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Payment Receipt</title></head>
+<body style="margin:0;padding:0;background:#E8ECF2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table width="100%" bgcolor="#E8ECF2" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:48px 16px;">
+<div style="width:100%;max-width:400px;margin:0 auto;">
+
+  <!-- Badge sits above the card via relative/z-index in email-safe way -->
+  <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:0;line-height:0;">
+    <div style="display:inline-block;width:60px;height:60px;background:{{accent_color}};border-radius:50%;border:5px solid #E8ECF2;box-sizing:border-box;margin-bottom:-30px;">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:10px auto;"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+  </td></tr></table>
+
+  <!-- Card top (rounded corners) -->
+  <div style="background:#1C2333;border-radius:16px 16px 0 0;padding:44px 28px 28px;text-align:center;">
+
+    <h1 style="margin:0 0 8px;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.3px;">Payment Success!</h1>
+    <p style="margin:0 0 22px;color:#8892A4;font-size:13px;line-height:1.6;">Your payment has been successfully done.</p>
+    <div style="border-top:1px solid #2B3549;margin-bottom:22px;"></div>
+
+    <p style="margin:0 0 6px;color:#8892A4;font-size:10px;text-transform:uppercase;letter-spacing:2.5px;font-weight:700;">Total Payment</p>
+    <p style="margin:0 0 28px;color:#ffffff;font-size:30px;font-weight:800;letter-spacing:-0.5px;">{{amount_paid}}</p>
+
+    <!-- Info grid -->
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td width="50%" style="padding:0 4px 8px 0;vertical-align:top;">
+          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
+            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Ref Number</p>
+            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;font-family:monospace;text-align:left;word-break:break-all;">{{invoice_number}}</p>
+          </div>
+        </td>
+        <td width="50%" style="padding:0 0 8px 4px;vertical-align:top;">
+          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
+            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Payment Time</p>
+            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;text-align:left;">{{payment_date}}</p>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td width="50%" style="padding:0 4px 0 0;vertical-align:top;">
+          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
+            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Payment Method</p>
+            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;text-align:left;">Bank Transfer</p>
+          </div>
+        </td>
+        <td width="50%" style="padding:0 0 0 4px;vertical-align:top;">
+          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
+            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Sender Name</p>
+            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;text-align:left;">{{client_name}}</p>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- CTA link -->
+    <div style="margin-top:24px;padding-bottom:4px;">
+      <a href="{{document_link}}" style="display:inline-block;color:#8892A4;font-size:13px;font-weight:600;text-decoration:none;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:6px;"><path d="M12 2v13"/><path d="M5 10l7 7 7-7"/><path d="M3 21h18"/></svg>
+        Get PDF Receipt
+      </a>
+    </div>
+  </div>
+
+  <!-- Scalloped receipt bottom teeth (same color as card, pointing down) -->
+  <svg width="100%" viewBox="0 0 400 20" xmlns="http://www.w3.org/2000/svg" style="display:block;margin-top:-1px;">
+    <path d="M0,0 L400,0 Q390,20,380,0 Q370,20,360,0 Q350,20,340,0 Q330,20,320,0 Q310,20,300,0 Q290,20,280,0 Q270,20,260,0 Q250,20,240,0 Q230,20,220,0 Q210,20,200,0 Q190,20,180,0 Q170,20,160,0 Q150,20,140,0 Q130,20,120,0 Q110,20,100,0 Q90,20,80,0 Q70,20,60,0 Q50,20,40,0 Q30,20,20,0 Q10,20,0,0 Z" fill="#1C2333"/>
+  </svg>
+
+  <!-- Footer -->
+  <p style="text-align:center;color:#9AA0AD;font-size:11px;margin:16px 0 0;">Thank you for your business &mdash; <strong>{{sender_name}}</strong></p>
+
+</div>
+</td></tr></table>
+</body></html>`,
     },
     overdue_remind: {
         subject: 'Action Required: Overdue Invoice #{{invoice_number}}',
@@ -91,6 +166,10 @@ export async function POST(req: NextRequest) {
                 if (is_html === undefined) is_html = tmpl.is_html;
             }
         }
+        // Fall back to default template's is_html flag (e.g. receipt template is HTML by default)
+        if (is_html === undefined && template_key && DEFAULT_TEMPLATES[template_key]?.is_html) {
+            is_html = true;
+        }
 
         // Fetch branding for accent color and logos
         const { data: branding } = await supabaseService
@@ -126,6 +205,7 @@ export async function POST(req: NextRequest) {
 
         const allVars = {
             sender_name: config.from_name || '',
+            accent_color: accentColor,
             ...variables,
         };
 

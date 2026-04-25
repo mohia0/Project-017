@@ -957,7 +957,21 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 (payload) => {
                     if (!payload.new) return;
                     const raw = payload.new as any;
-                    // For projects, we want to keep the name/status/color updated
+                    
+                    // If the payload is empty due to RLS filtering out data for the anon client, resync via API
+                    if (Object.keys(raw).length === 0) {
+                        fetch(`/api/p/${type}/${data.id}`)
+                            .then(res => res.json())
+                            .then(json => {
+                                if (json && !json.error) {
+                                    setLiveData((prev: any) => ({ ...prev, ...json }));
+                                }
+                            })
+                            .catch(console.error);
+                        return;
+                    }
+
+                    // Otherwise update normally
                     setLiveData((prev: any) => ({ ...prev, ...raw }));
                 }
             );
@@ -1307,7 +1321,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     isOpen={isBankModalOpen}
                     onClose={() => setIsBankModalOpen(false)}
                     invoice={{ ...liveData, amount: totals.total }}
-                    onMarkAsPaid={() => handleUpdateStatus('Paid')}
+                    onMarkAsPaid={() => handleUpdateStatus('Processing')}
                 />
             </div>
         );

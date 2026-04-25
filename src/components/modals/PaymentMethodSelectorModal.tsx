@@ -36,6 +36,9 @@ export function PaymentMethodSelectorModal({
 
     const [selectedBankAccountId, setSelectedBankAccountId] = useState<string | null>(null);
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => { setMounted(true); }, []);
 
 
 
@@ -119,9 +122,6 @@ export function PaymentMethodSelectorModal({
         // We could auto-call handleSelectMethod, but that might cause loops or issues with React state.
         // I'll show it for now, but I can optimize it.
     }
-
-    const [mounted, setMounted] = React.useState(false);
-    React.useEffect(() => { setMounted(true); }, []);
 
     if (!isOpen || !mounted) return null;
 

@@ -6,10 +6,15 @@ import { FileQuestion, Home } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 export default function NotFound() {
     const { theme } = useUIStore();
+    const { branding } = useSettingsStore();
     const isDark = theme === 'dark';
+    
+    // Default fallback to green if no primary color is set
+    const primaryColor = branding?.primary_color || (isDark ? "#4dbf39" : "#3aaa29");
 
     return (
         <div className={cn(
@@ -50,7 +55,7 @@ export default function NotFound() {
                             isDark ? "bg-[#141414] border border-[#222]" : "bg-white border border-[#e0e0e0]"
                         )}
                     >
-                        <FileQuestion size={32} className={isDark ? "text-[#4dbf39]" : "text-[#3aaa29]"} strokeWidth={1.5} />
+                        <FileQuestion size={32} style={{ color: primaryColor }} strokeWidth={1.5} />
                     </motion.div>
                 </div>
 
