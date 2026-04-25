@@ -5,22 +5,21 @@ import { useUIStore } from '@/store/useUIStore';
 import { useInvoiceStore, InvoiceStatus, Invoice } from '@/store/useInvoiceStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useClientStore } from '@/store/useClientStore';
+import { useMenuStore } from '@/store/useMenuStore';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
-import { STATUS_COLORS, getStatusColors } from '@/lib/statusConfig';
+import { getStatusColors } from '@/lib/statusConfig';
 import {
     Search, Table2, LayoutGrid, Edit3, ChevronDown,
     ArrowUpDown, Archive, ArrowRightLeft, Download, Upload, Plus, User, Filter,
-    Calendar, Check, X, ArchiveRestore, Receipt, ChevronsUpDown,
-    Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
-    FileJson, FileSpreadsheet, Link2, ExternalLink
+    Calendar, Check, X, ArchiveRestore, Receipt, ChevronsUpDown, CheckCircle, SlidersHorizontal, ChevronRight,
+    FileJson, FileSpreadsheet, Link2, Copy, Trash2, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { ThreeDotMenu, ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { useRouter } from 'next/navigation';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
-import ClientEditor from '@/components/clients/ClientEditor';
 import { appToast } from '@/lib/toast';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -32,7 +31,13 @@ import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/Fil
 import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterUtils';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 import { usePersistentState } from '@/hooks/usePersistentState';
-import { useMenuStore } from '@/store/useMenuStore';
+import { Dropdown, DItem } from '@/components/ui/Dropdown';
+import { ToolbarButton as TbBtn } from '@/components/ui/ToolbarButton';
+import { Checkbox as Chk } from '@/components/ui/Checkbox';
+import { CardRow } from '@/components/ui/CardRow';
+import { ClientCell } from '@/components/ui/ClientCell';
+import { StatusCell } from '@/components/ui/StatusCell';
+import { fmtDate, timeAgo } from '@/lib/dateUtils';
 import {
     DndContext,
     closestCenter,
@@ -53,174 +58,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 
 
-// Removed local fmt$ to use global MoneyAmount component
-function fmtDate(d: string | null | undefined) {
-    if (!d) return '—';
-    const date = new Date(d);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-}
-function timeAgo(d: string | null | undefined) {
-    if (!d) return '';
-    const date = new Date(d);
-    const now = new Date();
-    
-    // Set both to midnight for accurate calendar day comparison
-    const dDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const dNow = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    const diffDays = Math.round((dNow.getTime() - dDate.getTime()) / 86400000);
-    const ms = now.getTime() - date.getTime();
-    const isFuture = ms < 0;
-    const absDays = Math.abs(diffDays);
-
-    if (diffDays === 0) return 'today';
-    if (diffDays === -1) return 'tomorrow';
-    if (diffDays === 1) return 'yesterday';
-    
-    if (absDays < 30) {
-        return isFuture ? `due in ${absDays} days` : `${absDays} days ago`;
-    }
-    
-    const months = Math.floor(absDays / 30);
-    if (isFuture) return `in about ${months} month${months > 1 ? 's' : ''}`;
-    return `about ${months} month${months > 1 ? 's' : ''} ago`;
-}
-
-function isThisMonth(d: string | null | undefined) {
-    if (!d) return false;
-    const now = new Date(); const then = new Date(d);
-    return then.getMonth() === now.getMonth() && then.getFullYear() === now.getFullYear();
-}
-function isThisYear(d: string | null | undefined) {
-    if (!d) return false;
-    return new Date(d).getFullYear() === new Date().getFullYear();
-}
-
-/* ─── Shared toolbar button ─────────────────────────────────────── */
-function TbBtn({ label, icon, active, hasArrow, onClick, isDark, activeColor }: {
-    label?: string; icon?: React.ReactNode; active?: boolean;
-    hasArrow?: boolean; onClick?: () => void; isDark: boolean;
-    activeColor?: string;
-}) {
-    return (
-        <button onClick={onClick} className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded transition-colors shrink-0",
-            active
-                ? activeColor || (isDark ? "bg-white/10 text-white" : "bg-[#ebebf5] text-[#111]")
-                : isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]"
-        )}>
-            {icon}{label}{hasArrow && <ChevronDown size={9} className="opacity-40" />}
-        </button>
-    );
-}
-
-/* ─── Checkbox ──────────────────────────────────────────────────── */
-function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
-    return (
-        <div className={cn("w-[13px] h-[13px] rounded-[3px] border flex items-center justify-center transition-all shrink-0",
-            checked ? "bg-primary border-primary"
-                : indeterminate ? "bg-primary/40 border-primary/60"
-                    : isDark ? "border-[#3a3a3a] bg-transparent" : "border-[#d0d0d0] bg-white")}>
-            {(checked || indeterminate) && (
-                <svg width="7" height="5" viewBox="0 0 8 6" fill="none">
-                    {indeterminate && !checked
-                        ? <line x1="1" y1="3" x2="7" y2="3" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-                        : <polyline points="1,3 3,5 7,1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />}
-                </svg>
-            )}
-        </div>
-    );
-}
-
-/* ─── Dropdown ──────────────────────────────────────────────────── */
-function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth = '180px', maxWidth }: { 
-    open: boolean; 
-    onClose: () => void; 
-    isDark: boolean; 
-    children: React.ReactNode; 
-    align?: 'left' | 'right' | 'center';
-    minWidth?: string;
-    maxWidth?: string;
-}) {
-    const ref = useRef<HTMLDivElement>(null);
-    const [coords, setCoords] = React.useState<{ top: number; left: number } | null>(null);
-
-    React.useLayoutEffect(() => {
-        if (open && ref.current?.parentElement) {
-            const rect = ref.current.parentElement.getBoundingClientRect();
-            let left = rect.left;
-            if (align === 'center') left = rect.left + rect.width / 2;
-            if (align === 'right') left = rect.right;
-            setCoords({ top: rect.bottom + 4, left });
-        }
-    }, [open, align]);
-
-    useEffect(() => {
-        if (!open) return;
-        const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-        const s = (e: Event) => {
-            if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
-            onClose();
-        };
-        document.addEventListener('mousedown', h);
-        window.addEventListener('scroll', s, true);
-        return () => {
-            document.removeEventListener('mousedown', h);
-            window.removeEventListener('scroll', s, true);
-        };
-    }, [open, onClose]);
-
-    if (!open) return null;
-    return (
-        <div 
-            ref={ref} 
-            style={coords ? {
-                top: `${coords.top}px`,
-                left: `${coords.left}px`,
-                minWidth,
-                maxWidth
-            } : { opacity: 0 }}
-            className={cn(
-                "fixed z-[1000] rounded-xl border shadow-xl overflow-hidden",
-                align === 'center' && "-translate-x-1/2",
-                align === 'right' && "-translate-x-full",
-                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
-            )}
-        >
-            {children}
-        </div>
-    );
-}
-
-function DItem({ label, icon, active, onClick, isDark }: { label: string; icon?: React.ReactNode; active?: boolean; onClick: () => void; isDark: boolean }) {
-    return (
-        <button onClick={onClick} className={cn("w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] transition-colors text-left",
-            active
-                ? isDark ? "bg-white/8 text-white font-medium" : "bg-[#f0f0f0] text-[#111] font-medium"
-                : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")}>
-            {icon && <span className="opacity-60">{icon}</span>}
-            <span className="flex-1">{label}</span>
-            {active && <Check size={11} className="text-primary" />}
-        </button>
-    );
-}
-
-/* ─── Invoice Card ───────────────────────────────── */
-function CardRow({ label, children, isDark, noBorder }: { label: string; children?: React.ReactNode; isDark: boolean; noBorder?: boolean }) {
-    return (
-        <div className={cn("flex items-center gap-3 py-2", !noBorder && "border-b border-dashed", !noBorder && (isDark ? "border-[#2e2e2e]" : "border-[#e5e5e5]"))}>
-            <div className={cn("w-[90px] text-[11.5px] font-normal shrink-0", isDark ? "text-[#888]" : "text-[#666]")}>{label}</div>
-            <div className={cn("text-[11.5px] flex-1 flex items-center min-w-0 font-medium overflow-visible", isDark ? "text-[#ddd]" : "text-[#222]")}>
-                {children}
-            </div>
-        </div>
-    );
-}
-
-/* ─── Config ─────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 
 
@@ -231,19 +69,6 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
     onAssignClients: (clients: { id: string; name: string; avatar_url?: string | null }[]) => void;
     customStatuses: any[];
 }) {
-    const [statusOpen, setStatusOpen] = useState(false);
-    const sc = getStatusColors(i.status, customStatuses);
-
-    // Sort and filter active statuses
-    const activeStatues = customStatuses
-        .filter(s => s.is_active || s.name === i.status)
-        .sort((a,b) => a.position - b.position);
-
-    const dynamicStyle = (sc as any).dynamic ? {
-        backgroundColor: (sc as any).dynamic.bg,
-        color: (sc as any).dynamic.text,
-        borderColor: (sc as any).dynamic.border
-    } : {};
     return (
         <div
             onClick={onOpen}
@@ -255,13 +80,10 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
         >
             {/* Header */}
             <div className={cn("flex items-center justify-between px-4 py-3 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
-                <div className={cn("font-bold text-[14px] tracking-tight text-primary uppercase", isDark ? "text-primary" : "text-primary")}>
-                    {i.invoice_number || i.id?.slice(-6).toUpperCase() || '—'}
+                <div className={cn("font-bold text-[14px] tracking-tight text-primary uppercase")}>
+                    {i.invoice_number || i.id?.slice(-6).toUpperCase() || 'â€”'}
                 </div>
-                <div
-                    onClick={(e) => { e.stopPropagation(); onToggle(); }}
-                    className="cursor-pointer"
-                >
+                <div onClick={(e) => { e.stopPropagation(); onToggle(); }} className="cursor-pointer">
                     <Chk checked={isSelected} isDark={isDark} />
                 </div>
             </div>
@@ -301,340 +123,36 @@ function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected,
                 </CardRow>
 
                 <CardRow label="Status" isDark={isDark} noBorder>
-                    <div className="relative flex-1">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); setStatusOpen(!statusOpen); }}
-                            style={sc.dynamic ? { backgroundColor: sc.dynamic.bg, color: sc.dynamic.text, borderColor: sc.dynamic.border } : {}}
-                            className={cn(
-                                "flex items-center justify-between min-w-[100px] px-2.5 py-1.5 text-[11px] font-semibold rounded-[6px] transition-all border",
-                                !sc.dynamic ? (isDark ? "bg-white/[0.05] border-white/10 text-white/40 group-hover:bg-white/[0.08]" : cn(sc.badge, sc.badgeText, sc.badgeBorder, "hover:brightness-95")) : "hover:brightness-110"
-                            )}
-                        >
-                            <span>{i.status}</span>
-                            <ChevronsUpDown size={11} className="opacity-70" />
-                        </button>
-                        <Dropdown open={statusOpen} onClose={() => setStatusOpen(false)} isDark={isDark}>
-                            <div className="py-1 min-w-[140px]">
-                                {activeStatues.map(s => {
-                                    const sSc = getStatusColors(s.name, customStatuses);
-                                    const isActive = s.name === i.status;
-                                    const sDynamic = (sSc as any).dynamic;
-                                    return (
-                                        <button key={s.id} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setStatusOpen(false); }}
-                                            className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
-                                                isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
-                                            )}
-                                        >
-                                            <span 
-                                                className={cn("font-medium", isDark ? "" : sSc.badgeText)} 
-                                                style={isDark ? { color: sSc.bar } : (sDynamic ? { color: sDynamic.text } : {})}
-                                            >
-                                                {s.name}
-                                            </span>
-                                            {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </Dropdown>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <StatusCell status={i.status} onStatusChange={onStatusChange} isDark={isDark} customStatuses={customStatuses} />
                     </div>
                 </CardRow>
             </div>
 
             {/* Quick actions */}
             <div className="absolute top-2.5 right-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-
                 <button
-                    onClick={e => { 
-                        e.stopPropagation(); 
-                        window.open(window.location.origin + '/p/invoice/' + i.id, '_blank');
-                    }}
+                    onClick={e => { e.stopPropagation(); window.open(window.location.origin + '/p/invoice/' + i.id, '_blank'); }}
                     title="Open Link"
-                    className={cn(
-                        "w-6 h-6 rounded flex items-center justify-center transition-all",
-                        isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]"
-                    )}
+                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
+                        isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]")}
                 >
                     <ExternalLink size={11} />
                 </button>
                 <button
                     onClick={e => { e.stopPropagation(); onArchive(); }}
                     title="Archive"
-                    className={cn(
-                        "w-6 h-6 rounded flex items-center justify-center transition-all",
-                        isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]"
-                    )}
+                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
+                        isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]")}
                 >
                     <Archive size={11} />
                 </button>
             </div>
         </div>
     );
-
 }
 
-function StatusCell({ status, onStatusChange, isDark, customStatuses = [] }: { 
-    status: InvoiceStatus; 
-    onStatusChange: (s: InvoiceStatus) => void; 
-    isDark: boolean;
-    customStatuses: any[];
-}) {
-    const [open, setOpen] = useState(false);
-    const sc = getStatusColors(status, customStatuses);
-    const activeStatues = customStatuses
-        .filter(s => s.is_active || s.name === status)
-        .sort((a,b) => a.position - b.position);
-
-    const onClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setOpen(!open);
-    };
-
-    return (
-        <div className="relative">
-            <button
-                onClick={onClick}
-                style={sc.dynamic ? { backgroundColor: sc.dynamic.bg, color: sc.dynamic.text, borderColor: sc.dynamic.border } : {}}
-                className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-[6px] transition-all border",
-                    !sc.dynamic ? (isDark ? "bg-white/[0.05] border-white/10 text-white/40 group-hover:bg-white/[0.08]" : cn(sc.badge, sc.badgeText, sc.badgeBorder, "hover:brightness-95")) : "hover:brightness-110"
-                )}
-            >
-                {status}
-                <ChevronDown size={10} className="opacity-50" />
-            </button>
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center">
-                <div className="py-1 min-w-[140px]">
-                    {activeStatues.map(s => {
-                        const sSc = getStatusColors(s.name, customStatuses);
-                        const isActive = s.name === status;
-                        const sDynamic = (sSc as any).dynamic;
-                        return (
-                            <button key={s.id} onClick={(e) => { e.stopPropagation(); onStatusChange(s.name as any); setOpen(false); }}
-                                className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
-                                    isActive ? (isDark ? "bg-white/5" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
-                                )}
-                            >
-                                <span 
-                                    className={cn("font-medium", isDark ? "" : sSc.badgeText)} 
-                                    style={isDark ? { color: sSc.bar } : (sDynamic ? { color: sDynamic.text } : {})}
-                                >
-                                    {s.name}
-                                </span>
-                                {isActive && <Check size={12} className={isDark ? "text-white opacity-40" : "text-black opacity-40"} />}
-                            </button>
-                        );
-                    })}
-                </div>
-            </Dropdown>
-        </div>
-    );
-}
-
-function ClientCell({ assignedClients, currentName, currentId, onAssignClients, isDark, variant = 'table' }: {
-    assignedClients?: { id: string; name: string; avatar_url?: string | null }[];
-    currentName?: string; currentId?: string | null; onAssignClients: (clients: { id: string; name: string; avatar_url?: string | null }[]) => void;
-    isDark: boolean; variant?: 'table' | 'card'
-}) {
-    const [open, setOpen] = useState(false);
-    const [search, setSearch] = useState('');
-    const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
-    const { clients, fetchClients, addClient } = useClientStore();
-
-    const handleCreateClient = async (data: any) => {
-        const client = await addClient(data);
-        if (client) {
-            onAssignClients([...activeClients, { id: client.id, name: client.contact_person || client.company_name || '', avatar_url: client.avatar_url }]);
-            setIsClientEditorOpen(false);
-            setOpen(false);
-            appToast.success('Contact created and selected');
-        }
-    };
-
-    useEffect(() => {
-        if (clients.length === 0) fetchClients();
-    }, [clients.length, fetchClients]);
-
-    useEffect(() => {
-        if (open) setSearch('');
-    }, [open]);
-
-    const filtered = useMemo(() => {
-        if (!search) return clients;
-        const s = search.toLowerCase();
-        return clients.filter(c => 
-            c.contact_person?.toLowerCase().includes(s) || 
-            c.company_name?.toLowerCase().includes(s)
-        );
-    }, [clients, search]);
-
-    const activeClient = useMemo(() => clients.find(c => c.id === currentId), [clients, currentId]);
-
-    const activeClients = assignedClients?.length 
-        ? assignedClients 
-        : (currentId ? [{ id: currentId, name: currentName || '', avatar_url: activeClient?.avatar_url }] : []);
-
-    const display = activeClients.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5 overflow-hidden">
-            {activeClients.map((ac, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 group/pill">
-                    <span
-                        className={cn(
-                            "flex items-center gap-1.5 px-2 py-1 rounded-[6px] text-[11px] font-semibold border transition-colors",
-                            isDark
-                                ? "bg-white/[0.05] border-white/10 text-white/80"
-                                : "bg-[#f5f5f5] border-[#e5e5e5] text-[#333]"
-                        )}
-                    >
-                        {ac.avatar_url ? (
-                            <img 
-                                src={ac.avatar_url} 
-                                alt={ac.name || "Avatar"} 
-                                className="w-4 h-4 rounded-full shrink-0 object-cover -ml-1" 
-                            />
-                        ) : (
-                            <User size={12} className="opacity-50 shrink-0 -ml-0.5" />
-                        )}
-                        <span className="truncate max-w-[120px]">{ac.name}</span>
-                    </span>
-                    <div
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onAssignClients(activeClients.filter((_, i) => i !== idx));
-                        }}
-                        className={cn(
-                            "p-1 rounded-full opacity-0 group-hover/pill:opacity-100 transition-all cursor-pointer",
-                            isDark ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-black/5 text-black/40 hover:text-black"
-                        )}
-                    >
-                        <X size={10} />
-                    </div>
-                </div>
-            ))}
-        </div>
-    ) : (
-        <span className={cn(
-            "text-[12px]",
-            isDark ? "text-[#444]" : "text-[#ccc]"
-        )}>—</span>
-    );
-
-    return (
-        <div className={cn("relative", variant === 'table' && "w-full h-full flex")}>
-            <button
-                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-                className={cn(
-                    "text-left transition-colors",
-                    variant === 'table' ? "w-full h-full px-4 py-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]" : ""
-                )}
-            >
-                {display}
-            </button>
-            <Dropdown 
-                open={open} 
-                onClose={() => setOpen(false)} 
-                isDark={isDark} 
-                align="center"
-                minWidth="224px"
-                maxWidth="224px"
-            >
-                <div className={cn("p-2 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
-                    <div className="relative">
-                        <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 opacity-30" />
-                        <input
-                            autoFocus
-                            type="text"
-                            placeholder="Search client..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className={cn("w-full pl-6 pr-2 py-1.5 text-[11px] rounded-md outline-none",
-                                isDark ? "bg-white/5 border border-white/10 text-white" : "bg-[#f5f5f5] border border-[#e0e0e0] text-black"
-                            )}
-                        />
-                    </div>
-                </div>
-                <div 
-                    className="py-1 max-h-[180px] overflow-y-auto"
-                    onWheel={(e) => e.stopPropagation()}
-                >
-                    {filtered.length === 0 ? (
-                        <div className="px-4 py-3 text-[11px] opacity-40 text-center">No clients found</div>
-                    ) : (
-                        filtered.map(c => {
-                            const isSelected = activeClients.some(ac => ac.id === c.id);
-                            return (
-                                <button key={c.id} 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (isSelected) {
-                                            onAssignClients(activeClients.filter(ac => ac.id !== c.id));
-                                        } else {
-                                            onAssignClients([...activeClients, { id: c.id, name: c.contact_person || c.company_name, avatar_url: c.avatar_url }]);
-                                        }
-                                        // Keep dropdown open for multi-select
-                                    }}
-                                    className={cn("w-full flex items-center justify-between text-left px-3 py-2 text-[12px] transition-colors border-b last:border-0",
-                                        isDark ? "border-[#333] hover:bg-white/5" : "border-[#f0f0f0] hover:bg-[#fafafa]"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                        {c.avatar_url ? (
-                                            <img src={c.avatar_url} alt="av" className="w-5 h-5 rounded-full object-cover shrink-0" />
-                                        ) : (
-                                            <User size={14} className="opacity-40 shrink-0" />
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <div className={cn("font-semibold truncate", isDark ? "text-white" : "text-black", isSelected ? "text-[var(--brand-primary)]" : "")}>
-                                                {c.contact_person || c.company_name}
-                                            </div>
-                                            {(c.contact_person && c.company_name) && (
-                                                <div className={cn("text-[9.5px] truncate", isDark ? "text-white/40" : "text-black/40")}>
-                                                    {c.company_name}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {isSelected && <Check size={14} className="text-[var(--brand-primary)] shrink-0 ml-2" />}
-                                </button>
-                            );
-                        })
-                    )}
-                </div>
-                {(!search || !clients.some(c => (c.contact_person?.toLowerCase() === search.toLowerCase() || c.company_name?.toLowerCase() === search.toLowerCase()))) && (
-                    <div className={cn("border-t", isDark ? "border-white/5" : "border-black/5")}>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); setIsClientEditorOpen(true); }}
-                            className={cn(
-                                "w-full flex items-center gap-2 px-3.5 py-2.5 text-[12px] font-bold transition-colors text-left",
-                                isDark ? "text-primary hover:bg-white/5" : "text-primary hover:bg-black/[0.02]"
-                            )}
-                        >
-                            <Plus size={14} strokeWidth={2.5} />
-                            {search ? `Create "${search}"` : 'Create new contact'}
-                        </button>
-                    </div>
-                )}
-            </Dropdown>
-
-            {isClientEditorOpen && (
-                <div onClick={(e) => e.stopPropagation()}>
-                    <ClientEditor
-                        onClose={() => setIsClientEditorOpen(false)}
-                        onSave={handleCreateClient}
-                        initialData={{
-                            contact_person: search,
-                            company_name: '',
-                            email: ''
-                        }}
-                    />
-                </div>
-            )}
-        </div>
-    );
-}
-
-/* ─── Mobile invoice list item ──────────────────────────────── */
+/* â”€â”€â”€ Mobile invoice list item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isArchived }: {
     inv: Invoice; onOpen: () => void; isDark: boolean;
     onStatusChange: (s: InvoiceStatus) => void;
@@ -673,14 +191,14 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
                 <div className="flex items-center gap-3">
                     <div className={cn("flex items-center gap-1 text-[11.5px]", isDark ? "text-[#666]" : "text-[#999]")}>
                         <User size={10} className="opacity-60" />
-                        <span className="truncate max-w-[120px]">{inv.client_name || '—'}</span>
+                        <span className="truncate max-w-[120px]">{inv.client_name || 'â€”'}</span>
                     </div>
                     <span className={cn("text-[11px]", isDark ? "text-[#555]" : "text-[#bbb]")}>
                         {inv.status === 'Paid' && inv.paid_at ? (
                              <span className="text-green-500 font-bold flex items-center gap-1">
                                  <Check size={10} /> {fmtDate(inv.paid_at)}
                              </span>
-                        ) : inv.due_date ? fmtDate(inv.due_date) : '—'}
+                        ) : inv.due_date ? fmtDate(inv.due_date) : 'â€”'}
                     </span>
                 </div>
             </div>
@@ -695,7 +213,7 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
     );
 }
 
-/* ─── Main page ─────────────────────────────────────────────────── */
+/* â”€â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function InvoicesPage() {
     const router = useRouter();
     const { navItems } = useMenuStore();
@@ -791,7 +309,7 @@ export default function InvoicesPage() {
     /* Local archive state (optimistic) */
     const [archivedIds, setArchivedIds] = useState<Set<string>>(new Set());
 
-    /* ── Advanced Filters ── */
+    /* â”€â”€ Advanced Filters â”€â”€ */
     const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false);
     const [filterRows, setFilterRows] = usePersistentState<FilterRow[]>('invoices_filter_rows', []);
     const [activeFilterId, setActiveFilterId] = usePersistentState<string | null>('invoices_active_filter_id', null);
@@ -865,7 +383,7 @@ export default function InvoicesPage() {
             });
         })();
         appToast.promise(promise, {
-            loading: 'Duplicating invoice…',
+            loading: 'Duplicating invoiceâ€¦',
             success: 'Invoice duplicated',
             error: 'Duplication failed',
         });
@@ -916,7 +434,7 @@ export default function InvoicesPage() {
             }
         })();
         appToast.promise(promise, {
-            loading: `Duplicating ${ids.length} invoice${ids.length !== 1 ? 's' : ''}…`,
+            loading: `Duplicating ${ids.length} invoice${ids.length !== 1 ? 's' : ''}â€¦`,
             success: `${ids.length} invoice${ids.length !== 1 ? 's' : ''} duplicated`,
             error: 'Duplication failed',
         });
@@ -971,14 +489,14 @@ export default function InvoicesPage() {
         <div className={cn("flex flex-col h-full overflow-hidden font-sans text-[13px]",
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]")}>
 
-            {/* ── Page header — hidden on mobile (MobileTopBar handles title) ── */}
+            {/* â”€â”€ Page header â€” hidden on mobile (MobileTopBar handles title) â”€â”€ */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">{navItems.find(item => item.href === '/invoices')?.label || 'Invoices'}</h1>
             </div>
 
-            {/* ── Toolbar ── */}
+            {/* â”€â”€ Toolbar â”€â”€ */}
             {isMobile ? (
-                /* ── Mobile toolbar: compact row with search + filter sheet ── */
+                /* â”€â”€ Mobile toolbar: compact row with search + filter sheet â”€â”€ */
                 <div className={cn("flex items-center gap-2 px-3 py-2 shrink-0 border-b",
                     isDark ? "border-[#252525] bg-[#141414]" : "border-[#f0f0f0] bg-white")}>
                     {/* Search */}
@@ -1029,7 +547,7 @@ export default function InvoicesPage() {
 
                 </div>
             ) : (
-                /* ── Desktop toolbar ── */
+                /* â”€â”€ Desktop toolbar â”€â”€ */
                 <div className={cn("flex items-center gap-1 px-4 py-1.5 shrink-0", isDark ? "border-b border-[#252525]" : "")}>
                     {/* View Settings on Left */}
                     <div className="flex items-center gap-1">
@@ -1187,7 +705,7 @@ export default function InvoicesPage() {
                 </div>
             )}
 
-            {/* ── Status bar ── */}
+            {/* â”€â”€ Status bar â”€â”€ */}
             {isMobile ? (
                 /* Mobile: horizontally scrollable pill tabs */
                 <div className={cn(
@@ -1241,10 +759,10 @@ export default function InvoicesPage() {
                 </div>
             )}
 
-            {/* ── Content ── */}
+            {/* â”€â”€ Content â”€â”€ */}
             {/* On mobile: always show the mobile list view regardless of 'view' setting */}
             {isMobile ? (
-                /* ── Mobile list view ── */
+                /* â”€â”€ Mobile list view â”€â”€ */
                 <div className={cn("flex-1 overflow-y-auto", isDark ? "bg-[#141414]" : "bg-[#fafafa]")}>
                     {isLoading ? (
                         <div className="flex flex-col">
@@ -1370,7 +888,7 @@ export default function InvoicesPage() {
                                                         <span className="text-[12px]">{fmtDate(inv.due_date)}</span>
                                                         <span className="text-[10px] opacity-50">{timeAgo(inv.due_date)}</span>
                                                     </>
-                                                ) : <span className="text-[12px]">—</span>}
+                                                ) : <span className="text-[12px]">â€”</span>}
                                             </div>
                                         )
                                     },
@@ -1385,7 +903,7 @@ export default function InvoicesPage() {
                                                         <span className="text-[12px]">{fmtDate(inv.paid_at)}</span>
                                                         <span className="text-[10px] opacity-50">{timeAgo(inv.paid_at)}</span>
                                                     </>
-                                                ) : <span className="text-[12px] opacity-20">—</span>}
+                                                ) : <span className="text-[12px] opacity-20">â€”</span>}
                                             </div>
                                         )
                                     }
@@ -1428,7 +946,7 @@ export default function InvoicesPage() {
                     )}
                 </div>
             ) : (
-                /* ── Cards view (Grid) ── */
+                /* â”€â”€ Cards view (Grid) â”€â”€ */
                 <div className={cn("flex-1 overflow-y-auto p-4", isDark ? "bg-[#0f0f0f]" : "bg-[#f0f0f0]")}>
                     {isLoading ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">

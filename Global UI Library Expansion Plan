@@ -1,0 +1,56 @@
+# Global UI Library Expansion Plan
+
+Currently, multiple major tools (`Invoices`, `Proposals`, `Projects`, `Clients`) reimplement basic UI components like buttons, checkboxes, and status badges locally. This plan outlines the extraction of these patterns into a cohesive global UI library.
+
+## Proposed Components
+
+### 1. Navigation & Actions
+- **ToolbarButton (`TbBtn`)**: A standard, compact button for page toolbars with support for icons, active states, and chevron arrows.
+- **ViewToggle**: Standardize the existing `ViewToggle` to support more tools (Projects, Files) and consistent positioning.
+- **SegmentedControl**: A premium animated toggle (used for Tasks/Finances in projects) to replace ad-hoc tab switchers.
+
+### 2. Form & Data Entry
+- **Checkbox (`Chk`)**: A tiny, styled checkbox with indeterminate state support.
+- **StatusSelector (`StatusCell`)**: A unified, portal-based dropdown for managing entity statuses. It should accept a color configuration but maintain a consistent premium look.
+- **ItemSelector (`ClientCell`)**: A reusable search-and-select component (used for clients, members, etc.) with a built-in "Create New" option.
+
+### 3. Layout & Layout Items
+- **CardRow**: A compact, labeled row for data display inside grid cards.
+- **AvatarGroup**: A component to display overlapping avatars (used for project members).
+- **ActionBar**: The top bar containing actions, titles, and stats.
+
+### 4. Overlays & Modals
+- **PortalDropdown**: The logic for the "portal" dropdown used by `StatusCell` and others should be a standard utility to prevent clipping by table containers.
+- **DeleteModal**: Standardize the existing `DeleteConfirmModal` to be more easily reusable with a simple `onDelete` hook.
+
+### 5. Data Visualization
+- **CircularProgress**: A reusable SVG-based circular progress indicator (used in project cards).
+
+---
+
+## Implementation Strategy
+
+### Phase 1: Core Utilities (The "Small" Things)
+Extract the lowest-level components that have the highest duplication rate: `TbBtn`, `Chk`, `DItem`, and `Dropdown` (Portal version).
+
+#### [NEW] [ToolbarButton.tsx](file:///c:/Users/Mohi%20Hassan/Desktop/Project%20017/src/components/ui/ToolbarButton.tsx)
+#### [NEW] [Checkbox.tsx](file:///c:/Users/Mohi%20Hassan/Desktop/Project%20017/src/components/ui/Checkbox.tsx)
+#### [NEW] [StatusBadge.tsx](file:///c:/Users/Mohi%20Hassan/Desktop/Project%20017/src/components/ui/StatusBadge.tsx)
+
+### Phase 2: Complex Selectors
+Extract the and genericize the `ClientCell` pattern into an `EntitySelector`.
+
+#### [NEW] [EntitySelector.tsx](file:///c:/Users/Mohi%20Hassan/Desktop/Project%20017/src/components/ui/EntitySelector.tsx)
+
+### Phase 3: Cleanup
+Replace all local implementations in `invoices/page.tsx`, `proposals/page.tsx`, `projects/page.tsx`, etc., with these new global components.
+
+## Verification Plan
+
+### Automated Cleanup Verification
+- Verify that the application builds successfully after replacing local components with global ones.
+- Run `npm run build` to ensure no regression in type safety.
+
+### Manual Verification
+- **Visual Inspection**: Compare the UI of Invoices and Proposals before and after extraction to ensure perfect visual parity.
+- **Accessibility**: Ensure that extracted components maintain keyboard navigation and focus management (especially for `Dropdown` and `EntitySelector`).

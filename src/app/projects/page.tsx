@@ -21,6 +21,8 @@ import { AppLoader } from '@/components/ui/AppLoader';
 import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useMenuStore } from '@/store/useMenuStore';
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import DatePicker from '@/components/ui/DatePicker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,8 @@ const STATUS_CFG: Record<ProjectStatus, { color: string; bar: string; badge: str
     Completed: { color: '#3d0ebf', bar: '#3d0ebf', badge: 'bg-violet-50',  badgeText: 'text-violet-700',  badgeBorder: 'border-violet-200'  },
     Cancelled: { color: '#9ca3af', bar: '#9ca3af', badge: 'bg-gray-50',    badgeText: 'text-gray-500',    badgeBorder: 'border-gray-200'    },
 };
+
+const DEFAULT_PALETTE = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316'];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -87,38 +91,53 @@ function StatusBadge({ status, isDark }: { status: ProjectStatus; isDark: boolea
 
 function StatusCell({ status, onStatusChange, isDark }: { status: ProjectStatus; onStatusChange: (s: ProjectStatus) => void; isDark: boolean }) {
     const [open, setOpen] = useState(false);
+    const triggerRef = useRef<HTMLButtonElement>(null);
     const cfg = STATUS_CFG[status];
+    const sc = cfg.color;
+
     return (
         <div className="relative inline-block">
             <button
+                ref={triggerRef}
                 onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+                style={{ 
+                    backgroundColor: isDark ? `${sc}15` : `${sc}10`,
+                    color: sc,
+                    borderColor: `${sc}30`
+                }}
                 className={cn(
-                    "inline-flex items-center gap-1.5 px-1.5 py-[1px] rounded-[4px] text-[9.5px] font-semibold border shrink-0 transition-colors",
-                    isDark ? "bg-white/[0.04] border-white/5 hover:bg-white/[0.08]" : cn(cfg.badge, cfg.badgeBorder, "hover:brightness-95")
+                    "inline-flex items-center gap-1.5 px-2 py-[2px] rounded-[6px] text-[10px] font-bold transition-all border outline-none hover:shadow-sm"
                 )}
-                style={isDark ? { color: cfg.color } : {}}
             >
-                <span className={isDark ? '' : cfg.badgeText}>{status}</span>
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sc }} />
+                <span>{status}</span>
                 <ChevronDown size={10} className="opacity-50" />
             </button>
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center">
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center" triggerRef={triggerRef}>
                 <div className="py-1">
                     {STATUS_ORDER.map(s => {
                         const sCfg = STATUS_CFG[s];
                         const isActive = s === status;
+                        const sColor = sCfg.color;
                         return (
                             <button
                                 key={s}
                                 onClick={(e) => { e.stopPropagation(); onStatusChange(s); setOpen(false); }}
                                 className={cn(
-                                    "w-full flex items-center gap-2 px-3.5 py-2 text-[11.5px] font-semibold text-left transition-colors",
+                                    "w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] transition-colors text-left",
                                     isActive
-                                        ? isDark ? "bg-white/10" : "bg-black/5"
-                                        : isDark ? "hover:bg-white/5" : "hover:bg-black/[0.02]"
+                                        ? isDark ? "bg-white/8 text-white font-semibold" : "bg-[#f0f0f0] text-[#111] font-semibold"
+                                        : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
                                 )}
                             >
-                                <span className={cn("flex-1", isDark ? "text-white" : "text-black")}>{s}</span>
-                                {isActive && <Check size={12} className={cn("opacity-50", isDark ? "text-white" : "text-black")} />}
+                                <div className="flex items-center gap-2 flex-1">
+                                    <div 
+                                        className="w-1.5 h-1.5 rounded-full shrink-0" 
+                                        style={{ backgroundColor: sColor }} 
+                                    />
+                                    <span>{s}</span>
+                                </div>
+                                {isActive && <Check size={12} className="text-primary" />}
                             </button>
                         );
                     })}
@@ -148,15 +167,20 @@ function CircleProgress({ pct, color, size = 44, isDark }: { pct: number; color:
 
 // ─── Project Card ─────────────────────────────────────────────────────────────
 
-function ProjectCard({ project, isDark, onClick, onArchive, onDelete, onDuplicate, taskProgress, isSelected, onToggle, onStatusChange, currentUser }: {
+function ProjectCard({ project, isDark, onClick, onArchive, onDelete, onDuplicate, taskProgress, isSelected, onToggle, onStatusChange, currentUser, onColorChange, brandingColors }: {
     project: Project; isDark: boolean; onClick: () => void;
     onArchive: () => void; onDelete: () => void; onDuplicate: () => void;
     taskProgress: { total: number; done: number; pct: number };
     isSelected: boolean; onToggle: () => void; onStatusChange: (status: ProjectStatus) => void;
-    currentUser?: any;
+    currentUser?: any; onColorChange: (color: string | null) => void;
+    brandingColors?: string[] | null;
 }) {
     const dl = deadlineMeta(project.deadline);
     const cfg = STATUS_CFG[project.status];
+
+    const colors = ((brandingColors && brandingColors.length > 0) 
+        ? brandingColors 
+        : DEFAULT_PALETTE).filter(c => c.toLowerCase() !== '#ffffff' && c.toLowerCase() !== '#000000');
 
     const displayMembers = useMemo(() => {
         const m = [...project.members];
@@ -168,9 +192,38 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, onDuplicat
 
     const menuItems = [
         { label: 'Open', icon: <ExternalLink size={12} />, onClick: onClick },
-        { label: 'Copy Name', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(project.name); appToast.success('Name copied'); } },
         { label: 'Duplicate', icon: <Copy size={12} />, onClick: onDuplicate },
-        { label: project.is_archived ? 'Unarchive' : 'Archive', icon: project.is_archived ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: onArchive, separator: true },
+        { label: project.is_archived ? 'Unarchive' : 'Archive', icon: project.is_archived ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: onArchive },
+        {
+            render: (onClose: any) => (
+                <div className="px-3 py-2">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className={cn('text-[9px] font-bold uppercase tracking-[0.12em]', isDark ? 'text-[#3a3a3a]' : 'text-[#c0c0c0]')}>
+                            Project Color
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                        {colors.map(c => (
+                            <button
+                                key={c}
+                                onClick={() => { onColorChange(c); onClose(); }}
+                                className={cn(
+                                    'w-4 h-4 rounded-full transition-all hover:scale-110 duration-150',
+                                    project.color === c && 'ring-1 ring-offset-1 ' + (isDark ? 'ring-white/40 ring-offset-[#181818]' : 'ring-black/40 ring-offset-white')
+                                )}
+                                style={{ backgroundColor: c }}
+                            />
+                        ))}
+                        <button
+                            onClick={() => { onColorChange(null); onClose(); }}
+                            className={cn('w-4 h-4 rounded-full border flex items-center justify-center transition-colors', isDark ? 'border-white/10 hover:bg-white/5 text-white/40' : 'border-black/10 hover:bg-black/5 text-black/40')}
+                        >
+                            <X size={8} strokeWidth={3} />
+                        </button>
+                    </div>
+                </div>
+            )
+        },
         { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: onDelete, separator: true },
     ];
 
@@ -273,15 +326,20 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, onDuplicat
 
 // ─── Table Row ────────────────────────────────────────────────────────────────
 
-function TableRow({ project, isDark, onClick, onArchive, onDelete, onDuplicate, taskProgress, isSelected, onToggle, onStatusChange, currentUser }: {
+function TableRow({ project, isDark, onClick, onArchive, onDelete, onDuplicate, taskProgress, isSelected, onToggle, onStatusChange, currentUser, onColorChange, brandingColors }: {
     project: Project; isDark: boolean; onClick: () => void;
     onArchive: () => void; onDelete: () => void; onDuplicate: () => void;
     taskProgress: { total: number; done: number; pct: number };
     isSelected: boolean; onToggle: () => void; onStatusChange: (status: ProjectStatus) => void;
-    currentUser?: any;
+    currentUser?: any; onColorChange: (color: string | null) => void;
+    brandingColors?: string[] | null;
 }) {
     const dl  = deadlineMeta(project.deadline);
     const cfg = STATUS_CFG[project.status];
+
+    const colors = ((brandingColors && brandingColors.length > 0) 
+        ? brandingColors 
+        : DEFAULT_PALETTE).filter(c => c.toLowerCase() !== '#ffffff' && c.toLowerCase() !== '#000000');
 
     const displayMembers = useMemo(() => {
         const m = [...project.members];
@@ -293,9 +351,38 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, onDuplicate, 
 
     const menuItems = [
         { label: 'Open', icon: <ExternalLink size={12} />, onClick: onClick },
-        { label: 'Copy Name', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(project.name); appToast.success('Name copied'); } },
         { label: 'Duplicate', icon: <Copy size={12} />, onClick: onDuplicate },
-        { label: project.is_archived ? 'Unarchive' : 'Archive', icon: project.is_archived ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: onArchive, separator: true },
+        { label: project.is_archived ? 'Unarchive' : 'Archive', icon: project.is_archived ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: onArchive },
+        {
+            render: (onClose: any) => (
+                <div className="px-3 py-2">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className={cn('text-[9px] font-bold uppercase tracking-[0.12em]', isDark ? 'text-[#3a3a3a]' : 'text-[#c0c0c0]')}>
+                            Project Color
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                        {colors.map(c => (
+                            <button
+                                key={c}
+                                onClick={() => { onColorChange(c); onClose(); }}
+                                className={cn(
+                                    'w-4 h-4 rounded-full transition-all hover:scale-110 duration-150',
+                                    project.color === c && 'ring-1 ring-offset-1 ' + (isDark ? 'ring-white/40 ring-offset-[#181818]' : 'ring-black/40 ring-offset-white')
+                                )}
+                                style={{ backgroundColor: c }}
+                            />
+                        ))}
+                        <button
+                            onClick={() => { onColorChange(null); onClose(); }}
+                            className={cn('w-4 h-4 rounded-full border flex items-center justify-center transition-colors', isDark ? 'border-white/10 hover:bg-white/5 text-white/40' : 'border-black/10 hover:bg-black/5 text-black/40')}
+                        >
+                            <X size={8} strokeWidth={3} />
+                        </button>
+                    </div>
+                </div>
+            )
+        },
         { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: onDelete, separator: true },
     ];
 
@@ -321,15 +408,15 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, onDuplicate, 
             {/* Left color stripe */}
             <div className="w-full shrink-0 self-stretch rounded-full my-1.5 ml-1.5" style={{ background: project.color }} />
             {/* Name */}
-            <div className="flex-1 min-w-0 py-1.5 pl-3 pr-4 self-center">
+            <div className="flex-1 min-w-0 py-1.5 px-4 self-center">
                 <p className={cn("font-bold text-[12.5px] truncate", isDark ? "text-white" : "text-[#111]")}>{project.name}</p>
             </div>
             {/* Status */}
-            <div className="shrink-0 py-1.5 pr-4 self-center">
+            <div className="shrink-0 py-1.5 px-4 self-center">
                 <StatusCell status={project.status} onStatusChange={onStatusChange} isDark={isDark} />
             </div>
             {/* Progress */}
-            <div className="shrink-0 py-1.5 pr-4 self-center">
+            <div className="shrink-0 py-1.5 px-4 self-center">
                 <div className="flex items-center gap-2">
                     <div className={cn("flex-1 h-1 rounded-full overflow-hidden", isDark ? "bg-white/[0.07]" : "bg-black/[0.07]")}>
                         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${taskProgress.pct}%`, background: project.color }} />
@@ -338,12 +425,12 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, onDuplicate, 
                 </div>
             </div>
             {/* Tasks */}
-            <div className={cn("shrink-0 py-1.5 text-[11.5px] tabular-nums self-center", isDark ? "text-[#555]" : "text-[#aaa]")}>
+            <div className={cn("shrink-0 py-1.5 px-4 text-[11.5px] tabular-nums self-center", isDark ? "text-[#555]" : "text-[#aaa]")}>
                 <span className={isDark ? "text-[#ccc]" : "text-[#444]"}>{taskProgress.done}</span>
                 <span className="opacity-40">/{taskProgress.total}</span>
             </div>
             {/* Members */}
-            <div className="shrink-0 py-1.5 self-center">
+            <div className="shrink-0 py-1.5 px-4 self-center">
                 {displayMembers.length > 0 ? (
                     <div className="flex -space-x-1.5">
                         {displayMembers.slice(0, 3).map((m, i) => (
@@ -364,7 +451,7 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, onDuplicate, 
                 )}
             </div>
             {/* Deadline */}
-            <div className={cn("shrink-0 py-1.5 text-[11.5px] self-center",
+            <div className={cn("shrink-0 py-1.5 px-4 text-[11.5px] self-center",
                 dl.urgent ? "text-red-400 font-semibold" : isDark ? "text-[#666]" : "text-[#999]")}>
                 {dl.urgent && <Calendar size={9} className="inline mr-1 mb-0.5" />}
                 {dl.text}
@@ -428,7 +515,7 @@ export default function ProjectsPage() {
     const { theme, setCreateModalOpen } = useUIStore();
     const isDark  = theme === 'dark';
     const { projects, fetchProjects, updateProject, deleteProject, bulkDuplicateProjects, isLoading, tasksByProject } = useProjectStore();
-    const { profile: currentUser } = useSettingsStore();
+    const { profile: currentUser, branding } = useSettingsStore();
     const allTasks = useMemo(() => Object.values(tasksByProject).flat(), [tasksByProject]);
 
     const [view, setView]             = usePersistentState<'cards' | 'table'>('projects_filter_view', 'cards');
@@ -525,6 +612,146 @@ export default function ProjectsPage() {
     const isAllSelected = filtered.length > 0 && selectedIds.size === filtered.length;
 
     const totalSelected = selectedIds.size;
+
+    const gridColumns: DataTableColumn<Project>[] = [
+        { 
+            id: 'brand', 
+            label: '', 
+            defaultWidth: 3, 
+            cell: (p: Project) => <div className="w-full shrink-0 self-stretch rounded-full my-1.5 ml-1.5" style={{ background: p.color }} /> 
+        },
+        { 
+            id: 'name', 
+            label: 'Name', 
+            defaultWidth: 150, 
+            flexible: true, 
+            cell: (p: Project) => <div className="py-1.5 px-4 self-center min-w-0"><p className={cn("font-bold text-[12.5px] truncate", isDark ? "text-white" : "text-[#111]")}>{p.name}</p></div> 
+        },
+        { 
+            id: 'status', 
+            label: 'Status', 
+            defaultWidth: 150, 
+            cell: (p: Project) => <div className="py-1.5 px-4 self-center"><StatusCell status={p.status} onStatusChange={(s) => updateProject(p.id, { status: s })} isDark={isDark} /></div> 
+        },
+        { 
+            id: 'progress', 
+            label: 'Progress', 
+            defaultWidth: 160, 
+            cell: (p: Project) => {
+                const tp = progressMap[p.id] ?? { total: 0, done: 0, pct: 0 };
+                return (
+                    <div className="py-1.5 px-4 self-center w-full">
+                        <div className="flex items-center gap-2">
+                            <div className={cn("flex-1 h-1 rounded-full overflow-hidden", isDark ? "bg-white/[0.07]" : "bg-black/[0.07]")}>
+                                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${tp.pct}%`, background: p.color }} />
+                            </div>
+                            <span className={cn("text-[10.5px] tabular-nums shrink-0 font-medium", isDark ? "text-[#555]" : "text-[#aaa]")}>{tp.pct}%</span>
+                        </div>
+                    </div>
+                );
+            }
+        },
+        { 
+            id: 'tasks', 
+            label: 'Tasks', 
+            defaultWidth: 80, 
+            cell: (p: Project) => {
+                const tp = progressMap[p.id] ?? { total: 0, done: 0, pct: 0 };
+                return (
+                    <div className={cn("py-1.5 px-4 text-[11.5px] tabular-nums self-center", isDark ? "text-[#555]" : "text-[#aaa]")}>
+                        <span className={isDark ? "text-[#ccc]" : "text-[#444]"}>{tp.done}</span>
+                        <span className="opacity-40">/{tp.total}</span>
+                    </div>
+                );
+            }
+        },
+        { 
+            id: 'members', 
+            label: 'Members', 
+            defaultWidth: 90, 
+            cell: (p: Project) => {
+                const m = [...p.members];
+                if (currentUser && !m.some(u => u.id === currentUser.id)) {
+                    m.unshift({ id: currentUser.id, name: currentUser.full_name || 'Owner', avatar_url: currentUser.avatar_url } as ProjectMember);
+                }
+                return (
+                    <div className="py-1.5 px-4 self-center">
+                        {m.length > 0 ? (
+                            <div className="flex -space-x-1.5">
+                                {m.slice(0, 3).map((u, i) => (
+                                    <Avatar key={i} name={u.name} src={u.avatar_url}
+                                        className={cn("w-5 h-5 rounded-full ring-1", isDark ? "ring-[#1a1a1a]" : "ring-white")}
+                                        isDark={isDark} />
+                                ))}
+                                {m.length > 3 && (
+                                    <div className={cn("w-5 h-5 rounded-full ring-1 flex items-center justify-center text-[8px] font-bold",
+                                        isDark ? "ring-[#1a1a1a] bg-[#252525] text-[#666]" : "ring-white bg-[#eee] text-[#aaa]")}>+{m.length - 3}</div>
+                                )}
+                            </div>
+                        ) : <span className={isDark ? "text-[#333]" : "text-[#ddd]"}>—</span>}
+                    </div>
+                );
+            }
+        },
+        { 
+            id: 'deadline', 
+            label: 'Deadline', 
+            defaultWidth: 120, 
+            cell: (p: Project) => (
+                <div className="py-1.5 px-4 self-center w-full" onClick={e => e.stopPropagation()}>
+                    <DatePicker 
+                        value={p.deadline || ''} 
+                        onChange={(date) => updateProject(p.id, { deadline: date })}
+                        isDark={isDark}
+                        placeholder="No deadline"
+                    />
+                </div>
+            )
+        }
+    ];
+
+    const getRowMenu = (p: Project) => {
+        const colors = ((branding?.branding_colors && branding.branding_colors.length > 0) 
+            ? branding.branding_colors 
+            : DEFAULT_PALETTE).filter(c => c.toLowerCase() !== '#ffffff' && c.toLowerCase() !== '#000000');
+            
+        return [
+            { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/projects/${p.id}`) },
+            { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(p.id) },
+            { label: p.is_archived ? 'Unarchive' : 'Archive', icon: p.is_archived ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: () => handleArchive(p.id) },
+            {
+                render: (onClose: any) => (
+                    <div className="px-3 py-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className={cn('text-[9px] font-bold uppercase tracking-[0.12em]', isDark ? 'text-[#3a3a3a]' : 'text-[#c0c0c0]')}>
+                                Project Color
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-1 flex-wrap">
+                            {colors.map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => { updateProject(p.id, { color: c }); onClose(); }}
+                                    className={cn(
+                                        'w-4 h-4 rounded-full transition-all hover:scale-110 duration-150',
+                                        p.color === c && 'ring-1 ring-offset-1 ' + (isDark ? 'ring-white/40 ring-offset-[#181818]' : 'ring-black/40 ring-offset-white')
+                                    )}
+                                    style={{ backgroundColor: c }}
+                                />
+                            ))}
+                            <button
+                                onClick={() => { updateProject(p.id, { color: '#3d0ebf' }); onClose(); }}
+                                className={cn('w-4 h-4 rounded-full border flex items-center justify-center transition-colors', isDark ? 'border-white/10 hover:bg-white/5 text-white/40' : 'border-black/10 hover:bg-black/5 text-black/40')}
+                            >
+                                <X size={8} strokeWidth={3} />
+                            </button>
+                        </div>
+                    </div>
+                )
+            },
+            { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(p.id), separator: true },
+        ];
+    };
 
     return (
         <div className={cn("flex flex-col h-full overflow-hidden font-sans text-[13px]",
@@ -707,50 +934,26 @@ export default function ProjectsPage() {
                                         onToggle={() => toggleRow(p.id)}
                                         onStatusChange={(status) => updateProject(p.id, { status })}
                                         currentUser={currentUser}
+                                        onColorChange={(color) => updateProject(p.id, { color: color || '#3d0ebf' })}
+                                        brandingColors={branding?.branding_colors}
                                     />
                             ))}
                         </AnimatePresence>
                     </div>
                 ) : (
                     /* ── Table ── */
-                    <div className="flex flex-col">
-                        {/* Header */}
-                        <div className={cn("grid px-0 py-2.5 border-b text-[10px] font-bold uppercase tracking-wider sticky top-0 z-30",
-                        isDark ? "bg-[#141414] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}
-                        style={{ gridTemplateColumns: '44px 3px 1fr 150px 160px 80px 90px 120px 20px' }}>
-                            <div className="flex items-center justify-center py-2 cursor-pointer" onClick={toggleAll}>
-                                <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
-                                    isAllSelected ? "bg-primary border-primary" : isDark ? "border-[#333] bg-transparent" : "border-[#d0d0d0] bg-white")}>
-                                    {isAllSelected && <Check size={9} strokeWidth={4} className="text-black" />}
-                                </div>
-                            </div>
-                            <div />
-                            <div className="px-4 py-2">Name</div>
-                            <div className="px-4 py-2">Status</div>
-                            <div className="px-4 py-2">Progress</div>
-                            <div className="px-4 py-2">Tasks</div>
-                            <div className="px-4 py-2">Members</div>
-                            <div className="px-4 py-2">Deadline</div>
-                            <div />
-                        </div>
-                        <AnimatePresence>
-                            {filtered.map(p => (
-                                <TableRow
-                                    key={p.id}
-                                    project={p}
-                                    isDark={isDark}
-                                    onClick={() => router.push(`/projects/${p.id}`)}
-                                    onArchive={() => handleArchive(p.id)}
-                                    onDelete={() => setDeletingId(p.id)}
-                                    onDuplicate={() => handleDuplicate(p.id)}
-                                    taskProgress={progressMap[p.id] ?? { total: 0, done: 0, pct: 0 }}
-                                    isSelected={selectedIds.has(p.id)}
-                                    onToggle={() => toggleRow(p.id)}
-                                    onStatusChange={(status) => updateProject(p.id, { status })}
-                                    currentUser={currentUser}
-                                />
-                            ))}
-                        </AnimatePresence>
+                    <div className="p-4 flex flex-col min-h-0 overflow-hidden">
+                        <DataTable
+                            data={filtered}
+                            columns={gridColumns}
+                            storageKeyPrefix="projects"
+                            selectedIds={selectedIds}
+                            onToggleAll={toggleAll}
+                            onToggleRow={(id: string) => toggleRow(id)}
+                            onRowClick={(p: Project) => router.push(`/projects/${p.id}`)}
+                            rowMenuItems={getRowMenu}
+                            isDark={isDark}
+                        />
                     </div>
                 )}
             </div>

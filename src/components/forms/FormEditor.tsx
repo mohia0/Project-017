@@ -16,7 +16,7 @@ import {
 import { SelectInput } from '@/components/forms/inputs/SelectInput';
 import { RadioInput } from '@/components/forms/inputs/RadioInput';
 import { PictureChoiceInput } from '@/components/forms/inputs/PictureChoiceInput';
-import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -45,9 +45,9 @@ import DatePicker from '@/components/ui/DatePicker';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { AppLoader } from '@/components/ui/AppLoader';
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    FIELD TYPE CONFIG
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 interface FieldTypeDef {
     type: FormFieldType;
     label: string;
@@ -77,9 +77,9 @@ const FIELD_TYPES: FieldTypeDef[] = [
     { type: 'countries',     label: 'Countries',      icon: <Globe size={14} />,         section: 'contact', defaultLabel: 'Select country' },
 ];
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    TYPES
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 type EditorTab  = 'editor' | 'responses';
 type CanvasStep = 'intro' | 'form' | 'confirmation';
 type RightTab   = 'details' | 'design';
@@ -117,9 +117,9 @@ const STATUS_COLORS: Record<FormStatus, string> = {
     Inactive: '#f97316',
 };
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    HELPERS
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function SectionAccordion({ label, icon, isDark, children, defaultOpen = true }: {
     label: string; icon: React.ReactNode; isDark: boolean; children: React.ReactNode; defaultOpen?: boolean;
 }) {
@@ -154,7 +154,7 @@ function PanelInput({ value, onChange, placeholder, type = 'text', isDark }: {
     );
 }
 
-/* ── HELPERS ── */
+/* â”€â”€ HELPERS â”€â”€ */
 const isColorDark = (color: string) => {
     if (!color) return false;
     if (color.startsWith('#')) {
@@ -165,7 +165,7 @@ const isColorDark = (color: string) => {
     }
     return false;
 };
-/* ── Option Editor Items (to prevent focus loss) ── */
+/* â”€â”€ Option Editor Items (to prevent focus loss) â”€â”€ */
 function OptionEditorItem({ opt, idx, isDark, onUpdate, options, showIndicator, inputBackgroundColor, borderRadius }: any) {
     const isBgDark = inputBackgroundColor ? isColorDark(inputBackgroundColor) : isDark;
     const moveUp = (e: any) => {
@@ -301,7 +301,7 @@ function PictureOptionEditorItem({ opt, idx, isDark, onUpdate, onUploadClick, fi
     );
 }
 
-/* ── Field preview in canvas ── */
+/* â”€â”€ Field preview in canvas â”€â”€ */
 function FieldPreview({ 
     field, isDark, isSelected, onClick, onRemove, onUpdate, onUploadClick, 
     primaryColor, isPreview, borderRadius, marginTop, marginBottom, 
@@ -618,7 +618,7 @@ function FieldPreview({
         </div>
     );
 }
-/* ── Field type pill in picker ── */
+/* â”€â”€ Field type pill in picker â”€â”€ */
 function FieldTypePill({ def, onAdd, isDark, borderRadius }: { def: FieldTypeDef; onAdd: () => void; isDark: boolean; borderRadius: number }) {
     return (
         <button
@@ -635,7 +635,7 @@ function FieldTypePill({ def, onAdd, isDark, borderRadius }: { def: FieldTypeDef
         </button>
     );
 }
-/* ── Insert Area ── */
+/* â”€â”€ Insert Area â”€â”€ */
 function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, isDark, primaryColor, borderRadius, hideLine, centered }: {
     index: number; totalFields: number; openIndex: number | null; setOpenIndex: (i: number | null) => void;
     onAdd: (def: FieldTypeDef, idx: number) => void; isDark: boolean; primaryColor: string;
@@ -750,9 +750,9 @@ function FieldInsertArea({ index, totalFields, openIndex, setOpenIndex, onAdd, i
     );
 }
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MAIN EDITOR
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate?: boolean }) {
     const router = useRouter();
     const { theme, openRightPanel } = useUIStore();
@@ -1196,7 +1196,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
         <div className={cn("flex flex-col h-full w-full overflow-hidden font-sans text-[13px]",
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-white text-[#111]")}>
 
-            {/* ── TOP BAR ── */}
+            {/* â”€â”€ TOP BAR â”€â”€ */}
             <div className={cn(
                 "flex items-center justify-between px-3 md:px-6 py-2.5 border-b shrink-0 sticky top-0 z-[9999]",
                 isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
@@ -1332,7 +1332,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                 </div>
             </div>
 
-            {/* ── SECONDARY TABS ── */}
+            {/* â”€â”€ SECONDARY TABS â”€â”€ */}
             <div className={cn("flex items-center gap-0 px-4 md:px-6 border-b shrink-0",
                 isDark ? "bg-[#111] border-[#252525]" : "bg-[#fafafa] border-[#ebebeb]")}>
                 {([
@@ -1350,7 +1350,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                 ))}
             </div>
 
-            {/* ── BODY ── */}
+            {/* â”€â”€ BODY â”€â”€ */}
             <div className="flex-1 flex overflow-hidden min-h-0 isolate">
                 {editorTab === 'editor' && (
                     <div className="flex-1 flex flex-col overflow-hidden">
@@ -1650,7 +1650,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                 </div>
                             </div>
 
-                            {/* ── RIGHT PANEL ── */}
+                            {/* â”€â”€ RIGHT PANEL â”€â”€ */}
                             {!isPreview && (
                                 <div className={cn(
                                     "hidden md:flex flex-col overflow-hidden border-l w-[240px] shrink-0",
@@ -2191,7 +2191,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                         </td>
                                                         {fields.slice(0, 4).map((f) => {
                                                             const val = r.data?.[f.id];
-                                                            const str = Array.isArray(val) ? val.join(', ') : (typeof val === 'object' ? JSON.stringify(val) : String(val || '—'));
+                                                            const str = Array.isArray(val) ? val.join(', ') : (typeof val === 'object' ? JSON.stringify(val) : String(val || 'â€”'));
                                                             return (
                                                                 <td 
                                                                     key={f.id}
@@ -2307,7 +2307,7 @@ function MessageSquareIcon({ size, className }: { size: number; className?: stri
     );
 }
 
-// ── CONFIRMATION BLOCK HELPERS ──────────────────────────────────────
+// â”€â”€ CONFIRMATION BLOCK HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ConfirmationBlockItem({ block, isDark, isSelected, onClick, onRemove, updateBlock, primaryColor, isPreview, meta, setUploadTarget, setImageUploadOpen }: any) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
@@ -2484,4 +2484,5 @@ function ConfirmationBlockInsertArea({ index, onAdd, isDark, primaryColor }: any
     );
 }
 
-// ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+

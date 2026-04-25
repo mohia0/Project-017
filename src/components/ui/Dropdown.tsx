@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Check } from 'lucide-react';
@@ -96,6 +96,7 @@ export function Dropdown({ open, onClose, isDark, children, align = 'right', cla
 }
 
 interface DItemProps {
+    icon?: React.ReactNode;
     label: string | React.ReactNode;
     active?: boolean;
     onClick: () => void;
@@ -103,7 +104,7 @@ interface DItemProps {
     className?: string;
 }
 
-export function DItem({ label, active, onClick, isDark, className }: DItemProps) {
+export function DItem({ label, active, onClick, isDark, className, icon }: DItemProps) {
     return (
         <button
             onClick={(e) => {
@@ -123,3 +124,4 @@ export function DItem({ label, active, onClick, isDark, className }: DItemProps)
         </button>
     );
 }
+
