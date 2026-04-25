@@ -21,6 +21,10 @@ import { AppLoader } from '@/components/ui/AppLoader';
 import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useMenuStore } from '@/store/useMenuStore';
+import { fmtDate } from '@/lib/dateUtils';
+import { ToolbarButton as TbBtn } from '@/components/ui/ToolbarButton';
+import { StatusCell } from '@/components/ui/StatusCell';
+
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import DatePicker from '@/components/ui/DatePicker';
 
@@ -40,11 +44,6 @@ const DEFAULT_PALETTE = ['#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmtDate(d: string | null | undefined) {
-    if (!d) return '—';
-    const dt = new Date(d);
-    return `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`;
-}
 
 function deadlineMeta(d: string | null | undefined): { text: string; urgent: boolean } {
     if (!d) return { text: '—', urgent: false };
@@ -55,23 +54,6 @@ function deadlineMeta(d: string | null | undefined): { text: string; urgent: boo
     return { text: fmtDate(d), urgent: false };
 }
 
-// ─── Shared Toolbar Button ────────────────────────────────────────────────────
-
-function TbBtn({ label, icon, active, hasArrow, onClick, isDark }: {
-    label?: string; icon?: React.ReactNode; active?: boolean;
-    hasArrow?: boolean; onClick?: () => void; isDark: boolean;
-}) {
-    return (
-        <button onClick={onClick} className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded transition-colors shrink-0",
-            active
-                ? isDark ? "bg-white/10 text-white" : "bg-[#ebebf5] text-[#111]"
-                : isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]"
-        )}>
-            {icon}{label}{hasArrow && <ChevronDown size={9} className="opacity-40" />}
-        </button>
-    );
-}
 
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
 
@@ -89,63 +71,6 @@ function StatusBadge({ status, isDark }: { status: ProjectStatus; isDark: boolea
     );
 }
 
-function StatusCell({ status, onStatusChange, isDark }: { status: ProjectStatus; onStatusChange: (s: ProjectStatus) => void; isDark: boolean }) {
-    const [open, setOpen] = useState(false);
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const cfg = STATUS_CFG[status];
-    const sc = cfg.color;
-
-    return (
-        <div className="relative inline-block">
-            <button
-                ref={triggerRef}
-                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-                style={{ 
-                    backgroundColor: isDark ? `${sc}15` : `${sc}10`,
-                    color: sc,
-                    borderColor: `${sc}30`
-                }}
-                className={cn(
-                    "inline-flex items-center gap-1.5 px-2 py-[2px] rounded-[6px] text-[10px] font-bold transition-all border outline-none hover:shadow-sm"
-                )}
-            >
-                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sc }} />
-                <span>{status}</span>
-                <ChevronDown size={10} className="opacity-50" />
-            </button>
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center" triggerRef={triggerRef}>
-                <div className="py-1">
-                    {STATUS_ORDER.map(s => {
-                        const sCfg = STATUS_CFG[s];
-                        const isActive = s === status;
-                        const sColor = sCfg.color;
-                        return (
-                            <button
-                                key={s}
-                                onClick={(e) => { e.stopPropagation(); onStatusChange(s); setOpen(false); }}
-                                className={cn(
-                                    "w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] transition-colors text-left",
-                                    isActive
-                                        ? isDark ? "bg-white/8 text-white font-semibold" : "bg-[#f0f0f0] text-[#111] font-semibold"
-                                        : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]"
-                                )}
-                            >
-                                <div className="flex items-center gap-2 flex-1">
-                                    <div 
-                                        className="w-1.5 h-1.5 rounded-full shrink-0" 
-                                        style={{ backgroundColor: sColor }} 
-                                    />
-                                    <span>{s}</span>
-                                </div>
-                                {isActive && <Check size={12} className="text-primary" />}
-                            </button>
-                        );
-                    })}
-                </div>
-            </Dropdown>
-        </div>
-    );
-}
 
 // ─── Circular Progress ────────────────────────────────────────────────────────
 
@@ -279,7 +204,12 @@ function ProjectCard({ project, isDark, onClick, onArchive, onDelete, onDuplicat
                     </div>
                 </div>
                 <div className="flex-1 min-w-0 space-y-1.5">
-                    <StatusCell status={project.status} onStatusChange={onStatusChange} isDark={isDark} />
+                    <StatusCell
+                        status={project.status}
+                        options={STATUS_ORDER}
+                        onStatusChange={onStatusChange}
+                        isDark={isDark}
+                    />
                     <p className={cn("text-[10.5px]", isDark ? "text-[#555]" : "text-[#aaa]")}>
                         {taskProgress.done} / {taskProgress.total} tasks done
                     </p>
@@ -413,7 +343,7 @@ function TableRow({ project, isDark, onClick, onArchive, onDelete, onDuplicate, 
             </div>
             {/* Status */}
             <div className="shrink-0 py-1.5 px-4 self-center">
-                <StatusCell status={project.status} onStatusChange={onStatusChange} isDark={isDark} />
+                <StatusCell status={project.status} options={STATUS_ORDER} onStatusChange={onStatusChange} isDark={isDark} />
             </div>
             {/* Progress */}
             <div className="shrink-0 py-1.5 px-4 self-center">
@@ -631,7 +561,7 @@ export default function ProjectsPage() {
             id: 'status', 
             label: 'Status', 
             defaultWidth: 150, 
-            cell: (p: Project) => <div className="py-1.5 px-4 self-center"><StatusCell status={p.status} onStatusChange={(s) => updateProject(p.id, { status: s })} isDark={isDark} /></div> 
+            cell: (p: Project) => <div className="py-1.5 px-4 self-center"><StatusCell status={p.status} options={STATUS_ORDER} onStatusChange={(s) => updateProject(p.id, { status: s })} isDark={isDark} /></div> 
         },
         { 
             id: 'progress', 

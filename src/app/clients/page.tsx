@@ -29,8 +29,15 @@ import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterU
 import { useSavedFilters } from '@/hooks/useSavedFilters';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useMenuStore } from '@/store/useMenuStore';
+import { Dropdown, DItem } from '@/components/ui/Dropdown';
+import { ToolbarButton as TbBtn } from '@/components/ui/ToolbarButton';
+import { Checkbox as Chk } from '@/components/ui/Checkbox';
+
+
+import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 
 type Tab = 'people' | 'companies';
+
 type ViewMode = 'grid' | 'list';
 
 /** A single labeled row inside a card — matches the minimal reference design */
@@ -55,96 +62,6 @@ function CardRow({ label, value, isDark, isLink }: {
 
 /* ─── Shared UI Components ────────────────────────────────────────── */
 
-function Chk({ checked, indeterminate, isDark }: { checked: boolean, indeterminate?: boolean, isDark: boolean }) {
-    return (
-        <div className={cn(
-            "w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center transition-all",
-            checked || indeterminate
-                ? "bg-primary border-primary text-primary-foreground"
-                : isDark ? "border-white/[0.1] hover:border-white/[0.2]" : "border-[#ccc] hover:border-[#aaa]"
-        )}>
-            {checked && <Check size={10} strokeWidth={4} />}
-            {indeterminate && !checked && <div className="w-[8px] h-[1.5px] bg-white rounded-full" />}
-        </div>
-    );
-}
-
-function TbBtn({ label, icon, active, onClick, isDark, hasArrow }: { label: string; icon: React.ReactNode; active?: boolean; onClick?: () => void; isDark: boolean; hasArrow?: boolean; }) {
-    return (
-        <button onClick={onClick} className={cn(
-            "flex items-center gap-1.5 px-2 py-1.5 text-[11px] font-medium rounded transition-all",
-            active
-                ? (isDark ? "bg-white/10 text-white" : "bg-[#f0f0f0] text-black")
-                : (isDark ? "text-[#666] hover:text-[#aaa] hover:bg-white/5" : "text-[#888] hover:text-black hover:bg-black/5")
-        )}>
-            {icon}
-            <span>{label}</span>
-            {hasArrow && <ChevronDown size={11} className={cn("opacity-40 transition-transform", active ? "rotate-180" : "rotate-0")} />}
-        </button>
-    );
-}
-
-function Dropdown({ open, onClose, isDark, children, align = 'right', minWidth = '180px' }: { 
-    open: boolean; 
-    onClose: () => void; 
-    isDark: boolean; 
-    children: React.ReactNode; 
-    align?: 'left' | 'right' | 'center';
-    minWidth?: string;
-}) {
-    const ref = React.useRef<HTMLDivElement>(null);
-    const [coords, setCoords] = React.useState<{ top: number; left: number } | null>(null);
-
-    React.useLayoutEffect(() => {
-        if (open && ref.current?.parentElement) {
-            const rect = ref.current.parentElement.getBoundingClientRect();
-            let left = rect.left;
-            if (align === 'center') left = rect.left + rect.width / 2;
-            if (align === 'right') left = rect.right;
-            setCoords({ top: rect.bottom + 4, left });
-        }
-    }, [open, align]);
-
-    React.useEffect(() => {
-        if (!open) return;
-        const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-        const s = (e: Event) => {
-            if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
-            onClose();
-        };
-        document.addEventListener('mousedown', h);
-        window.addEventListener('scroll', s, true);
-        return () => {
-            document.removeEventListener('mousedown', h);
-            window.removeEventListener('scroll', s, true);
-        };
-    }, [open, onClose]);
-
-    if (!open) return null;
-    return (
-        <div ref={ref}
-            style={coords ? { top: `${coords.top}px`, left: `${coords.left}px`, minWidth } : { opacity: 0 }}
-            className={cn("fixed z-[1000] rounded-xl border shadow-xl overflow-hidden",
-                align === 'center' && "-translate-x-1/2",
-                align === 'right' && "-translate-x-full",
-                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]")}>
-            {children}
-        </div>
-    );
-}
-
-function DItem({ label, icon, active, onClick, isDark }: { label: string; icon?: React.ReactNode; active?: boolean; onClick: () => void; isDark: boolean }) {
-    return (
-        <button onClick={onClick} className={cn("w-full flex items-center gap-2.5 px-3.5 py-2 text-[12px] transition-colors text-left",
-            active
-                ? isDark ? "bg-white/8 text-white font-medium" : "bg-[#f0f0f0] text-[#111] font-medium"
-                : isDark ? "text-[#ccc] hover:bg-white/5" : "text-[#333] hover:bg-[#f5f5f5]")}>
-            {icon && <span className="opacity-60">{icon}</span>}
-            <span className="flex-1">{label}</span>
-            {active && <Check size={11} className="text-primary" />}
-        </button>
-    );
-}
 
 export default function ClientsPage() {
     const { navItems } = useMenuStore();
@@ -407,6 +324,77 @@ export default function ClientsPage() {
     const activeContactId = rightPanel?.type === 'contact' ? (rightPanel as any).id : null;
     const activeCompanyId = rightPanel?.type === 'company' ? (rightPanel as any).id : null;
 
+    const peopleColumns: DataTableColumn<any>[] = useMemo(() => [
+        { id: 'name', label: 'Name', flexible: true, defaultWidth: 200, cell: (c: any) => (
+            <div className="flex items-center gap-3 px-4 py-1.5 h-full">
+                <Avatar src={c.avatar_url} name={c.contact_person || c.company_name} className="w-7 h-7" isDark={isDark} />
+                <span className={cn("text-[13px] font-semibold truncate", textPrimary)}>{c.contact_person || '—'}</span>
+            </div>
+        )},
+        { id: 'email', label: 'Email', defaultWidth: 180, cell: (c: any) => (
+            <div className="flex items-center px-4 py-1.5 h-full truncate text-[#3b82f6]">{c.email || <span className={textSecondary}>—</span>}</div>
+        )},
+        { id: 'phone', label: 'Phone', defaultWidth: 140, cell: (c: any) => (
+            <div className={cn("flex flex-col justify-center px-4 py-1.5 h-full truncate", textSecondary)}><span className="text-[12px]">{c.phone || '—'}</span></div>
+        )},
+        { id: 'country', label: 'Country', defaultWidth: 120, cell: (c: any) => (
+            <div className={cn("flex items-center px-4 py-1.5 h-full truncate", textSecondary)}><span className="text-[12px]">{c.country || '—'}</span></div>
+        )},
+        { id: 'company', label: 'Company', defaultWidth: 160, cell: (c: any) => (
+            <div className={cn("flex items-center px-4 py-1.5 h-full truncate", muted)}><span className="text-[12px] font-medium">{c.company_name || '—'}</span></div>
+        )}
+    ], [isDark, textPrimary, textSecondary, muted]);
+
+    const companyColumns: DataTableColumn<any>[] = useMemo(() => [
+        { id: 'name', label: 'Name', flexible: true, defaultWidth: 200, cell: (c: any) => (
+            <div className="flex items-center gap-3 px-4 py-1.5 h-full">
+                <Avatar src={c.avatar_url} name={c.name} className="w-7 h-7" isDark={isDark} />
+                <span className={cn("text-[13px] font-semibold truncate", textPrimary)}>{c.name}</span>
+            </div>
+        )},
+        { id: 'industry', label: 'Industry', defaultWidth: 140, cell: (c: any) => (
+            <div className={cn("flex flex-col justify-center px-4 py-1.5 h-full truncate", textSecondary)}><span className="text-[12px]">{c.industry || '—'}</span></div>
+        )},
+        { id: 'email', label: 'Email', defaultWidth: 180, cell: (c: any) => (
+            <div className="flex items-center px-4 py-1.5 h-full truncate text-[#3b82f6]">{c.email || <span className={textSecondary}>—</span>}</div>
+        )},
+        { id: 'phone', label: 'Phone', defaultWidth: 140, cell: (c: any) => (
+            <div className={cn("flex flex-col justify-center px-4 py-1.5 h-full truncate", textSecondary)}><span className="text-[12px]">{c.phone || '—'}</span></div>
+        )},
+        { id: 'website', label: 'Website', defaultWidth: 160, cell: (c: any) => (
+            <div className={cn("flex items-center px-4 py-1.5 h-full truncate text-[#3b82f6]")}>{c.website || <span className={textSecondary}>—</span>}</div>
+        )},
+        { id: 'contacts', label: 'Contacts', defaultWidth: 100, cell: (c: any) => {
+            const linkedCount = clients.filter(client => client.company_name === c.name).length;
+            return (
+                <div className={cn("flex items-center gap-1.5 px-4 py-1.5 h-full truncate", muted)}>
+                    <Users size={12} className="opacity-50" />
+                    <span className="text-[12px]">{linkedCount}</span>
+                </div>
+            )
+        }}
+    ], [isDark, textPrimary, textSecondary, muted, clients]);
+
+    const getPeopleMenu = (client: any) => [
+        { label: 'View Profile', icon: <Users size={14} />, onClick: () => openRightPanel({ type: 'contact', id: client.id }) },
+        { label: 'Duplicate', icon: <Copy size={14} />, onClick: () => handleDuplicateClient(client.id) },
+        { label: 'Delete', icon: <Trash2 size={14} />, danger: true, onClick: async () => {
+            const { deleteClient } = useClientStore.getState();
+            await deleteClient(client.id);
+            appToast.error("Deleted", 'Contact deleted');
+        }, separator: true },
+    ];
+
+    const getCompanyMenu = (company: any) => [
+        { label: 'View Profile', icon: <Building2 size={14} />, onClick: () => openRightPanel({ type: 'company', id: company.id }) },
+        { label: 'Duplicate', icon: <Copy size={14} />, onClick: () => handleDuplicateCompany(company.id) },
+        { label: 'Delete', icon: <Trash2 size={14} />, danger: true, onClick: async () => {
+            const { deleteCompany } = useCompanyStore.getState();
+            await deleteCompany(company.id);
+            appToast.error("Deleted", 'Company deleted');
+        }, separator: true },
+    ];
+
     return (
         <div className={cn(
             "flex flex-col h-full overflow-hidden font-sans text-[13px]",
@@ -442,16 +430,17 @@ export default function ClientsPage() {
                     isDark={isDark} 
                 />
                 
-                {tab === 'people' && (
-                    <>
-                        <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
-                        <ViewToggle 
-                            view={view} 
-                            onViewChange={(v) => { setView(v); setSelectedIds(new Set()); }} 
-                            isDark={isDark} 
-                        />
-                    </>
-                )}
+                <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+                
+                <ViewToggle 
+                    view={view} 
+                    onViewChange={(v) => { setView(v); setSelectedIds(new Set()); }} 
+                    isDark={isDark} 
+                    options={[
+                        { id: 'grid', icon: <LayoutGrid size={12}/> },
+                        { id: 'list', icon: <List size={12}/> }
+                    ]}
+                />
 
                 <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
 
@@ -622,24 +611,24 @@ export default function ClientsPage() {
                                     ))}
                                 </div>
                             ) : (
-                            <div className="overflow-x-auto no-scrollbar">
-                                <div className={cn("rounded-xl border overflow-hidden min-w-[900px]", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
-                                    <div className={cn("grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider", isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]")} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
-                                        <div /><div /><div>Name</div><div>Email</div><div>Phone</div><div>Country</div><div>Company</div>
-                                    </div>
-                                    {Array.from({ length: 25 }).map((_, i) => (
-                                        <div key={i} className={cn("grid px-4 py-2.5 items-center pointer-events-none", i !== 0 && `border-t ${isDark ? "border-[#1f1f1f]" : "border-[#f5f5f5]"}`)} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
-                                            <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
-                                            <div className={cn("w-7 h-7 rounded-lg animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
-                                            <div className="px-2"><div className={cn("h-3 w-28 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
-                                            <div className="px-2"><div className={cn("h-3 w-36 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
-                                            <div className="px-2"><div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
-                                            <div className="px-2"><div className={cn("h-3 w-16 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
-                                            <div className="px-2"><div className={cn("h-3 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                <div className="overflow-x-auto no-scrollbar">
+                                    <div className={cn("rounded-xl border overflow-hidden min-w-[900px]", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
+                                        <div className={cn("grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider", isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]")} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
+                                            <div /><div /><div>Name</div><div>Email</div><div>Phone</div><div>Country</div><div>Company</div>
                                         </div>
-                                    ))}
+                                        {Array.from({ length: 25 }).map((_, i) => (
+                                            <div key={i} className={cn("grid px-4 py-2.5 items-center pointer-events-none", i !== 0 && `border-t ${isDark ? "border-[#1f1f1f]" : "border-[#f5f5f5]"}`)} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
+                                                <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                                <div className={cn("w-7 h-7 rounded-lg animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} />
+                                                <div className="px-2"><div className={cn("h-3 w-28 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                                <div className="px-2"><div className={cn("h-3 w-36 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                                <div className="px-2"><div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                                <div className="px-2"><div className={cn("h-3 w-16 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                                <div className="px-2"><div className={cn("h-3 w-24 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.05]")} /></div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
                             )
                         ) : filteredPeople.length === 0 ? (
                             <div className={cn("flex flex-col items-center justify-center h-full gap-3", muted)}>
@@ -656,148 +645,95 @@ export default function ClientsPage() {
                                     const isSelected = selectedIds.has(client.id);
                                     const isActive = activeContactId === client.id;
                                     return (
-                                        <div
-                                            key={client.id}
-                                            onClick={() => { if (selectedIds.size > 0) toggleRow(client.id); else openRightPanel({ type: 'contact', id: client.id }); }}
-                                            className={cn(
-                                                "rounded-xl border overflow-hidden cursor-pointer transition-all duration-150 relative group select-none",
-                                                cardBg, cardBorder,
-                                                isSelected
-                                                    ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                                                    : isActive
-                                                        ? isDark ? "border-[#3a3a3a] ring-1 ring-[#3a3a3a]" : "border-[#c0c0d0] ring-1 ring-[#c0c0d0] shadow-sm"
-                                                        : isDark ? "hover:border-[#2e2e2e] hover:bg-[#1c1c1c]" : "hover:border-[#ccc] hover:shadow-sm"
-                                            )}
-                                        >
-                                            {/* Header */}
-                                            {/* Actions Overlay (Checkbox + Delete) */}
-                                            <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 z-20">
-                                                {/* Checkbox */}
-                                                <div className={cn('transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
-                                                    onClick={e => { e.stopPropagation(); toggleRow(client.id); }}>
-                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-                                                        <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
-                                                            isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
-                                                            {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Delete Individual (Hover) */}
-                                                {!isSelected && (
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-all">
-                                                        <InlineDeleteButton 
-                                                            onDelete={async () => {
-                                                                const { deleteClient } = useClientStore.getState();
-                                                                await deleteClient(client.id);
-                                                                appToast.error("Deleted", 'Contact deleted');
-                                                            }} 
-                                                            isDark={isDark} 
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-3 px-4 py-3.5 relative group">
-                                                <Avatar 
-                                                    src={client.avatar_url} 
-                                                    name={client.contact_person || client.company_name} 
-                                                    className="w-7 h-7" 
-                                                    isDark={isDark} 
-                                                />
-                                                <span className={cn("text-[13px] font-semibold truncate", textPrimary)}>
-                                                    {client.contact_person || '—'}
-                                                </span>
-                                            </div>
-                                            {/* Rows */}
-                                            {client.company_name && <CardRow label="Company" value={client.company_name} isDark={isDark} />}
-                                            {client.email        && <CardRow label="Email"   value={client.email}        isDark={isDark} isLink />}
-                                            {client.phone        && <CardRow label="Phone"   value={client.phone}        isDark={isDark} />}
-                                            {client.country      && <CardRow label="Country" value={client.country}      isDark={isDark} />}
-                                            {client.address      && <CardRow label="Address" value={client.address}      isDark={isDark} />}
-                                            {!client.company_name && !client.email && !client.phone && !client.address && (
-                                                <div className={cn("border-t px-4 py-2 text-[11px]",
-                                                    isDark ? "border-[#252525] text-[#444]" : "border-dashed border-[#e8e8e8] text-[#ccc]")}>
-                                                    No details added
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            /* List view */
-                            <div className={cn("p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
-                                <div className="overflow-x-auto no-scrollbar">
-                                    <div className={cn("rounded-xl border overflow-hidden min-w-full w-max", isDark ? "border-[#222]" : "border-[#e8e8e8]")}>
-                                    <div className={cn(
-                                        "grid px-4 py-2 text-[10px] font-semibold uppercase tracking-wider",
-                                        isDark ? "bg-[#1a1a1a] border-b border-[#252525] text-[#555]" : "bg-[#fafafa] border-b border-[#ebebeb] text-[#aaa]"
-                                    )} style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}>
-                                        <div className="flex items-center justify-center cursor-pointer" onClick={() => toggleAll(filteredPeople)}>
-                                            <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
-                                                selectedIds.size === filteredPeople.length && filteredPeople.length > 0 ? "bg-primary border-primary" : isDark ? "border-white/10" : "border-[#ccc]")}>
-                                                {selectedIds.size === filteredPeople.length && filteredPeople.length > 0 && <Check size={9} strokeWidth={4} className="text-black" />}
-                                                {selectedIds.size > 0 && selectedIds.size < filteredPeople.length && <div className="w-2 h-0.5 bg-black rounded" />}
-                                            </div>
-                                        </div>
-                                        <div /><div>Name</div><div>Email</div><div>Phone</div><div>Country</div><div>Company</div>
-                                    </div>
-                                {filteredPeople.map((client, i) => {
-                                    const menuItems = [
-                                        { label: 'View Profile', icon: <Users size={12} />, onClick: () => openRightPanel({ type: 'contact', id: client.id }) },
-                                        { label: 'Copy Name', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(client.contact_person || ''); appToast.success('Name copied'); } },
-                                        { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicateClient(client.id) },
-                                        { label: 'Send Email', icon: <Mail size={12} />, onClick: () => window.location.href = `mailto:${client.email}`, disabled: !client.email },
-                                        { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: async () => {
-                                            const { deleteClient } = useClientStore.getState();
-                                            await deleteClient(client.id);
-                                            appToast.error("Deleted", 'Contact deleted');
-                                        }, separator: true },
-                                    ];
-
-                                    return (
                                         <ContextMenuRow
                                             key={client.id}
-                                            items={menuItems}
+                                            items={getPeopleMenu(client)}
                                             isDark={isDark}
                                             onRowClick={() => openRightPanel({ type: 'contact', id: client.id })}
-                                            className={cn(
-                                                "grid px-4 py-1 text-[12px] cursor-pointer transition-colors group select-none",
-                                                selectedIds.has(client.id)
-                                                    ? "bg-primary/5"
-                                                    : isDark ? "hover:bg-white/[0.025]" : "hover:bg-[#fafafa]",
-                                                i !== 0 && `border-t ${isDark ? "border-[#1f1f1f]" : "border-[#f5f5f5]"}`
-                                            )}
-                                            style={{ gridTemplateColumns: '40px 36px 1fr 180px 160px 100px 140px' }}
+                                            className="h-full"
                                         >
-                                            <div className="flex items-center justify-center" onClick={e => { e.stopPropagation(); toggleRow(client.id); }}>
-                                                <div className={cn("w-3.5 h-3.5 rounded-[3px] border flex items-center justify-center transition-all",
-                                                    selectedIds.has(client.id) ? "bg-primary border-primary" : isDark ? "border-white/10 opacity-0 group-hover:opacity-100" : "border-[#ccc] opacity-0 group-hover:opacity-100")}>
-                                                    {selectedIds.has(client.id) && <Check size={9} strokeWidth={4} className="text-black" />}
+                                            <div
+                                                onClick={() => { if (selectedIds.size > 0) toggleRow(client.id); else openRightPanel({ type: 'contact', id: client.id }); }}
+                                                className={cn(
+                                                    "rounded-xl border h-full overflow-hidden cursor-pointer transition-all duration-150 relative group select-none",
+                                                    cardBg, cardBorder,
+                                                    isSelected
+                                                        ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                                                        : isActive
+                                                            ? isDark ? "border-[#3a3a3a] ring-1 ring-[#3a3a3a]" : "border-[#c0c0d0] ring-1 ring-[#c0c0d0] shadow-sm"
+                                                            : isDark ? "hover:border-[#2e2e2e] hover:bg-[#1c1c1c]" : "hover:border-[#ccc] hover:shadow-sm"
+                                                )}
+                                            >
+                                                {/* Header */}
+                                                {/* Actions Overlay (Checkbox + Delete) */}
+                                                <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 z-20">
+                                                    {/* Checkbox */}
+                                                    <div className={cn('transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
+                                                        onClick={e => { e.stopPropagation(); toggleRow(client.id); }}>
+                                                        <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                                                            <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
+                                                                isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
+                                                                {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Delete Individual (Hover) */}
+                                                    {!isSelected && (
+                                                        <div className="opacity-0 group-hover:opacity-100 transition-all">
+                                                            <InlineDeleteButton 
+                                                                onDelete={async () => {
+                                                                    const { deleteClient } = useClientStore.getState();
+                                                                    await deleteClient(client.id);
+                                                                    appToast.error("Deleted", 'Contact deleted');
+                                                                }} 
+                                                                isDark={isDark} 
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center py-1">
-                                                <Avatar 
-                                                    src={client.avatar_url} 
-                                                    name={client.contact_person || client.company_name} 
-                                                    className="w-7 h-7" 
-                                                    isDark={isDark} 
-                                                />
-                                            </div>
-                                            <div className={cn("flex items-center font-medium truncate", textPrimary)}>
-                                                {client.contact_person || '—'}
-                                            </div>
-                                            <div className="flex items-center truncate text-[#3b82f6]">{client.email || <span className={textSecondary}>—</span>}</div>
-                                            <div className={cn("flex items-center truncate", textSecondary)}>{client.phone || '—'}</div>
-                                            <div className={cn("flex items-center truncate", textSecondary)}>{client.country || '—'}</div>
-                                            <div className={cn("flex items-center truncate relative", muted)}>
-                                                {client.company_name || '—'}
+                                                <div className="flex items-center gap-3 px-4 py-3.5 relative group">
+                                                    <Avatar 
+                                                        src={client.avatar_url} 
+                                                        name={client.contact_person || client.company_name} 
+                                                        className="w-7 h-7" 
+                                                        isDark={isDark} 
+                                                    />
+                                                    <span className={cn("text-[13px] font-semibold truncate", textPrimary)}>
+                                                        {client.contact_person || '—'}
+                                                    </span>
+                                                </div>
+                                                {/* Rows */}
+                                                {client.company_name && <CardRow label="Company" value={client.company_name} isDark={isDark} />}
+                                                {client.email        && <CardRow label="Email"   value={client.email}        isDark={isDark} isLink />}
+                                                {client.phone        && <CardRow label="Phone"   value={client.phone}        isDark={isDark} />}
+                                                {client.country      && <CardRow label="Country" value={client.country}      isDark={isDark} />}
+                                                {client.address      && <CardRow label="Address" value={client.address}      isDark={isDark} />}
+                                                {!client.company_name && !client.email && !client.phone && !client.address && (
+                                                    <div className={cn("border-t px-4 py-2 text-[11px]",
+                                                        isDark ? "border-[#252525] text-[#444]" : "border-dashed border-[#e8e8e8] text-[#ccc]")}>
+                                                        No details added
+                                                    </div>
+                                                )}
                                             </div>
                                         </ContextMenuRow>
                                     );
                                 })}
-                                    </div>
-                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-4 flex flex-col min-h-0 overflow-hidden">
+                                <DataTable
+                                    data={filteredPeople}
+                                    columns={peopleColumns}
+                                    storageKeyPrefix="clients_people"
+                                    selectedIds={selectedIds}
+                                    onToggleAll={() => toggleAll(filteredPeople)}
+                                    onToggleRow={(id) => toggleRow(id)}
+                                    onRowClick={(c) => openRightPanel({ type: 'contact', id: c.id })}
+                                    rowMenuItems={getPeopleMenu}
+                                    isLoading={isClientsLoading}
+                                    isDark={isDark}
+                                />
                             </div>
                         )}
                     </>
@@ -841,85 +777,108 @@ export default function ClientsPage() {
                                     + New Company
                                 </button>
                             </div>
-                        ) : (
+                        ) : view === 'grid' ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                 {filteredCompanies.map(company => {
                                     const linkedCount = clients.filter(c => c.company_name === company.name).length;
                                     const isSelected = selectedIds.has(company.id);
                                     const isActive = activeCompanyId === company.id;
                                     return (
-                                        <div
+                                        <ContextMenuRow
                                             key={company.id}
-                                            onClick={() => { if (selectedIds.size > 0) toggleRow(company.id); else openRightPanel({ type: 'company', id: company.id }); }}
-                                            className={cn(
-                                                "rounded-xl border overflow-hidden cursor-pointer transition-all duration-150 relative group select-none",
-                                                cardBg, cardBorder,
-                                                isSelected
-                                                    ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                                                    : isActive
-                                                        ? isDark ? "border-[#3a3a3a] ring-1 ring-[#3a3a3a]" : "border-[#c0c0d0] ring-1 ring-[#c0c0d0] shadow-sm"
-                                                        : isDark ? "hover:border-[#2e2e2e] hover:bg-[#1c1c1c]" : "hover:border-[#ccc] hover:shadow-sm"
-                                            )}
+                                            items={getCompanyMenu(company)}
+                                            isDark={isDark}
+                                            onRowClick={() => openRightPanel({ type: 'company', id: company.id })}
+                                            className="h-full"
                                         >
-                                            {/* Header */}
-                                            {/* Actions Overlay (Checkbox + Delete) */}
-                                            <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 z-20">
-                                                {/* Checkbox */}
-                                                <div className={cn('transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
-                                                    onClick={e => { e.stopPropagation(); toggleRow(company.id); }}>
-                                                    <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-                                                        <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
-                                                            isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
-                                                            {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                            <div
+                                                onClick={() => { if (selectedIds.size > 0) toggleRow(company.id); else openRightPanel({ type: 'company', id: company.id }); }}
+                                                className={cn(
+                                                    "rounded-xl border h-full overflow-hidden cursor-pointer transition-all duration-150 relative group select-none",
+                                                    cardBg, cardBorder,
+                                                    isSelected
+                                                        ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                                                        : isActive
+                                                            ? isDark ? "border-[#3a3a3a] ring-1 ring-[#3a3a3a]" : "border-[#c0c0d0] ring-1 ring-[#c0c0d0] shadow-sm"
+                                                            : isDark ? "hover:border-[#2e2e2e] hover:bg-[#1c1c1c]" : "hover:border-[#ccc] hover:shadow-sm"
+                                                )}
+                                            >
+                                                {/* Header */}
+                                                {/* Actions Overlay (Checkbox + Delete) */}
+                                                <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 z-20">
+                                                    {/* Checkbox */}
+                                                    <div className={cn('transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
+                                                        onClick={e => { e.stopPropagation(); toggleRow(company.id); }}>
+                                                        <div className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                                                            <div className={cn('w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all',
+                                                                isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/20 bg-black/20 backdrop-blur' : 'border-[#ccc] bg-white/80 backdrop-blur')}>
+                                                                {isSelected && <Check size={10} strokeWidth={3} className="text-black"/>}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                {/* Delete Individual (Hover) */}
-                                                {!isSelected && (
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-all">
-                                                        <InlineDeleteButton 
-                                                            onDelete={async () => {
-                                                                const { deleteCompany } = useCompanyStore.getState();
-                                                                await deleteCompany(company.id);
-                                                                appToast.error("Deleted", 'Company deleted');
-                                                            }} 
-                                                            isDark={isDark} 
-                                                        />
-                                                    </div>
-                                                )}
+                                                    {/* Delete Individual (Hover) */}
+                                                    {!isSelected && (
+                                                        <div className="opacity-0 group-hover:opacity-100 transition-all">
+                                                            <InlineDeleteButton 
+                                                                onDelete={async () => {
+                                                                    const { deleteCompany } = useCompanyStore.getState();
+                                                                    await deleteCompany(company.id);
+                                                                    appToast.error("Deleted", 'Company deleted');
+                                                                }} 
+                                                                isDark={isDark} 
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3 px-4 py-3.5 relative group">
+                                                    <Avatar 
+                                                        src={company.avatar_url} 
+                                                        name={company.name} 
+                                                        className="w-7 h-7" 
+                                                        isDark={isDark} 
+                                                    />
+                                                    <span className={cn("text-[13px] font-semibold truncate", textPrimary)}>
+                                                        {company.name}
+                                                    </span>
+                                                </div>
+                                                {/* Rows */}
+                                                {company.industry && <CardRow label="Industry" value={company.industry} isDark={isDark} />}
+                                                {company.email    && <CardRow label="Email"    value={company.email}    isDark={isDark} isLink />}
+                                                {company.phone    && <CardRow label="Phone"    value={company.phone}    isDark={isDark} />}
+                                                {company.website  && <CardRow label="Website"  value={company.website}  isDark={isDark} isLink />}
+                                                {company.address  && <CardRow label="Address"  value={company.address}  isDark={isDark} />}
+                                                {/* Footer */}
+                                                <div className={cn(
+                                                    "flex items-center gap-1.5 border-t px-4 py-2",
+                                                    isDark ? "border-[#252525] text-[#444]" : "border-dashed border-[#e8e8e8] text-[#bbb]"
+                                                )}>
+                                                    <Users size={10} />
+                                                    <span className="text-[10px]">{linkedCount} contact{linkedCount !== 1 ? 's' : ''}</span>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-3 px-4 py-3.5 relative group">
-                                                <Avatar 
-                                                    src={company.avatar_url} 
-                                                    name={company.name} 
-                                                    className="w-7 h-7" 
-                                                    isDark={isDark} 
-                                                />
-                                                <span className={cn("text-[13px] font-semibold truncate", textPrimary)}>
-                                                    {company.name}
-                                                </span>
-                                            </div>
-                                            {/* Rows */}
-                                            {company.industry && <CardRow label="Industry" value={company.industry} isDark={isDark} />}
-                                            {company.email    && <CardRow label="Email"    value={company.email}    isDark={isDark} isLink />}
-                                            {company.phone    && <CardRow label="Phone"    value={company.phone}    isDark={isDark} />}
-                                            {company.website  && <CardRow label="Website"  value={company.website}  isDark={isDark} isLink />}
-                                            {company.address  && <CardRow label="Address"  value={company.address}  isDark={isDark} />}
-                                            {/* Footer */}
-                                            <div className={cn(
-                                                "flex items-center gap-1.5 border-t px-4 py-2",
-                                                isDark ? "border-[#252525] text-[#444]" : "border-dashed border-[#e8e8e8] text-[#bbb]"
-                                            )}>
-                                                <Users size={10} />
-                                                <span className="text-[10px]">{linkedCount} contact{linkedCount !== 1 ? 's' : ''}</span>
-                                            </div>
-                                        </div>
+                                        </ContextMenuRow>
                                     );
                                 })}
                             </div>
-                        )}
+                            ) : (
+                                <div className="p-4 flex flex-col min-h-0 overflow-hidden">
+                                    <DataTable
+                                        data={filteredCompanies}
+                                        columns={companyColumns}
+                                        storageKeyPrefix="clients_companies"
+                                        selectedIds={selectedIds}
+                                        onToggleAll={() => toggleAll(filteredCompanies)}
+                                        onToggleRow={(id) => toggleRow(id)}
+                                        onRowClick={(c) => openRightPanel({ type: 'company', id: c.id })}
+                                        rowMenuItems={getCompanyMenu}
+                                        isLoading={isCompaniesLoading}
+                                        isDark={isDark}
+                                    />
+                                </div>
+                            )}
                     </>
+
                 )}
             </div>
 

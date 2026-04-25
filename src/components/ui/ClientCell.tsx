@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Search, Plus, User, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dropdown } from '@/components/ui/Dropdown';
@@ -36,6 +36,7 @@ export function ClientCell({
     isDark,
     variant = 'table',
 }: ClientCellProps) {
+    const triggerRef = useRef<HTMLButtonElement>(null);
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
@@ -128,6 +129,7 @@ export function ClientCell({
     return (
         <div className={cn('relative', variant === 'table' && 'w-full h-full flex')}>
             <button
+                ref={triggerRef}
                 onClick={(e) => {
                     e.stopPropagation();
                     setOpen(!open);
@@ -146,6 +148,7 @@ export function ClientCell({
                 onClose={() => setOpen(false)}
                 isDark={isDark}
                 align="center"
+                triggerRef={triggerRef}
                 className="min-w-[224px] max-w-[224px]"
             >
                 <div className={cn('p-2 border-b', isDark ? 'border-[#2e2e2e]' : 'border-[#f0f0f0]')}>

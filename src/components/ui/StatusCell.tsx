@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getStatusColors } from '@/lib/statusConfig';
@@ -17,7 +17,8 @@ interface StatusCellProps<T extends string = string> {
     status: T;
     onStatusChange: (s: T) => void;
     isDark: boolean;
-    customStatuses: CustomStatus[];
+    customStatuses?: CustomStatus[];
+    options?: T[];
 }
 
 /**
@@ -32,17 +33,26 @@ export function StatusCell<T extends string = string>({
     onStatusChange,
     isDark,
     customStatuses = [],
+    options = [],
 }: StatusCellProps<T>) {
+    const triggerRef = useRef<HTMLButtonElement>(null);
     const [open, setOpen] = useState(false);
     const sc = getStatusColors(status, customStatuses);
 
-    const activeStatuses = customStatuses
-        .filter((s) => s.is_active || s.name === status)
-        .sort((a, b) => a.position - b.position);
+    // If customStatuses is provided (even if empty), we show them.
+    // If not provided, we show the static 'options' list.
+    const hasCustom = customStatuses && customStatuses.length > 0;
+    
+    const activeStatuses = hasCustom
+        ? customStatuses!
+            .filter((s) => s.is_active || s.name === status)
+            .sort((a, b) => a.position - b.position)
+        : (options || []).map(o => ({ id: o, name: o, is_active: true, position: 0 }));
 
     return (
         <div className="relative">
             <button
+                ref={triggerRef}
                 onClick={(e) => {
                     e.stopPropagation();
                     setOpen(!open);
@@ -68,7 +78,7 @@ export function StatusCell<T extends string = string>({
                 {status}
                 <ChevronDown size={10} className="opacity-50" />
             </button>
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center">
+            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center" triggerRef={triggerRef}>
                 <div className="py-1 min-w-[140px]">
                     {activeStatuses.map((s) => {
                         const sSc = getStatusColors(s.name, customStatuses);

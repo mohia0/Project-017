@@ -63,92 +63,100 @@ import { CSS } from '@dnd-kit/utilities';
 
 
 
-function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onAssignClients, customStatuses = [] }: {
+function InvoiceCard({ i, onOpen, onArchive, isDark, onStatusChange, isSelected, onToggle, onAssignClients, customStatuses = [], menuItems }: {
     i: Invoice; onOpen: () => void; onArchive: () => void; isDark: boolean;
     onStatusChange: (s: InvoiceStatus) => void; isSelected: boolean; onToggle: () => void;
     onAssignClients: (clients: { id: string; name: string; avatar_url?: string | null }[]) => void;
     customStatuses: any[];
+    menuItems: any[];
 }) {
     return (
-        <div
-            onClick={onOpen}
-            className={cn(
-                "relative rounded-[8px] border cursor-pointer transition-all duration-150 group flex flex-col",
-                isDark ? "bg-[#1a1a1a] border-[#2e2e2e] hover:border-[#444]"
-                    : "bg-white border-transparent hover:shadow-sm"
-            )}
+        <ContextMenuRow 
+            items={menuItems} 
+            isDark={isDark} 
+            onRowClick={onOpen}
+            className="h-full"
         >
-            {/* Header */}
-            <div className={cn("flex items-center justify-between px-4 py-3 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
-                <div className={cn("font-bold text-[14px] tracking-tight text-primary uppercase")}>
-                    {i.invoice_number || i.id?.slice(-6).toUpperCase() || 'â€”'}
+            <div
+                onClick={onOpen}
+                className={cn(
+                    "relative rounded-[8px] border cursor-pointer transition-all duration-150 group flex flex-col h-full",
+                    isDark ? "bg-[#1a1a1a] border-[#2e2e2e] hover:border-[#444]"
+                        : "bg-white border-transparent hover:shadow-sm"
+                )}
+            >
+                {/* Header */}
+                <div className={cn("flex items-center justify-between px-4 py-3 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
+                    <div className={cn("font-bold text-[14px] tracking-tight text-primary uppercase")}>
+                        {i.invoice_number || i.id?.slice(-6).toUpperCase() || '—'}
+                    </div>
+                    <div onClick={(e) => { e.stopPropagation(); onToggle(); }} className="cursor-pointer">
+                        <Chk checked={isSelected} isDark={isDark} />
+                    </div>
                 </div>
-                <div onClick={(e) => { e.stopPropagation(); onToggle(); }} className="cursor-pointer">
-                    <Chk checked={isSelected} isDark={isDark} />
-                </div>
-            </div>
 
-            {/* Body */}
-            <div className="px-4 py-1.5 flex flex-col">
-                <CardRow label="Client" isDark={isDark}>
-                    <ClientCell
-                        assignedClients={i.meta?.assignedClients}
-                        currentName={i.client_name}
-                        currentId={i.client_id}
-                        onAssignClients={onAssignClients}
-                        isDark={isDark}
-                        variant="card"
-                    />
-                </CardRow>
+                {/* Body */}
+                <div className="px-4 py-1.5 flex flex-col">
+                    <CardRow label="Client" isDark={isDark}>
+                        <ClientCell
+                            assignedClients={i.meta?.assignedClients}
+                            currentName={i.client_name}
+                            currentId={i.client_id}
+                            onAssignClients={onAssignClients}
+                            isDark={isDark}
+                            variant="card"
+                        />
+                    </CardRow>
 
-                <CardRow label="Expiration date" isDark={isDark}>
-                    {i.due_date ? <span>{fmtDate(i.due_date)} <span className="opacity-60 font-normal">({timeAgo(i.due_date)})</span></span> : ''}
-                </CardRow>
+                    <CardRow label="Expiration date" isDark={isDark}>
+                        {i.due_date ? <span>{fmtDate(i.due_date)} <span className="opacity-60 font-normal">({timeAgo(i.due_date)})</span></span> : ''}
+                    </CardRow>
 
-                {i.paid_at && (
-                    <CardRow label="Payment date" isDark={isDark}>
-                        <div className="flex items-center gap-1.5 text-green-500 font-bold">
-                            <CheckCircle size={10} />
-                            <span>{fmtDate(i.paid_at)}</span>
+                    {i.paid_at && (
+                        <CardRow label="Payment date" isDark={isDark}>
+                            <div className="flex items-center gap-1.5 text-green-500 font-bold">
+                                <CheckCircle size={10} />
+                                <span>{fmtDate(i.paid_at)}</span>
+                            </div>
+                        </CardRow>
+                    )}
+
+                    <CardRow label="Issue date" isDark={isDark}>
+                        {i.issue_date ? <span>{fmtDate(i.issue_date)} <span className="opacity-60 font-normal">({timeAgo(i.issue_date)})</span></span> : ''}
+                    </CardRow>
+
+                    <CardRow label="Total" isDark={isDark}>
+                        <MoneyAmount amount={Number(i.amount || 0)} currency={i.meta?.currency} showBadge />
+                    </CardRow>
+
+                    <CardRow label="Status" isDark={isDark} noBorder>
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <StatusCell status={i.status} onStatusChange={onStatusChange} isDark={isDark} customStatuses={customStatuses} />
                         </div>
                     </CardRow>
-                )}
+                </div>
 
-                <CardRow label="Issue date" isDark={isDark}>
-                    {i.issue_date ? <span>{fmtDate(i.issue_date)} <span className="opacity-60 font-normal">({timeAgo(i.issue_date)})</span></span> : ''}
-                </CardRow>
-
-                <CardRow label="Total" isDark={isDark}>
-                    <MoneyAmount amount={Number(i.amount || 0)} currency={i.meta?.currency} showBadge />
-                </CardRow>
-
-                <CardRow label="Status" isDark={isDark} noBorder>
-                    <div onClick={(e) => e.stopPropagation()}>
-                        <StatusCell status={i.status} onStatusChange={onStatusChange} isDark={isDark} customStatuses={customStatuses} />
-                    </div>
-                </CardRow>
+                {/* Quick actions */}
+                <div className="absolute top-2.5 right-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                        onClick={e => { e.stopPropagation(); window.open(window.location.origin + '/p/invoice/' + i.id, '_blank'); }}
+                        title="Open Link"
+                        className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
+                            isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]")}
+                    >
+                        <ExternalLink size={11} />
+                    </button>
+                    <button
+                        onClick={e => { e.stopPropagation(); onArchive(); }}
+                        title="Archive"
+                        className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
+                            isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]")}
+                    >
+                        <Archive size={11} />
+                    </button>
+                </div>
             </div>
-
-            {/* Quick actions */}
-            <div className="absolute top-2.5 right-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                <button
-                    onClick={e => { e.stopPropagation(); window.open(window.location.origin + '/p/invoice/' + i.id, '_blank'); }}
-                    title="Open Link"
-                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
-                        isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]")}
-                >
-                    <ExternalLink size={11} />
-                </button>
-                <button
-                    onClick={e => { e.stopPropagation(); onArchive(); }}
-                    title="Archive"
-                    className={cn("w-6 h-6 rounded flex items-center justify-center transition-all",
-                        isDark ? "bg-[#2a2a2a] text-[#888] hover:text-[#ccc]" : "bg-white border border-[#e0e0e0] shadow-sm text-[#666] hover:bg-[#fafafa]")}
-                >
-                    <Archive size={11} />
-                </button>
-            </div>
-        </div>
+        </ContextMenuRow>
     );
 }
 
@@ -191,14 +199,14 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
                 <div className="flex items-center gap-3">
                     <div className={cn("flex items-center gap-1 text-[11.5px]", isDark ? "text-[#666]" : "text-[#999]")}>
                         <User size={10} className="opacity-60" />
-                        <span className="truncate max-w-[120px]">{inv.client_name || 'â€”'}</span>
+                        <span className="truncate max-w-[120px]">{inv.client_name || '—'}</span>
                     </div>
                     <span className={cn("text-[11px]", isDark ? "text-[#555]" : "text-[#bbb]")}>
                         {inv.status === 'Paid' && inv.paid_at ? (
                              <span className="text-green-500 font-bold flex items-center gap-1">
                                  <Check size={10} /> {fmtDate(inv.paid_at)}
                              </span>
-                        ) : inv.due_date ? fmtDate(inv.due_date) : 'â€”'}
+                        ) : inv.due_date ? fmtDate(inv.due_date) : '—'}
                     </span>
                 </div>
             </div>
@@ -213,21 +221,25 @@ function MobileInvoiceRow({ inv, onOpen, isDark, onStatusChange, onArchive, isAr
     );
 }
 
-/* â”€â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ──────────────────────────────── Main page ──────────────────────────────── */
 export default function InvoicesPage() {
     const router = useRouter();
     const { navItems } = useMenuStore();
     const { theme, setImportModalOpen, activeWorkspaceId, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const { invoices, fetchInvoices, updateInvoice, addInvoice, deleteInvoice, isLoading } = useInvoiceStore();
     const { statuses, fetchStatuses } = useSettingsStore();
-    const { clients } = useClientStore();
+    const { clients, fetchClients } = useClientStore();
 
     useEffect(() => {
-        if (activeWorkspaceId) fetchStatuses(activeWorkspaceId);
-    }, [activeWorkspaceId]);
+        if (activeWorkspaceId) {
+            fetchStatuses(activeWorkspaceId);
+            fetchInvoices();
+            fetchClients();
+        }
+    }, [activeWorkspaceId, fetchStatuses, fetchInvoices, fetchClients]);
 
-    const customStatuses = useMemo(() => statuses.filter(s => s.tool === 'invoices'), [statuses]);
-    const activeStatues = useMemo(() => customStatuses.filter(s => s.is_active).sort((a,b) => a.position - b.position), [customStatuses]);
+    const customStatuses = useMemo(() => statuses.filter((s: any) => s.tool === 'invoices'), [statuses]);
+    const activeStatues = useMemo(() => customStatuses.filter((s: any) => s.is_active).sort((a: any, b: any) => a.position - b.position), [customStatuses]);
 
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
@@ -317,7 +329,7 @@ export default function InvoicesPage() {
 
     const INVOICE_FILTER_FIELDS = useMemo<FilterField[]>(() => [
         { key: 'status',      label: 'Status',          type: 'enum',   options: activeStatues.map(s => s.name) },
-        { key: 'client_name', label: 'Client',          type: 'enum',   options: Array.from(new Set(clients.map(c => c.contact_person || c.company_name).filter(Boolean))).sort() },
+        { key: 'client_name', label: 'Client',          type: 'enum',   options: Array.from(new Set(clients.map((c: any) => c.contact_person || c.company_name).filter(Boolean))).sort() },
         { key: 'issue_date',  label: 'Issue date',      type: 'date' },
         { key: 'due_date',    label: 'Expiration date', type: 'date' },
         { key: 'paid_at',     label: 'Payment date',    type: 'date' },
@@ -363,7 +375,7 @@ export default function InvoicesPage() {
         // Initialize with active statuses
         activeStatues.forEach(st => s[st.name] = { count: 0, amount: 0 });
 
-        baseFiltered.forEach(inv => {
+        baseFiltered.forEach((inv: any) => {
             s.All.count++; s.All.amount += Number(inv.amount || 0);
             if (!s[inv.status]) s[inv.status] = { count: 0, amount: 0 };
             s[inv.status].count++; s[inv.status].amount += Number(inv.amount || 0);
@@ -489,7 +501,7 @@ export default function InvoicesPage() {
         <div className={cn("flex flex-col h-full overflow-hidden font-sans text-[13px]",
             isDark ? "bg-[#141414] text-[#e5e5e5]" : "bg-[#f7f7f7] text-[#111]")}>
 
-            {/* â”€â”€ Page header â€” hidden on mobile (MobileTopBar handles title) â”€â”€ */}
+            {/* ── Page header — hidden on mobile (MobileTopBar handles title) ── */}
             <div className={cn("hidden md:flex items-center justify-between px-5 py-3 shrink-0", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-white")}>
                 <h1 className="text-[15px] font-semibold tracking-tight">{navItems.find(item => item.href === '/invoices')?.label || 'Invoices'}</h1>
             </div>
@@ -888,7 +900,7 @@ export default function InvoicesPage() {
                                                         <span className="text-[12px]">{fmtDate(inv.due_date)}</span>
                                                         <span className="text-[10px] opacity-50">{timeAgo(inv.due_date)}</span>
                                                     </>
-                                                ) : <span className="text-[12px]">â€”</span>}
+                                                ) : <span className="text-[12px]">—</span>}
                                             </div>
                                         )
                                     },
@@ -903,7 +915,7 @@ export default function InvoicesPage() {
                                                         <span className="text-[12px]">{fmtDate(inv.paid_at)}</span>
                                                         <span className="text-[10px] opacity-50">{timeAgo(inv.paid_at)}</span>
                                                     </>
-                                                ) : <span className="text-[12px] opacity-20">â€”</span>}
+                                                ) : <span className="text-[12px] opacity-20">—</span>}
                                             </div>
                                         )
                                     }
@@ -989,21 +1001,32 @@ export default function InvoicesPage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
-                            {filtered.map(inv => (
-                                <InvoiceCard key={inv.id} i={inv}
-                                    onOpen={() => router.push(`/invoices/${inv.id}`)}
-                                    onArchive={() => handleArchive(inv.id)}
-                                    onStatusChange={(s) => updateInvoice(inv.id, { status: s })}
-                                    onAssignClients={(clients) => updateInvoice(inv.id, { client_id: clients[0]?.id || null, client_name: clients[0]?.name || '', meta: { ...inv.meta, assignedClients: clients } as any })}
-                                    isSelected={selectedIds.has(inv.id)}
-                                    onToggle={() => {
-                                        const n = new Set(selectedIds);
-                                        n.has(inv.id) ? n.delete(inv.id) : n.add(inv.id);
-                                        setSelectedIds(n);
-                                    }}
-                                    customStatuses={customStatuses}
-                                    isDark={isDark} />
-                            ))}
+                            {filtered.map(inv => {
+                                const menuItems = [
+                                    { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/invoices/${inv.id}`) },
+                                    { label: 'Open Public Link', icon: <Link2 size={12} />, onClick: () => window.open(window.location.origin + '/p/invoice/' + inv.id, '_blank') },
+                                    { label: 'Copy Public Link', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(window.location.origin + '/p/invoice/' + inv.id); appToast.success('Link copied'); } },
+                                    { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(inv.id) },
+                                    { label: archivedIds.has(inv.id) ? 'Unarchive' : 'Archive', icon: archivedIds.has(inv.id) ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: () => handleArchive(inv.id), separator: true },
+                                    { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(inv.id), separator: true }
+                                ];
+                                return (
+                                    <InvoiceCard key={inv.id} i={inv}
+                                        onOpen={() => router.push(`/invoices/${inv.id}`)}
+                                        onArchive={() => handleArchive(inv.id)}
+                                        onStatusChange={(s) => updateInvoice(inv.id, { status: s })}
+                                        onAssignClients={(clients) => updateInvoice(inv.id, { client_id: clients[0]?.id || null, client_name: clients[0]?.name || '', meta: { ...inv.meta, assignedClients: clients } as any })}
+                                        isSelected={selectedIds.has(inv.id)}
+                                        onToggle={() => {
+                                            const n = new Set(selectedIds);
+                                            n.has(inv.id) ? n.delete(inv.id) : n.add(inv.id);
+                                            setSelectedIds(n);
+                                        }}
+                                        customStatuses={customStatuses}
+                                        isDark={isDark}
+                                        menuItems={menuItems} />
+                                );
+                            })}
                         </div>
                     )}
                 </div>

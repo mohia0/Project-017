@@ -23,6 +23,12 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useMenuStore } from '@/store/useMenuStore';
+import { fmtDate } from '@/lib/dateUtils';
+import { Dropdown, DItem } from '@/components/ui/Dropdown';
+import { StatusCell } from '@/components/ui/StatusCell';
+import { ToolbarButton as TbBtn } from '@/components/ui/ToolbarButton';
+import { Checkbox as Chk } from '@/components/ui/Checkbox';
+
 import { 
     DndContext, 
     closestCenter, 
@@ -53,10 +59,8 @@ const STATUS_DARK: Record<FormStatus, { text: string; dot: string }> = {
     Inactive: { text: '#f97316', dot: '#f97316' },
 };
 
-function fmtDate(d: string) {
-    const date = new Date(d);
-    return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
-}
+
+
 
 function SortableHeader({ id, children, onLeftResizeStart, onRightResizeStart, isDark, width, flexible }: { 
     id: string; 
@@ -123,144 +127,6 @@ function SortableHeader({ id, children, onLeftResizeStart, onRightResizeStart, i
     );
 }
 
-function Dropdown({ open, onClose, isDark, children, align = 'center', minWidth = '140px' }: { 
-    open: boolean; 
-    onClose: () => void; 
-    isDark: boolean; 
-    children: React.ReactNode; 
-    align?: 'left' | 'right' | 'center';
-    minWidth?: string;
-}) {
-    const ref = useRef<HTMLDivElement>(null);
-    const [coords, setCoords] = React.useState<{ top: number; left: number } | null>(null);
-
-    React.useLayoutEffect(() => {
-        if (open && ref.current?.parentElement) {
-            const rect = ref.current.parentElement.getBoundingClientRect();
-            let left = rect.left;
-            if (align === 'center') left = rect.left + rect.width / 2;
-            if (align === 'right') left = rect.right;
-
-            setCoords({
-                top: rect.bottom + 4,
-                left: left
-            });
-        }
-    }, [open, align]);
-
-    useEffect(() => {
-        if (!open) return;
-        const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
-        const s = (e: Event) => {
-            if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
-            onClose();
-        };
-        document.addEventListener('mousedown', h);
-        window.addEventListener('scroll', s, true);
-        return () => {
-            document.removeEventListener('mousedown', h);
-            window.removeEventListener('scroll', s, true);
-        };
-    }, [open, onClose]);
-
-    if (!open) return null;
-
-    return (
-        <div 
-            ref={ref} 
-            style={coords ? {
-                top: `${coords.top}px`,
-                left: `${coords.left}px`,
-                minWidth
-            } : { opacity: 0 }}
-            className={cn(
-                "fixed z-[1000] rounded-xl border shadow-xl overflow-hidden",
-                align === 'center' && "-translate-x-1/2",
-                align === 'right' && "-translate-x-full",
-                isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
-            )}
-        >
-            {children}
-        </div>
-    );
-}
-
-function StatusCell({ status, onStatusChange, isDark }: {
-    status: FormStatus;
-    onStatusChange: (s: FormStatus) => void;
-    isDark: boolean;
-}) {
-    const [open, setOpen] = useState(false);
-    const cfg = STATUS_CFG[status];
-    const dark = STATUS_DARK[status];
-    const STATUSES: FormStatus[] = ['Active', 'Draft', 'Inactive'];
-
-    return (
-        <div className="relative">
-            <button
-                onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-                className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-semibold border transition-all hover:brightness-95",
-                    isDark ? "bg-white/5 border-white/10" : ""
-                )}
-                style={isDark ? { color: dark.text } : { background: cfg.bg, color: cfg.text, borderColor: cfg.border }}
-            >
-                {status}
-                <ChevronDown size={10} className="opacity-40" />
-            </button>
-
-            <Dropdown open={open} onClose={() => setOpen(false)} isDark={isDark} align="center">
-                <div className="py-1 min-w-[120px]">
-                    {STATUSES.map(s => {
-                        const sCfg = STATUS_CFG[s];
-                        const sDark = STATUS_DARK[s];
-                        const isActive = s === status;
-                        return (
-                            <button key={s} onClick={(e) => { e.stopPropagation(); onStatusChange(s); setOpen(false); }}
-                                className={cn("w-full flex items-center justify-between px-3.5 py-2 text-[12px] text-left transition-colors",
-                                    isActive ? (isDark ? "bg-white/10" : "bg-[#f5f5f5]") : (isDark ? "hover:bg-white/5" : "hover:bg-[#fafafa]")
-                                )}
-                            >
-                                <span className="font-medium" style={isDark ? { color: sDark.text } : { color: sCfg.text }}>{s}</span>
-                                {isActive && <Check size={11} className="text-primary" />}
-                            </button>
-                        );
-                    })}
-                </div>
-            </Dropdown>
-        </div>
-    );
-}
-
-function TbBtn({ label, icon, active, hasArrow, onClick, isDark }: {
-    label?: string; icon?: React.ReactNode; active?: boolean; hasArrow?: boolean; onClick?: () => void; isDark: boolean;
-}) {
-    return (
-        <button onClick={onClick} className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded transition-colors shrink-0",
-            active
-                ? isDark ? "bg-white/10 text-white" : "bg-[#ebebf5] text-[#111]"
-                : isDark ? "text-[#777] hover:text-[#ccc] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]"
-        )}>
-            {icon}{label}{hasArrow && <ChevronDown size={9} className="opacity-40" />}
-        </button>
-    );
-}
-
-/* ─── Checkbox ──────────────────────────────────────────────────── */
-function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
-    return (
-        <div className={cn("w-[16px] h-[16px] rounded-[5px] border flex items-center justify-center transition-all duration-200 shrink-0",
-            checked ? "bg-primary border-primary shadow-[0_2px_4px_rgba(77,191,57,0.2)]"
-                : indeterminate ? "bg-primary/40 border-primary/60"
-                    : isDark ? "border-white/15 bg-white/5" : "border-[#d8d8d8] bg-white")}>
-            {(checked || indeterminate) && (
-                <Check size={11} strokeWidth={4.5} className="text-black" />
-            )}
-        </div>
-    );
-}
-
 /* ─── Form Card ─────────────────────────────────────────────── */
 function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }: {
     f: Form; onOpen: () => void; onDelete: () => void; onCopy: (e: React.MouseEvent) => void; isDark: boolean;
@@ -310,7 +176,11 @@ function FormCard({ f, onOpen, onDelete, onCopy, isDark, isSelected, onToggle }:
                     </div>
                     <StatusCell
                         status={f.status}
-                        onStatusChange={(s) => useFormStore.getState().updateForm(f.id, { status: s })}
+                        options={['Active', 'Draft', 'Inactive']}
+                        onStatusChange={async (s) => {
+                            await useFormStore.getState().updateForm(f.id, { status: s });
+                            appToast.success('Updated', `Form status set to ${s.toLowerCase()}`);
+                        }}
                         isDark={isDark}
                     />
                 </div>
@@ -916,6 +786,7 @@ export default function FormsPage() {
                                                         <div key={colId} className="flex items-center px-4 py-1.5 self-center">
                                                             <StatusCell
                                                                 status={f.status}
+                                                                options={['Active', 'Draft', 'Inactive']}
                                                                 onStatusChange={(s) => updateForm(f.id, { status: s })}
                                                                 isDark={isDark}
                                                             />

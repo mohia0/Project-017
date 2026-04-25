@@ -22,7 +22,12 @@ export type StatusKey =
   | 'Paid'
   | 'Overdue'
   | 'Declined'
-  | 'Cancelled';
+  | 'Cancelled'
+  | 'Active'
+  | 'Inactive'
+  | 'Planning'
+  | 'On Hold'
+  | 'Completed';
 
 export interface StatusColors {
   /** Tailwind bg class — badge / chip background (light mode) */
@@ -97,6 +102,41 @@ export const STATUS_COLORS: Record<StatusKey | 'All', StatusColors> = {
     badgeBorder: 'border-[#e2e8f0]',
     bar:         '#94a3b8',
     label:       'Cancelled',
+  },
+  Active: {
+    badge:       'bg-[#f0fdf4]',
+    badgeText:   'text-[#166534]',
+    badgeBorder: 'border-[#dcfce7]',
+    bar:         '#10b981',
+    label:       'Active',
+  },
+  Inactive: {
+    badge:       'bg-[#fff7ed]',
+    badgeText:   'text-[#9a3412]',
+    badgeBorder: 'border-[#ffedd5]',
+    bar:         '#f97316',
+    label:       'Inactive',
+  },
+  Planning: {
+    badge:       'bg-[#eef2ff]',
+    badgeText:   'text-[#4338ca]',
+    badgeBorder: 'border-[#e0e7ff]',
+    bar:         '#6366f1',
+    label:       'Planning',
+  },
+  'On Hold': {
+    badge:       'bg-[#fffbeb]',
+    badgeText:   'text-[#92400e]',
+    badgeBorder: 'border-[#fef3c7]',
+    bar:         '#f59e0b',
+    label:       'On Hold',
+  },
+  Completed: {
+    badge:       'bg-[#f5f3ff]',
+    badgeText:   'text-[#5b21b6]',
+    badgeBorder: 'border-[#ede9fe]',
+    bar:         '#3d0ebf',
+    label:       'Completed',
   },
 };
 

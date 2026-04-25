@@ -274,7 +274,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const activeStatuses = React.useMemo(() => customStatuses.filter(s => s.is_active || s.name === meta.status).sort((a,b) => a.position - b.position), [customStatuses, meta.status]);
 
     React.useEffect(() => {
-        if (activeWorkspaceId) fetchStatuses(activeWorkspaceId);
+        if (activeWorkspaceId) {
+            fetchStatuses(activeWorkspaceId);
+        }
     }, [activeWorkspaceId, fetchStatuses]);
 
     const statusRef = useRef<HTMLDivElement>(null);
@@ -998,7 +1000,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             "flex items-center shrink-0 p-1.5 gap-1 m-3 rounded-xl border relative z-10",
                             isDark ? "bg-[#111] border-white/5" : "bg-[#f5f5f5] border-black/5"
                         )}>
-                            {([['details', Settings, 'Details'], ['design', Palette, 'Design']] as const).map(([tab, Icon, label]) => {
+                            {([['details', Settings, 'Details'], ['appearance', Palette, 'Design']] as const).map(([tab, Icon, label]) => {
                                 const isActive = rightTab === tab;
                                 return (
                                     <button key={tab} onClick={() => setRightTab(tab)}
