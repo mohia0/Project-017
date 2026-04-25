@@ -52,6 +52,7 @@ import { appToast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
 import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { motion, AnimatePresence } from 'framer-motion';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -1015,26 +1016,34 @@ export default function ProposalEditor({ id }: { id?: string }) {
                         isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                     )}>
 
-                        <div className="flex items-center shrink-0 p-1.5 gap-1">
+                        <div className={cn(
+                            "flex mx-3 mt-3 p-1 rounded-xl shrink-0",
+                            isDark ? "bg-white/5" : "bg-[#efeff2]"
+                        )}>
                             {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => (
                                 <button
                                     key={tab}
                                     onClick={() => setRightTab(tab)}
                                     className={cn(
-                                        "flex-1 flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold transition-all rounded-xl",
-                                        rightTab === tab
-                                            ? isDark
-                                                ? "bg-white/10 text-white"
-                                                : "bg-[#111]/5 text-[#111]"
-                                            : isDark
-                                                ? "text-[#555] hover:bg-white/[0.03] hover:text-[#aaa]"
-                                                : "text-[#bbb] hover:bg-black/[0.03] hover:text-[#666]"
+                                        "flex-1 text-[10px] font-bold uppercase tracking-wider py-1.5 rounded-lg transition-all relative flex items-center justify-center gap-1.5 h-8",
+                                        rightTab === tab 
+                                            ? (isDark ? "text-white" : "text-black")
+                                            : (isDark ? "text-[#555] hover:text-[#777]" : "text-[#aaa] hover:text-[#888]")
                                     )}
                                 >
-                                    <Icon size={14} strokeWidth={rightTab === tab ? 2.5 : 2} />
-                                    <span className={cn("transition-all", rightTab === tab ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 absolute")}>
+                                    <span className="relative z-10 flex items-center gap-1.5">
+                                        <Icon size={12} strokeWidth={2.5} />
                                         {label}
                                     </span>
+                                    {rightTab === tab && (
+                                        <motion.div 
+                                            layoutId="active-right-tab" 
+                                            className={cn(
+                                                "absolute inset-0 rounded-lg shadow-sm border",
+                                                isDark ? "bg-white/10 border-white/10" : "bg-white border-black/5"
+                                            )} 
+                                        />
+                                    )}
                                 </button>
                             ))}
                         </div>

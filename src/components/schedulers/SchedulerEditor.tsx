@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     ArrowLeft, ChevronDown, Link2, MoreHorizontal, Trash2, Copy,
@@ -10,7 +11,6 @@ import {
     X, Upload, SquareCheck, Send
 } from 'lucide-react';
 import { SendEmailModal } from '@/components/modals/SendEmailModal';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn, getBackgroundImageWithOpacity } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
@@ -1175,6 +1175,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                                         selectedFieldId={selectedFieldId}
                                                         onSelectField={setSelectedFieldId}
                                                         isReadOnly={isPreview}
+                                                        primaryColor={primaryColor}
                                                     />
                                                     <div className="flex gap-3 pt-2">
                                                         <button className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold border transition-all"
@@ -1245,25 +1246,45 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                             isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                         )}>
                             {/* Tab switcher */}
-                            <div className="flex items-center shrink-0 p-1.5 gap-1">
-                                {([['details', Settings, selectedFieldId ? 'Field' : 'Details'], ['design', Palette, 'Design']] as const).map(([tab, Icon, label]) => (
-                                    <button key={tab} onClick={() => {
-                                        setRightTab(tab);
-                                        if (tab !== 'details') setSelectedFieldId(null);
-                                    }}
-                                        className={cn(
-                                            "flex-1 flex items-center justify-center gap-2 py-2.5 text-[11px] font-bold transition-all rounded-xl",
-                                            rightTab === tab
-                                                ? (isDark ? "bg-white/10 text-white" : "bg-[#111]/5 text-[#111]")
-                                                : (isDark ? "text-[#555] hover:bg-white/[0.03] hover:text-[#aaa]" : "text-[#bbb] hover:bg-black/[0.03] hover:text-[#666]")
-                                        )}>
-                                        <Icon size={14} strokeWidth={rightTab === tab ? 2.5 : 2} />
-                                        <span className={cn("transition-all", rightTab === tab ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 absolute")}>
-                                            {label}
-                                        </span>
-                                    </button>
-                                ))}
+                            <div className={cn(
+                                "flex items-center shrink-0 p-1.5 gap-1 m-3 rounded-xl border relative z-10",
+                                isDark ? "bg-[#111] border-white/5" : "bg-[#f5f5f5] border-black/5"
+                            )}>
+                                {([['details', Settings, selectedFieldId ? 'Field' : 'Details'], ['design', Palette, 'Design']] as const).map(([tab, Icon, label]) => {
+                                    const isActive = rightTab === tab;
+                                    return (
+                                        <button key={tab} onClick={() => {
+                                            setRightTab(tab);
+                                            if (tab !== 'details') setSelectedFieldId(null);
+                                        }}
+                                            className={cn(
+                                                "flex-1 flex items-center justify-center gap-2 py-2 text-[11px] font-bold rounded-[8px] relative z-20 outline-none",
+                                                isActive
+                                                    ? (isDark ? "text-white" : "text-black")
+                                                    : (isDark ? "text-[#777] hover:text-[#aaa]" : "text-[#888] hover:text-[#555]")
+                                            )}>
+                                            {isActive && (
+                                                <motion.div
+                                                    layoutId="schedulerEditorRightTabSlider"
+                                                    className={cn(
+                                                        "absolute inset-0 rounded-[8px] z-[-1] shadow-sm border",
+                                                        isDark ? "bg-[#222] border-white/10" : "bg-white border-black/5"
+                                                    )}
+                                                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                                />
+                                            )}
+                                            <Icon size={14} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
+                                            <span className={cn(
+                                                "transition-all duration-200 relative z-10",
+                                                isActive ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 absolute pointer-events-none"
+                                            )}>
+                                                {label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
+
 
                             <div className="flex-1 overflow-y-auto">
                                  {rightTab === 'details' && (
