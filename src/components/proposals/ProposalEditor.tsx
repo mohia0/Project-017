@@ -141,16 +141,16 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const { updateProposal, deleteProposal, fetchProposals, proposals } = useProposalStore();
     const { addTemplate } = useTemplateStore();
     const { projects, fetchProjects, addProjectItem, itemsByProject, fetchProjectItems, removeProjectItem } = useProjectStore();
-    const { emailConfig, emailTemplates, fetchEmailConfig, fetchEmailTemplates, statuses, fetchStatuses } = useSettingsStore();
+    const { emailConfigs, emailTemplates, fetchEmailConfigs, fetchEmailTemplates, statuses, fetchStatuses } = useSettingsStore();
 
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
 
     React.useEffect(() => {
         if (activeWorkspaceId) {
-            fetchEmailConfig(activeWorkspaceId);
+            fetchEmailConfigs(activeWorkspaceId);
             fetchEmailTemplates(activeWorkspaceId);
         }
-    }, [activeWorkspaceId]);
+    }, [activeWorkspaceId, fetchEmailConfigs, fetchEmailTemplates]);
 
 
     React.useEffect(() => {

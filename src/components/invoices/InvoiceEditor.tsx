@@ -134,15 +134,15 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const { projects, fetchProjects, addProjectItem } = useProjectStore();
 
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
-    const { payments, fetchPayments, emailConfig, emailTemplates, fetchEmailConfig, fetchEmailTemplates, toolSettings } = useSettingsStore();
+    const { payments, fetchPayments, emailConfigs, emailTemplates, fetchEmailConfigs, fetchEmailTemplates, toolSettings } = useSettingsStore();
 
     React.useEffect(() => {
         if (activeWorkspaceId) {
             fetchPayments(activeWorkspaceId);
-            fetchEmailConfig(activeWorkspaceId);
+            fetchEmailConfigs(activeWorkspaceId);
             fetchEmailTemplates(activeWorkspaceId);
         }
-    }, [activeWorkspaceId, fetchPayments, fetchEmailConfig, fetchEmailTemplates]);
+    }, [activeWorkspaceId, fetchPayments, fetchEmailConfigs, fetchEmailTemplates]);
 
     React.useEffect(() => {
         fetchClients();

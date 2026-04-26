@@ -13,13 +13,14 @@ import {
     Search, Table2, LayoutGrid, Edit3, ChevronDown,
     ArrowUpDown, Archive, ArrowRightLeft, Download, Upload, Plus, User, Filter,
     Calendar, Check, X, ArchiveRestore, Receipt, ChevronsUpDown, CheckCircle, SlidersHorizontal, ChevronRight,
-    FileJson, FileSpreadsheet, Link2, Copy, Trash2, ExternalLink
+    FileJson, FileSpreadsheet, Link2, Copy, Trash2, ExternalLink, Send, Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
-import { ThreeDotMenu, ContextMenuRow } from '@/components/ui/RowContextMenu';
+import { ThreeDotMenu, ContextMenuRow, ContextMenuItem } from '@/components/ui/RowContextMenu';
 import { useRouter } from 'next/navigation';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import { appToast } from '@/lib/toast';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -326,6 +327,16 @@ export default function InvoicesPage() {
     const [filterRows, setFilterRows] = usePersistentState<FilterRow[]>('invoices_filter_rows', []);
     const [activeFilterId, setActiveFilterId] = usePersistentState<string | null>('invoices_active_filter_id', null);
     const { saved: savedFilters, save: saveFilter, remove: deleteSavedFilter } = useSavedFilters('invoices');
+
+    const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+    const [sendingItem, setSendingItem] = useState<Invoice | null>(null);
+    const [sendingTemplateKey, setSendingTemplateKey] = useState<'invoice' | 'receipt'>('invoice');
+
+    const handleSend = (i: Invoice, type: 'invoice' | 'receipt' = 'invoice') => {
+        setSendingItem(i);
+        setSendingTemplateKey(type);
+        setIsSendModalOpen(true);
+    };
 
     const INVOICE_FILTER_FIELDS = useMemo<FilterField[]>(() => [
         { key: 'status',      label: 'Status',          type: 'enum',   options: activeStatues.map(s => s.name) },
@@ -937,8 +948,10 @@ export default function InvoicesPage() {
                                 )}
                                 rowMenuItems={(inv) => [
                                     { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/invoices/${inv.id}`) },
+                                    { label: 'Send', icon: <Send size={12} />, onClick: () => handleSend(inv, 'invoice') },
+                                    ...(inv.status === 'Paid' ? [{ label: 'Send Receipt', icon: <Receipt size={12} />, onClick: () => handleSend(inv, 'receipt') }] : []),
                                     { label: 'Open Public Link', icon: <Link2 size={12} />, onClick: () => window.open(window.location.origin + '/p/invoice/' + inv.id, '_blank') },
-                                    { label: 'Copy Public Link', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(window.location.origin + '/p/invoice/' + inv.id); appToast.success('Link copied'); } },
+                                    { label: 'Copy Public Link', icon: <Link2 size={12} />, onClick: () => { navigator.clipboard.writeText(window.location.origin + '/p/invoice/' + inv.id); appToast.success('Link copied'); } },
                                     { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(inv.id) },
                                     { label: archivedIds.has(inv.id) ? 'Unarchive' : 'Archive', icon: archivedIds.has(inv.id) ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: () => handleArchive(inv.id), separator: true },
                                     { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(inv.id), separator: true }
@@ -1004,8 +1017,10 @@ export default function InvoicesPage() {
                             {filtered.map(inv => {
                                 const menuItems = [
                                     { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/invoices/${inv.id}`) },
+                                    { label: 'Send', icon: <Send size={12} />, onClick: () => handleSend(inv, 'invoice') },
+                                    ...(inv.status === 'Paid' ? [{ label: 'Send Receipt', icon: <Receipt size={12} />, onClick: () => handleSend(inv, 'receipt') }] : []),
                                     { label: 'Open Public Link', icon: <Link2 size={12} />, onClick: () => window.open(window.location.origin + '/p/invoice/' + inv.id, '_blank') },
-                                    { label: 'Copy Public Link', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(window.location.origin + '/p/invoice/' + inv.id); appToast.success('Link copied'); } },
+                                    { label: 'Copy Public Link', icon: <Link2 size={12} />, onClick: () => { navigator.clipboard.writeText(window.location.origin + '/p/invoice/' + inv.id); appToast.success('Link copied'); } },
                                     { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(inv.id) },
                                     { label: archivedIds.has(inv.id) ? 'Unarchive' : 'Archive', icon: archivedIds.has(inv.id) ? <ArchiveRestore size={12} /> : <Archive size={12} />, onClick: () => handleArchive(inv.id), separator: true },
                                     { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(inv.id), separator: true }
@@ -1056,6 +1071,23 @@ export default function InvoicesPage() {
             />
 
 
+            <SendEmailModal
+                isOpen={isSendModalOpen}
+                onClose={() => setIsSendModalOpen(false)}
+                templateKey={sendingTemplateKey}
+                to={sendingItem?.meta?.clientEmail || ''}
+                variables={{
+                    client_name: sendingItem?.client_name || '',
+                    invoice_number: sendingItem?.invoice_number || '',
+                    amount_due: convertAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD'),
+                    amount_paid: convertAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD'),
+                    due_date: sendingItem?.due_date || '',
+                    document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${sendingItem?.id}` : '',
+                    days_overdue: sendingItem?.due_date ? String(Math.max(0, Math.floor((new Date().getTime() - new Date(sendingItem.due_date).getTime()) / (1000 * 3600 * 24)))) : '0',
+                }}
+                workspaceId={activeWorkspaceId || ''}
+                documentTitle={sendingItem?.title || 'Invoice'}
+            />
         </div>
     );
 }

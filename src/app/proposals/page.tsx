@@ -745,13 +745,18 @@ export default function ProposalsPage() {
             <DeleteConfirmModal open={!!pendingStatusChange} isDark={isDark} title="Invalidate Signature?" description={`Changing the status to "${pendingStatusChange?.status}" will invalidate and remove the client's existing signature. Are you sure you want to proceed?`} actionLabel="Proceed" onClose={() => setPendingStatusChange(null)} onConfirm={confirmStatusChange} />
 
             <SendEmailModal
-                open={isSendModalOpen}
+                isOpen={isSendModalOpen}
                 onClose={() => setIsSendModalOpen(false)}
-                itemType="proposal"
-                itemId={sendingItem?.id || ''}
-                clientEmail={sendingItem?.meta?.assignedClients?.[0]?.email || sendingItem?.meta?.clientEmail || ''}
-                clientName={sendingItem?.meta?.assignedClients?.[0]?.name || sendingItem?.client_name || ''}
                 templateKey="proposal"
+                to={sendingItem?.meta?.assignedClients?.[0]?.email || sendingItem?.meta?.clientEmail || ''}
+                variables={{
+                    client_name: sendingItem?.meta?.assignedClients?.[0]?.name || sendingItem?.client_name || '',
+                    proposal_number: sendingItem?.proposal_number || '',
+                    document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/proposal/${sendingItem?.id}` : '',
+                    amount: convertAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD')
+                }}
+                workspaceId={activeWorkspaceId || ''}
+                documentTitle={sendingItem?.title || 'Proposal'}
             />
         </div>
     );
