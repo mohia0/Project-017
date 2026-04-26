@@ -165,8 +165,11 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
 
             // Auto-send receipt if status was changed to Paid and auto_receipt is enabled
             if (updates.status === 'Paid' && current?.status !== 'Paid') {
-                const { toolSettings } = (await import('./useSettingsStore')).useSettingsStore.getState();
-                const settings = toolSettings['invoices'];
+                const settingsStore = (await import('./useSettingsStore')).useSettingsStore.getState();
+                if (!settingsStore.hasFetched['toolSettings_invoices'] && data.workspace_id) {
+                    await settingsStore.fetchToolSettings(data.workspace_id, 'invoices');
+                }
+                const settings = (await import('./useSettingsStore')).useSettingsStore.getState().toolSettings['invoices'];
                 
                 // Centralized receipt automation logic
                 // If forceReceipt is true (from manual verification), we ignore the auto_receipt setting

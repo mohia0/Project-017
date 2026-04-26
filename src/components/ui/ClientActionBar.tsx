@@ -91,7 +91,7 @@ export function ClientActionBar({
                     inline 
                         ? (isMobile ? "flex-row justify-center px-6 items-center" : "justify-center")
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
-                           isMobile ? "top-14 flex-col items-center gap-2 px-6" : "top-6 max-w-[850px] mx-auto justify-center px-4"),
+                           isMobile ? "top-14 flex-col items-center gap-2 px-6" : "top-6 max-w-[850px] mx-auto justify-center px-6 md:px-12"),
                     className
                 )}
                 style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
@@ -123,7 +123,7 @@ export function ClientActionBar({
                     inline 
                         ? (isMobile ? "px-6 items-center" : "")
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
-                           isMobile ? "top-14 px-6" : "top-6 justify-center px-4"),
+                           isMobile ? "top-14 px-6" : "top-6 justify-center px-6 md:px-12"),
                     className
                 )}
                 style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
@@ -155,7 +155,7 @@ export function ClientActionBar({
                     inline 
                         ? (isMobile ? "flex-row justify-between px-6 gap-2" : "flex-col md:flex-row md:justify-between items-center gap-3 md:gap-0") 
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
-                             isMobile ? "top-14 flex-col items-center gap-2 px-6 shadow-xl" : "top-6 max-w-[850px] mx-auto justify-between px-4"),
+                             isMobile ? "top-14 flex-col items-center gap-2 px-6 shadow-xl" : "top-6 max-w-[850px] mx-auto justify-between px-6 md:px-12"),
                     className
                 )}
                 style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
@@ -247,7 +247,7 @@ export function ClientActionBar({
                             className={cn(
                                 "flex items-center justify-center font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap",
                                 isMobile ? "gap-1 px-3 py-1.5 text-[11px]" : "gap-2 px-4 py-2 text-[13px] ml-1",
-                                isDark ? "hover:opacity-90" : "hover:shadow-lg hover:-translate-y-0.5"
+                                isDark ? "hover:scale-105" : "hover:shadow-lg hover:scale-[1.02]"
                             )}
                             style={{ ...buttonRadiusStyle, backgroundColor: buttonBgColor, color: buttonTextColor }}
                         >
@@ -268,7 +268,7 @@ export function ClientActionBar({
                     inline 
                         ? (isMobile ? "flex-row justify-between px-6 items-center" : "justify-between")
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
-                           isMobile ? "top-14 flex-col items-center gap-2 px-6" : "top-6 max-w-[850px] mx-auto justify-between px-4"),
+                           isMobile ? "top-14 flex-col items-center gap-2 px-6" : "top-6 max-w-[850px] mx-auto justify-between px-6 md:px-12"),
                     className
                 )}
                 style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
@@ -324,7 +324,7 @@ export function ClientActionBar({
                     inline 
                         ? (isMobile ? "px-6 items-center" : "")
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
-                           isMobile ? "top-14 px-6" : "top-6 justify-center px-4"),
+                           isMobile ? "top-14 px-6" : "top-6 justify-center px-6 md:px-12"),
                     className
                 )}
                 style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
@@ -356,7 +356,7 @@ export function ClientActionBar({
                     inline 
                         ? (isMobile ? "flex-row justify-between px-6 items-center" : "justify-between")
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
-                           isMobile ? "top-14 flex-col items-center gap-2 px-6" : "top-6 max-w-[850px] mx-auto justify-between px-4"),
+                           isMobile ? "top-14 flex-col items-center gap-2 px-6" : "top-6 max-w-[850px] mx-auto justify-between px-6 md:px-12"),
                     className
                 )}
                 style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
@@ -371,7 +371,7 @@ export function ClientActionBar({
                     )}
                     style={parentRadiusStyle}
                 >
-                    <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-amber-500" />
+                    <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-red-500" />
                     <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
                         This {type} is overdue
                     </span>
@@ -411,7 +411,7 @@ export function ClientActionBar({
                 "relative w-full max-w-[850px] mx-auto z-10 flex justify-center transition-all",
                 inline ? (isMobile ? "px-6" : "") :
                 cn("absolute inset-x-0 w-full z-50 flex justify-center pointer-events-none",
-                   isMobile ? "top-14 px-6" : "top-6 px-4"),
+                   isMobile ? "top-14 px-6" : "top-6 px-6 md:px-12"),
                 className
             )}
             style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
@@ -425,7 +425,6 @@ export function ClientActionBar({
                 )}
                 style={parentRadiusStyle}
             >
-                {/* Icons */}
                 <div className={cn(
                     "flex items-center px-1", 
                     isMobile ? "gap-0" : "gap-0.5 px-2",
@@ -463,7 +462,7 @@ export function ClientActionBar({
                     className={cn(
                         "font-semibold shadow-sm transition-all active:scale-95 whitespace-nowrap",
                         isMobile ? "px-4 py-2 text-[11px]" : "px-5 py-2.5 text-[14px]",
-                        isDark ? "hover:opacity-90" : "hover:shadow-lg hover:-translate-y-0.5"
+                        isDark ? "hover:scale-105" : "hover:shadow-lg hover:scale-[1.02]"
                     )}
                     style={{ ...buttonRadiusStyle, backgroundColor: buttonBgColor, color: buttonTextColor }}
                 >

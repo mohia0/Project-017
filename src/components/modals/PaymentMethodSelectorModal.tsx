@@ -58,7 +58,7 @@ export function PaymentMethodSelectorModal({
     // Build available methods list
     const availableMethods: any[] = [];
     
-    if (paymentMethods.includes('paypal') && payments?.paypal_email && (payments?.paypal_enabled !== false)) {
+    if (paymentMethods.includes('paypal') && payments?.paypal_email && (payments?.paypal_enabled !== false) && invoice.currency === 'USD') {
         availableMethods.push({
             id: 'paypal',
             name: 'PayPal',

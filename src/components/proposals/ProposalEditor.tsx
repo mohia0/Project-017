@@ -866,7 +866,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                             : "bg-gradient-to-b from-white/80 to-transparent"
                                     )} />
                                 </div>
-                                <div className="relative z-10 w-full pointer-events-auto">
+                                <div className="relative z-10 w-full pointer-events-auto px-6">
                                     <ClientActionBar
                                         type="proposal"
                                         status={meta.status as any}
@@ -2058,7 +2058,7 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
 
     return (
         <div className="mb-4 pt-[7%]">
-            <div className="flex justify-between items-start mb-10">
+            <div className="flex justify-between items-start mb-6">
                 <div className="space-y-4">
                     {/* Branding Logo */}
                     {logoToUse ? (
@@ -2095,7 +2095,7 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
                 </div>
             </div>
 
-            <div className="flex justify-between items-end pt-8">
+            <div className="flex justify-between items-end pt-4">
                 <div>
                     <div className="text-[15px] font-bold mb-4 flex gap-1 items-start">
                         <span>To</span>

@@ -44,9 +44,12 @@ export function PayPalModal({
 
     if (!isOpen || !mounted) return null;
 
-    const formattedAmount = typeof amount === 'number' ? amount.toFixed(2) : amount;
-    const itemName = encodeURIComponent(`Invoice ${invoiceNumber}`);
-    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(email)}&amount=${formattedAmount}&currency_code=${currency}&item_name=${itemName}`;
+    // Ensure amount has no commas and is strictly a decimal string
+    const safeAmount = Number(amount).toFixed(2);
+    const safeEmail = encodeURIComponent(email.trim());
+    const itemName = encodeURIComponent(`Invoice ${invoiceNumber || ''}`.trim());
+    
+    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${safeEmail}&amount=${safeAmount}&currency_code=${currency}&item_name=${itemName}&charset=utf-8&no_shipping=1`;
 
     const handlePay = () => {
         window.open(paypalUrl, '_blank');
@@ -112,7 +115,7 @@ export function PayPalModal({
                                 Amount Due
                             </span>
                             <span className={cn("text-[18px] font-black tabular-nums", isDark ? "text-white" : "text-black")}>
-                                {currency} {formattedAmount}
+                                {currency} {safeAmount}
                             </span>
                         </div>
                     </div>

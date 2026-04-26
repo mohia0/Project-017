@@ -117,7 +117,6 @@ type RightPanelTab = 'details' | 'appearance' | 'automation';
 
 const BLOCK_MENU = [
     { type: 'header'    as BlockType, label: 'Header & Meta', icon: PanelTop,            tag: 'Layout' },
-    { type: 'heading'   as BlockType, label: 'Section Title', icon: AlignLeft,           tag: 'Text' },
     { type: 'text'      as BlockType, label: 'Content Block',  icon: FileText,            tag: 'Text' },
     { type: 'pricing'   as BlockType, label: 'Items Table',   icon: Table,               tag: 'Finance' },
     { type: 'divider'   as BlockType, label: 'Divider',       icon: SeparatorHorizontal, tag: 'Layout' },
@@ -196,10 +195,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
     const [blocks, setBlocks] = useState<BlockData[]>([
         { id: 'b1', type: 'header' },
-        {
-            id: 'b2', type: 'text',
-            content: "Thank you for your business. Please find the details of the invoice below."
-        },
         {
             id: 'b3', type: 'pricing',
             rows: [
@@ -807,7 +802,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                             : "bg-gradient-to-b from-white/80 to-transparent"
                                     )} />
                                 </div>
-                                <div className="relative z-10 w-full pointer-events-auto">
+                                <div className="relative z-10 w-full pointer-events-auto px-4 md:px-6">
                                     <ClientActionBar
                                         type="invoice"
                                         status={meta.status as any}
@@ -910,7 +905,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 </div>
                             ) : (
                                 <div 
-                                    className="w-full max-w-[850px] overflow-visible transition-all duration-300"
+                                    className="w-full max-w-[850px] mx-auto overflow-visible transition-all duration-300"
                                     style={{ 
                                         borderRadius: `${meta.design?.borderRadius ?? DEFAULT_DOCUMENT_DESIGN.borderRadius}px`,
                                         backgroundColor: (meta.design?.blockBackgroundColor) || DEFAULT_DOCUMENT_DESIGN.blockBackgroundColor,
@@ -1282,33 +1277,38 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     >
                                         <div className="flex flex-col gap-1.5 mt-1">
                                             {/* PayPal Option */}
-                                            {payments?.paypal_email && (payments?.paypal_enabled !== false) && (
-                                                <label className="flex items-center gap-2 cursor-pointer group">
-                                                    <input 
-                                                        type="checkbox"
-                                                        checked={meta.paymentMethods?.includes('paypal')}
-                                                        onChange={(e) => {
-                                                            const current = meta.paymentMethods || [];
-                                                            const next = e.target.checked 
-                                                                ? [...current, 'paypal']
-                                                                : current.filter(id => id !== 'paypal');
-                                                            updateMeta({ paymentMethods: next });
-                                                        }}
-                                                        className="hidden"
-                                                    />
-                                                    <div className={cn(
-                                                        "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0",
-                                                        meta.paymentMethods?.includes('paypal')
-                                                            ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white shadow-sm"
-                                                            : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
-                                                    )}>
-                                                        {meta.paymentMethods?.includes('paypal') && <Check size={10} strokeWidth={4} />}
-                                                    </div>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className={cn("text-[11px] font-semibold leading-tight", isDark ? "text-white/70" : "text-black/70")}>PayPal</span>
-                                                        <span className={cn("text-[9px] font-medium leading-tight truncate", isDark ? "text-white/30" : "text-black/30")}>{payments.paypal_email}</span>
-                                                    </div>
-                                                </label>
+                                            {payments?.paypal_email && (payments?.paypal_enabled !== false) && meta.currency === 'USD' && (
+                                                <div className="space-y-1">
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={meta.paymentMethods?.includes('paypal')}
+                                                            onChange={(e) => {
+                                                                const current = meta.paymentMethods || [];
+                                                                const next = e.target.checked 
+                                                                    ? [...current, 'paypal']
+                                                                    : current.filter(id => id !== 'paypal');
+                                                                updateMeta({ paymentMethods: next });
+                                                            }}
+                                                            className="hidden"
+                                                        />
+                                                        <div className={cn(
+                                                            "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0",
+                                                            meta.paymentMethods?.includes('paypal')
+                                                                ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white shadow-sm"
+                                                                : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
+                                                        )}>
+                                                            {meta.paymentMethods?.includes('paypal') && <Check size={10} strokeWidth={4} />}
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className={cn("text-[11px] font-semibold leading-tight", isDark ? "text-white/70" : "text-black/70")}>PayPal</span>
+                                                                <span className={cn("text-[8.5px] font-bold px-1 py-0 rounded bg-amber-500/10 text-amber-500/80 uppercase tracking-tight")}>USD Only</span>
+                                                            </div>
+                                                            <span className={cn("text-[9px] font-medium leading-tight truncate", isDark ? "text-white/30" : "text-black/30")}>{payments.paypal_email}</span>
+                                                        </div>
+                                                    </label>
+                                                </div>
                                             )}
 
                                             {/* Bank Accounts */}
@@ -1743,7 +1743,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
             const logoToUse = meta.logoUrl || (isDark ? branding?.logo_light_url : branding?.logo_dark_url);
             return (
                 <div className="mb-4 pt-[7%]">
-                    <div className="flex justify-between items-start mb-10">
+                    <div className="flex justify-between items-start mb-6">
                         {logoToUse ? (
                             <img 
                                 src={logoToUse} 
@@ -1775,7 +1775,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             </div>
                         </div>
                     </div>
-                    <div className="flex justify-between items-end pt-8">
+                    <div className="flex justify-between items-end pt-4">
                         <div>
                             <div 
                                 contentEditable={!isPreview}

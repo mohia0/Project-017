@@ -152,7 +152,7 @@ export function SectionBlockWrapper({
             <div
                 style={{
                     paddingTop: currentPaddingTop,
-                    paddingBottom: currentPaddingBottom,
+                    paddingBottom: isLast ? `calc(${currentPaddingBottom}px + 7%)` : currentPaddingBottom,
                     position: 'relative',
                 }}
             >
@@ -167,7 +167,7 @@ export function SectionBlockWrapper({
         <div
             ref={setNodeRef}
             style={outerStyle}
-            className={cn('group overflow-visible', isDragging && 'opacity-40')}
+            className={cn('group overflow-visible', isDragging && 'opacity-40', isLast && "pb-[7%]")}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >

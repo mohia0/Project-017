@@ -1170,7 +1170,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                                 : "bg-gradient-to-b from-white/80 to-transparent"
                         )} />
                     </div>
-                    <div className="relative z-10 w-full pointer-events-auto px-4 md:px-0">
+                    <div className="relative z-10 w-full pointer-events-auto px-4 md:px-6">
                         <ClientActionBar
                             type="proposal"
                             status={meta.status as any}
@@ -1182,7 +1182,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             onPrint={() => window.print()}
                             onAccept={() => setIsSignModalOpen(true)}
                             onDecline={() => setIsDeclineModalOpen(true)}
-                            className="w-full max-w-[850px] mx-auto md:px-6"
+                            className="w-full max-w-[850px] mx-auto"
                         />
                     </div>
                 </div>
