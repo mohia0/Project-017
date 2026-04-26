@@ -63,6 +63,7 @@ export function ClientActionBar({
     const isDark = design.actionTheme ? design.actionTheme === 'dark' : false; // Default to light if not specified, overriding app theme
     const accentColor = branding?.primary_color || design.primaryColor || '#3b82f6'; // fallback to standard blue
 
+    const barStyle = design.actionBarStyle || 'gradient';
 
     const isAccepted = status === 'Accepted' || status === 'Paid';
     const isPending = status === 'Pending';
@@ -83,6 +84,45 @@ export function ClientActionBar({
     const innerRadiusStyle = isFullRadius ? { borderRadius: '9999px' } : { borderRadius: `${Math.max(0, radius - 4)}px` };
     const buttonRadiusStyle = isFullRadius ? { borderRadius: '9999px' } : { borderRadius: `${Math.max(0, radius - 6)}px` };
 
+    // ── Style variant helpers ──
+    // Returns inline style object for the pill wrapper based on active barStyle
+    const getPillStyle = (): React.CSSProperties => {
+        if (barStyle === 'glass') {
+            // Frosted-glass: heavier blur, soft tinted glow border
+            return isDark
+                ? { background: 'rgba(20,20,28,0.55)', backdropFilter: 'blur(32px) saturate(2)', WebkitBackdropFilter: 'blur(32px) saturate(2)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 32px -8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)' }
+                : { background: 'rgba(255,255,255,0.52)', backdropFilter: 'blur(32px) saturate(2.2)', WebkitBackdropFilter: 'blur(32px) saturate(2.2)', border: '1px solid rgba(255,255,255,0.72)', boxShadow: '0 4px 24px -6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)' };
+        }
+        if (barStyle === 'solid') {
+            // Solid style (no transparency, no blur)
+            return isDark
+                ? { background: '#1c1c1c', border: '1px solid #333', boxShadow: '0 4px 16px -4px rgba(0,0,0,0.5)' }
+                : { background: '#ffffff', border: '1px solid #eaeaea', boxShadow: '0 4px 16px -4px rgba(0,0,0,0.06)' };
+        }
+        // gradient (default) — existing look driven by Tailwind classes, no extra inline style
+        return {};
+    };
+
+    // Returns Tailwind class string for pill bg/border when using gradient style
+    const getPillClass = (variant: 'main' | 'icon' = 'main') => {
+        if (barStyle !== 'gradient') return ''; // inline style handles glass / ambient
+        if (variant === 'icon') {
+            return isDark ? 'bg-[#1a1a1a]/70 border-white/10 text-[#ccc]' : 'bg-white/70 border-white/50 text-[#555]';
+        }
+        return isDark ? 'bg-[#1a1a1a]/70 border-white/10 text-white' : 'bg-white/70 border-white/50 text-[#111]';
+    };
+
+    // Text color for non-gradient variants
+    const pillTextClass = barStyle !== 'gradient'
+        ? (isDark ? 'text-white' : 'text-[#111]')
+        : '';
+    const pillIconTextClass = barStyle !== 'gradient'
+        ? (isDark ? 'text-[#ccc]' : 'text-[#555]')
+        : '';
+
+    // Ambient noise completely removed, keeping dummy component to prevent JSX errors if used
+    const AmbientNoise = () => null;
+
     if (status === 'Draft') {
         return (
             <div 
@@ -99,13 +139,15 @@ export function ClientActionBar({
                 {/* Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
+                        "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
+                        getPillClass('main'),
+                        pillTextClass
                     )}
-                    style={parentRadiusStyle}
+                    style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
+                    <AmbientNoise />
                     <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className={isDark ? "text-white" : "text-[#111]"} />
                     <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
                         This is a draft {type} and can't be {isInvoice ? 'paid' : 'accepted'} yet
@@ -131,13 +173,15 @@ export function ClientActionBar({
                 {/* Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
+                        "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
+                        getPillClass('main'),
+                        pillTextClass
                     )}
-                    style={parentRadiusStyle}
+                    style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
+                    <AmbientNoise />
                     <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-gray-500" />
                     <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
                         The owner has cancelled this {type}. It is no longer available.
@@ -163,13 +207,15 @@ export function ClientActionBar({
                 {/* Left Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8] transition-all",
+                        "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/80 text-[#111] border-white/50"
+                        getPillClass('main'),
+                        pillTextClass
                     )}
-                    style={parentRadiusStyle}
+                    style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
+                    <AmbientNoise />
                     {status === 'Paid' ? (
                         <div className="flex items-center gap-3">
                             <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/10 shrink-0">
@@ -209,13 +255,15 @@ export function ClientActionBar({
                 {/* Right Action Icons Pill */}
                 <div 
                     className={cn(
-                        "flex items-center shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8] transition-all shrink-0",
+                        "relative overflow-hidden flex items-center shadow-sm transition-all shrink-0",
                         isMobile ? "gap-1 p-1" : "gap-1.5 p-1.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-[#ccc]" : "bg-white/70 border-white/50 text-[#555]"
+                        getPillClass('icon'),
+                        pillIconTextClass
                     )}
-                    style={parentRadiusStyle}
+                    style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
+                    <AmbientNoise />
                     <div className="flex items-center gap-0.5 px-1.5">
                         <Tooltip content="Download PDF" side="bottom">
                             <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
@@ -276,13 +324,15 @@ export function ClientActionBar({
                 {/* Left Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
+                        "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
+                        getPillClass('main'),
+                        pillTextClass
                     )}
-                    style={parentRadiusStyle}
+                    style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
+                    <AmbientNoise />
                     <Check size={isMobile ? 14 : 16} strokeWidth={2.5} />
                     <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
                         {signedBy ? `${displayType} signed by ${signedBy}${signedAt ? ` on ${signedAt}` : ''}` : `${displayType} manually approved`}
@@ -292,13 +342,15 @@ export function ClientActionBar({
                 {/* Right Action Icons Pill */}
                 <div 
                     className={cn(
-                        "flex items-center shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
+                        "relative overflow-hidden flex items-center shadow-sm transition-all",
                         isMobile ? "gap-1 px-2 py-1" : "gap-1.5 px-3 py-2",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-[#ccc]" : "bg-white/70 border-white/50 text-[#555]"
+                        getPillClass('icon'),
+                        pillIconTextClass
                     )}
-                    style={parentRadiusStyle}
+                    style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
+                    <AmbientNoise />
                     <Tooltip content="Download PDF" side="bottom">
                         <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                             <ArrowDownToLine size={isMobile ? 13 : 15} />
@@ -332,13 +384,15 @@ export function ClientActionBar({
                 {/* Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
+                        "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
+                        getPillClass('main'),
+                        pillTextClass
                     )}
-                    style={parentRadiusStyle}
+                    style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
+                    <AmbientNoise />
                     <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-red-500" />
                     <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
                         This {type} has been declined
@@ -364,13 +418,15 @@ export function ClientActionBar({
                 {/* Left Status Pill */}
                 <div 
                     className={cn(
-                        "flex items-center gap-2 shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
+                        "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
                         isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-white" : "bg-white/70 border-white/50 text-[#111]"
+                        getPillClass('main'),
+                        pillTextClass
                     )}
-                    style={parentRadiusStyle}
+                    style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
+                    <AmbientNoise />
                     <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-red-500" />
                     <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
                         This {type} is overdue
@@ -380,13 +436,15 @@ export function ClientActionBar({
                 {/* Right Action Icons Pill */}
                 <div 
                     className={cn(
-                        "flex items-center shadow-sm border backdrop-blur-[24px] backdrop-saturate-[1.8]",
+                        "relative overflow-hidden flex items-center shadow-sm transition-all",
                         isMobile ? "gap-1 px-2 py-1" : "gap-1.5 px-3 py-2",
                         !inline && "pointer-events-auto",
-                        isDark ? "bg-[#1a1a1a]/70 border-white/10 text-[#ccc]" : "bg-white/70 border-white/50 text-[#555]"
+                        getPillClass('icon'),
+                        pillIconTextClass
                     )}
-                    style={parentRadiusStyle}
+                    style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
+                    <AmbientNoise />
                     <Tooltip content="Download PDF" side="bottom">
                         <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
                             <ArrowDownToLine size={isMobile ? 13 : 15} />
@@ -418,13 +476,15 @@ export function ClientActionBar({
         >
             <div 
                 className={cn(
-                    "flex items-center shadow-lg border backdrop-blur-[24px] backdrop-saturate-[1.8] transition-all w-max max-w-full overflow-hidden",
+                    "relative overflow-hidden flex items-center shadow-lg transition-all w-max max-w-full",
                     isMobile ? "gap-1 p-1" : "gap-2 p-1.5",
                     !inline && "pointer-events-auto",
-                    isDark ? "bg-[#1a1a1a]/70 border-white/10 shadow-black/20" : "bg-white/70 border-white/50 shadow-black/5"
+                    getPillClass('main'),
+                    pillTextClass
                 )}
-                style={parentRadiusStyle}
+                style={{ ...parentRadiusStyle, ...getPillStyle() }}
             >
+                <AmbientNoise />
                 <div className={cn(
                     "flex items-center px-1", 
                     isMobile ? "gap-0" : "gap-0.5 px-2",

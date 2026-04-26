@@ -42,6 +42,7 @@ import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import ImageUploadModal from '../modals/ImageUploadModal';
 import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import { DEFAULT_DOCUMENT_DESIGN, DocumentDesign } from '@/types/design';
+import { TopBlurOverlay } from '@/components/ui/TopBlurOverlay';
 import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
 import { SaveSectionTemplateModal } from '@/components/modals/SaveSectionTemplateModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -549,7 +550,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const handleCreateClient = async (data: any) => {
         const client = await useClientStore.getState().addClient(data);
         if (client) {
-            const nextClients = [...(meta.assignedClients || []), { id: client.id, name: client.company_name || client.contact_person, avatar_url: client.avatar_url }];
+            const nextClients = [...(meta.assignedClients || []), { id: client.id, name: client.contact_person || client.company_name, avatar_url: client.avatar_url }];
             updateMeta({
                 assignedClients: nextClients,
                 clientName: '',
@@ -859,12 +860,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                     style={{
                                     }}
                                 >
-                                    <div className={cn(
-                                        "absolute inset-0 pointer-events-none",
-                                        meta.design?.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                            : "bg-gradient-to-b from-white/80 to-transparent"
-                                    )} />
+                                    <TopBlurOverlay design={meta.design} />
                                 </div>
                                 <div className="relative z-10 w-full pointer-events-auto px-6">
                                     <ClientActionBar
@@ -919,12 +915,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                 style={{
                                                 }}
                                             >
-                                                <div className={cn(
-                                                    "absolute inset-0 pointer-events-none",
-                                                    meta.design?.topBlurTheme === 'dark'
-                                                        ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                                        : "bg-gradient-to-b from-white/80 to-transparent"
-                                                )} />
+                                                <TopBlurOverlay design={meta.design} />
                                             </div>
                                             <div className="relative z-10 w-full pointer-events-auto">
                                                 <ClientActionBar

@@ -35,6 +35,8 @@ export interface DocumentDesign {
     tableShowRowBorders?: boolean;
     tableRowBorderColor?: string;
     inputBackgroundColor?: string;
+    actionBarStyle?: 'gradient' | 'glass' | 'solid';
+    topBlurStyle?: 'gradient' | 'blur' | 'glow';
 }
 
 export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
@@ -68,4 +70,6 @@ export const DEFAULT_DOCUMENT_DESIGN: DocumentDesign = {
     tableShowRowBorders: true,
     tableRowBorderColor: '',
     inputBackgroundColor: '',
+    actionBarStyle: 'gradient',
+    topBlurStyle: 'gradient',
 };

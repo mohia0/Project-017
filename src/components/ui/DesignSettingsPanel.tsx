@@ -853,6 +853,36 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                             </MetaField>
 
                             <MetaField 
+                                label="Bar Style" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ actionBarStyle: DEFAULT_DOCUMENT_DESIGN.actionBarStyle })}
+                            >
+                                <div className={cn("flex w-full p-0.5 rounded-lg border", isDark ? "bg-[#111] border-[#333]" : "bg-[#f5f5f5] border-[#eaeaea]")}>
+                                    {([
+                                        { value: 'gradient', label: 'Gradient' },
+                                        { value: 'glass',    label: 'Glass'    },
+                                        { value: 'solid',    label: 'Solid'    },
+                                    ] as const).map(opt => {
+                                        const isActive = (design.actionBarStyle || 'gradient') === opt.value;
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => updateDesign({ actionBarStyle: opt.value })}
+                                                className={cn(
+                                                    "flex-1 py-1.5 text-[10px] font-bold rounded-md transition-all leading-none",
+                                                    isActive
+                                                        ? isDark ? "bg-[#2a2a2a] text-white shadow-sm" : "bg-white text-black shadow-sm"
+                                                        : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </MetaField>
+
+                            <MetaField 
                                 label="Top Blur Theme (Base Color)" 
                                 isDark={isDark}
                                 onReset={() => updateDesign({ topBlurTheme: DEFAULT_DOCUMENT_DESIGN.topBlurTheme })}
@@ -880,6 +910,37 @@ export function DesignSettingsPanel({ isDark, meta, updateMeta, onUploadLogo, on
                                     >
                                         Black
                                     </button>
+                                </div>
+                            </MetaField>
+
+                            <MetaField 
+                                label="Blur Style" 
+                                isDark={isDark}
+                                onReset={() => updateDesign({ topBlurStyle: DEFAULT_DOCUMENT_DESIGN.topBlurStyle })}
+                            >
+                                <div className={cn("flex w-full p-0.5 rounded-lg border", isDark ? "bg-[#111] border-[#333]" : "bg-[#f5f5f5] border-[#eaeaea]")}>
+                                    {([
+                                        { value: 'gradient', label: 'Gradient', title: 'Clean fade' },
+                                        { value: 'blur',     label: 'Noisy', title: 'Frosted Glass Fade' },
+                                        { value: 'glow',     label: 'Glow',     title: 'Accent radial glow' },
+                                    ] as const).map(opt => {
+                                        const isActive = (design.topBlurStyle || 'gradient') === opt.value;
+                                        return (
+                                            <button
+                                                key={opt.value}
+                                                title={opt.title}
+                                                onClick={() => updateDesign({ topBlurStyle: opt.value })}
+                                                className={cn(
+                                                    "flex-1 py-1.5 text-[10px] font-bold rounded-md transition-all leading-none",
+                                                    isActive
+                                                        ? isDark ? "bg-[#2a2a2a] text-white shadow-sm" : "bg-white text-black shadow-sm"
+                                                        : isDark ? "text-[#777] hover:text-[#ccc]" : "text-[#777] hover:text-[#333]"
+                                                )}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </MetaField>
 

@@ -19,6 +19,7 @@ import { appToast } from '@/lib/toast';
 import { CalendarPreview, getAvailableSlots, timeToMinutes } from '@/components/schedulers/CalendarPreview';
 import { AnimatePresence } from 'framer-motion';
 import { DateTime } from 'luxon';
+import { TopBlurOverlay } from '@/components/ui/TopBlurOverlay';
 import { useSearchParams } from 'next/navigation';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1163,12 +1164,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
             >
                 <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-1 md:pt-3 pb-0 pointer-events-none no-print">
                     <div className="absolute inset-0 pointer-events-none">
-                        <div className={cn(
-                            "absolute inset-0 pointer-events-none",
-                            meta.design?.topBlurTheme === 'dark'
-                                ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                : "bg-gradient-to-b from-white/80 to-transparent"
-                        )} />
+                        <TopBlurOverlay design={meta.design} />
                     </div>
                     <div className="relative z-10 w-full pointer-events-auto px-4 md:px-6">
                         <ClientActionBar
@@ -1313,12 +1309,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
             >
                 <div className="z-30 flex justify-center sticky top-0 transition-all w-full pt-1 md:pt-3 pb-0 pointer-events-none no-print">
                     <div className="absolute inset-0 pointer-events-none">
-                        <div className={cn(
-                            "absolute inset-0 pointer-events-none",
-                            invoiceMeta.design?.topBlurTheme === 'dark'
-                                ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                : "bg-gradient-to-b from-white/80 to-transparent"
-                        )} />
+                        <TopBlurOverlay design={invoiceMeta.design} />
                     </div>
                     <div className="relative z-10 w-full pointer-events-auto px-4 md:px-0">
                         <ClientActionBar

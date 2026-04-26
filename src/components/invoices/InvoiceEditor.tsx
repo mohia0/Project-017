@@ -41,6 +41,7 @@ import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { DesignSettingsPanel } from '@/components/ui/DesignSettingsPanel';
 import DatePicker from '@/components/ui/DatePicker';
 import { DocumentDesign, DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
+import { TopBlurOverlay } from '@/components/ui/TopBlurOverlay';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSelectorModal';
 import ImageUploadModal from '../modals/ImageUploadModal';
@@ -795,12 +796,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     style={{
                                     }}
                                 >
-                                    <div className={cn(
-                                        "absolute inset-0 pointer-events-none",
-                                        meta.design?.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                            : "bg-gradient-to-b from-white/80 to-transparent"
-                                    )} />
+                                    <TopBlurOverlay design={meta.design} />
                                 </div>
                                 <div className="relative z-10 w-full pointer-events-auto px-4 md:px-6">
                                     <ClientActionBar
@@ -858,12 +854,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                     style={{
                                                     }}
                                                 >
-                                                    <div className={cn(
-                                                        "absolute inset-0 pointer-events-none",
-                                                        meta.design?.topBlurTheme === 'dark'
-                                                            ? "bg-gradient-to-b from-black/80 to-transparent" 
-                                                            : "bg-gradient-to-b from-white/80 to-transparent"
-                                                    )} />
+                                                    <TopBlurOverlay design={meta.design} />
                                                 </div>
                                                 <div className="relative z-10 w-full pointer-events-auto">
                                                     <ClientActionBar
@@ -1070,7 +1061,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                                         key={c.id}
                                                                         onMouseDown={(e) => {
                                                                             e.preventDefault();
-                                                                            const name = c.company_name || c.contact_person;
+                                                                            const name = c.contact_person || c.company_name;
                                                                             const isDup = meta.assignedClients?.some((ac: any) => ac.id === c.id);
                                                                             if (!isDup) {
                                                                                 const nextClients = [...(meta.assignedClients || []), { id: c.id, name, avatar_url: c.avatar_url }];

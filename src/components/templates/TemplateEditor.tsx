@@ -30,6 +30,7 @@ import DatePicker from '@/components/ui/DatePicker';
 import { STATUS_COLORS } from '@/lib/statusConfig';
 import { appToast } from '@/lib/toast';
 import { ClientActionBar } from '@/components/ui/ClientActionBar';
+import { TopBlurOverlay } from '@/components/ui/TopBlurOverlay';
 import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
 
 // Removed local fmt to use global MoneyAmount component
@@ -474,12 +475,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                     style={{
                                     }}
                                 >
-                                    <div className={cn(
-                                        "absolute inset-0 pointer-events-none",
-                                        template.design?.topBlurTheme === 'dark'
-                                            ? "bg-gradient-to-b from-[#000]/80 to-transparent" 
-                                            : "bg-gradient-to-b from-white/80 to-transparent"
-                                    )} />
+                                    <TopBlurOverlay design={template.design} />
                                 </div>
                                 <div className="relative z-10 w-full pointer-events-auto">
                                     <ClientActionBar
@@ -525,12 +521,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                                     style={{
                                                     }}
                                                 >
-                                                    <div className={cn(
-                                                        "absolute inset-0 pointer-events-none",
-                                                        template.design?.topBlurTheme === 'dark'
-                                                            ? "bg-gradient-to-b from-[#000]/80 to-transparent" 
-                                                            : "bg-gradient-to-b from-white/80 to-transparent"
-                                                    )} />
+                                                    <TopBlurOverlay design={template.design} />
                                                 </div>
                                                 <div className="relative z-10 w-full pointer-events-auto">
                                                     <ClientActionBar
