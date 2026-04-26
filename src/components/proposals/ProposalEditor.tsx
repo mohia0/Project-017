@@ -835,9 +835,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 <div className="flex-1 flex overflow-hidden relative">
                     {/* ── LEFT: CANVAS ── */}
                     {id && !isLoaded ? (
-                        <div className="flex-1 flex flex-col items-center justify-center bg-[var(--color-bg-secondary)] gap-4">
+                        <div className="flex-1 flex flex-col items-center justify-center gap-4">
                             <AppLoader size="sm" color={meta.design?.primaryColor || 'var(--primary)'} />
-                            <span className={cn("text-[13px] font-medium", isDark ? "text-white/40" : "text-black/40")}>Loading document...</span>
+                            <span className="text-[13px] font-medium opacity-40">Loading document...</span>
                         </div>
                     ) : (
                     <div 
