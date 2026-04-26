@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         let dbTemplate: { subject: string; body: string; wrapper?: string; is_html?: boolean } | null = null;
         if (template_key) {
             const { data } = await supabaseService
-                .from('workspace_email_templates')
+                .from('email_templates')
                 .select('*')
                 .eq('workspace_id', workspace_id)
                 .eq('template_key', template_key)

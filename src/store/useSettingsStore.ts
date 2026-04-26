@@ -45,6 +45,7 @@ export interface WorkspacePayments {
     iban: string;
     is_default: boolean;
     is_active: boolean;
+    color?: string;
   }> | null;
   default_currency: string;
   payment_terms: string;

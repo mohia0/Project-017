@@ -604,7 +604,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             {/* ── TOP BAR ── */}
             <div className={cn(
                 "flex items-center justify-between px-6 py-4 border-b shrink-0 transition-colors sticky top-0 z-[9999]",
-                isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#d2d2eb]"
+                isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#e4e4e4]"
             )}>
                 <div className="flex items-center gap-4 flex-1">
                     <button

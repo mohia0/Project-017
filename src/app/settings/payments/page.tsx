@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsField, SettingsInput } from '@/components/settings/SettingsField';
 import { useSettingsStore, WorkspacePayments } from '@/store/useSettingsStore';
+import { ColorisInput } from '@/components/ui/ColorisInput';
 import { useUIStore } from '@/store/useUIStore';
 import { Plus, Trash2, Check, Star, AlertCircle, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -120,7 +121,8 @@ export default function PaymentsSettingsPage() {
                                 swift: '',
                                 iban: '',
                                 is_default: (formData.bank_accounts?.length === 0),
-                                is_active: true
+                                is_active: true,
+                                color: '#008ba3'
                             };
                             setFormData({
                                 ...formData,
@@ -181,9 +183,8 @@ export default function PaymentsSettingsPage() {
                                             <div className="flex items-center gap-3">
                                                 <div className={cn(
                                                     "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-                                                    isDark ? "bg-white/5 text-white/20" : "bg-black/5 text-black/20",
-                                                    isExpanded && (isDark ? "text-primary bg-primary/10" : "text-black bg-black/10")
-                                                )}>
+                                                    !isExpanded && (isDark ? "bg-white/5 text-white/20" : "bg-black/5 text-black/20")
+                                                )} style={!isExpanded && acc.color ? { backgroundColor: `${acc.color}20`, color: acc.color } : {}}>
                                                     <ChevronDown size={16} className={cn("transition-transform duration-300", !isExpanded && "-rotate-90")} />
                                                 </div>
                                                 <div className="flex flex-col">
@@ -329,6 +330,22 @@ export default function PaymentsSettingsPage() {
                                                         }}
                                                         placeholder="US00 CHASE 000..."
                                                     />
+                                                </SettingsField>
+
+                                                <SettingsField label="Display Color">
+                                                    <div className="flex items-center gap-3">
+                                                        <ColorisInput 
+                                                            value={acc.color || '#008ba3'} 
+                                                            onChange={val => {
+                                                                const next = [...(formData.bank_accounts || [])];
+                                                                next[index] = { ...next[index], color: val };
+                                                                setFormData({ ...formData, bank_accounts: next });
+                                                            }}
+                                                        />
+                                                        <span className={cn("text-[11px] font-medium opacity-40", isDark ? "text-white" : "text-black")}>
+                                                            This color will be used for the bank icon in the payment modal.
+                                                        </span>
+                                                    </div>
                                                 </SettingsField>
                                             </div>
                                         )}

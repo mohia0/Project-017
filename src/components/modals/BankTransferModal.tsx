@@ -1,13 +1,15 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ArrowRight, Check } from 'lucide-react';
+import { X, ArrowRight, Check, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { DocumentDesign } from '@/types/design';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { appToast } from '@/lib/toast';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 interface BankTransferModalProps {
     isOpen: boolean;
@@ -16,6 +18,34 @@ interface BankTransferModalProps {
     amountDue: string | number;
     accountId?: string | null;
     design?: Partial<DocumentDesign>;
+}
+
+function CopyButton({ value, label, isDark }: { value: string, label: string, isDark: boolean }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(value);
+        setCopied(true);
+        appToast.success(`${label} copied`, `Copied to clipboard`);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <Tooltip content={copied ? "Copied!" : `Copy ${label}`} side="top">
+            <button
+                onClick={handleCopy}
+                className={cn(
+                    "p-1 rounded-md transition-all flex items-center justify-center shrink-0",
+                    isDark 
+                        ? "hover:bg-white/10 text-white/40 hover:text-white/80" 
+                        : "hover:bg-black/5 text-black/30 hover:text-black/60"
+                )}
+            >
+                {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+            </button>
+        </Tooltip>
+    );
 }
 
 export function BankTransferModal({ 
@@ -54,13 +84,15 @@ export function BankTransferModal({
         name: defaultAccount.account_name,
         accountNumber: defaultAccount.account_number,
         swiftCode: defaultAccount.swift,
-        iban: defaultAccount.iban
+        iban: defaultAccount.iban,
+        color: defaultAccount.color
     } : {
         bankName: payments?.bank_name || "BANK OF ALEXANDRIA S A E",
         name: payments?.business_name || "Mohi Eldeen Hassan Mohamed Hassan",
         accountNumber: "311146782001",
         swiftCode: payments?.swift || "ALEXEGCXXXX",
-        iban: payments?.iban || "EG980005301100000311146782001"
+        iban: payments?.iban || "EG980005301100000311146782001",
+        color: '#008ba3'
     };
 
     const isLoading = isOpen && activeWorkspaceId && !hasFetched.payments;
@@ -108,35 +140,51 @@ export function BankTransferModal({
                             <p className="text-[11px] font-bold uppercase tracking-widest opacity-30">Loading bank details...</p>
                         </div>
                     ) : (
-                        <div className={cn(
-                            "rounded-xl border p-4 space-y-3",
-                            isDark ? "bg-[#111] border-[#333]" : "bg-[#f9f9f9] border-[#e2e2e2]"
-                        )}>
+                        <div 
+                            className={cn(
+                                "rounded-xl border p-4 space-y-3 transition-colors",
+                                isDark ? "bg-[#111]" : "bg-[#f9f9f9]"
+                            )}
+                            style={{ borderColor: paymentInfo.color ? `${paymentInfo.color}30` : (isDark ? '#333' : '#e2e2e2') }}
+                        >
                             <div className="space-y-1">
                                 <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Bank Name</span>
-                                <p className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-black")}>{paymentInfo.bankName}</p>
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-black")}>{paymentInfo.bankName}</p>
+                                    <CopyButton value={paymentInfo.bankName} label="Bank Name" isDark={isDark} />
+                                </div>
                             </div>
                             
                             <div className="space-y-1">
                                 <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Account Name</span>
-                                <p className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-black")}>{paymentInfo.name}</p>
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-black")}>{paymentInfo.name}</p>
+                                    <CopyButton value={paymentInfo.name} label="Account Name" isDark={isDark} />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Account Number</span>
-                                    <p className={cn("text-[13px] font-mono font-medium", isDark ? "text-white" : "text-black")}>{paymentInfo.accountNumber}</p>
+                                    <div className="flex items-center justify-between gap-1 overflow-hidden">
+                                        <p className={cn("text-[13px] font-mono font-medium truncate", isDark ? "text-white" : "text-black")}>{paymentInfo.accountNumber}</p>
+                                        <CopyButton value={paymentInfo.accountNumber} label="Account Number" isDark={isDark} />
+                                    </div>
                                 </div>
                                 <div className="space-y-1">
                                     <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>Swift Code</span>
-                                    <p className={cn("text-[13px] font-mono font-medium", isDark ? "text-white" : "text-black")}>{paymentInfo.swiftCode}</p>
+                                    <div className="flex items-center justify-between gap-1 overflow-hidden">
+                                        <p className={cn("text-[13px] font-mono font-medium truncate", isDark ? "text-white" : "text-black")}>{paymentInfo.swiftCode}</p>
+                                        <CopyButton value={paymentInfo.swiftCode} label="Swift Code" isDark={isDark} />
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="space-y-1">
                                 <span className={cn("text-[10px] uppercase tracking-widest font-bold opacity-30", isDark ? "text-white" : "text-black")}>IBAN</span>
-                                <div className="flex items-center justify-between">
-                                    <p className={cn("text-[13px] font-mono font-medium truncate pr-2", isDark ? "text-white" : "text-black")}>{paymentInfo.iban}</p>
+                                <div className="flex items-center justify-between gap-2 overflow-hidden">
+                                    <p className={cn("text-[13px] font-mono font-medium truncate", isDark ? "text-white" : "text-black")}>{paymentInfo.iban}</p>
+                                    <CopyButton value={paymentInfo.iban} label="IBAN" isDark={isDark} />
                                 </div>
                             </div>
                         </div>
@@ -168,6 +216,10 @@ export function BankTransferModal({
                             Pay later
                         </button>
                     </div>
+
+                    <p className={cn("text-[10.5px] text-center opacity-30 font-medium mt-1", isDark ? "text-white" : "text-black")}>
+                        All bank details are confidential and securely handled.
+                    </p>
                 </div>
             </div>
         </div>,

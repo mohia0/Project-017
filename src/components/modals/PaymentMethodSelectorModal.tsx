@@ -64,7 +64,7 @@ export function PaymentMethodSelectorModal({
                 name: `${acc.bank_name}`,
                 subName: acc.account_name,
                 icon: <Landmark size={18} />,
-                color: '#008ba3',
+                color: acc.color || '#008ba3',
                 type: 'bank'
             });
         }
@@ -122,6 +122,11 @@ export function PaymentMethodSelectorModal({
         // We could auto-call handleSelectMethod, but that might cause loops or issues with React state.
         // I'll show it for now, but I can optimize it.
     }
+
+    const hasOnlyBank = availableMethods.length > 0 && availableMethods.every(m => m.type === 'bank');
+    const footerText = hasOnlyBank 
+        ? "All bank details are confidential and securely handled."
+        : `Secure encrypted payment powered by ${payments?.business_name || "CRM 17"}`;
 
     if (!isOpen || !mounted) return null;
 
@@ -192,7 +197,7 @@ export function PaymentMethodSelectorModal({
 
                 <div className="px-6 pb-6 pt-2">
                     <p className={cn("text-[10.5px] text-center opacity-30 font-medium", isDark ? "text-white" : "text-black")}>
-                        Secure encrypted payment powered by {payments?.business_name || "CRM 17"}
+                        {footerText}
                     </p>
                 </div>
             </div>
