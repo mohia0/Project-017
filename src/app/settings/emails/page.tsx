@@ -1,1095 +1,250 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSettingsStore, WorkspaceEmailConfig } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
-import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
 import {
-    Mail, Send, Activity, ShieldCheck, Globe, RotateCcw, CheckCircle2,
-    Lightbulb, Receipt, FileText, FileSignature, UserPlus, Eye, EyeOff,
-    Sparkles, ChevronDown, Check, AlertCircle, Zap,
-    AlertTriangle, CalendarCheck, Code2
+    Mail, Send, ShieldCheck, Globe, Eye, EyeOff,
+    Check, AlertCircle, Trash2, Settings2, Sparkles, Layout
 } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
-import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import Link from 'next/link';
 
-/* ─────────────── Constants ─────────────── */
-const TEMPLATE_DEFS = [
-    {
-        key: 'invoice', label: 'Invoice', icon: FileText, color: '#f59e0b',
-        vars: ['{{client_name}}', '{{invoice_number}}', '{{amount_due}}', '{{due_date}}', '{{document_link}}', '{{sender_name}}'],
-        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', amount_due: '$3,200', due_date: 'May 15, 2026', document_link: 'https://app.example.com/p/invoice/xxx', sender_name: 'Acme Studio' }
-    },
-    {
-        key: 'proposal', label: 'Proposal', icon: Send, color: '#3b82f6',
-        vars: ['{{client_name}}', '{{document_title}}', '{{document_link}}', '{{sender_name}}'],
-        sample: { client_name: 'John Smith', document_title: 'Website Redesign Proposal', document_link: 'https://app.example.com/p/proposal/xxx', sender_name: 'Acme Studio' }
-    },
-    {
-        key: 'receipt', label: 'Receipt', icon: Receipt, color: '#10b981',
-        vars: ['{{client_name}}', '{{invoice_number}}', '{{amount_paid}}', '{{document_link}}', '{{sender_name}}'],
-        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', amount_paid: '$3,200', document_link: 'https://app.example.com/p/invoice/xxx', sender_name: 'Acme Studio' }
-    },
-    {
-        key: 'overdue_remind', label: 'Overdue Reminder', icon: AlertTriangle, color: '#ef4444',
-        vars: ['{{client_name}}', '{{invoice_number}}', '{{days_overdue}}', '{{amount_due}}', '{{document_link}}', '{{sender_name}}'],
-        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', days_overdue: '3', amount_due: '$3,200', document_link: 'https://app.example.com/p/invoice/xxx', sender_name: 'Acme Studio' }
-    },
-    {
-        key: 'booking_confirmed', label: 'Booking', icon: CalendarCheck, color: '#8b5cf6',
-        vars: ['{{client_name}}', '{{scheduler_title}}', '{{booked_date}}', '{{booked_time}}', '{{timezone}}', '{{sender_name}}'],
-        sample: { client_name: 'John Smith', scheduler_title: 'Strategy Session', booked_date: 'May 20, 2026', booked_time: '10:00 AM', timezone: '(UTC-05:00) Eastern Time', sender_name: 'Acme Studio' }
-    },
-];
-
-const DEFAULT_TEMPLATES: Record<string, { subject: string; body: string; is_html?: boolean }> = {
-    invoice: {
-        subject: "Invoice #{{invoice_number}} from {{sender_name}}",
-        body: "Hi {{client_name}},\n\nYour invoice #{{invoice_number}} is now available.\n\nAmount Due: {{amount_due}}\nDue Date: {{due_date}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nThank you for your business!\n\nBest regards,\n{{sender_name}}"
-    },
-    proposal: {
-        subject: "Proposal: {{document_title}}",
-        body: "Hi {{client_name}},\n\nI've prepared a proposal for {{document_title}} as we discussed.\n\nYou can review the details and accept it via the secure link below:\n{{document_link}}\n\nPlease let me know if you have any questions.\n\nBest regards,\n{{sender_name}}"
-    },
-    receipt: {
-        subject: "Payment Receipt — Invoice #{{invoice_number}}",
-        is_html: true,
-        body: `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Payment Receipt</title></head>
-<body style="margin:0;padding:0;background:#E8ECF2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-<table width="100%" bgcolor="#E8ECF2" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:48px 16px;">
-<div style="width:100%;max-width:400px;margin:0 auto;">
-
-  <!-- Badge sits above the card via relative/z-index in email-safe way -->
-  <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding-bottom:0;line-height:0;">
-    <div style="display:inline-block;width:60px;height:60px;background:{{accent_color}};border-radius:50%;border:5px solid #E8ECF2;box-sizing:border-box;margin-bottom:-30px;">
-      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:10px auto;"><polyline points="20 6 9 17 4 12"/></svg>
-    </div>
-  </td></tr></table>
-
-  <!-- Card top (rounded corners) -->
-  <div style="background:#1C2333;border-radius:16px 16px 0 0;padding:44px 28px 28px;text-align:center;">
-
-    <h1 style="margin:0 0 8px;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.3px;">Payment Success!</h1>
-    <p style="margin:0 0 22px;color:#8892A4;font-size:13px;line-height:1.6;">Your payment has been successfully done.</p>
-    <div style="border-top:1px solid #2B3549;margin-bottom:22px;"></div>
-
-    <p style="margin:0 0 6px;color:#8892A4;font-size:10px;text-transform:uppercase;letter-spacing:2.5px;font-weight:700;">Total Payment</p>
-    <p style="margin:0 0 28px;color:#ffffff;font-size:30px;font-weight:800;letter-spacing:-0.5px;">{{amount_paid}}</p>
-
-    <!-- Info grid -->
-    <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td width="50%" style="padding:0 4px 8px 0;vertical-align:top;">
-          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
-            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Ref Number</p>
-            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;font-family:monospace;text-align:left;word-break:break-all;">{{invoice_number}}</p>
-          </div>
-        </td>
-        <td width="50%" style="padding:0 0 8px 4px;vertical-align:top;">
-          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
-            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Payment Time</p>
-            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;text-align:left;">{{payment_date}}</p>
-          </div>
-        </td>
-      </tr>
-      <tr>
-        <td width="50%" style="padding:0 4px 0 0;vertical-align:top;">
-          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
-            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Payment Method</p>
-            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;text-align:left;">Bank Transfer</p>
-          </div>
-        </td>
-        <td width="50%" style="padding:0 0 0 4px;vertical-align:top;">
-          <div style="background:#131B2C;border:1px solid #2B3549;border-radius:10px;padding:14px 12px;">
-            <p style="margin:0 0 5px;color:#6B7280;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;text-align:left;">Sender Name</p>
-            <p style="margin:0;color:#E5E7EB;font-size:12px;font-weight:700;text-align:left;">{{client_name}}</p>
-          </div>
-        </td>
-      </tr>
-    </table>
-
-    <!-- CTA link -->
-    <div style="margin-top:24px;padding-bottom:4px;">
-      <a href="{{document_link}}" style="display:inline-block;color:#8892A4;font-size:13px;font-weight:600;text-decoration:none;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:6px;"><path d="M12 2v13"/><path d="M5 10l7 7 7-7"/><path d="M3 21h18"/></svg>
-        Get PDF Receipt
-      </a>
-    </div>
-  </div>
-
-  <!-- Scalloped receipt bottom teeth (same color as card, pointing down) -->
-  <svg width="100%" viewBox="0 0 400 20" xmlns="http://www.w3.org/2000/svg" style="display:block;margin-top:-1px;">
-    <path d="M0,0 L400,0 Q390,20,380,0 Q370,20,360,0 Q350,20,340,0 Q330,20,320,0 Q310,20,300,0 Q290,20,280,0 Q270,20,260,0 Q250,20,240,0 Q230,20,220,0 Q210,20,200,0 Q190,20,180,0 Q170,20,160,0 Q150,20,140,0 Q130,20,120,0 Q110,20,100,0 Q90,20,80,0 Q70,20,60,0 Q50,20,40,0 Q30,20,20,0 Q10,20,0,0 Z" fill="#1C2333"/>
-  </svg>
-
-  <!-- Footer -->
-  <p style="text-align:center;color:#9AA0AD;font-size:11px;margin:16px 0 0;">Thank you for your business &mdash; <strong>{{sender_name}}</strong></p>
-
-</div>
-</td></tr></table>
-</body></html>`
-    },
-    overdue_remind: {
-        subject: "Action Required: Invoice #{{invoice_number}} is Overdue",
-        body: "Hi {{client_name}},\n\nThis is a friendly reminder that invoice #{{invoice_number}} is currently {{days_overdue}} days overdue.\n\nAmount Due: {{amount_due}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nIf you have already submitted your payment, please disregard this notice.\n\nBest regards,\n{{sender_name}}"
-    },
-    booking_confirmed: {
-        subject: "Booking Confirmed: {{scheduler_title}}",
-        body: "Hi {{client_name}},\n\nYour booking for \"{{scheduler_title}}\" has been confirmed!\n\nDate: {{booked_date}}\nTime: {{booked_time}}\nTimezone: {{timezone}}\n\nWe look forward to speaking with you. If you need to make changes, please reach out to us.\n\nBest regards,\n{{sender_name}}"
-    },
-};
-
-function resolveVars(text: string, sample: Record<string, any>) {
-    return text.replace(/\{\{(\w+)\}\}/g, (_, k) => sample[k] ?? `{{${k}}}`);
-}
-
-/* ─────────────── Sub-components ─────────────── */
-
-function Toggle({ checked, onChange, isDark }: { checked: boolean; onChange: (v: boolean) => void; isDark: boolean }) {
-    return (
-        <div onClick={() => onChange(!checked)} className="flex items-center gap-2.5 cursor-pointer select-none">
-            <div className={cn(
-                "w-9 h-[20px] rounded-full relative transition-all duration-300",
-                checked ? "bg-primary" : (isDark ? "bg-white/10" : "bg-black/10")
-            )}>
-                <div className={cn(
-                    "absolute top-[3px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-all duration-300",
-                    checked ? "translate-x-[19px]" : "translate-x-[3px]"
-                )} />
-            </div>
-        </div>
-    );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-    return (
-        <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-3">{children}</p>
-    );
-}
-
-function InputField({ label, value, onChange, placeholder, type = 'text', hint }: {
-    label: string; value: string | number; onChange: (v: string) => void;
-    placeholder?: string; type?: string; hint?: string;
-}) {
-    const { theme } = useUIStore();
+export default function EmailSettingsPage() {
+    const { emailConfig, updateEmailConfig, fetchEmailConfig } = useSettingsStore();
+    const { activeWorkspaceId, theme } = useUIStore();
     const isDark = theme === 'dark';
-    return (
-        <div className="flex flex-col gap-1.5">
-            <label className={cn("text-[11px] font-semibold", isDark ? "text-white/40" : "text-black/40")}>{label}</label>
-            <input
-                type={type}
-                value={value ?? ''}
-                onChange={e => onChange(e.target.value)}
-                placeholder={placeholder}
-                className={cn(
-                    "w-full px-3 py-2.5 rounded-xl border outline-none text-[13px] font-medium transition-colors",
-                    isDark
-                        ? "bg-white/[0.04] border-white/10 text-white placeholder:text-white/20 focus:border-white/25"
-                        : "bg-black/[0.02] border-black/10 text-[#111] placeholder:text-black/25 focus:border-black/25"
-                )}
-            />
-            {hint && <p className={cn("text-[10px]", isDark ? "text-white/25" : "text-black/30")}>{hint}</p>}
-        </div>
-    );
-}
 
-/* ─────── Template Editor Panel ─────── */
-function TemplatePanel({ isDark, branding }: { isDark: boolean; branding: any }) {
-    const { emailTemplates, updateEmailTemplate, emailConfig } = useSettingsStore();
-    const { activeWorkspaceId } = useUIStore();
-
-    const [activeKey, setActiveKey] = useState('invoice');
-    const [editorMode, setEditorMode] = useState<'text' | 'html' | 'preview'>('preview');
     const [isSaving, setIsSaving] = useState(false);
-    const [saved, setSaved] = useState(false);
-    const [showResetConfirm, setShowResetConfirm] = useState(false);
-    const [templateData, setTemplateData] = useState<Record<string, { subject: string; body: string; is_html: boolean }>>({});
+    const [showPass, setShowPass] = useState(false);
+    
+    const [config, setConfig] = useState<Partial<WorkspaceEmailConfig>>({
+        from_name: '',
+        from_address: '',
+        smtp_host: '',
+        smtp_port: 587,
+        smtp_user: '',
+        smtp_pass: '',
+        smtp_secure: true
+    });
 
     useEffect(() => {
-        const data: Record<string, { subject: string; body: string; is_html: boolean }> = {};
-        Object.keys(DEFAULT_TEMPLATES).forEach(k => { 
-            data[k] = { ...DEFAULT_TEMPLATES[k], is_html: !!DEFAULT_TEMPLATES[k].is_html, body: DEFAULT_TEMPLATES[k].body, subject: DEFAULT_TEMPLATES[k].subject }; 
-        });
-        if (emailTemplates?.length) {
-            emailTemplates.forEach(t => {
-                if (data[t.template_key]) {
-                    if (t.subject) data[t.template_key].subject = t.subject;
-                    if (t.body) data[t.template_key].body = t.body;
-                    data[t.template_key].is_html = !!t.is_html;
-                }
-            });
+        if (activeWorkspaceId) fetchEmailConfig(activeWorkspaceId);
+    }, [activeWorkspaceId]);
+
+    useEffect(() => {
+        if (emailConfig) {
+            setConfig(emailConfig);
         }
-        setTemplateData(data);
-    }, [emailTemplates]);
-
-    const getBrightness = (hex: string) => {
-        if (!hex) return 255;
-        let color = hex.replace('#', '');
-        if (color.length === 3) color = color.split('').map(c => c + c).join('');
-        const r = parseInt(color.slice(0, 2), 16);
-        const g = parseInt(color.slice(2, 4), 16);
-        const b = parseInt(color.slice(4, 6), 16);
-        return Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
-    };
-
-    const def = TEMPLATE_DEFS.find(d => d.key === activeKey)!;
-    const current = templateData[activeKey] || { subject: '', body: '', is_html: false };
-    const sampleVars: Record<string, any> = { ...def.sample, sender_name: emailConfig?.from_name || 'Acme Studio' };
-    const accentColor = branding?.primary_color || '#10b981';
-    // Let the live preview also resolve custom accent colors
-    sampleVars.accent_color = accentColor;
-    const isAccentDark = getBrightness(accentColor) < 128;
-    const logoUrl = isAccentDark ? branding?.logo_light_url : (branding?.logo_dark_url || branding?.logo_light_url);
-    const headerTextColor = isAccentDark ? '#ffffff' : '#000000';
-
-    const getBoilerplate = () => {
-        const textLines = (current.body || '')
-            .split('\n')
-            .map(line => line.trim())
-            .filter(l => l.length > 0 && !l.includes('{{document_link}}'))
-            .map(line => `              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.7; color: #374151;">${line}</p>`)
-            .join('\n');
-
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${current.subject || 'Email'}</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
-
-          <!-- HEADER -->
-          <tr>
-            <td style="background-color: ${accentColor}; padding: 32px 48px; text-align: left;">
-              <span style="font-size: 20px; font-weight: 700; color: ${headerTextColor}; letter-spacing: -0.3px;">${sampleVars.sender_name}</span>
-            </td>
-          </tr>
-
-          <!-- BODY -->
-          <tr>
-            <td style="padding: 48px 48px 32px 48px;">
-${textLines || `              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.7; color: #374151;">Hi {{client_name}},</p>
-              <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.7; color: #374151;">This is your professional email template. Customize this content as needed.</p>`}
-            </td>
-          </tr>
-
-          <!-- CTA BUTTON -->
-          <tr>
-            <td style="padding: 0 48px 48px 48px; text-align: center;">
-              <a href="{{document_link}}"
-                 style="display: inline-block; background-color: ${accentColor}; color: ${headerTextColor}; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 15px; font-weight: 600; letter-spacing: 0.1px;">
-                View Document
-              </a>
-              <p style="margin: 16px 0 0 0; font-size: 12px; color: #9ca3af; line-height: 1.6;">
-                Or copy this link:<br>
-                <a href="{{document_link}}" style="color: ${accentColor}; word-break: break-all; text-decoration: none;">{{document_link}}</a>
-              </p>
-            </td>
-          </tr>
-
-          <!-- DIVIDER -->
-          <tr>
-            <td style="padding: 0 48px;">
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 0;" />
-            </td>
-          </tr>
-
-          <!-- FOOTER -->
-          <tr>
-            <td style="padding: 24px 48px; color: #9ca3af; font-size: 12px; line-height: 1.6;">
-              <p style="margin: 0;">Securely sent via <strong style="color: #6b7280;">${sampleVars.sender_name}</strong></p>
-              <p style="margin: 4px 0 0 0;">&copy; ${new Date().getFullYear()} ${sampleVars.sender_name}. All rights reserved.</p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
-    };
-
-    // Build the preview HTML logic safely
-    let previewBody = current.body;
-    previewBody = resolveVars(previewBody, sampleVars);
-    
-    if (!current.is_html) {
-        // Convert new lines to br
-        previewBody = previewBody.replace(/\n/g, '<br/>');
-
-    // Make amounts bold colored
-        previewBody = previewBody.replace(new RegExp(sampleVars.amount_due || 'XYZABC', 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${sampleVars.amount_due}</strong>`);
-        previewBody = previewBody.replace(new RegExp(sampleVars.amount_paid || 'XYZABC', 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${sampleVars.amount_paid}</strong>`);
-        
-        // Replace URL stub with the button matching the backend
-        if (sampleVars.document_link) {
-            previewBody = previewBody.replace(
-                new RegExp(sampleVars.document_link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-                `<div style="margin: 32px 0;">
-                <a href="#" onclick="return false;" style="display: inline-block; background-color: ${accentColor}; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                    View Document
-                </a>
-                <div style="margin-top: 16px; font-size: 12px; color: #888; line-height: 1.5;">
-                    If the button above doesn't work, copy and paste this link into your browser:<br/>
-                    <a href="#" onclick="return false;" style="color: ${accentColor}; text-decoration: none; word-break: break-all;">${sampleVars.document_link}</a>
-                </div>
-            </div>`
-            );
-        }
-    }
+    }, [emailConfig]);
 
     const handleSave = async () => {
         if (!activeWorkspaceId) return;
         setIsSaving(true);
         try {
-            await updateEmailTemplate(activeWorkspaceId, activeKey, current);
-            setSaved(true);
-            setTimeout(() => setSaved(false), 2000);
-            appToast.success('Template Saved', 'Your changes have been saved');
-        } catch {
-            appToast.error('Save Failed', 'Failed to save template');
+            // Coerce port to number
+            const finalData = {
+                ...config,
+                smtp_port: Number(config.smtp_port) || 587
+            };
+            await updateEmailConfig(activeWorkspaceId, finalData);
+            appToast.success('Settings Saved', 'Email configuration updated successfully.');
+        } catch (err: any) {
+            appToast.error('Save Failed', err.message);
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleReset = () => {
-        setTemplateData(prev => ({ 
-            ...prev, 
-            [activeKey]: { ...DEFAULT_TEMPLATES[activeKey], is_html: !!DEFAULT_TEMPLATES[activeKey].is_html, body: DEFAULT_TEMPLATES[activeKey].body, subject: DEFAULT_TEMPLATES[activeKey].subject } 
-        }));
-        setEditorMode('text');
-        appToast.success('Template Reset', 'Reset to default built-in version');
-    };
-
-    const update = (patch: Partial<{ subject: string; body: string; is_html: boolean }>) => {
-        setTemplateData(prev => ({ ...prev, [activeKey]: { ...prev[activeKey], ...patch } }));
-    };
-
     return (
-        <div className={cn(
-            "flex flex-col h-full rounded-2xl border overflow-hidden",
-            isDark ? "bg-[#111] border-[#252525]" : "bg-white border-[#e5e5e5]"
-        )}>
-            {/* Section Header */}
-            <div className={cn(
-                "flex items-center justify-between px-5 py-4 border-b shrink-0",
-                isDark ? "border-[#252525]" : "border-[#f0f0f0]"
-            )}>
-                <div className="flex items-center gap-3">
-                    <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center",
-                        isDark ? "bg-white/5" : "bg-black/5"
-                    )}>
-                        <Mail size={15} className={cn(isDark ? "text-white/60" : "text-black/60")} />
-                    </div>
-                    <div>
-                        <h2 className="text-[14px] font-bold">Email Templates</h2>
-                        <p className={cn("text-[11px] mt-0.5", isDark ? "text-white/30" : "text-black/35")}>
-                            Customize message content and layout
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Template Selector Tabs */}
-            <div className={cn(
-                "flex gap-1 p-2 border-b shrink-0 overflow-x-auto",
-                isDark ? "border-[#252525]" : "border-[#f0f0f0]"
-            )}>
-                {TEMPLATE_DEFS.map(t => (
-                    <button
-                        key={t.key}
-                        onClick={() => { setActiveKey(t.key); }}
-                        style={activeKey === t.key ? { backgroundColor: `${t.color}18`, color: t.color } : {}}
-                        className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap",
-                            activeKey === t.key
-                                ? ""
-                                : isDark ? "text-white/30 hover:text-white/60 hover:bg-white/5" : "text-black/30 hover:text-black/60 hover:bg-black/5"
-                        )}
-                    >
-                        <t.icon size={11} />
-                        {t.label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Edit / Preview toggle */}
-            <div className={cn(
-                "flex items-center justify-between px-4 py-2.5 border-b shrink-0",
-                isDark ? "border-[#252525]" : "border-[#f0f0f0]"
-            )}>
-                <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ backgroundColor: `${def.color}20` }}>
-                        <def.icon size={11} style={{ color: def.color }} />
-                    </div>
-                    <span className={cn("text-[12px] font-semibold", isDark ? "text-white/70" : "text-black/70")}>{def.label} Email</span>
-                </div>
-                <div className={cn(
-                    "flex items-center gap-0.5 p-0.5 rounded-lg",
-                    isDark ? "bg-white/5" : "bg-black/5"
-                )}>
-                    <button
-                        onClick={() => setEditorMode('text')}
-                        className={cn(
-                            "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all",
-                            editorMode === 'text'
-                                ? isDark ? "bg-white/10 text-white" : "bg-white text-black shadow-sm"
-                                : isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
-                        )}
-                    >
-                        Body
-                    </button>
-                    <button
-                        onClick={() => {
-                            if (!current.is_html) {
-                                // Auto-generate full HTML from current text body
-                                update({ body: getBoilerplate(), is_html: true });
-                            }
-                            setEditorMode('html');
-                        }}
-                        className={cn(
-                            "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all",
-                            editorMode === 'html'
-                                ? isDark ? "bg-white/10 text-white" : "bg-white text-black shadow-sm"
-                                : isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
-                        )}
-                    >
-                        HTML
-                    </button>
-                    <button
-                        onClick={() => setEditorMode('preview')}
-                        className={cn(
-                            "flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all",
-                            editorMode === 'preview'
-                                ? isDark ? "bg-white/10 text-white" : "bg-white text-black shadow-sm"
-                                : isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
-                        )}
-                    >
-                        Preview
-                    </button>
-                </div>
-            </div>
-
-            {/* Editor / Preview Body */}
-            <div className="flex-1 overflow-y-auto">
-                {editorMode === 'preview' ? (
-                    /* Live Preview */
-                    <div className="p-4 flex flex-col gap-3">
-                        <div className={cn(
-                            "rounded-xl border overflow-hidden",
-                            isDark ? "border-[#252525]" : "border-[#e5e5e5]"
-                        )}>
-                            {/* Email header bar */}
-                            <div className="flex items-center gap-2 px-4 py-3 border-b" style={{ backgroundColor: `${def.color}12`, borderColor: `${def.color}25` }}>
-                                <Sparkles size={12} style={{ color: def.color }} />
-                                <span className="text-[11px] font-bold" style={{ color: def.color }}>Live Envelope Preview</span>
-                            </div>
-                            {/* Subject */}
-                            <div className={cn("px-4 py-3 border-b", isDark ? "border-[#252525] bg-white/[0.02]" : "border-[#f0f0f0] bg-black/[0.01]")}>
-                                <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-1", isDark ? "text-white/25" : "text-black/25")}>Subject</p>
-                                <p className={cn("text-[13px] font-semibold", isDark ? "text-white" : "text-[#111]")}>
-                                    {resolveVars(current.subject, sampleVars)}
-                                </p>
-                            </div>
-                            
-                            {/* True Email Container Render */}
-                            <div className={cn("flex flex-col items-center overflow-x-auto", isDark ? "bg-[#0a0a0a]" : "bg-[#ffffff]", current.is_html ? "py-0" : "px-4 py-8")}>
-                                {current.is_html ? (
-                                    <div className="w-full min-w-[500px]" dangerouslySetInnerHTML={{ __html: previewBody }} />
-                                ) : (
-                                    <div className="w-full max-w-[500px] bg-white rounded-lg border border-[#eaeaea] overflow-hidden text-[#333]">
-                                        {/* Email Header */}
-                                        <div className="px-8 py-6 text-left flex items-center" style={{ backgroundColor: accentColor }}>
-                                            {logoUrl ? (
-                                                <img src={logoUrl} alt="Logo" className="max-h-[32px] object-contain block" />
-                                            ) : (
-                                                <span className="text-[16px] font-semibold" style={{ color: headerTextColor }}>{sampleVars.sender_name}</span>
-                                            )}
-                                        </div>
-                                        
-                                        {/* Body */}
-                                        <div className="p-8 text-[15px] leading-[1.6] text-[#444] font-sans">
-                                            <div dangerouslySetInnerHTML={{ __html: previewBody }} />
-                                        </div>
-
-                                        {/* Footer */}
-                                        <div className="bg-white border-t border-[#f0f0f0] px-8 py-6 text-left">
-                                            <p className="m-0 text-[12px] text-[#999]">Securely sent via <span className="font-medium text-[#777]">{sampleVars.sender_name}</span></p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className={cn(
-                            "flex items-start gap-2 px-3 py-2.5 rounded-xl border text-[11px]",
-                            isDark ? "bg-blue-500/10 border-blue-500/20 text-blue-300" : "bg-blue-50 border-blue-200 text-blue-700"
-                        )}>
-                            <Lightbulb size={12} className="shrink-0 mt-0.5" />
-                            <span>Preview uses sample data. {current.is_html ? 'HTML variables are rendered as placeholders' : 'Real emails will use actual client and document values.'}</span>
-                        </div>
-                    </div>
-                ) : editorMode === 'html' ? (
-                    /* HTML mode */
-                    <div className="p-4 flex flex-col gap-4">
-                         <div className="flex items-center justify-between">
-                            <label className={cn("text-[11px] font-bold uppercase tracking-wider block", isDark ? "text-white/30" : "text-black/30")}>
-                                Raw HTML Email Template
-                            </label>
-                            <button
-                                onClick={() => {
-                                    if (confirm('This will replace your current body with a professional HTML boilerplate. Continue?')) {
-                                        update({ body: getBoilerplate(), is_html: true });
-                                    }
-                                }}
-                                className={cn(
-                                    "flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all",
-                                    isDark ? "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white" : "bg-black/5 text-black/50 hover:bg-black/10 hover:text-black"
-                                )}
-                            >
-                                <Code2 size={10} /> Insert Boilerplate
-                            </button>
-                        </div>
-                        <div className="relative group">
-                            <textarea
-                                value={current.body}
-                                onChange={e => update({ body: e.target.value, is_html: true })}
-                                rows={22}
-                                placeholder="<html><body>...</body></html>"
-                                className={cn(
-                                    "w-full px-4 py-4 rounded-xl border outline-none text-[12px] font-mono leading-relaxed resize-none transition-all custom-scrollbar",
-                                    isDark
-                                        ? "bg-[#080808] border-white/5 text-[#d4d4d4] placeholder:text-white/10 focus:border-purple-500/30"
-                                        : "bg-[#fcfcfc] border-black/5 text-[#222] placeholder:text-black/10 focus:border-purple-500/30"
-                                )}
-                            />
-                            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-[#555]">HTML5</span>
-                            </div>
-                        </div>
-                        <div className={cn(
-                            "flex items-start gap-2 px-3 py-2.5 rounded-xl border text-[11px]",
-                            isDark ? "bg-purple-500/10 border-purple-500/20 text-purple-300" : "bg-purple-50 border-purple-200 text-purple-700"
-                        )}>
-                            <Sparkles size={12} className="shrink-0 mt-0.5" />
-                            <span>You are in <strong>HTML Mode</strong>. This content will be sent as-is. Pro-tip: You can paste any AI-generated HTML email template here.</span>
-                        </div>
-                    </div>
-                ) : (
-                    /* Edit mode (Text) */
-                    <div className="p-4 flex flex-col gap-4">
-                        {/* Subject */}
-                        <div>
-                            <label className={cn("text-[11px] font-bold uppercase tracking-wider mb-1.5 block", isDark ? "text-white/30" : "text-black/30")}>
-                                Subject Line
-                            </label>
-                            <input
-                                value={current.subject}
-                                onChange={e => update({ subject: e.target.value })}
-                                placeholder="Email subject..."
-                                className={cn(
-                                    "w-full px-3 py-2.5 rounded-xl border outline-none text-[13px] font-medium transition-colors",
-                                    isDark
-                                        ? "bg-white/[0.04] border-white/10 text-white placeholder:text-white/20 focus:border-white/25"
-                                        : "bg-black/[0.02] border-black/10 text-[#111] placeholder:text-black/25 focus:border-black/25"
-                                )}
-                            />
-                        </div>
-                        {/* Body */}
-                        <div>
-                            <label className={cn("text-[11px] font-bold uppercase tracking-wider mb-1.5 block", isDark ? "text-white/30" : "text-black/30")}>
-                                Body
-                            </label>
-                            <textarea
-                                value={current.body}
-                                onChange={e => update({ body: e.target.value, is_html: false })}
-                                rows={9}
-                                placeholder="Email body..."
-                                className={cn(
-                                    "w-full px-3 py-2.5 rounded-xl border outline-none text-[13px] leading-relaxed resize-none transition-colors",
-                                    isDark
-                                        ? "bg-white/[0.04] border-white/10 text-white placeholder:text-white/20 focus:border-white/25"
-                                        : "bg-black/[0.02] border-black/10 text-[#111] placeholder:text-black/25 focus:border-black/25"
-                                )}
-                            />
-                        </div>
-                        {/* Variable chips */}
-                        <div>
-                            <p className={cn("text-[10px] font-bold uppercase tracking-wider mb-2", isDark ? "text-white/25" : "text-black/25")}>
-                                Available Variables
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                                {def.vars.map(v => (
-                                    <button
-                                        key={v}
-                                        type="button"
-                                        onClick={() => {
-                                            const body = current.body;
-                                            const sep = body && !body.endsWith(' ') && !body.endsWith('\n') ? ' ' : '';
-                                            update({ body: body + sep + v, is_html: false });
-                                        }}
-                                        className={cn(
-                                            "px-2 py-1 rounded-lg border text-[10px] font-mono transition-all active:scale-95",
-                                            isDark
-                                                ? "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white/80"
-                                                : "bg-black/5 border-black/10 text-black/40 hover:bg-black/10 hover:text-black/70"
-                                        )}
-                                    >
-                                        {v}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Footer actions */}
-            <div className={cn(
-                "flex items-center justify-between px-4 py-3 border-t shrink-0",
-                isDark ? "border-[#252525] bg-[#0d0d0d]" : "border-[#f0f0f0] bg-[#fafafa]"
-            )}>
-                <button
-                    onClick={() => setShowResetConfirm(true)}
-                    className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors",
-                        isDark ? "text-white/25 hover:text-white/60 hover:bg-white/5" : "text-black/30 hover:text-black/60 hover:bg-black/5"
-                    )}
-                >
-                    <RotateCcw size={11} /> Reset
-                </button>
-
-                <DeleteConfirmModal
-                    open={showResetConfirm}
-                    onClose={() => setShowResetConfirm(false)}
-                    onConfirm={handleReset}
-                    title="Reset Template?"
-                    description={`This will permanently delete your custom ${def.label} template and restore the original built-in version. This action cannot be undone.`}
-                    actionLabel="Reset to Default"
-                    isDark={isDark}
-                />
-                <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className={cn(
-                        "flex items-center gap-2 px-5 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 disabled:opacity-50",
-                        saved
-                            ? "bg-emerald-500 text-white"
-                            : "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.4)]"
-                    )}
-                >
-                    {isSaving ? <AppLoader size="xs" /> : saved ? <Check size={13} /> : <CheckCircle2 size={13} />}
-                    {saved ? 'Saved!' : 'Save Template'}
-                </button>
-            </div>
-        </div>
-    );
-}
-
-/* ─────────────── Main Page ─────────────── */
-export default function EmailsSettingsPage() {
-    const { theme, activeWorkspaceId } = useUIStore();
-    const isDark = theme === 'dark';
-    const {
-        emailConfig, fetchEmailConfig, fetchEmailTemplates,
-        domains, fetchDomains, branding, fetchBranding,
-        toolSettings, fetchToolSettings, updateToolSettings
-    } = useSettingsStore();
-
-    const [formData, setFormData] = useState<Partial<WorkspaceEmailConfig>>({});
-    const [smtpPass, setSmtpPass] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
-    const [isTesting, setIsTesting] = useState(false);
-    const [showPass, setShowPass] = useState(false);
-    const [autoReceipt, setAutoReceipt] = useState(true);
-
-    useEffect(() => {
-        if (activeWorkspaceId) {
-            fetchEmailConfig(activeWorkspaceId);
-            fetchEmailTemplates(activeWorkspaceId);
-            fetchDomains(activeWorkspaceId);
-            fetchBranding(activeWorkspaceId);
-            fetchToolSettings(activeWorkspaceId, 'invoices');
-        }
-    }, [activeWorkspaceId, fetchEmailConfig, fetchEmailTemplates, fetchDomains, fetchBranding, fetchToolSettings]);
-
-    useEffect(() => {
-        if (emailConfig) {
-            setFormData({
-                smtp_host: emailConfig.smtp_host || '',
-                smtp_port: emailConfig.smtp_port || 587,
-                smtp_user: emailConfig.smtp_user || '',
-                from_name: emailConfig.from_name || '',
-                from_address: emailConfig.from_address || ''
-            });
-        }
-    }, [emailConfig]);
-
-    useEffect(() => {
-        const s = toolSettings['invoices'];
-        if (s && typeof s.auto_receipt !== 'undefined') {
-            setAutoReceipt(s.auto_receipt);
-        }
-    }, [toolSettings]);
-
-    const hasUnsavedSMTP =
-        formData.smtp_host !== (emailConfig?.smtp_host || '') ||
-        formData.smtp_port !== (emailConfig?.smtp_port || 587) ||
-        formData.smtp_user !== (emailConfig?.smtp_user || '') ||
-        formData.from_name !== (emailConfig?.from_name || '') ||
-        formData.from_address !== (emailConfig?.from_address || '') ||
-        smtpPass !== '';
-
-    const handleSaveSMTP = async () => {
-        if (!activeWorkspaceId) return;
-        setIsSaving(true);
-        const promise = fetch('/api/update-email-config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...formData, smtp_pass: smtpPass, workspace_id: activeWorkspaceId })
-        }).then(async (res) => {
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to save configuration');
-        });
-
-        appToast.promise(promise, {
-            loading: 'Saving SMTP configuration…',
-            success: 'SMTP configuration saved',
-            error: 'Failed to save configuration',
-        });
-
-        try {
-            await promise;
-            setSmtpPass('');
-            fetchEmailConfig(activeWorkspaceId);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleSendTest = async () => {
-        if (!activeWorkspaceId) return;
-        setIsTesting(true);
-        const promise = fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                workspace_id: activeWorkspaceId,
-                to: formData.from_address || emailConfig?.from_address || formData.smtp_user,
-                subject_override: 'Test Email from your Workspace',
-                body_override: 'Hi there,\n\nIf you are seeing this, your SMTP configuration is successfully working!\n\nBest,\nYour App',
-            })
-        }).then(async (res) => {
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to send test email');
-        });
-
-        appToast.promise(promise, {
-            loading: 'Sending test email…',
-            success: 'Test email sent — check your inbox!',
-            error: 'Failed to send test email',
-        });
-        try { await promise; } catch (e) { console.error(e); } finally { setIsTesting(false); }
-    };
-
-    const handleAutoReceiptToggle = async (v: boolean) => {
-        setAutoReceipt(v);
-        if (!activeWorkspaceId) return;
-        const existing = toolSettings['invoices'] || {};
-        await updateToolSettings(activeWorkspaceId, 'invoices', { ...existing, auto_receipt: v });
-        appToast.success('Setting Updated', v ? 'Auto-receipt enabled' : 'Auto-receipt disabled');
-    };
-
-    if (!activeWorkspaceId) return null;
-
-    const smtpActive = !!emailConfig?.smtp_host;
-
-    return (
-        <div className="w-full max-w-2xl mx-auto py-8 px-4">
-            {/* Page header */}
-            <div className="mb-8 flex items-start justify-between">
+        <div className="max-w-[800px] mx-auto pb-20">
+            {/* ── Header ── */}
+            <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-xl font-bold mb-1">Email Settings</h1>
-                    <p className={cn("text-[13px]", isDark ? "text-white/40" : "text-black/40")}>
-                        Configure SMTP and manage your email templates
+                    <h1 className={cn("text-2xl font-bold tracking-tight", isDark ? "text-white" : "text-[#111]")}>
+                        Email Configuration
+                    </h1>
+                    <p className={cn("text-[13px] mt-1", isDark ? "text-white/40" : "text-black/40")}>
+                        Configure your SMTP server and sender identity.
                     </p>
                 </div>
-                {/* SMTP status pill */}
-                <div className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-full border text-[11px] font-semibold",
-                    smtpActive
-                        ? isDark ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-700"
-                        : isDark ? "bg-white/5 border-white/10 text-white/30" : "bg-black/5 border-black/10 text-black/40"
-                )}>
-                    <div className={cn(
-                        "w-1.5 h-1.5 rounded-full",
-                        smtpActive ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" : "bg-current opacity-40"
-                    )} />
-                    {smtpActive ? `SMTP: ${emailConfig?.smtp_host}` : 'SMTP Not Configured'}
-                </div>
+                <Link
+                    href="/settings/emails/templates"
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold transition-all active:scale-95 border shadow-sm",
+                        isDark 
+                            ? "bg-white/5 border-white/10 text-white hover:bg-white/10" 
+                            : "bg-black/5 border-black/10 text-black hover:bg-black/10"
+                    )}
+                >
+                    <Layout size={14} />
+                    Email Templates
+                </Link>
             </div>
 
-            {/* Single column layout */}
-            <div className="flex flex-col gap-6">
-
-                {/* ─── SMTP & Templates ─── */}
-                <div className="flex flex-col gap-6">
-
-                    {/* SMTP Card */}
-                    <div className={cn(
-                        "rounded-2xl border overflow-hidden",
-                        isDark ? "bg-[#111] border-[#252525]" : "bg-white border-[#e5e5e5]"
-                    )}>
-                        {/* Header */}
-                        <div className={cn(
-                            "flex items-center justify-between px-5 py-4 border-b",
-                            isDark ? "border-[#252525]" : "border-[#f0f0f0]"
-                        )}>
-                            <div className="flex items-center gap-3">
-                                <div className={cn(
-                                    "w-8 h-8 rounded-lg flex items-center justify-center",
-                                    isDark ? "bg-white/5" : "bg-black/5"
-                                )}>
-                                    <Activity size={15} className="opacity-60" />
-                                </div>
-                                <div>
-                                    <h2 className="text-[14px] font-bold">SMTP Configuration</h2>
-                                    <p className={cn("text-[11px] mt-0.5", isDark ? "text-white/30" : "text-black/35")}>
-                                        Send emails via your own domain
-                                    </p>
-                                </div>
-                            </div>
-                            {hasUnsavedSMTP && (
-                                <div className={cn(
-                                    "text-[10px] font-semibold px-2 py-1 rounded-md",
-                                    isDark ? "bg-amber-500/10 text-amber-400" : "bg-amber-50 text-amber-600"
-                                )}>
-                                    Unsaved changes
-                                </div>
-                            )}
+            <div className="grid grid-cols-1 gap-6">
+                
+                {/* ── Sender Identity ── */}
+                <div className={cn(
+                    "p-6 rounded-2xl border shadow-sm",
+                    isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#f0f0f0]"
+                )}>
+                    <div className="flex items-center gap-2.5 mb-6">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Mail size={16} className="text-primary" />
                         </div>
-
-                        <div className="p-5 flex flex-col gap-5">
-                            {/* Security note */}
-                            <div className={cn(
-                                "flex items-start gap-3 px-3.5 py-3 rounded-xl border text-[12px]",
-                                isDark ? "bg-blue-500/8 border-blue-500/20 text-blue-300" : "bg-blue-50 border-blue-200 text-blue-700"
-                            )}>
-                                <ShieldCheck size={14} className="shrink-0 mt-0.5 opacity-70" />
-                                <span>Passwords are encrypted via Supabase Vault — never stored in plaintext.</span>
-                            </div>
-
-                            {/* Server fields */}
-                            <div>
-                                <SectionLabel>Server</SectionLabel>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <InputField
-                                        label="SMTP Host"
-                                        value={formData.smtp_host || ''}
-                                        onChange={v => setFormData(f => ({ ...f, smtp_host: v }))}
-                                        placeholder="smtp.gmail.com"
-                                    />
-                                    <InputField
-                                        label="Port"
-                                        type="number"
-                                        value={formData.smtp_port || 587}
-                                        onChange={v => setFormData(f => ({ ...f, smtp_port: parseInt(v) || 587 }))}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Auth fields */}
-                            <div>
-                                <SectionLabel>Authentication</SectionLabel>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <InputField
-                                        label="Username"
-                                        value={formData.smtp_user || ''}
-                                        onChange={v => setFormData(f => ({ ...f, smtp_user: v }))}
-                                        placeholder="you@domain.com"
-                                    />
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className={cn("text-[11px] font-semibold", isDark ? "text-white/40" : "text-black/40")}>
-                                            Password
-                                        </label>
-                                        <div className={cn(
-                                            "flex items-center gap-2 px-3 py-2.5 rounded-xl border transition-colors",
-                                            isDark ? "bg-white/[0.04] border-white/10 focus-within:border-white/25" : "bg-black/[0.02] border-black/10 focus-within:border-black/25"
-                                        )}>
-                                            <input
-                                                type={showPass ? 'text' : 'password'}
-                                                value={smtpPass}
-                                                onChange={e => setSmtpPass(e.target.value)}
-                                                placeholder={smtpActive ? '••••••••' : 'App Password'}
-                                                className={cn(
-                                                    "flex-1 bg-transparent outline-none text-[13px] font-medium",
-                                                    isDark ? "text-white placeholder:text-white/20" : "text-[#111] placeholder:text-black/25"
-                                                )}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPass(p => !p)}
-                                                className={cn("opacity-30 hover:opacity-60 transition-opacity")}
-                                            >
-                                                {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Sender fields */}
-                            <div>
-                                <SectionLabel>Sender Profile</SectionLabel>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <InputField
-                                        label="From Name"
-                                        value={formData.from_name || ''}
-                                        onChange={v => setFormData(f => ({ ...f, from_name: v }))}
-                                        placeholder="Acme Studio"
-                                        hint="The name clients see in their inbox"
-                                    />
-                                    <div className="flex flex-col gap-1.5">
-                                        <InputField
-                                            label="From Address"
-                                            type="email"
-                                            value={formData.from_address || ''}
-                                            onChange={v => setFormData(f => ({ ...f, from_address: v }))}
-                                            placeholder="hello@acme.com"
-                                            hint="Should match your SMTP domain"
-                                        />
-                                        {domains.filter(d => d.status === 'active' && d.domain !== 'app.mohihassan.com').map(d => (
-                                            <button
-                                                key={d.id}
-                                                type="button"
-                                                onClick={() => setFormData(f => ({ ...f, from_address: `hello@${d.domain}` }))}
-                                                className={cn(
-                                                    "flex items-center gap-1.5 text-[10px] font-semibold transition-colors self-start",
-                                                    isDark ? "text-primary hover:text-primary-hover" : "text-primary hover:text-primary-hover"
-                                                )}
-                                            >
-                                                <Globe size={10} />
-                                                Use {d.domain}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Footer actions */}
-                            <div className={cn(
-                                "flex items-center justify-between pt-4 border-t",
-                                isDark ? "border-white/[0.06]" : "border-black/[0.06]"
-                            )}>
-                                <button
-                                    type="button"
-                                    onClick={handleSendTest}
-                                    disabled={isTesting || !smtpActive}
-                                    className={cn(
-                                        "flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 disabled:opacity-40",
-                                        isDark ? "bg-white/8 hover:bg-white/12 text-white/70" : "bg-black/5 hover:bg-black/10 text-black/60"
-                                    )}
-                                >
-                                    {isTesting ? <AppLoader size="xs" /> : <Send size={13} />}
-                                    Send Test
-                                </button>
-                                <button
-                                    onClick={handleSaveSMTP}
-                                    disabled={isSaving || !hasUnsavedSMTP}
-                                    className={cn(
-                                        "flex items-center gap-2 px-5 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 disabled:opacity-40",
-                                        "bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_4px_12px_-4px_rgba(77,191,57,0.4)]"
-                                    )}
-                                >
-                                    {isSaving ? <AppLoader size="xs" /> : <CheckCircle2 size={13} />}
-                                    Save Config
-                                </button>
-                            </div>
-                        </div>
+                        <h3 className={cn("text-[15px] font-bold", isDark ? "text-white" : "text-[#111]")}>Sender Identity</h3>
                     </div>
 
-                    {/* ─── Template Panel ─── */}
-                    <div style={{ height: 'calc(100vh - 200px)', minHeight: '600px' }}>
-                        <TemplatePanel isDark={isDark} branding={branding} />
-                    </div>
-
-                    {/* Auto-Receipt Toggle Card */}
-                    <div className={cn(
-                        "rounded-2xl border overflow-hidden",
-                        isDark ? "bg-[#111] border-[#252525]" : "bg-white border-[#e5e5e5]"
-                    )}>
-                        <div className="flex items-start justify-between p-5 gap-4">
-                            <div className="flex items-start gap-3">
-                                <div className={cn(
-                                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
-                                    isDark ? "bg-emerald-500/10" : "bg-emerald-50"
-                                )}>
-                                    <Receipt size={15} className="text-emerald-500" />
-                                </div>
-                                <div>
-                                    <h3 className="text-[13px] font-bold">Automatic Receipts</h3>
-                                    <p className={cn("text-[11px] mt-0.5 leading-relaxed", isDark ? "text-white/35" : "text-black/40")}>
-                                        Automatically email a payment receipt when an invoice is marked as <strong>Paid</strong>. Disable to send receipts manually from the notification panel.
-                                    </p>
-                                </div>
-                            </div>
-                            <Toggle checked={autoReceipt} onChange={handleAutoReceiptToggle} isDark={isDark} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className={cn("text-[11px] font-bold uppercase tracking-widest opacity-40 ml-1", isDark ? "text-white" : "text-black")}>From Name</label>
+                            <input
+                                type="text"
+                                value={config.from_name || ''}
+                                onChange={e => setConfig({ ...config, from_name: e.target.value })}
+                                placeholder="Your Name or Studio"
+                                className={cn(
+                                    "w-full px-4 py-2.5 rounded-xl border outline-none text-[13px] font-medium transition-all focus:ring-2 ring-primary/10",
+                                    isDark ? "bg-white/[0.03] border-white/8 text-white focus:border-white/20" : "bg-black/[0.02] border-black/8 text-[#111] focus:border-black/20"
+                                )}
+                            />
                         </div>
-                        {!autoReceipt && (
-                            <div className={cn(
-                                "mx-5 mb-5 flex items-start gap-2.5 px-3.5 py-3 rounded-xl border text-[11px]",
-                                isDark ? "bg-amber-500/8 border-amber-500/20 text-amber-300" : "bg-amber-50 border-amber-200 text-amber-700"
-                            )}>
-                                <AlertCircle size={13} className="shrink-0 mt-0.5" />
-                                <span>Manual mode: a notification will appear in your feed when payment is received, allowing you to review and send the receipt.</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Deliverability Tips */}
-                    <div className={cn(
-                        "rounded-2xl border p-5",
-                        isDark ? "bg-[#111] border-[#252525]" : "bg-white border-[#e5e5e5]"
-                    )}>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className={cn(
-                                "w-8 h-8 rounded-lg flex items-center justify-center",
-                                isDark ? "bg-emerald-500/10" : "bg-emerald-50"
-                            )}>
-                                <Zap size={15} className="text-emerald-500" />
-                            </div>
-                            <div>
-                                <h3 className="text-[13px] font-bold">Deliverability Tips</h3>
-                                <p className={cn("text-[11px]", isDark ? "text-white/30" : "text-black/35")}>Improve inbox placement</p>
-                            </div>
+                        <div className="space-y-1.5">
+                            <label className={cn("text-[11px] font-bold uppercase tracking-widest opacity-40 ml-1", isDark ? "text-white" : "text-black")}>From Address</label>
+                            <input
+                                type="email"
+                                value={config.from_address || ''}
+                                onChange={e => setConfig({ ...config, from_address: e.target.value })}
+                                placeholder="hello@yourstudio.com"
+                                className={cn(
+                                    "w-full px-4 py-2.5 rounded-xl border outline-none text-[13px] font-medium transition-all focus:ring-2 ring-primary/10",
+                                    isDark ? "bg-white/[0.03] border-white/8 text-white focus:border-white/20" : "bg-black/[0.02] border-black/8 text-[#111] focus:border-black/20"
+                                )}
+                            />
                         </div>
-                        <ul className="space-y-2.5">
-                            {[
-                                'Set up SPF and DKIM records at your DNS provider.',
-                                "Keep your 'From Name' consistent across all communications.",
-                                "Avoid generic free accounts (gmail.com) for custom SMTP.",
-                                'Use an App Password if you have 2FA enabled on your account.',
-                            ].map((tip, i) => (
-                                <li key={i} className={cn("flex items-start gap-2.5 text-[12px] leading-relaxed", isDark ? "text-white/50" : "text-black/55")}>
-                                    <CheckCircle2 size={13} className="shrink-0 mt-0.5 text-emerald-500" />
-                                    {tip}
-                                </li>
-                            ))}
-                        </ul>
                     </div>
                 </div>
+
+                {/* ── SMTP Configuration ── */}
+                <div className={cn(
+                    "p-6 rounded-2xl border shadow-sm",
+                    isDark ? "bg-[#141414] border-[#252525]" : "bg-white border-[#f0f0f0]"
+                )}>
+                    <div className="flex items-center gap-2.5 mb-6">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Globe size={16} className="text-primary" />
+                        </div>
+                        <h3 className={cn("text-[15px] font-bold", isDark ? "text-white" : "text-[#111]")}>SMTP Settings</h3>
+                    </div>
+
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="col-span-2 space-y-1.5">
+                                <label className={cn("text-[11px] font-bold uppercase tracking-widest opacity-40 ml-1", isDark ? "text-white" : "text-black")}>SMTP Host</label>
+                                <input
+                                    type="text"
+                                    value={config.smtp_host || ''}
+                                    onChange={e => setConfig({ ...config, smtp_host: e.target.value })}
+                                    placeholder="smtp.gmail.com"
+                                    className={cn(
+                                        "w-full px-4 py-2.5 rounded-xl border outline-none text-[13px] font-medium transition-all",
+                                        isDark ? "bg-white/[0.03] border-white/8 text-white focus:border-white/20" : "bg-black/[0.02] border-black/8 text-[#111] focus:border-black/20"
+                                    )}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className={cn("text-[11px] font-bold uppercase tracking-widest opacity-40 ml-1", isDark ? "text-white" : "text-black")}>Port</label>
+                                <input
+                                    type="text"
+                                    value={config.smtp_port || ''}
+                                    onChange={e => setConfig({ ...config, smtp_port: Number(e.target.value) || 0 })}
+                                    placeholder="587"
+                                    className={cn(
+                                        "w-full px-4 py-2.5 rounded-xl border outline-none text-[13px] font-medium transition-all",
+                                        isDark ? "bg-white/[0.03] border-white/8 text-white focus:border-white/20" : "bg-black/[0.02] border-black/8 text-[#111] focus:border-black/20"
+                                    )}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className={cn("text-[11px] font-bold uppercase tracking-widest opacity-40 ml-1", isDark ? "text-white" : "text-black")}>SMTP User</label>
+                                <input
+                                    type="text"
+                                    value={config.smtp_user || ''}
+                                    onChange={e => setConfig({ ...config, smtp_user: e.target.value })}
+                                    className={cn(
+                                        "w-full px-4 py-2.5 rounded-xl border outline-none text-[13px] font-medium transition-all",
+                                        isDark ? "bg-white/[0.03] border-white/8 text-white focus:border-white/20" : "bg-black/[0.02] border-black/8 text-[#111] focus:border-black/20"
+                                    )}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className={cn("text-[11px] font-bold uppercase tracking-widest opacity-40 ml-1", isDark ? "text-white" : "text-black")}>SMTP Password</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPass ? "text" : "password"}
+                                        value={config.smtp_pass || ''}
+                                        onChange={e => setConfig({ ...config, smtp_pass: e.target.value })}
+                                        className={cn(
+                                            "w-full pl-4 pr-10 py-2.5 rounded-xl border outline-none text-[13px] font-medium transition-all",
+                                            isDark ? "bg-white/[0.03] border-white/8 text-white focus:border-white/20" : "bg-black/[0.02] border-black/8 text-[#111] focus:border-black/20"
+                                        )}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPass(!showPass)}
+                                        className={cn("absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md transition-colors", isDark ? "hover:bg-white/5" : "hover:bg-black/5")}
+                                    >
+                                        {showPass ? <EyeOff size={14} className="opacity-40" /> : <Eye size={14} className="opacity-40" />}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 rounded-xl border border-dashed border-primary/20 bg-primary/5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <ShieldCheck size={16} className="text-primary" />
+                                </div>
+                                <div>
+                                    <p className={cn("text-[13px] font-bold", isDark ? "text-white" : "text-[#111]")}>SSL/TLS Connection</p>
+                                    <p className={cn("text-[11px] opacity-40")}>Always use a secure connection for email delivery.</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setConfig({ ...config, smtp_secure: !config.smtp_secure })}
+                                className={cn(
+                                    "w-10 h-5 rounded-full relative transition-all duration-300",
+                                    config.smtp_secure ? "bg-primary" : (isDark ? "bg-white/10" : "bg-black/10")
+                                )}
+                            >
+                                <div className={cn(
+                                    "absolute top-1 w-3 h-3 rounded-full bg-white transition-all duration-300",
+                                    config.smtp_secure ? "translate-x-6" : "translate-x-1"
+                                )} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-4">
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className={cn(
+                            "flex items-center gap-2 px-8 py-3 rounded-xl text-[14px] font-bold transition-all active:scale-95 shadow-lg shadow-primary/20",
+                            "bg-primary text-primary-foreground hover:bg-primary-hover disabled:opacity-50"
+                        )}
+                    >
+                        {isSaving ? <><AppLoader size="xs" /> Saving...</> : <><Send size={16} /> Save Email Config</>}
+                    </button>
+                </div>
+
             </div>
         </div>
     );

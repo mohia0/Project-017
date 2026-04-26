@@ -1,14 +1,22 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Send, Mail, User, ChevronDown, Check, AlertCircle, Sparkles, Settings2, FileText, Receipt, FileCheck, Calendar, Clock } from 'lucide-react';
+import {
+    X, Send, Mail, Check, AlertCircle, Settings2,
+    FileText, Receipt, FileCheck, Calendar, Clock
+} from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { appToast } from '@/lib/toast';
 import { AppLoader } from '@/components/ui/AppLoader';
+import {
+    buildEmailHtml,
+    DEFAULT_TEMPLATES,
+    getBrightness
+} from '@/lib/email-templates';
 
 interface SendEmailModalProps {
     isOpen: boolean;
@@ -22,35 +30,13 @@ interface SendEmailModalProps {
 }
 
 const TEMPLATE_INFO = {
-    proposal: { label: 'Proposal', color: '#6366f1', icon: FileText },
-    invoice:  { label: 'Invoice',  color: '#f59e0b', icon: Receipt },
-    receipt:  { label: 'Receipt',  color: '#10b981', icon: FileCheck },
-    overdue_remind: { label: 'Overdue Reminder', color: '#ef4444', icon: AlertCircle },
-    booking_confirmed: { label: 'Booking Confirmed', color: '#8b5cf6', icon: Calendar },
-    scheduler: { label: 'Scheduler', color: '#10b981', icon: Clock },
+    proposal:          { label: 'Proposal',          color: '#6366f1', icon: FileText   },
+    invoice:           { label: 'Invoice',            color: '#f59e0b', icon: Receipt    },
+    receipt:           { label: 'Receipt',            color: '#10b981', icon: FileCheck  },
+    overdue_remind:    { label: 'Overdue Reminder',   color: '#ef4444', icon: AlertCircle },
+    booking_confirmed: { label: 'Booking Confirmed',  color: '#8b5cf6', icon: Calendar   },
+    scheduler:         { label: 'Scheduler',          color: '#10b981', icon: Clock      },
 };
-
-const DEFAULT_SUBJECTS: Record<string, string> = {
-    proposal: 'Proposal: {{document_title}}',
-    invoice:  'Invoice #{{invoice_number}} from {{sender_name}}',
-    receipt:  'Payment Receipt — Invoice #{{invoice_number}}',
-    overdue_remind: 'Action Required: Overdue Invoice #{{invoice_number}}',
-    booking_confirmed: 'Booking Confirmed: {{scheduler_title}}',
-    scheduler: 'Schedule a time with {{sender_name}}',
-};
-
-const DEFAULT_BODIES: Record<string, string> = {
-    proposal: `Hi {{client_name}},\n\nI've prepared a proposal for {{document_title}} as we discussed.\n\nYou can review the details and accept it via the secure link below:\n{{document_link}}\n\nPlease let me know if you have any questions.\n\nBest regards,\n{{sender_name}}`,
-    invoice:  `Hi {{client_name}},\n\nYour invoice #{{invoice_number}} is now available.\n\nAmount Due: {{amount_due}}\nDue Date: {{due_date}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nThank you for your business!\n\nBest regards,\n{{sender_name}}`,
-    receipt:  `Hi {{client_name}},\n\nThank you for your payment! We have received your payment of {{amount_paid}} for Invoice #{{invoice_number}}.\n\nYou can view your receipt here:\n{{document_link}}\n\nYour business is much appreciated!\n\nBest regards,\n{{sender_name}}`,
-    overdue_remind: `Hi {{client_name}},\n\nThis is a gentle reminder that your payment for invoice #{{invoice_number}} is currently {{days_overdue}} days overdue.\n\nAmount Due: {{amount_due}}\n\nPlease review and pay your invoice securely here:\n{{document_link}}\n\nIf you have already made the payment, please disregard this message.\n\nBest regards,\n{{sender_name}}`,
-    booking_confirmed: `Hi {{client_name}},\n\nYour booking for "{{scheduler_title}}" has been confirmed.\n\nDate: {{booked_date}}\nTime: {{booked_time}}\nTimezone: {{timezone}}\n\nWe look forward to meeting with you!\n\nBest regards,\n{{sender_name}}`,
-    scheduler: `Hi {{client_name}},\n\nPlease use the link below to schedule a time that works best for you:\n{{document_link}}\n\nI look forward to meeting with you!\n\nBest regards,\n{{sender_name}}`,
-};
-
-function renderTemplate(template: string, vars: Record<string, string>) {
-    return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`);
-}
 
 export function SendEmailModal({
     isOpen,
@@ -66,37 +52,93 @@ export function SendEmailModal({
     const isDark = theme === 'dark';
     const { emailTemplates, emailConfig, branding } = useSettingsStore();
 
-    const [to, setTo] = useState(initialTo);
-    const [subject, setSubject] = useState('');
-    const [body, setBody] = useState('');
+    const [to, setTo]               = useState(initialTo);
+    const [subject, setSubject]     = useState('');
+    const [body, setBody]           = useState('');          // raw template body (content-only, resolved per-send)
     const [isSending, setIsSending] = useState(false);
-    const [sent, setSent] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [sent, setSent]           = useState(false);
+    const [error, setError]         = useState<string | null>(null);
+    const [mounted, setMounted]     = React.useState(false);
 
-    // Load template whenever open/templateKey changes
+    const iframeRef  = useRef<HTMLIFrameElement>(null);
+    const bodyRef    = useRef(body);
+    bodyRef.current  = body;
+
+    useEffect(() => { setMounted(true); }, []);
+
+    /* ── Branding / config ── */
+    const accentColor  = branding?.primary_color || '#10b981';
+    const logoUrl      = branding?.logo_light_url || branding?.logo_dark_url || undefined;
+    const senderName   = emailConfig?.from_name || '';
+    const info         = TEMPLATE_INFO[templateKey];
+
+    /* ── Load template on open ── */
     useEffect(() => {
         if (!isOpen) return;
         setSent(false);
         setError(null);
         setTo(initialTo);
 
-        // Merge: DB template overrides defaults
         const dbTemplate = emailTemplates.find(t => t.template_key === templateKey);
+        const fallback   = DEFAULT_TEMPLATES[templateKey] || DEFAULT_TEMPLATES.invoice;
 
-        const baseSubject = dbTemplate?.subject || DEFAULT_SUBJECTS[templateKey] || '';
-        const baseBody    = dbTemplate?.body    || DEFAULT_BODIES[templateKey]   || '';
+        const rawSubject = dbTemplate?.subject || fallback.subject || '';
+        const rawBody    = dbTemplate?.body    || fallback.body    || '';
 
-        const allVars = {
-            sender_name: emailConfig?.from_name || '',
-            document_title: documentTitle || '',
-            ...variables,
+        // Resolve subject
+        const allVars = { 
+            sender_name: senderName, 
+            document_title: documentTitle || '', 
+            accent_color: accentColor, 
+            ...variables 
         };
+        setSubject(rawSubject.replace(/\{\{(\w+)\}\}/g, (m, k) => allVars[k] ?? m));
+        
+        // Resolve the body content (without the shell) to show in the editable iframe
+        setBody(rawBody);
+    }, [isOpen, templateKey, initialTo, emailTemplates, emailConfig, documentTitle, accentColor, senderName, variables]);
 
-        setSubject(baseSubject);
-        setBody(baseBody);
+    /* ── Build the preview HTML ── */
+    const buildPreview = useCallback((currentBody: string) => {
+        const dbTemplate = emailTemplates.find(t => t.template_key === templateKey);
+        
+        const html = buildEmailHtml(currentBody, {
+            senderName,
+            accentColor,
+            logoUrl,
+            isHtml:       true,
+            wrapperHtml:  dbTemplate?.wrapper || undefined,
+            vars:         { sender_name: senderName, document_title: documentTitle || '', ...variables },
+            isPreview:    true,    // enables the editing bridge script inside iframe
+            templateType: info.label,
+        });
 
-    }, [isOpen, templateKey, initialTo, variables, emailTemplates, emailConfig, documentTitle]);
+        return html;
+    }, [templateKey, emailTemplates, senderName, accentColor, logoUrl, variables, documentTitle, info.label]);
 
+    /* ── Push HTML to iframe ── */
+    const pushToIframe = useCallback((html: string) => {
+        if (!iframeRef.current) return;
+        iframeRef.current.srcdoc = html;
+    }, []);
+
+    useEffect(() => {
+        if (!isOpen || !body) return;
+        pushToIframe(buildPreview(body));
+    }, [isOpen, body, buildPreview, pushToIframe]);
+
+    // Listen for edits from iframe
+    useEffect(() => {
+        const handler = (e: MessageEvent) => {
+            if (e.data?.type === 'EMAIL_VISUAL_EDIT') {
+                setBody(e.data.payload);
+            }
+        };
+        window.addEventListener('message', handler);
+        return () => window.removeEventListener('message', handler);
+    }, []);
+
+    /* ── Send ── */
     const handleSend = async () => {
         if (!to.trim()) { setError('Please enter a recipient email.'); return; }
         setIsSending(true);
@@ -109,22 +151,13 @@ export function SendEmailModal({
                     workspace_id: workspaceId,
                     template_key: templateKey,
                     to: to.trim(),
-                    variables: {
-                        sender_name: emailConfig?.from_name || '',
-                        document_title: documentTitle || '',
-                        ...variables,
+                    variables: { 
+                        sender_name: senderName, 
+                        document_title: documentTitle || '', 
+                        ...variables 
                     },
-                    subject_override: renderTemplate(subject, {
-                        sender_name: emailConfig?.from_name || '',
-                        document_title: documentTitle || '',
-                        ...variables,
-                    }),
-                    body_override: renderTemplate(body, {
-                        sender_name: emailConfig?.from_name || '',
-                        document_title: documentTitle || '',
-                        ...variables,
-                    }),
-
+                    subject_override: subject,
+                    body_override:    body,   // sends the current (potentially edited) body
                 }),
             });
             const data = await res.json();
@@ -141,69 +174,57 @@ export function SendEmailModal({
         }
     };
 
-    const getBrightness = (hex: string) => {
-        if (!hex) return 255;
-        let color = hex.replace('#', '');
-        if (color.length === 3) color = color.split('').map(c => c + c).join('');
-        const r = parseInt(color.slice(0, 2), 16);
-        const g = parseInt(color.slice(2, 4), 16);
-        const b = parseInt(color.slice(4, 6), 16);
-        return Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
-    };
-
-    const info = TEMPLATE_INFO[templateKey];
     const hasSmtp = !!emailConfig?.smtp_host;
-
-    const [mounted, setMounted] = React.useState(false);
-    useEffect(() => { setMounted(true); }, []);
 
     if (!isOpen || !mounted) return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div
+            className="fixed inset-0 z-[999999] flex items-center justify-center p-4"
+            onClick={e => e.target === e.currentTarget && onClose()}
+        >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-            {/* Modal */}
-            <div
-                className={cn(
-                    "relative w-full max-w-[1000px] h-[80vh] rounded-2xl shadow-2xl border flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200",
-                    isDark ? "bg-[#141414] border-[#2a2a2a]" : "bg-white border-[#e5e5e5]"
-                )}
-            >
-                {/* Header */}
+            <div className={cn(
+                "relative w-full max-w-[720px] h-[90vh] rounded-2xl shadow-2xl border flex flex-col overflow-hidden",
+                "animate-in fade-in zoom-in-95 duration-200",
+                isDark ? "bg-[#141414] border-[#2a2a2a]" : "bg-white border-[#e5e5e5]"
+            )}>
+
+                {/* ── Header ── */}
                 <div className={cn(
-                    "flex items-center justify-between px-6 py-4 border-b",
+                    "flex items-center justify-between px-5 py-4 border-b shrink-0",
                     isDark ? "border-[#252525]" : "border-[#f0f0f0]"
                 )}>
                     <div className="flex items-center gap-3">
-                        <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center"
-                            style={{ backgroundColor: `${info.color}18` }}
-                        >
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${info.color}18` }}>
                             <info.icon size={16} style={{ color: info.color }} />
                         </div>
                         <div>
                             <h2 className={cn("text-[15px] font-bold leading-tight", isDark ? "text-white" : "text-[#111]")}>
                                 Send {info.label}
                             </h2>
-                            <p className={cn("text-[11px] mt-0.5", isDark ? "text-white/40" : "text-black/40")}>
-                                via SMTP · {emailConfig?.from_address || 'Not configured'}
+                            <p className={cn("text-[11px] mt-0.5", isDark ? "text-white/30" : "text-black/30")}>
+                                {emailConfig?.from_address || 'SMTP not configured'}
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
-                        isDark ? "text-white/30 hover:text-white hover:bg-white/5" : "text-black/30 hover:text-black hover:bg-black/5"
-                    )}>
+
+                    <button
+                        onClick={onClose}
+                        className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                            isDark ? "text-white/30 hover:text-white hover:bg-white/5" : "text-black/30 hover:text-black hover:bg-black/5"
+                        )}
+                    >
                         <X size={16} />
                     </button>
                 </div>
 
-                {/* SMTP warning */}
+                {/* ── SMTP warning ── */}
                 {!hasSmtp && (
                     <div className={cn(
-                        "mx-6 mt-4 flex items-start gap-2.5 px-4 py-3 rounded-xl border text-[12px]",
+                        "mx-5 mt-4 flex items-start gap-2.5 px-4 py-3 rounded-xl border text-[12px] shrink-0",
                         isDark ? "bg-amber-500/10 border-amber-500/20 text-amber-300" : "bg-amber-50 border-amber-200 text-amber-700"
                     )}>
                         <AlertCircle size={14} className="shrink-0 mt-0.5" />
@@ -211,23 +232,18 @@ export function SendEmailModal({
                     </div>
                 )}
 
-            {/* Content Area */}
-            <div className="flex flex-1 overflow-hidden">
-                {/* Left Side: Form */}
+                {/* ── To / Subject ── */}
                 <div className={cn(
-                    "flex flex-col gap-3 px-5 py-4 overflow-y-auto custom-scrollbar w-[280px] border-r",
-                    isDark ? "border-[#252525]" : "border-[#f0f0f0]"
+                    "shrink-0 px-6 py-4 flex flex-col gap-3",
+                    isDark ? "bg-[#111]" : "bg-[#fafafa]"
                 )}>
-                    {/* To field */}
-                    <div>
-                        <label className={cn("text-[11px] font-bold uppercase tracking-wider mb-1.5 block", isDark ? "text-white/30" : "text-black/30")}>
-                            To
-                        </label>
+                    <div className="flex items-center gap-4">
+                        <span className={cn("text-[10px] font-bold uppercase tracking-widest shrink-0 w-12", isDark ? "text-white/25" : "text-black/25")}>To</span>
                         <div className={cn(
-                            "flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors",
-                            isDark ? "bg-white/[0.03] border-white/10 focus-within:border-white/20" : "bg-black/[0.02] border-black/10 focus-within:border-black/20"
+                            "flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors",
+                            isDark ? "bg-white/[0.03] border-white/8 focus-within:border-white/20" : "bg-black/[0.02] border-black/8 focus-within:border-black/20"
                         )}>
-                            <Mail size={13} className={isDark ? "text-white/20" : "text-black/20"} />
+                            <Mail size={13} className="opacity-30 shrink-0" />
                             <input
                                 type="email"
                                 value={to}
@@ -241,140 +257,68 @@ export function SendEmailModal({
                         </div>
                     </div>
 
-                    {/* Subject */}
-                    <div>
-                        <label className={cn("text-[11px] font-bold uppercase tracking-wider mb-1.5 block", isDark ? "text-white/30" : "text-black/30")}>
-                            Subject
-                        </label>
+                    <div className="flex items-center gap-4">
+                        <span className={cn("text-[10px] font-bold uppercase tracking-widest shrink-0 w-12", isDark ? "text-white/25" : "text-black/25")}>Subject</span>
                         <input
                             type="text"
                             value={subject}
                             onChange={e => setSubject(e.target.value)}
                             className={cn(
-                                "w-full px-3 py-2 rounded-xl border outline-none text-[13px] font-medium transition-colors",
-                                isDark ? "bg-white/[0.03] border-white/10 text-white placeholder:text-white/20 focus:border-white/20" : "bg-black/[0.02] border-black/10 text-[#111] placeholder:text-black/25 focus:border-black/20"
+                                "flex-1 px-4 py-2 rounded-xl border outline-none text-[13px] font-medium transition-colors",
+                                isDark
+                                    ? "bg-white/[0.03] border-white/8 text-white focus:border-white/20"
+                                    : "bg-black/[0.02] border-black/8 text-[#111] focus:border-black/20"
                             )}
                             placeholder="Email subject..."
                         />
                     </div>
-
-                    {/* Body Editor */}
-                    <div className="flex flex-col flex-1 min-h-0">
-                        <label className={cn("text-[10px] font-bold uppercase tracking-wider mb-1.5 px-0.5 block", isDark ? "text-white/30" : "text-black/30")}>
-                            Message
-                        </label>
-                        <textarea
-                            value={body}
-                            onChange={e => setBody(e.target.value)}
-                            className={cn(
-                                "w-full flex-1 px-3 py-2 rounded-xl border outline-none text-[13px] font-medium leading-relaxed resize-none custom-scrollbar transition-colors",
-                                isDark ? "bg-[#0a0a0a] border-white/10 text-white focus:border-white/20" : "bg-black/[0.01] border-black/10 text-[#111] focus:border-black/20"
-                            )}
-                            placeholder="Email body..."
-                        />
-                    </div>
-
-                    {/* Error */}
-                    {error && (
-                        <div className={cn(
-                            "flex items-start gap-2 px-3 py-2 rounded-xl border text-[11px]",
-                            isDark ? "bg-red-500/10 border-red-500/20 text-red-300" : "bg-red-50 border-red-200 text-red-600"
-                        )}>
-                            <AlertCircle size={12} className="shrink-0 mt-0.5" />
-                            <span>{error}</span>
-                        </div>
-                    )}
+                    <p className={cn("text-[10px] pl-16", isDark ? "text-white/20" : "text-black/25")}>
+                        Click on the text in the preview below to edit the email content directly.
+                    </p>
                 </div>
 
-                {/* Right Side: Preview */}
-                {(
+                {/* ── Editor (Iframe) ── */}
+                <div className={cn("flex-1 overflow-hidden", isDark ? "bg-[#0a0a0a]" : "bg-[#e2e2e2]")}>
+                    <iframe
+                        ref={iframeRef}
+                        className="w-full h-full border-none block"
+                        title="Email Preview"
+                        sandbox="allow-scripts allow-same-origin"
+                    />
+                </div>
+
+                {/* ── Error ── */}
+                {error && (
                     <div className={cn(
-                        "flex-1 overflow-y-auto custom-scrollbar p-8 flex justify-center",
-                        isDark ? "bg-[#0c0c0c]" : "bg-[#f8f8f8]"
+                        "mx-5 mt-2 flex items-start gap-2 px-3 py-2 rounded-xl border text-[11px] shrink-0",
+                        isDark ? "bg-red-500/10 border-red-500/20 text-red-300" : "bg-red-50 border-red-200 text-red-600"
                     )}>
-                        <div className="w-full max-w-[520px] h-fit border border-[#eaeaea] bg-white text-[#333] rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
-                            {/* Email Header */}
-                            {(() => {
-                                const accentColor = branding?.primary_color || '#10b981';
-                                const isAccentDark = getBrightness(accentColor) < 128;
-                                const logoUrl = isAccentDark ? branding?.logo_light_url : (branding?.logo_dark_url || branding?.logo_light_url);
-                                const headerTextColor = isAccentDark ? '#ffffff' : '#000000';
-                                
-                                return (
-                                    <div className="px-6 py-5 text-left flex items-center" style={{ backgroundColor: accentColor }}>
-                                        {logoUrl ? (
-                                            <img src={logoUrl} alt="Logo" className="max-h-[28px] object-contain block" />
-                                        ) : (
-                                            <span className="text-[15px] font-semibold" style={{ color: headerTextColor }}>{emailConfig?.from_name || '—'}</span>
-                                        )}
-                                    </div>
-                                );
-                            })()}
-                            {/* Body */}
-                            <div className="p-8 text-[14px] leading-[1.6] text-[#444] font-sans">
-                                <div dangerouslySetInnerHTML={{ __html: (() => {
-                                    const allVars = {
-                                        sender_name: emailConfig?.from_name || '',
-                                        document_title: documentTitle || '',
-                                        ...variables,
-                                    };
-                                    const renderedBody = renderTemplate(body, allVars);
-                                    const accentColor = branding?.primary_color || '#10b981';
-                                    let html = renderedBody.replace(/\n/g, '<br/>');
-                                    
-                                    if (variables.amount_due) {
-                                        html = html.replace(new RegExp(variables.amount_due.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_due}</strong>`);
-                                    }
-                                    if (variables.amount_paid) {
-                                        html = html.replace(new RegExp(variables.amount_paid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `<strong style="color: ${accentColor}; font-size: 1.15em;">${variables.amount_paid}</strong>`);
-                                    }
-                                    if (variables.document_link) {
-                                        html = html.replace(
-                                            new RegExp(variables.document_link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-                                            `<div style="margin: 32px 0;">
-                                                <a href="#" onclick="return false;" style="display: inline-block; background-color: ${accentColor}; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                                                    View Document
-                                                </a>
-                                                <div style="margin-top: 16px; font-size: 12px; color: #888; line-height: 1.5;">
-                                                    If the button above doesn't work, copy and paste this link into your browser:<br/>
-                                                    <a href="#" onclick="return false;" style="color: ${accentColor}; text-decoration: none; word-break: break-all;">${variables.document_link}</a>
-                                                </div>
-                                            </div>`
-                                        );
-                                    }
-                                    return html;
-                                })() }} />
-                            </div>
-                            {/* Footer */}
-                            <div className="bg-white border-t border-[#f0f0f0] px-6 py-4 text-left">
-                                <p className="m-0 text-[11px] text-[#999]">Securely sent via <span className="font-medium text-[#777]">{emailConfig?.from_name || '—'}</span></p>
-                            </div>
-                        </div>
+                        <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                        <span>{error}</span>
                     </div>
                 )}
-            </div>
 
-                {/* Footer */}
+                {/* ── Footer ── */}
                 <div className={cn(
-                    "flex items-center justify-between px-6 py-4 border-t",
+                    "flex items-center justify-between px-6 py-4 border-t shrink-0",
                     isDark ? "border-[#252525] bg-[#111]" : "border-[#f0f0f0] bg-[#fafafa]"
                 )}>
                     <Link
-                        href="/settings/emails"
+                        href="/settings/emails/templates"
                         onClick={onClose}
                         className={cn(
                             "flex items-center gap-1.5 text-[11px] font-semibold transition-colors",
-                            isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
+                            isDark ? "text-white/25 hover:text-white/60" : "text-black/25 hover:text-black/60"
                         )}
                     >
                         <Settings2 size={12} />
-                        Edit default template
+                        Template Settings
                     </Link>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={onClose}
                             className={cn(
-                                "px-4 py-2 rounded-lg text-[12px] font-semibold transition-colors",
+                                "px-5 py-2 rounded-lg text-[13px] font-semibold transition-colors",
                                 isDark ? "text-white/40 hover:text-white hover:bg-white/5" : "text-black/40 hover:text-black hover:bg-black/5"
                             )}
                         >
@@ -384,19 +328,15 @@ export function SendEmailModal({
                             onClick={handleSend}
                             disabled={isSending || sent || !hasSmtp}
                             className={cn(
-                                "flex items-center gap-2 px-5 py-2 rounded-xl text-[13px] font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed",
+                                "flex items-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed",
                                 sent
                                     ? "bg-emerald-500 text-white"
-                                    : "bg-primary text-[var(--brand-primary-foreground)] hover:bg-primary-hover shadow-[0_4px_12px_-4px_rgba(var(--brand-primary-rgb),0.5)]"
+                                    : "bg-primary text-primary-foreground hover:bg-primary-hover shadow-lg"
                             )}
                         >
-                            {isSending ? (
-                                <><AppLoader size="xs" /> Sending…</>
-                            ) : sent ? (
-                                <><Check size={14} /> Sent!</>
-                            ) : (
-                                <><Send size={14} /> Send Email</>
-                            )}
+                            {isSending ? <><AppLoader size="xs" /> Sending…</> :
+                             sent       ? <><Check size={14} /> Sent!</>        :
+                                         <><Send size={14} /> Send Email</>}
                         </button>
                     </div>
                 </div>

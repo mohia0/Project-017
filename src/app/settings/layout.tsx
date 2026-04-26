@@ -101,8 +101,15 @@ export default function SettingsLayout({
       <div className="flex flex-1 overflow-hidden">
         <SettingsSidebar />
         
-        <main className={cn("flex-1 overflow-y-auto p-4 md:p-10", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
-            <div className="mx-auto pb-24 max-w-[720px]">
+        <main className={cn(
+            "flex-1 overflow-hidden", 
+            isDark ? "bg-[#141414]" : "bg-[#f7f7f7]",
+            !pathname.includes('/emails/templates') && "overflow-y-auto p-4 md:p-10"
+        )}>
+            <div className={cn(
+                "mx-auto h-full",
+                !pathname.includes('/emails/templates') ? "max-w-[720px] pb-24" : "max-w-none"
+            )}>
                 {children}
             </div>
         </main>

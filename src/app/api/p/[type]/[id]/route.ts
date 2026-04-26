@@ -144,7 +144,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
                     notifMsg = `${doc.client_name || 'A client'} just declined the proposal "${docName}"`;
                 } else if (type === 'invoice' && body.status === 'Processing') {
                     notifTitle = 'Payment Received — Verify Now 💳';
-                    notifMsg = `${doc.client_name || 'A client'} reported a payment for "${docName}". Open the invoice to confirm collection or revert to pending.`;
+                    notifMsg = `${doc.client_name || 'A client'} reported a payment for "${docName}". Open to verify.`;
                 } else if (type === 'invoice' && body.status === 'Paid') {
                     notifTitle = 'Invoice Paid 💸';
                     notifMsg = `${doc.client_name || 'A client'} just marked the invoice "${docName}" as paid`;
@@ -167,10 +167,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
                         const invoiceMeta = (invoiceData?.meta as any) || {};
                         const clientEmail = invoiceMeta.clientEmail || invoiceMeta.assignedClients?.[0]?.email || '';
                         const invoiceNumber = invoiceMeta.invoiceNumber || invoiceData?.invoice_number || id.slice(0, 8).toUpperCase();
-                        const amount = invoiceData?.amount ? `${invoiceData.amount}` : '';
+                        const amountRaw = invoiceData?.amount || 0;
+                        const currency = invoiceMeta.currency || 'USD';
+                        const amount = new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amountRaw);
 
                         notifMetadata = {
                             invoice_id: id,
+                            payment_method: body.paymentMethod,
                             to: clientEmail,
                             variables: {
                                 client_name: doc.client_name || '',
@@ -179,7 +182,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
                                 amount_due: amount,
                                 payment_date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
                                 document_link: body.document_link || '',
-                                sender_name: '',
                             },
                         };
                     }

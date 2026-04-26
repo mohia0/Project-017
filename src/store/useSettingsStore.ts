@@ -67,6 +67,8 @@ export interface WorkspaceEmailConfig {
   smtp_host: string | null;
   smtp_port: number;
   smtp_user: string | null;
+  smtp_pass?: string | null;
+  smtp_secure?: boolean;
   from_name: string | null;
   from_address: string | null;
 }
@@ -150,6 +152,7 @@ interface SettingsState {
   // Email Config
   emailConfig: WorkspaceEmailConfig | null;
   fetchEmailConfig: (workspaceId: string) => Promise<void>;
+  updateEmailConfig: (workspaceId: string, data: Partial<WorkspaceEmailConfig>) => Promise<void>;
 
   // Email Templates
   emailTemplates: EmailTemplate[];
@@ -352,7 +355,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ isLoading: true });
     const { data, error } = await supabase
       .from('workspace_email_config')
-      .select('workspace_id, smtp_host, smtp_port, smtp_user, from_name, from_address')
+      .select('workspace_id, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, from_name, from_address')
       .eq('workspace_id', workspaceId)
       .single();
 
@@ -362,6 +365,28 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set({ emailConfig: data || null });
     }
     set({ isLoading: false, hasFetched: { ...get().hasFetched, emailConfig: true } });
+  },
+
+  updateEmailConfig: async (workspaceId, data) => {
+    const { error } = await supabase
+      .from('workspace_email_config')
+      .upsert({ workspace_id: workspaceId, ...data });
+
+    if (error) {
+      set({ error: error.message });
+      throw error;
+    } else {
+      // Local update
+      const current = get().emailConfig || { 
+        workspace_id: workspaceId, 
+        smtp_host: '', 
+        smtp_port: 587, 
+        smtp_user: '', 
+        from_name: '', 
+        from_address: '' 
+      };
+      set({ emailConfig: { ...current, ...data } as WorkspaceEmailConfig });
+    }
   },
 
   fetchEmailTemplates: async (workspaceId) => {

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Template — Option B</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #1a1a1a;
+      padding: 40px 24px 80px;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .page-header h1 { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.4px; }
+    .page-header p { font-size: 12px; color: #555; margin-top: 6px; }
+
+    .email-outer {
+      max-width: 580px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #0f0f0f;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 24px 60px -12px rgba(0,0,0,0.6);
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 22px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .logo-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    /* Logo placeholder — in real email this becomes {{logo_img}} */
+    .logo-img {
+      height: 28px;
+      width: auto;
+      display: block;
+      /* Simulating a white logo on dark bg */
+      background: rgba(255,255,255,0.12);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.2px;
+      line-height: 20px;
+    }
+    .tag {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      padding: 4px 10px; border-radius: 50px;
+      background: rgba(91,79,232,0.15); color: #8B82F0;
+      border: 1px solid rgba(91,79,232,0.25);
+    }
+
+    /* ── Body ── */
+    .body { padding: 32px 32px 24px; }
+
+    .eyebrow {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px;
+      color: #5B4FE8; margin-bottom: 10px;
+    }
+    .greeting {
+      font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.5px;
+      line-height: 1.25; margin-bottom: 10px;
+    }
+    .sub { font-size: 13px; color: #555; line-height: 1.6; margin-bottom: 28px; }
+
+    /* Hero amount */
+    .hero {
+      background: rgba(91,79,232,0.08);
+      border: 1px solid rgba(91,79,232,0.18);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .hero-label { font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+    .hero-amount { font-size: 36px; font-weight: 800; color: #fff; letter-spacing: -1.5px; line-height: 1; }
+    .hero-amount .currency { font-size: 20px; font-weight: 600; color: #5B4FE8; margin-right: 2px; }
+    .hero-meta {
+      display: flex; gap: 24px; margin-top: 16px;
+      padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.07);
+    }
+    .hml { font-size: 10px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }
+    .hmv { font-size: 13px; font-weight: 600; color: #bbb; display: block; }
+
+    /* CTA */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #5B4FE8; color: #fff; text-decoration: none;
+      padding: 13px 24px; border-radius: 12px; font-size: 14px; font-weight: 600;
+      margin-bottom: 16px;
+      box-shadow: 0 0 0 1px rgba(91,79,232,0.4), 0 8px 20px rgba(91,79,232,0.25);
+    }
+    .btn-arrow { font-size: 16px; }
+    .link-fallback { font-size: 11px; color: #3a3a3a; line-height: 1.6; margin-bottom: 24px; }
+    .link-fallback a { color: #7C6FF0; word-break: break-all; text-decoration: none; }
+
+    .body p { font-size: 13px; color: #555; line-height: 1.7; margin-bottom: 12px; }
+    .sig { border-top: 1px solid rgba(255,255,255,0.06); padding-top: 20px; margin-top: 8px; }
+    .sig p { font-size: 12px; color: #444; }
+    .sig strong { color: #777; }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 14px 32px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .footer p { font-size: 11px; color: #666; }
+    .footer .dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+    /* ── Green (Receipt) overrides ── */
+    .green .tag { background: rgba(16,185,129,0.12); color: #34D399; border-color: rgba(16,185,129,0.2); }
+    .green .eyebrow { color: #10B981; }
+    .green .hero { background: rgba(16,185,129,0.07); border-color: rgba(16,185,129,0.16); }
+    .green .currency { color: #10B981 !important; }
+    .green .btn { background: #10B981; box-shadow: 0 0 0 1px rgba(16,185,129,0.4), 0 8px 20px rgba(16,185,129,0.2); }
+    .green .dot { background: #10B981 !important; }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <h1>Option B — Dark App Native</h1>
+    <p>No top stripe · Logo in header · Accent color per template</p>
+  </div>
+
+  <div class="email-outer">
+
+    <!-- ═══════ INVOICE ═══════ -->
+    <div class="card">
+      <div class="header">
+        <div class="logo-wrap">
+          <!-- Replace with: <img src="{{logo_url}}" style="max-height:28px;" /> -->
+          <span class="logo-img">YourLogo</span>
+        </div>
+        <span class="tag">Invoice</span>
+      </div>
+
+      <div class="body">
+        <p class="eyebrow">New Invoice</p>
+        <h1 class="greeting">Hi John,<br>you have a new invoice.</h1>
+        <p class="sub">INV-0042 has been issued and is ready for your review and payment.</p>
+
+        <div class="hero">
+          <p class="hero-label">Amount Due</p>
+          <div class="hero-amount"><span class="currency">$</span>3,200</div>
+          <div class="hero-meta">
+            <div><span class="hml">Invoice #</span><span class="hmv">INV-0042</span></div>
+            <div><span class="hml">Due Date</span><span class="hmv">May 15, 2026</span></div>
+          </div>
+        </div>
+
+        <a href="#" class="btn">Pay Invoice <span class="btn-arrow">→</span></a>
+        <div class="link-fallback">Or open: <a href="#">https://app.example.com/p/invoice/xxx</a></div>
+
+        <p>If you have any questions about this invoice, just reply to this email.</p>
+        <div class="sig"><p>Best regards,<br><strong>Acme Studio</strong></p></div>
+      </div>
+
+      <div class="footer">
+        <p><span class="dot" style="background:#5B4FE8;"></span>Securely sent via Acme Studio</p>
+      </div>
+    </div>
+
+    <!-- ═══════ RECEIPT ═══════ -->
+    <div class="card green">
+      <div class="header">
+        <div class="logo-wrap">
+          <span class="logo-img">YourLogo</span>
+        </div>
+        <span class="tag">Receipt</span>
+      </div>
+
+      <div class="body">
+        <p class="eyebrow">Payment Confirmed</p>
+        <h1 class="greeting">Payment received,<br>thank you! 🎉</h1>
+        <p class="sub">Hi John, we received your payment for INV-0042 successfully.</p>
+
+        <div class="hero">
+          <p class="hero-label">Total Paid</p>
+          <div class="hero-amount"><span class="currency">$</span>3,200</div>
+          <div class="hero-meta">
+            <div><span class="hml">Invoice #</span><span class="hmv">INV-0042</span></div>
+            <div><span class="hml">Paid On</span><span class="hmv">Apr 26, 2026</span></div>
+          </div>
+        </div>
+
+        <a href="#" class="btn">View Receipt <span class="btn-arrow">→</span></a>
+        <p>A copy of your receipt is attached. Reach out anytime if you need anything.</p>
+        <div class="sig"><p>Best regards,<br><strong>Acme Studio</strong></p></div>
+      </div>
+
+      <div class="footer">
+        <p><span class="dot"></span>Securely sent via Acme Studio</p>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
