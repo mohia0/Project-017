@@ -13,12 +13,13 @@ import {
     ArrowUpDown, Archive, ArrowRightLeft, Download, Upload, Plus, User, Filter,
     Calendar, Check, X, ArchiveRestore, ChevronsUpDown,
     Copy, Trash2, CheckCircle, SlidersHorizontal, ChevronRight,
-    FileJson, FileSpreadsheet, Link2, ExternalLink
+    FileJson, FileSpreadsheet, Link2, ExternalLink, Send
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { ThreeDotMenu, ContextMenuPopup, useRowContextMenu, ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { useRouter } from 'next/navigation';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { appToast } from '@/lib/toast';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -273,6 +274,14 @@ export default function ProposalsPage() {
     const [filterRows, setFilterRows] = usePersistentState<FilterRow[]>('proposals_filter_rows', []);
     const [activeFilterId, setActiveFilterId] = usePersistentState<string | null>('proposals_active_filter_id', null);
     const { saved: savedFilters, save: saveFilter, remove: deleteSavedFilter } = useSavedFilters('proposals');
+
+    const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+    const [sendingItem, setSendingItem] = useState<Proposal | null>(null);
+
+    const handleSend = (p: Proposal) => {
+        setSendingItem(p);
+        setIsSendModalOpen(true);
+    };
 
     const PROPOSAL_FILTER_FIELDS = useMemo<FilterField[]>(() => [
         { key: 'status',      label: 'Status',          type: 'enum',   options: activeStatues.map(s => s.name) },
@@ -667,6 +676,7 @@ export default function ProposalsPage() {
                                 rightCellSlot={(p) => (<div className={cn("flex items-center justify-end px-1 py-1.5 gap-1 font-semibold tabular-nums w-full", isDark ? "text-[#ccc]" : "text-[#333]")}><MoneyAmount amount={Number(p.amount || 0)} currency={p.meta?.currency} /></div>)}
                                 rowMenuItems={(p) => [
                                     { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/proposals/${p.id}`) },
+                                    { label: 'Send', icon: <Send size={12} />, onClick: () => handleSend(p) },
                                     { label: 'Open Public Link', icon: <Link2 size={12} />, onClick: () => window.open(window.location.origin + '/p/proposal/' + p.id, '_blank') },
                                     { label: 'Copy Public Link', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(window.location.origin + '/p/proposal/' + p.id); appToast.success('Link copied'); } },
                                     { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(p.id) },
@@ -715,6 +725,7 @@ export default function ProposalsPage() {
                             {filtered.map(p => {
                                 const menuItems = [
                                     { label: 'Open', icon: <ExternalLink size={12} />, onClick: () => router.push(`/proposals/${p.id}`) },
+                                    { label: 'Send', icon: <Send size={12} />, onClick: () => handleSend(p) },
                                     { label: 'Open Public Link', icon: <Link2 size={12} />, onClick: () => window.open(window.location.origin + '/p/proposal/' + p.id, '_blank') },
                                     { label: 'Copy Public Link', icon: <Copy size={12} />, onClick: () => { navigator.clipboard.writeText(window.location.origin + '/p/proposal/' + p.id); appToast.success('Link copied'); } },
                                     { label: 'Duplicate', icon: <Copy size={12} />, onClick: () => handleDuplicate(p.id) },
@@ -732,6 +743,16 @@ export default function ProposalsPage() {
 
             <DeleteConfirmModal open={!!deletingId} isDark={isDark} title={deletingId === 'bulk' ? `Delete ${selectedIds.size} items` : "Delete item"} description={deletingId === 'bulk' ? `Are you sure you want to permanently delete these ${selectedIds.size} items? This action cannot be undone.` : "This action cannot be undone. This will permanently delete the item and all associated data."} onClose={() => setDeletingId(null)} onConfirm={async () => { if (deletingId === 'bulk') { const ids = Array.from(selectedIds); await useProposalStore.getState().bulkDeleteProposals(ids); setSelectedIds(new Set()); appToast.error("Deleted", `${ids.length} proposal${ids.length !== 1 ? 's' : ''} deleted`); } else if (deletingId) { await deleteProposal(deletingId); appToast.error("Deleted", 'Proposal deleted'); } setDeletingId(null); }} />
             <DeleteConfirmModal open={!!pendingStatusChange} isDark={isDark} title="Invalidate Signature?" description={`Changing the status to "${pendingStatusChange?.status}" will invalidate and remove the client's existing signature. Are you sure you want to proceed?`} actionLabel="Proceed" onClose={() => setPendingStatusChange(null)} onConfirm={confirmStatusChange} />
+
+            <SendEmailModal
+                open={isSendModalOpen}
+                onClose={() => setIsSendModalOpen(false)}
+                itemType="proposal"
+                itemId={sendingItem?.id || ''}
+                clientEmail={sendingItem?.meta?.assignedClients?.[0]?.email || sendingItem?.meta?.clientEmail || ''}
+                clientName={sendingItem?.meta?.assignedClients?.[0]?.name || sendingItem?.client_name || ''}
+                templateKey="proposal"
+            />
         </div>
     );
 }

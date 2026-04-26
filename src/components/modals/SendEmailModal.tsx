@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
     X, Send, Mail, Check, AlertCircle, Settings2,
-    FileText, Receipt, FileCheck, Calendar, Clock
+    FileText, Receipt, FileCheck, Calendar, Clock,
+    ChevronDown
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -50,15 +51,18 @@ export function SendEmailModal({
 }: SendEmailModalProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { emailTemplates, emailConfig, branding } = useSettingsStore();
+    const { emailTemplates, emailConfigs, branding, fetchEmailConfigs } = useSettingsStore();
 
+    const [selectedConfigId, setSelectedConfigId] = useState<string>('');
     const [to, setTo]               = useState(initialTo);
     const [subject, setSubject]     = useState('');
-    const [body, setBody]           = useState('');          // raw template body (content-only, resolved per-send)
+    const [body, setBody]           = useState('');
     const [isSending, setIsSending] = useState(false);
     const [sent, setSent]           = useState(false);
     const [error, setError]         = useState<string | null>(null);
     const [mounted, setMounted]     = React.useState(false);
+
+    const activeConfig = emailConfigs.find(c => c.id === selectedConfigId) || emailConfigs.find(c => c.is_default) || emailConfigs[0];
 
     const iframeRef  = useRef<HTMLIFrameElement>(null);
     const bodyRef    = useRef(body);
@@ -69,7 +73,7 @@ export function SendEmailModal({
     /* ── Branding / config ── */
     const accentColor  = branding?.primary_color || '#10b981';
     const logoUrl      = branding?.logo_light_url || branding?.logo_dark_url || undefined;
-    const senderName   = emailConfig?.from_name || '';
+    const senderName   = activeConfig?.from_name || '';
     const info         = TEMPLATE_INFO[templateKey];
 
     /* ── Load template on open ── */
@@ -78,6 +82,7 @@ export function SendEmailModal({
         setSent(false);
         setError(null);
         setTo(initialTo);
+        fetchEmailConfigs(workspaceId);
 
         const dbTemplate = emailTemplates.find(t => t.template_key === templateKey);
         const fallback   = DEFAULT_TEMPLATES[templateKey] || DEFAULT_TEMPLATES.invoice;
@@ -86,17 +91,23 @@ export function SendEmailModal({
         const rawBody    = dbTemplate?.body    || fallback.body    || '';
 
         // Resolve subject
-        const allVars = { 
+        const allVars: any = { 
             sender_name: senderName, 
             document_title: documentTitle || '', 
             accent_color: accentColor, 
             ...variables 
         };
         setSubject(rawSubject.replace(/\{\{(\w+)\}\}/g, (m, k) => allVars[k] ?? m));
-        
-        // Resolve the body content (without the shell) to show in the editable iframe
         setBody(rawBody);
-    }, [isOpen, templateKey, initialTo, emailTemplates, emailConfig, documentTitle, accentColor, senderName, variables]);
+    }, [isOpen, templateKey, initialTo, emailTemplates, workspaceId, fetchEmailConfigs]);
+
+    // Update selected config when configs load
+    useEffect(() => {
+        if (isOpen && emailConfigs.length > 0 && !selectedConfigId) {
+            const defConfig = emailConfigs.find(c => c.is_default) || emailConfigs[0];
+            if (defConfig) setSelectedConfigId(defConfig.id);
+        }
+    }, [isOpen, emailConfigs, selectedConfigId]);
 
     /* ── Build the preview HTML ── */
     const buildPreview = useCallback((currentBody: string) => {
@@ -109,7 +120,7 @@ export function SendEmailModal({
             isHtml:       true,
             wrapperHtml:  dbTemplate?.wrapper || undefined,
             vars:         { sender_name: senderName, document_title: documentTitle || '', ...variables },
-            isPreview:    true,    // enables the editing bridge script inside iframe
+            isPreview:    true,
             templateType: info.label,
         });
 
@@ -157,7 +168,8 @@ export function SendEmailModal({
                         ...variables 
                     },
                     subject_override: subject,
-                    body_override:    body,   // sends the current (potentially edited) body
+                    body_override:    body,
+                    config_id:        selectedConfigId
                 }),
             });
             const data = await res.json();
@@ -174,7 +186,7 @@ export function SendEmailModal({
         }
     };
 
-    const hasSmtp = !!emailConfig?.smtp_host;
+    const hasSmtp = emailConfigs.length > 0;
 
     if (!isOpen || !mounted) return null;
 
@@ -205,7 +217,7 @@ export function SendEmailModal({
                                 Send {info.label}
                             </h2>
                             <p className={cn("text-[11px] mt-0.5", isDark ? "text-white/30" : "text-black/30")}>
-                                {emailConfig?.from_address || 'SMTP not configured'}
+                                {activeConfig?.from_address || 'Sender not selected'}
                             </p>
                         </div>
                     </div>
@@ -232,32 +244,60 @@ export function SendEmailModal({
                     </div>
                 )}
 
-                {/* ── To / Subject ── */}
+                {/* ── From / To / Subject ── */}
                 <div className={cn(
                     "shrink-0 px-6 py-4 flex flex-col gap-3",
                     isDark ? "bg-[#111]" : "bg-[#fafafa]"
                 )}>
-                    <div className="flex items-center gap-4">
-                        <span className={cn("text-[10px] font-bold uppercase tracking-widest shrink-0 w-12", isDark ? "text-white/25" : "text-black/25")}>To</span>
-                        <div className={cn(
-                            "flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors",
-                            isDark ? "bg-white/[0.03] border-white/8 focus-within:border-white/20" : "bg-black/[0.02] border-black/8 focus-within:border-black/20"
-                        )}>
-                            <Mail size={13} className="opacity-30 shrink-0" />
-                            <input
-                                type="email"
-                                value={to}
-                                onChange={e => setTo(e.target.value)}
-                                placeholder="client@example.com"
-                                className={cn(
-                                    "flex-1 bg-transparent outline-none text-[13px] font-medium",
-                                    isDark ? "text-white placeholder:text-white/20" : "text-[#111] placeholder:text-black/25"
-                                )}
-                            />
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="flex items-center gap-4">
+                            <span className={cn("text-[10px] font-bold uppercase tracking-widest shrink-0 w-12", isDark ? "text-white/25" : "text-black/25")}>From</span>
+                            {emailConfigs.length > 1 ? (
+                                <div className="relative flex-1">
+                                    <select
+                                        value={selectedConfigId}
+                                        onChange={(e) => setSelectedConfigId(e.target.value)}
+                                        className={cn(
+                                            "w-full pl-3 pr-8 py-2 rounded-xl border outline-none text-[13px] font-bold transition-all appearance-none cursor-pointer bg-transparent",
+                                            isDark ? "border-white/8 text-white focus:border-white/20" : "border-black/8 text-[#111] focus:border-black/20"
+                                        )}
+                                    >
+                                        {emailConfigs.map(c => (
+                                            <option key={c.id} value={c.id} className={isDark ? "bg-[#141414] text-white" : "bg-white text-black"}>
+                                                {c.from_name} ({c.from_address})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none" />
+                                </div>
+                            ) : (
+                                <div className={cn(
+                                    "flex-1 px-4 py-2 rounded-xl border text-[13px] font-bold opacity-60",
+                                    isDark ? "bg-white/[0.03] border-white/8 text-white" : "bg-black/[0.02] border-black/8 text-[#111]"
+                                )}>
+                                    {activeConfig?.from_name} ({activeConfig?.from_address})
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                            <span className={cn("text-[10px] font-bold uppercase tracking-widest shrink-0 w-12", isDark ? "text-white/25" : "text-black/25")}>To</span>
+                            <div className={cn(
+                                "flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors",
+                                isDark ? "bg-white/[0.03] border-white/8 focus-within:border-white/20" : "bg-black/[0.02] border-black/8 focus-within:border-black/20"
+                            )}>
+                                <Mail size={13} className="opacity-30 shrink-0" />
+                                <input
+                                    type="email"
+                                    value={to}
+                                    onChange={e => setTo(e.target.value)}
+                                    className={cn("flex-1 bg-transparent outline-none text-[13px] font-bold", isDark ? "text-white" : "text-[#111]")}
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 border-t pt-3 mt-1" style={{ borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}>
                         <span className={cn("text-[10px] font-bold uppercase tracking-widest shrink-0 w-12", isDark ? "text-white/25" : "text-black/25")}>Subject</span>
                         <input
                             type="text"
@@ -269,12 +309,8 @@ export function SendEmailModal({
                                     ? "bg-white/[0.03] border-white/8 text-white focus:border-white/20"
                                     : "bg-black/[0.02] border-black/8 text-[#111] focus:border-black/20"
                             )}
-                            placeholder="Email subject..."
                         />
                     </div>
-                    <p className={cn("text-[10px] pl-16", isDark ? "text-white/20" : "text-black/25")}>
-                        Click on the text in the preview below to edit the email content directly.
-                    </p>
                 </div>
 
                 {/* ── Editor (Iframe) ── */}
@@ -286,17 +322,6 @@ export function SendEmailModal({
                         sandbox="allow-scripts allow-same-origin"
                     />
                 </div>
-
-                {/* ── Error ── */}
-                {error && (
-                    <div className={cn(
-                        "mx-5 mt-2 flex items-start gap-2 px-3 py-2 rounded-xl border text-[11px] shrink-0",
-                        isDark ? "bg-red-500/10 border-red-500/20 text-red-300" : "bg-red-50 border-red-200 text-red-600"
-                    )}>
-                        <AlertCircle size={12} className="shrink-0 mt-0.5" />
-                        <span>{error}</span>
-                    </div>
-                )}
 
                 {/* ── Footer ── */}
                 <div className={cn(
@@ -328,15 +353,14 @@ export function SendEmailModal({
                             onClick={handleSend}
                             disabled={isSending || sent || !hasSmtp}
                             className={cn(
-                                "flex items-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed",
+                                "flex items-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-bold transition-all active:scale-95 disabled:opacity-50",
                                 sent
                                     ? "bg-emerald-500 text-white"
-                                    : "bg-primary text-primary-foreground hover:bg-primary-hover shadow-lg"
+                                    : "bg-primary text-primary-foreground hover:bg-primary-hover shadow-lg shadow-primary/20"
                             )}
                         >
-                            {isSending ? <><AppLoader size="xs" /> Sending…</> :
-                             sent       ? <><Check size={14} /> Sent!</>        :
-                                         <><Send size={14} /> Send Email</>}
+                            {isSending ? <AppLoader size="xs" /> : sent ? <Check size={14} /> : <Send size={14} />}
+                            {isSending ? 'Sending...' : sent ? 'Sent!' : 'Send Email'}
                         </button>
                     </div>
                 </div>

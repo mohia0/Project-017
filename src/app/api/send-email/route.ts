@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
             variables = {},
             subject_override,
             body_override,
+            config_id,
+            config_override
         } = body;
         let is_html = body.is_html;
 
@@ -31,12 +33,26 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields (workspace_id, to)' }, { status: 400 });
         }
 
-        // Fetch SMTP config
-        const { data: config, error: configError } = await supabaseService
-            .from('workspace_email_config')
-            .select('*')
-            .eq('workspace_id', workspace_id)
-            .single();
+        // Fetch SMTP config or use override
+        let config = config_override;
+        let configError = null;
+
+        if (!config) {
+            let query = supabaseService
+                .from('workspace_email_config')
+                .select('*')
+                .eq('workspace_id', workspace_id);
+                
+            if (config_id) {
+                query = query.eq('id', config_id);
+            } else {
+                query = query.eq('is_default', true);
+            }
+
+            const res = await query.single();
+            config = res.data;
+            configError = res.error;
+        }
 
         if (configError || !config?.smtp_host) {
             return NextResponse.json(
@@ -74,7 +90,7 @@ export async function POST(req: NextRequest) {
         const { data: branding } = await supabaseService
             .from('workspace_branding')
             .select('*')
-            .eq('id', workspace_id)
+            .eq('workspace_id', workspace_id)
             .single();
 
         // 1:1 Parity Build using shared logic
@@ -92,11 +108,17 @@ export async function POST(req: NextRequest) {
         const transporter = nodemailer.createTransport({
             host: config.smtp_host,
             port: parseInt(config.smtp_port),
+            // secure: true for port 465, false for other ports (587/25)
+            // But we respect the user's toggle if they explicitly set it.
             secure: config.smtp_secure,
             auth: {
                 user: config.smtp_user,
                 pass: config.smtp_pass,
             },
+            tls: {
+                // Do not fail on invalid certs (common for some SMTP providers)
+                rejectUnauthorized: false
+            }
         });
 
         const info = await transporter.sendMail({
@@ -110,6 +132,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, messageId: info.messageId });
     } catch (error: any) {
         console.error('Send Email Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        let message = error.message;
+
+        // Human-friendly error for common SSL mismatch
+        if (message.includes('wrong version number')) {
+            message = 'SSL/TLS Error: Most likely you enabled SSL on a port that doesn\'t support it (e.g. 587). Please try disabling SSL/TLS and try again.';
+        } else if (message.includes('ETIMEDOUT')) {
+            message = 'Connection timed out. Please check your SMTP host and port.';
+        } else if (message.includes('EAUTH')) {
+            message = 'Authentication failed. Please check your SMTP username and password.';
+        }
+
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

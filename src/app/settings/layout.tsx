@@ -24,6 +24,7 @@ export default function SettingsLayout({
     if (path.includes('/workspace')) return 'Workspace Settings';
     if (path.includes('/domains')) return 'Custom Domains';
     if (path.includes('/payments')) return 'Payment Methods';
+    if (path.includes('/emails/templates')) return 'Email Templates';
     if (path.includes('/emails')) return 'Email Configuration';
     if (path.includes('/features/statuses')) return 'Feature Statuses';
     if (path.includes('/features/proposals')) return 'Proposal Settings';
@@ -68,7 +69,17 @@ export default function SettingsLayout({
               <ChevronLeft size={18} strokeWidth={2.5} />
             </button>
           </div>
-          <h2 className="text-[17px] md:text-xl font-bold tracking-tight">{pageTitle || 'Settings'}</h2>
+          <div className="flex items-center gap-3">
+            {pathname.includes('/emails/templates') && (
+              <button
+                onClick={() => router.push('/settings/emails')}
+                className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors text-current opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
+              >
+                <ChevronLeft size={18} strokeWidth={2.5} />
+              </button>
+            )}
+            <h2 className="text-[17px] md:text-xl font-bold tracking-tight">{pageTitle || 'Settings'}</h2>
+          </div>
         </div>
       </div>
 

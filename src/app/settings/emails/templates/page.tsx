@@ -14,8 +14,9 @@ import {
 import {
     Send, Receipt, FileText, AlertTriangle, CalendarCheck,
     Code2, Eye, RotateCcw, CheckCircle2, Check, Sparkles,
-    Monitor, Smartphone, Copy
+    Monitor, Smartphone, Copy, ChevronLeft
 } from 'lucide-react';
+import Link from 'next/link';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { AlertConfirmModal } from '@/components/modals/AlertConfirmModal';
 
@@ -56,7 +57,7 @@ interface TemplateState {
 type EditorMode = 'html' | 'preview';
 
 export default function EmailTemplatesPage() {
-    const { emailTemplates, updateEmailTemplate, emailConfig, branding, fetchBranding, fetchEmailTemplates, fetchEmailConfig } = useSettingsStore();
+    const { emailTemplates, updateEmailTemplate, emailConfigs, branding, fetchBranding, fetchEmailTemplates, fetchEmailConfigs } = useSettingsStore();
     const { activeWorkspaceId, theme } = useUIStore();
     const isDark = theme === 'dark';
 
@@ -72,9 +73,11 @@ export default function EmailTemplatesPage() {
         if (activeWorkspaceId) {
             fetchBranding(activeWorkspaceId);
             fetchEmailTemplates(activeWorkspaceId);
-            fetchEmailConfig(activeWorkspaceId);
+            fetchEmailConfigs(activeWorkspaceId);
         }
     }, [activeWorkspaceId]);
+
+    const emailConfig = emailConfigs.find(c => c.is_default) || emailConfigs[0];
 
     useEffect(() => {
         const data: Record<string, TemplateState> = {};
@@ -252,10 +255,10 @@ export default function EmailTemplatesPage() {
                     "border-t mt-auto p-3 flex flex-col gap-2",
                     isDark ? "border-[#252525]" : "border-[#e5e5e5]"
                 )}>
-                    <label className={cn("text-[9px] font-bold uppercase tracking-widest mb-1.5 block", isDark ? "text-white/20" : "text-black/25")}>
-                        Available Variables
-                    </label>
-                    <div className="flex flex-wrap gap-1.5 mb-1 max-h-[140px] overflow-y-auto custom-scrollbar">
+                    <p className={cn("text-[8px] font-black uppercase tracking-widest mb-2 opacity-20", isDark ? "text-white" : "text-black")}>
+                        Variables
+                    </p>
+                    <div className="flex flex-wrap gap-1 mb-2 max-h-[140px] overflow-y-auto custom-scrollbar">
                         {Object.keys(sampleVars).map(key => (
                             <button
                                 key={key}
@@ -265,8 +268,10 @@ export default function EmailTemplatesPage() {
                                     appToast.success('Variable copied');
                                 }}
                                 className={cn(
-                                    "px-1.5 py-1 rounded text-[10px] font-mono transition-colors",
-                                    isDark ? "bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80" : "bg-black/5 hover:bg-black/10 text-black/50 hover:text-black/80"
+                                    "px-1.5 py-0.5 rounded text-[9px] font-mono transition-all border",
+                                    isDark 
+                                        ? "bg-white/[0.02] border-white/5 text-white/30 hover:text-white hover:bg-white/5 hover:border-white/10" 
+                                        : "bg-black/[0.02] border-black/5 text-black/30 hover:text-black hover:bg-black/5 hover:border-black/10"
                                 )}
                             >
                                 {key}

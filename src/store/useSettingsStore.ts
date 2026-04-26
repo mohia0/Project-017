@@ -63,6 +63,7 @@ export interface WorkspaceDomain {
 }
 
 export interface WorkspaceEmailConfig {
+  id: string;
   workspace_id: string;
   smtp_host: string | null;
   smtp_port: number;
@@ -71,6 +72,7 @@ export interface WorkspaceEmailConfig {
   smtp_secure?: boolean;
   from_name: string | null;
   from_address: string | null;
+  is_default: boolean;
 }
 
 export interface EmailTemplate {
@@ -80,6 +82,7 @@ export interface EmailTemplate {
   subject: string;
   body: string;
   is_html: boolean;
+  wrapper?: string | null;
 }
 
 export interface WorkspaceStatus {
@@ -150,9 +153,11 @@ interface SettingsState {
   deleteDomain: (domainId: string) => Promise<void>;
   
   // Email Config
-  emailConfig: WorkspaceEmailConfig | null;
-  fetchEmailConfig: (workspaceId: string) => Promise<void>;
-  updateEmailConfig: (workspaceId: string, data: Partial<WorkspaceEmailConfig>) => Promise<void>;
+  emailConfigs: WorkspaceEmailConfig[];
+  fetchEmailConfigs: (workspaceId: string) => Promise<void>;
+  updateEmailConfig: (workspaceId: string, id: string | undefined, data: Partial<WorkspaceEmailConfig>) => Promise<void>;
+  deleteEmailConfig: (id: string) => Promise<void>;
+  setDefaultEmailConfig: (workspaceId: string, id: string) => Promise<void>;
 
   // Email Templates
   emailTemplates: EmailTemplate[];
@@ -187,7 +192,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   branding: null,
   payments: null,
   domains: [],
-  emailConfig: null,
+  emailConfigs: [],
   emailTemplates: [],
 
   // Pre-seed statuses from defaults so they always show before DB fetch
@@ -351,42 +356,73 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
-  fetchEmailConfig: async (workspaceId) => {
+  fetchEmailConfigs: async (workspaceId) => {
     set({ isLoading: true });
     const { data, error } = await supabase
       .from('workspace_email_config')
-      .select('workspace_id, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, from_name, from_address')
+      .select('*')
       .eq('workspace_id', workspaceId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      set({ error: error.message });
-    } else {
-      set({ emailConfig: data || null });
-    }
-    set({ isLoading: false, hasFetched: { ...get().hasFetched, emailConfig: true } });
-  },
-
-  updateEmailConfig: async (workspaceId, data) => {
-    const { error } = await supabase
-      .from('workspace_email_config')
-      .upsert({ workspace_id: workspaceId, ...data });
+      .order('is_default', { ascending: false });
 
     if (error) {
       set({ error: error.message });
-      throw error;
     } else {
-      // Local update
-      const current = get().emailConfig || { 
-        workspace_id: workspaceId, 
-        smtp_host: '', 
-        smtp_port: 587, 
-        smtp_user: '', 
-        from_name: '', 
-        from_address: '' 
-      };
-      set({ emailConfig: { ...current, ...data } as WorkspaceEmailConfig });
+      set({ emailConfigs: data || [] });
     }
+    set({ isLoading: false, hasFetched: { ...get().hasFetched, emailConfigs: true } });
+  },
+
+  updateEmailConfig: async (workspaceId, id, data) => {
+    const payload = { ...data, workspace_id: workspaceId };
+    if (id) {
+      const { data: updated, error } = await supabase
+        .from('workspace_email_config')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      set(s => ({ emailConfigs: s.emailConfigs.map(c => c.id === id ? updated : c) }));
+    } else {
+      const { data: created, error } = await supabase
+        .from('workspace_email_config')
+        .insert(payload)
+        .select()
+        .single();
+      if (error) throw error;
+      set(s => ({ emailConfigs: [...s.emailConfigs, created] }));
+    }
+  },
+
+  deleteEmailConfig: async (id) => {
+    const { error } = await supabase
+      .from('workspace_email_config')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    set(s => ({ emailConfigs: s.emailConfigs.filter(c => c.id !== id) }));
+  },
+
+  setDefaultEmailConfig: async (workspaceId, id) => {
+    // 1. Unset others
+    await supabase
+      .from('workspace_email_config')
+      .update({ is_default: false })
+      .eq('workspace_id', workspaceId);
+    
+    // 2. Set this one
+    await supabase
+      .from('workspace_email_config')
+      .update({ is_default: true })
+      .eq('id', id);
+    
+    // 3. Local update
+    set(s => ({
+      emailConfigs: s.emailConfigs.map(c => ({
+        ...c,
+        is_default: c.id === id
+      }))
+    }));
   },
 
   fetchEmailTemplates: async (workspaceId) => {
