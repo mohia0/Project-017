@@ -9,6 +9,8 @@ import { ClientActionBar } from '@/components/ui/ClientActionBar';
 import { AcceptSignModal } from '@/components/modals/AcceptSignModal';
 import { PaymentMethodSelectorModal } from '@/components/modals/PaymentMethodSelectorModal';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
+import { useUIStore } from '@/store/useUIStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { cn, getBackgroundImageWithOpacity, replaceVariables } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import FieldPreview from '@/components/forms/FieldPreview';
@@ -1010,12 +1012,52 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 });
         }
 
+        // Listener for workspace payment settings (PayPal email, accounts etc)
+        const paymentsChannel = supabasePublic
+            .channel(`public:workspace_payments:${data.workspace_id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'workspace_payments',
+                    filter: `workspace_id=eq.${data.workspace_id}`,
+                },
+                (payload) => {
+                    if (payload.new) {
+                        useSettingsStore.setState({ payments: payload.new as any });
+                    }
+                }
+            )
+            .subscribe();
+
+        // Listener for workspace branding (Logo, colors, etc)
+        const brandingChannel = supabasePublic
+            .channel(`public:workspace_branding:${data.workspace_id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'workspace_branding',
+                    filter: `workspace_id=eq.${data.workspace_id}`,
+                },
+                (payload) => {
+                    if (payload.new) {
+                        useSettingsStore.setState({ branding: payload.new as any });
+                    }
+                }
+            )
+            .subscribe();
+
         channel.subscribe();
 
         return () => {
             supabasePublic.removeChannel(channel);
+            supabasePublic.removeChannel(paymentsChannel);
+            supabasePublic.removeChannel(brandingChannel);
         };
-    }, [type, data.id]);
+    }, [type, data.id, data.workspace_id]);
     
     const handleDownload = async () => {
         const docTitle = liveData.title || liveData.meta?.invoiceNumber || liveData.meta?.projectName || 'Document';

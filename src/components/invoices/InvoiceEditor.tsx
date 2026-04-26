@@ -1297,14 +1297,17 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                         className="hidden"
                                                     />
                                                     <div className={cn(
-                                                        "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
+                                                        "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0",
                                                         meta.paymentMethods?.includes('paypal')
                                                             ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white shadow-sm"
                                                             : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
                                                     )}>
                                                         {meta.paymentMethods?.includes('paypal') && <Check size={10} strokeWidth={4} />}
                                                     </div>
-                                                    <span className={cn("text-[11px] font-medium", isDark ? "text-white/60" : "text-black/60")}>PayPal</span>
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className={cn("text-[11px] font-semibold leading-tight", isDark ? "text-white/70" : "text-black/70")}>PayPal</span>
+                                                        <span className={cn("text-[9px] font-medium leading-tight truncate", isDark ? "text-white/30" : "text-black/30")}>{payments.paypal_email}</span>
+                                                    </div>
                                                 </label>
                                             )}
 
