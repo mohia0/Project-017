@@ -24,7 +24,7 @@ import { AlertConfirmModal } from '@/components/modals/AlertConfirmModal';
 const TEMPLATE_DEFS = [
     {
         key: 'invoice', label: 'Invoice', icon: FileText, color: '#f59e0b',
-        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', amount_due: '$3,200', due_date: 'May 15, 2026', document_link: 'https://app.example.com/p/invoice/xxx' }
+        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', amount_due: '$3,200', due_date: 'May 15, 2026', document_link: 'https://app.example.com/p/invoice/xxx', currency_symbol: '' }
     },
     {
         key: 'proposal', label: 'Proposal', icon: Send, color: '#3b82f6',
@@ -32,11 +32,11 @@ const TEMPLATE_DEFS = [
     },
     {
         key: 'receipt', label: 'Receipt', icon: Receipt, color: '#10b981',
-        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', amount_paid: '$3,200', payment_date: 'Apr 26, 2026', document_link: 'https://app.example.com/p/invoice/xxx' }
+        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', amount_paid: '$3,200', payment_date: 'Apr 26, 2026', document_link: 'https://app.example.com/p/invoice/xxx', currency_symbol: '' }
     },
     {
         key: 'overdue_remind', label: 'Overdue', icon: AlertTriangle, color: '#ef4444',
-        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', days_overdue: '3', amount_due: '$3,200', document_link: 'https://app.example.com/p/invoice/xxx' }
+        sample: { client_name: 'John Smith', invoice_number: 'INV-0042', days_overdue: '3', amount_due: '$3,200', document_link: 'https://app.example.com/p/invoice/xxx', currency_symbol: '' }
     },
     {
         key: 'booking_confirmed', label: 'Booking', icon: CalendarCheck, color: '#8b5cf6',

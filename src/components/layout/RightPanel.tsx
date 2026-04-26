@@ -101,49 +101,51 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
     const [receiptModal, setReceiptModal] = useState<{ isOpen: boolean; metadata?: Record<string, any>; notificationId?: string }>({ isOpen: false });
     const [verifyLoading, setVerifyLoading] = useState<Record<string, boolean>>({});
 
-    const handleVerifyPayment = async (notif: any, action: 'Paid' | 'Pending') => {
+    const handleVerifyPayment = (notif: any, action: 'Paid' | 'Pending') => {
         const invoiceId = notif.metadata?.invoice_id;
-        if (!invoiceId || verifyLoading[notif.id]) return;
-        setVerifyLoading(prev => ({ ...prev, [notif.id]: true }));
-        try {
-            const { useInvoiceStore } = await import('@/store/useInvoiceStore');
-            await useInvoiceStore.getState().updateInvoice(invoiceId, { status: action });
+        if (!invoiceId) return;
 
-            // If collecting, trigger receipt
-            if (action === 'Paid') {
-                const { useSettingsStore } = await import('@/store/useSettingsStore');
-                const { useUIStore: uiStore } = await import('@/store/useUIStore');
-                const settings = useSettingsStore.getState();
-                const workspaceId = uiStore.getState().activeWorkspaceId;
-                const meta = notif.metadata || {};
-                if (settings.toolSettings?.invoices?.auto_receipt !== false && meta.to) {
-                    await fetch('/api/send-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            workspace_id: workspaceId,
-                            template_key: 'receipt',
-                            to: meta.to,
-                            variables: meta.variables || {},
-                        }),
-                    });
+        // Optimistically update the notification to dismiss it and provide instant feedback
+        updateNotification(notif.id, {
+            title: action === 'Paid' ? 'Payment Confirmed ✓' : 'Reverted to Pending',
+            message: action === 'Paid'
+                ? 'Invoice marked as Paid. Receipt is being sent.'
+                : 'Invoice status has been reverted to Pending.',
+            read: true,
+            type: action === 'Paid' ? 'success' : 'info',
+            metadata: undefined,
+        });
+
+        // Process background actions (DB update & Email) without keeping the UI waiting
+        (async () => {
+            try {
+                const { useInvoiceStore } = await import('@/store/useInvoiceStore');
+                await useInvoiceStore.getState().updateInvoice(invoiceId, { status: action });
+
+                if (action === 'Paid') {
+                    const { useSettingsStore } = await import('@/store/useSettingsStore');
+                    const { useUIStore: uiStore } = await import('@/store/useUIStore');
+                    const settings = useSettingsStore.getState();
+                    const workspaceId = uiStore.getState().activeWorkspaceId;
+                    const meta = notif.metadata || {};
+                    
+                    if (settings.toolSettings?.invoices?.auto_receipt !== false && meta.to) {
+                        await fetch('/api/send-email', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                workspace_id: workspaceId,
+                                template_key: 'receipt',
+                                to: meta.to,
+                                variables: meta.variables || {},
+                            }),
+                        });
+                    }
                 }
+            } catch (err) {
+                console.error('Verify payment background failed:', err);
             }
-
-            await updateNotification(notif.id, {
-                title: action === 'Paid' ? 'Payment Confirmed ✓' : 'Reverted to Pending',
-                message: action === 'Paid'
-                    ? 'Invoice marked as Paid. Receipt has been sent to the client.'
-                    : 'Invoice status has been reverted to Pending.',
-                read: true,
-                type: action === 'Paid' ? 'success' : 'info',
-                metadata: undefined,
-            });
-        } catch (err) {
-            console.error('Verify payment failed:', err);
-        } finally {
-            setVerifyLoading(prev => ({ ...prev, [notif.id]: false }));
-        }
+        })();
     };
 
     useEffect(() => {
