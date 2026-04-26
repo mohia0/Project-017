@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
     default_due_days: 7,
     auto_reminder: true,
     auto_receipt: true,
+    auto_receipt_on_client_pay: false,
     sub_prefix: '',
     sub_counter: '001',
     sub_suffix: '',
@@ -219,9 +220,16 @@ export default function InvoicesSettingsPage() {
                     />
                     <ToggleRow
                         label="Auto send receipts on successful payments."
-                        help="Automatically emails a payment confirmation receipt to the client when a payment is recorded."
+                        help="Automatically emails a payment confirmation receipt to the client when a payment is recorded by you."
                         checked={form.auto_receipt}
                         onChange={v => setForm(f => ({ ...f, auto_receipt: v }))}
+                        isDark={isDark}
+                    />
+                    <ToggleRow
+                        label="Auto send receipt when client marks as paid."
+                        help="When enabled, the system automatically sends a receipt email the moment a client marks the invoice as paid on the public page — no manual verification step required."
+                        checked={form.auto_receipt_on_client_pay}
+                        onChange={v => setForm(f => ({ ...f, auto_receipt_on_client_pay: v }))}
                         isDark={isDark}
                     />
                 </div>
