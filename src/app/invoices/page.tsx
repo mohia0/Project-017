@@ -1079,9 +1079,11 @@ export default function InvoicesPage() {
                 variables={{
                     client_name: sendingItem?.client_name || '',
                     invoice_number: sendingItem?.invoice_number || '',
+                    currency_symbol: '', // Removed placeholder to avoid duplication with formatted amount
                     amount_due: formatAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD'),
                     amount_paid: formatAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD'),
-                    due_date: sendingItem?.due_date || '',
+                    payment_date: sendingItem?.paid_at ? fmtDate(sendingItem.paid_at) : '',
+                    due_date: sendingItem?.due_date ? fmtDate(sendingItem.due_date) : '',
                     document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${sendingItem?.id}` : '',
                     days_overdue: sendingItem?.due_date ? String(Math.max(0, Math.floor((new Date().getTime() - new Date(sendingItem.due_date).getTime()) / (1000 * 3600 * 24)))) : '0',
                 }}

@@ -105,7 +105,7 @@ export function SendEmailModal({
             accent_color: accentColor, 
             ...variables 
         };
-        setSubject(rawSubject.replace(/\{\{(\w+)\}\}/g, (m, k) => allVars[k] ?? m));
+        setSubject(rawSubject.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k) => allVars[k] ?? m));
         setBody(rawBody);
     }, [isOpen, templateKey, initialTo, emailTemplates, workspaceId, fetchEmailConfigs]);
 

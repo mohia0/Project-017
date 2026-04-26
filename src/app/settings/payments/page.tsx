@@ -33,7 +33,7 @@ export default function PaymentsSettingsPage() {
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
     const [formData, setFormData] = useState<Omit<WorkspacePayments, 'workspace_id'>>(DEFAULT_PAYMENTS);
-    const [isSaving, setIsSaving] = useState(false);
+    const [isSaving, setIsSaving] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (activeWorkspaceId) {
@@ -72,22 +72,22 @@ export default function PaymentsSettingsPage() {
         return formData.paypal_email !== (compareTo.paypal_email || '');
     };
 
-    const handleSave = async () => {
+    const handleSaveSection = async (section: string, updates: Partial<WorkspacePayments>) => {
         if (!activeWorkspaceId) return;
-        setIsSaving(true);
+        setIsSaving(prev => ({ ...prev, [section]: true }));
         try {
             await appToast.promise(
-                updatePayments(activeWorkspaceId, formData),
+                updatePayments(activeWorkspaceId, updates),
                 {
-                    loading: 'Saving payment settings...',
+                    loading: `Saving ${section} settings...`,
                     success: 'Settings saved successfully',
-                    error: 'Failed to save payment settings'
+                    error: `Failed to save ${section} settings`
                 }
             );
         } catch (error: any) {
             console.error('Save error:', error);
         } finally {
-            setIsSaving(false);
+            setIsSaving(prev => ({ ...prev, [section]: false }));
         }
     };
 
@@ -106,8 +106,8 @@ export default function PaymentsSettingsPage() {
             <SettingsCard
                 title="Bank Accounts"
                 description="Your bank account details for direct transfers. One account must be set as default."
-                onSave={handleSave}
-                isSaving={isSaving}
+                onSave={() => handleSaveSection('Bank Accounts', { bank_accounts: formData.bank_accounts })}
+                isSaving={isSaving['Bank Accounts']}
                 unsavedChanges={hasBankChanges()}
                 extra={
                     <button
@@ -360,8 +360,8 @@ export default function PaymentsSettingsPage() {
             <SettingsCard
                 title="PayPal"
                 description="Accept payments via PayPal. Enter your PayPal email address."
-                onSave={handleSave}
-                isSaving={isSaving}
+                onSave={() => handleSaveSection('PayPal', { paypal_email: formData.paypal_email })}
+                isSaving={isSaving['PayPal']}
                 unsavedChanges={hasPayPalChanges()}
             >
                 <SettingsField label="PayPal Email">

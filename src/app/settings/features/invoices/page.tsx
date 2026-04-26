@@ -90,8 +90,24 @@ export default function InvoicesSettingsPage() {
     const { toolSettings, fetchToolSettings, updateToolSettings, hasFetched } = useSettingsStore();
 
     const saved = toolSettings[TOOL] || DEFAULT_SETTINGS;
-    const [form, setForm] = useState({ ...DEFAULT_SETTINGS, ...saved });
-    const [isSaving, setIsSaving] = useState(false);
+    
+    // Section 1: Numbering
+    const [numberingForm, setNumberingForm] = useState({
+        prefix: saved.prefix ?? DEFAULT_SETTINGS.prefix,
+        counter: saved.counter ?? DEFAULT_SETTINGS.counter,
+        suffix: saved.suffix ?? DEFAULT_SETTINGS.suffix,
+        assign_to_draft: saved.assign_to_draft ?? DEFAULT_SETTINGS.assign_to_draft,
+    });
+    const [isSavingNumbering, setIsSavingNumbering] = useState(false);
+
+    // Section 2: Preferences
+    const [prefForm, setPrefForm] = useState({
+        default_due_days: saved.default_due_days ?? DEFAULT_SETTINGS.default_due_days,
+        auto_reminder: saved.auto_reminder ?? DEFAULT_SETTINGS.auto_reminder,
+        auto_receipt: saved.auto_receipt ?? DEFAULT_SETTINGS.auto_receipt,
+        auto_receipt_on_client_pay: saved.auto_receipt_on_client_pay ?? DEFAULT_SETTINGS.auto_receipt_on_client_pay,
+    });
+    const [isSavingPref, setIsSavingPref] = useState(false);
 
     useEffect(() => {
         if (activeWorkspaceId && !hasFetched[`toolSettings_${TOOL}`]) {
@@ -100,20 +116,50 @@ export default function InvoicesSettingsPage() {
     }, [activeWorkspaceId]);
 
     useEffect(() => {
-        setForm({ ...DEFAULT_SETTINGS, ...saved });
+        const current = toolSettings[TOOL] || DEFAULT_SETTINGS;
+        setNumberingForm({
+            prefix: current.prefix ?? DEFAULT_SETTINGS.prefix,
+            counter: current.counter ?? DEFAULT_SETTINGS.counter,
+            suffix: current.suffix ?? DEFAULT_SETTINGS.suffix,
+            assign_to_draft: current.assign_to_draft ?? DEFAULT_SETTINGS.assign_to_draft,
+        });
+        setPrefForm({
+            default_due_days: current.default_due_days ?? DEFAULT_SETTINGS.default_due_days,
+            auto_reminder: current.auto_reminder ?? DEFAULT_SETTINGS.auto_reminder,
+            auto_receipt: current.auto_receipt ?? DEFAULT_SETTINGS.auto_receipt,
+            auto_receipt_on_client_pay: current.auto_receipt_on_client_pay ?? DEFAULT_SETTINGS.auto_receipt_on_client_pay,
+        });
     }, [toolSettings]);
 
-    const hasChanges = JSON.stringify(form) !== JSON.stringify({ ...DEFAULT_SETTINGS, ...saved });
+    const numberingHasChanges = JSON.stringify(numberingForm) !== JSON.stringify({
+        prefix: saved.prefix ?? DEFAULT_SETTINGS.prefix,
+        counter: saved.counter ?? DEFAULT_SETTINGS.counter,
+        suffix: saved.suffix ?? DEFAULT_SETTINGS.suffix,
+        assign_to_draft: saved.assign_to_draft ?? DEFAULT_SETTINGS.assign_to_draft,
+    });
 
-    const handleSave = async () => {
+    const prefHasChanges = JSON.stringify(prefForm) !== JSON.stringify({
+        default_due_days: saved.default_due_days ?? DEFAULT_SETTINGS.default_due_days,
+        auto_reminder: saved.auto_reminder ?? DEFAULT_SETTINGS.auto_reminder,
+        auto_receipt: saved.auto_receipt ?? DEFAULT_SETTINGS.auto_receipt,
+        auto_receipt_on_client_pay: saved.auto_receipt_on_client_pay ?? DEFAULT_SETTINGS.auto_receipt_on_client_pay,
+    });
+
+    const handleSaveNumbering = async () => {
         if (!activeWorkspaceId) return;
-        setIsSaving(true);
-        await updateToolSettings(activeWorkspaceId, TOOL, form);
-        setIsSaving(false);
+        setIsSavingNumbering(true);
+        await updateToolSettings(activeWorkspaceId, TOOL, { ...saved, ...numberingForm });
+        setIsSavingNumbering(false);
     };
 
-    const invoicePreview = `${form.prefix || ''}${form.counter}${form.suffix || ''}`;
-    const subPreview = `${form.sub_prefix || ''}${form.sub_counter}${form.sub_suffix || ''}`;
+    const handleSavePref = async () => {
+        if (!activeWorkspaceId) return;
+        setIsSavingPref(true);
+        await updateToolSettings(activeWorkspaceId, TOOL, { ...saved, ...prefForm });
+        setIsSavingPref(false);
+    };
+
+    const invoicePreview = `${numberingForm.prefix || ''}${numberingForm.counter}${numberingForm.suffix || ''}`;
 
     return (
         <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
@@ -129,9 +175,9 @@ export default function InvoicesSettingsPage() {
             <SettingsCard
                 title="Invoice Number (ID)"
                 description="Define the format used to generate invoice identifiers."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasChanges}
+                onSave={handleSaveNumbering}
+                isSaving={isSavingNumbering}
+                unsavedChanges={numberingHasChanges}
             >
                 <InfoBanner isDark={isDark}>
                     The next invoice number will be&nbsp;
@@ -147,20 +193,20 @@ export default function InvoicesSettingsPage() {
                     <div className="flex gap-2">
                         <SettingsInput
                             placeholder="Prefix"
-                            value={form.prefix}
-                            onChange={e => setForm(f => ({ ...f, prefix: e.target.value }))}
+                            value={numberingForm.prefix}
+                            onChange={e => setNumberingForm(f => ({ ...f, prefix: e.target.value }))}
                             className="font-mono flex-1"
                         />
                         <SettingsInput
                             placeholder="0001"
-                            value={form.counter}
-                            onChange={e => setForm(f => ({ ...f, counter: e.target.value }))}
+                            value={numberingForm.counter}
+                            onChange={e => setNumberingForm(f => ({ ...f, counter: e.target.value }))}
                             className="font-mono text-center flex-1"
                         />
                         <SettingsInput
                             placeholder="Suffix"
-                            value={form.suffix}
-                            onChange={e => setForm(f => ({ ...f, suffix: e.target.value }))}
+                            value={numberingForm.suffix}
+                            onChange={e => setNumberingForm(f => ({ ...f, suffix: e.target.value }))}
                             className="font-mono flex-1"
                         />
                     </div>
@@ -172,8 +218,8 @@ export default function InvoicesSettingsPage() {
                 <ToggleRow
                     label="Assign a number to draft."
                     help="When enabled, drafts receive a sequential number immediately. Otherwise, numbers are assigned only when the invoice is sent."
-                    checked={form.assign_to_draft}
-                    onChange={v => setForm(f => ({ ...f, assign_to_draft: v }))}
+                    checked={numberingForm.assign_to_draft}
+                    onChange={v => setNumberingForm(f => ({ ...f, assign_to_draft: v }))}
                     isDark={isDark}
                 />
             </SettingsCard>
@@ -182,9 +228,9 @@ export default function InvoicesSettingsPage() {
             <SettingsCard
                 title="Invoicing Preferences"
                 description="Set default behavior for payment timelines and automated emails."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasChanges}
+                onSave={handleSavePref}
+                isSaving={isSavingPref}
+                unsavedChanges={prefHasChanges}
             >
                 {/* Due Days inline field */}
                 <div className={cn(
@@ -197,8 +243,8 @@ export default function InvoicesSettingsPage() {
                             type="number"
                             min={1}
                             max={365}
-                            value={form.default_due_days}
-                            onChange={e => setForm(f => ({ ...f, default_due_days: parseInt(e.target.value) || 7 }))}
+                            value={prefForm.default_due_days}
+                            onChange={e => setPrefForm(f => ({ ...f, default_due_days: parseInt(e.target.value) || 7 }))}
                             className={cn(
                                 'w-16 h-9 text-center rounded-lg border text-sm font-bold focus:outline-none focus:ring-2 transition-all',
                                 isDark
@@ -214,22 +260,22 @@ export default function InvoicesSettingsPage() {
                     <ToggleRow
                         label="Auto send a reminder email for overdue invoices."
                         help="Sends an automated follow-up to the client when the invoice passes its due date unpaid."
-                        checked={form.auto_reminder}
-                        onChange={v => setForm(f => ({ ...f, auto_reminder: v }))}
+                        checked={prefForm.auto_reminder}
+                        onChange={v => setPrefForm(f => ({ ...f, auto_reminder: v }))}
                         isDark={isDark}
                     />
                     <ToggleRow
                         label="Auto send receipts on successful payments."
                         help="Automatically emails a payment confirmation receipt to the client when a payment is recorded by you."
-                        checked={form.auto_receipt}
-                        onChange={v => setForm(f => ({ ...f, auto_receipt: v }))}
+                        checked={prefForm.auto_receipt}
+                        onChange={v => setPrefForm(f => ({ ...f, auto_receipt: v }))}
                         isDark={isDark}
                     />
                     <ToggleRow
                         label="Auto send receipt when client marks as paid."
                         help="When enabled, the system automatically sends a receipt email the moment a client marks the invoice as paid on the public page — no manual verification step required."
-                        checked={form.auto_receipt_on_client_pay}
-                        onChange={v => setForm(f => ({ ...f, auto_receipt_on_client_pay: v }))}
+                        checked={prefForm.auto_receipt_on_client_pay}
+                        onChange={v => setPrefForm(f => ({ ...f, auto_receipt_on_client_pay: v }))}
                         isDark={isDark}
                     />
                 </div>
@@ -272,7 +318,7 @@ export default function InvoicesSettingsPage() {
                     )}>
                         <Info size={14} />
                         The next subscription number will be&nbsp;
-                        <span className="font-mono font-bold">{subPreview || '001'}</span>
+                        <span className="font-mono font-bold">{'001'}</span>
                     </div>
 
                     <div className="flex gap-2 mb-4">

@@ -171,12 +171,19 @@ export function ClientActionBar({
                     style={parentRadiusStyle}
                 >
                     {status === 'Paid' ? (
-                        <>
-                            <Check size={16} strokeWidth={2.5} className="text-emerald-500" />
-                            <span className="text-[13px] font-semibold">
-                                Invoice paid{paidAt ? ` on ${paidAt}` : ''}{paidBy ? ` by ${paidBy}` : ''}
-                            </span>
-                        </>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500/10 shrink-0">
+                                <Check size={14} strokeWidth={3} className="text-emerald-500" />
+                            </div>
+                            <div className="flex flex-col leading-tight">
+                                <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
+                                    Invoice paid{paidAt ? ` on ${paidAt}` : ''}{paidBy ? ` by ${paidBy}` : ''}
+                                </span>
+                                <span className={cn("font-medium opacity-50", isMobile ? "text-[9px]" : "text-[11px]")}>
+                                    Receipt sent to your email
+                                </span>
+                            </div>
+                        </div>
                     ) : status === 'Processing' ? (
                         <>
                             <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -224,21 +231,7 @@ export function ClientActionBar({
                         )}
                     </div>
 
-                    {status === 'Paid' ? (
-                        <>
-                            <div className={cn("w-px h-4 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />
-                                <button 
-                                    onClick={onViewReceipt}
-                                    className={cn(
-                                        "font-medium hover:opacity-70 transition-opacity whitespace-nowrap",
-                                        isMobile ? "px-2 py-1 text-[10px]" : "px-4 py-1.5 text-[12px]",
-                                        isDark ? "text-white" : "text-[#111]"
-                                    )}
-                                >
-                                    View receipt
-                                </button>
-                        </>
-                    ) : status === 'Processing' ? (
+                    {status === 'Processing' ? (
                         <>
                             <div className={cn("w-px h-4 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />
                              <span className={cn(
@@ -248,7 +241,7 @@ export function ClientActionBar({
                                 UNDER REVIEW
                             </span>
                         </>
-                    ) : (
+                    ) : status !== 'Paid' ? (
                         <button 
                             onClick={onPay}
                             className={cn(
@@ -261,7 +254,7 @@ export function ClientActionBar({
                             <ArrowRight size={isMobile ? 12 : 14} strokeWidth={3} />
                             Pay now
                         </button>
-                    )}
+                    ) : null}
                 </div>
             </div>
         );

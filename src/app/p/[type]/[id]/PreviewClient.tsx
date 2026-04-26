@@ -1255,7 +1255,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
 
         const paidBy = invoiceMeta.clientName || 'Client';
         const paidAt = liveData.updated_at
-            ? new Intl.DateTimeFormat('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }).format(new Date(liveData.updated_at))
+            ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' }).format(new Date(liveData.updated_at))
             : undefined;
 
         return (

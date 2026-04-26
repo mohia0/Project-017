@@ -148,24 +148,25 @@ export default function BrandingSettingsPage() {
     const isDark = theme === 'dark';
     const { branding, fetchBranding, updateBranding, hasFetched } = useSettingsStore();
 
-    const [formData, setFormData] = useState<BrandingFormData>({
+    // Section 1: White Label
+    const [whiteLabelForm, setWhiteLabelForm] = useState<Omit<BrandingFormData, 'branding_colors'>>({
         primary_color: DEFAULT_BRANDING.primary_color,
         secondary_color: '',
         apply_color_to_sidebar: false,
         logo_light_url: '',
         logo_dark_url: '',
         favicon_url: '',
-        branding_colors: DEFAULT_BRANDING.branding_colors,
     });
-    
-    const debouncedFormData = useDebounce(formData, 1000);
+    const [isSavingWhiteLabel, setIsSavingWhiteLabel] = useState(false);
 
-    const [isSaving, setIsSaving] = useState(false);
-    const [isDirty, setIsDirty] = useState(false);
+    // Section 2: Colors Swatch
+    const [swatchForm, setSwatchForm] = useState<{ branding_colors: string[] }>({
+        branding_colors: DEFAULT_PALETTE
+    });
+    const [isSavingSwatch, setIsSavingSwatch] = useState(false);
+
     const [hasSynced, setHasSynced] = useState(false);
     const lastSavedRef = React.useRef<string>('');
-
-
 
     useEffect(() => {
         if (activeWorkspaceId) {
@@ -174,72 +175,75 @@ export default function BrandingSettingsPage() {
         }
     }, [activeWorkspaceId, fetchBranding]);
 
-
-
     useEffect(() => {
         if (branding && !hasSynced) {
-            const data: BrandingFormData = {
+            const whiteLabelData = {
                 primary_color: branding.primary_color || DEFAULT_BRANDING.primary_color,
                 secondary_color: branding.secondary_color || '',
                 apply_color_to_sidebar: branding.apply_color_to_sidebar || false,
                 logo_light_url: branding.logo_light_url || '',
                 logo_dark_url: branding.logo_dark_url || '',
                 favicon_url: branding.favicon_url || '',
+            };
+            const swatchData = {
                 branding_colors: (branding.branding_colors && branding.branding_colors.length > 0) 
                     ? branding.branding_colors 
                     : DEFAULT_PALETTE
             };
-            setFormData(data);
-            lastSavedRef.current = JSON.stringify(data);
+            
+            setWhiteLabelForm(whiteLabelData);
+            setSwatchForm(swatchData);
+            
+            lastSavedRef.current = JSON.stringify({ ...whiteLabelData, ...swatchData });
             setHasSynced(true);
         }
     }, [branding, hasSynced]);
 
-    const updateField = (updates: Partial<BrandingFormData>) => {
-        setFormData(prev => ({ ...prev, ...updates }));
-        setIsDirty(true);
+    const whiteLabelHasChanges = JSON.stringify(whiteLabelForm) !== JSON.stringify({
+        primary_color: branding?.primary_color || DEFAULT_BRANDING.primary_color,
+        secondary_color: branding?.secondary_color || '',
+        apply_color_to_sidebar: branding?.apply_color_to_sidebar || false,
+        logo_light_url: branding?.logo_light_url || '',
+        logo_dark_url: branding?.logo_dark_url || '',
+        favicon_url: branding?.favicon_url || '',
+    });
 
-        // Instant preview: update the branding object in the store directly 
-        // while we wait for the debounced auto-save to hit the database.
-        useSettingsStore.setState(s => ({
-            branding: s.branding ? { ...s.branding, ...updates } : { ...DEFAULT_BRANDING, workspace_id: activeWorkspaceId!, ...updates } as WorkspaceBranding
-        }));
+    const swatchHasChanges = JSON.stringify(swatchForm) !== JSON.stringify({
+        branding_colors: (branding?.branding_colors && branding.branding_colors.length > 0) 
+            ? branding.branding_colors 
+            : DEFAULT_PALETTE
+    });
+
+    const handleSaveWhiteLabel = async () => {
+        if (!activeWorkspaceId) return;
+        setIsSavingWhiteLabel(true);
+        try {
+            await updateBranding(activeWorkspaceId, { ...branding, ...whiteLabelForm, branding_colors: swatchForm.branding_colors });
+            appToast.success('Branding Saved');
+        } finally {
+            setIsSavingWhiteLabel(false);
+        }
     };
 
-    const resetField = (field: keyof BrandingFormData) => {
-        updateField({ [field]: DEFAULT_BRANDING[field as keyof typeof DEFAULT_BRANDING] });
+    const handleSaveSwatch = async () => {
+        if (!activeWorkspaceId) return;
+        setIsSavingSwatch(true);
+        try {
+            await updateBranding(activeWorkspaceId, { ...branding, ...whiteLabelForm, branding_colors: swatchForm.branding_colors });
+            appToast.success('Colors Saved');
+        } finally {
+            setIsSavingSwatch(false);
+        }
     };
 
+    const resetWhiteLabelField = (field: keyof typeof whiteLabelForm) => {
+        const val = DEFAULT_BRANDING[field as keyof typeof DEFAULT_BRANDING];
+        setWhiteLabelForm(prev => ({ ...prev, [field]: val }));
+    };
 
-
-    useEffect(() => {
-        if (!activeWorkspaceId || !hasFetched.branding || !hasSynced) return;
-
-        const currentJSON = JSON.stringify(formData);
-        const hasChanges = currentJSON !== lastSavedRef.current;
-        
-        setIsDirty(hasChanges);
-        if (!hasChanges || isSaving) return;
-
-        const timer = setTimeout(async () => {
-            setIsSaving(true);
-            try {
-                // Take a snapshot of CURRENT formData at this moment
-                const dataToSave = JSON.parse(JSON.stringify(formData));
-                await updateBranding(activeWorkspaceId, dataToSave);
-                lastSavedRef.current = JSON.stringify(dataToSave);
-                setIsDirty(false);
-                appToast.success('Branding Saved');
-            } catch (err) {
-                console.error("Auto-save failed:", err);
-                appToast.error('Save Failed', 'Connection lost. Changes may not be saved.');
-            } finally {
-                setIsSaving(false);
-            }
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, [formData, activeWorkspaceId, updateBranding, branding, hasFetched.branding, hasSynced, isSaving]);
+    const resetSwatch = () => {
+        setSwatchForm({ branding_colors: DEFAULT_PALETTE });
+    };
 
     if (!hasFetched.branding) {
         return (
@@ -254,15 +258,18 @@ export default function BrandingSettingsPage() {
             <SettingsCard
                 title="White Label"
                 description="These settings apply globally to documents, portals, and PDFs."
+                onSave={handleSaveWhiteLabel}
+                isSaving={isSavingWhiteLabel}
+                unsavedChanges={whiteLabelHasChanges}
             >
                 <SettingsField 
                     label="Accent Color" 
-                    extra={<ResetButton onClick={() => resetField('primary_color')} isDark={isDark} />}
+                    extra={<ResetButton onClick={() => resetWhiteLabelField('primary_color')} isDark={isDark} />}
                 >
                     <div className="flex items-center gap-4 animate-in fade-in slide-in-from-left-2 duration-500">
                         <ColorisInput 
-                            value={formData.primary_color}
-                            onChange={val => updateField({ primary_color: val })}
+                            value={whiteLabelForm.primary_color}
+                            onChange={val => setWhiteLabelForm(p => ({ ...p, primary_color: val }))}
                             className="w-fit min-w-[140px]"
                             large
                         />
@@ -274,12 +281,12 @@ export default function BrandingSettingsPage() {
                             <div className="flex flex-col">
                                 <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "text-white/30" : "text-black/30")}>Apply to Sidebar</span>
                                 <span className={cn("text-[11px] font-bold", isDark ? "text-white/70" : "text-black/70")}>
-                                    {formData.apply_color_to_sidebar ? 'Branded' : 'Default'}
+                                    {whiteLabelForm.apply_color_to_sidebar ? 'Branded' : 'Default'}
                                 </span>
                             </div>
                             <Toggle 
-                                checked={formData.apply_color_to_sidebar} 
-                                onChange={(v) => updateField({ apply_color_to_sidebar: v })}
+                                checked={whiteLabelForm.apply_color_to_sidebar} 
+                                onChange={(v) => setWhiteLabelForm(p => ({ ...p, apply_color_to_sidebar: v }))}
                                 isDark={isDark} 
                             />
                         </div>
@@ -295,58 +302,57 @@ export default function BrandingSettingsPage() {
                         <LogoUpload 
                             label="Light Logo"
                             description="For dark backgrounds"
-                            value={formData.logo_light_url || ''}
-                            onChange={(url) => updateField({ logo_light_url: url })}
-                            onReset={() => resetField('logo_light_url')}
+                            value={whiteLabelForm.logo_light_url || ''}
+                            onChange={(url) => setWhiteLabelForm(p => ({ ...p, logo_light_url: url }))}
+                            onReset={() => resetWhiteLabelField('logo_light_url')}
                             isDark={isDark}
                         />
 
                         <LogoUpload 
                             label="Dark Logo"
                             description="For light backgrounds"
-                            value={formData.logo_dark_url || ''}
-                            onChange={(url) => updateField({ logo_dark_url: url })}
-                            onReset={() => resetField('logo_dark_url')}
+                            value={whiteLabelForm.logo_dark_url || ''}
+                            onChange={(url) => setWhiteLabelForm(p => ({ ...p, logo_dark_url: url }))}
+                            onReset={() => resetWhiteLabelField('logo_dark_url')}
                             isDark={isDark}
                         />
 
                         <LogoUpload 
                             label="Favicon"
                             description="Browser tab icon (32x32)"
-                            value={formData.favicon_url || ''}
-                            onChange={(url) => updateField({ favicon_url: url })}
-                            onReset={() => resetField('favicon_url')}
+                            value={whiteLabelForm.favicon_url || ''}
+                            onChange={(url) => setWhiteLabelForm(p => ({ ...p, favicon_url: url }))}
+                            onReset={() => resetWhiteLabelField('favicon_url')}
                             isDark={isDark}
                         />
                     </div>
-
-
                 </div>
-
-
             </SettingsCard>
 
             <SettingsCard
                 title="Branding Swatch"
                 description="Customize the default colors available in the color picker."
-                extra={<ResetButton onClick={() => resetField('branding_colors')} isDark={isDark} />}
+                onSave={handleSaveSwatch}
+                isSaving={isSavingSwatch}
+                unsavedChanges={swatchHasChanges}
+                extra={<ResetButton onClick={resetSwatch} isDark={isDark} />}
             >
                 <div className="flex flex-col gap-6">
                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-                        {(formData.branding_colors || []).map((color, index) => (
+                        {(swatchForm.branding_colors || []).map((color, index) => (
                             <div key={index} className="relative group">
                                 <ColorisInput 
                                     value={color}
                                     onChange={(newColor) => {
-                                        const newColors = [...(formData.branding_colors || [])];
+                                        const newColors = [...(swatchForm.branding_colors || [])];
                                         newColors[index] = newColor;
-                                        updateField({ branding_colors: newColors });
+                                        setSwatchForm({ branding_colors: newColors });
                                     }}
                                 />
                                 <button
                                     onClick={() => {
-                                        const newColors = (formData.branding_colors || []).filter((_, i) => i !== index);
-                                        updateField({ branding_colors: newColors });
+                                        const newColors = (swatchForm.branding_colors || []).filter((_, i) => i !== index);
+                                        setSwatchForm({ branding_colors: newColors });
                                     }}
                                     className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity flex shadow-sm z-10"
                                 >
@@ -356,8 +362,8 @@ export default function BrandingSettingsPage() {
                         ))}
                         <button
                             onClick={() => {
-                                const newColors = [...(formData.branding_colors || []), '#000000'];
-                                updateField({ branding_colors: newColors });
+                                const newColors = [...(swatchForm.branding_colors || []), '#000000'];
+                                setSwatchForm({ branding_colors: newColors });
                             }}
                             className={cn(
                                 "h-[45px] rounded-xl border border-dashed flex items-center justify-center gap-2 transition-all group",

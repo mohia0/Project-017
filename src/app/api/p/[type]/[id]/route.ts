@@ -74,25 +74,47 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
             // Better to return a clear error.
         }
 
+        const { data: doc, error: docError } = await supabaseService
+            .from(tableName)
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (docError || !doc) {
+            return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+        }
+
         const updateData: any = {};
+        let targetStatus = body.status;
+        let isAutoPaid = false;
+
+        // Auto-promote Processing to Paid if the setting is enabled
+        if (type === 'invoice' && targetStatus === 'Processing') {
+            const { data: toolSettings } = await supabaseService
+                .from('workspace_tool_settings')
+                .select('settings')
+                .eq('workspace_id', doc.workspace_id)
+                .eq('tool', 'invoices')
+                .single();
+            
+            if (toolSettings?.settings?.auto_receipt_on_client_pay) {
+                targetStatus = 'Paid';
+                isAutoPaid = true;
+            }
+        }
         
         // Allowed field: status
-        if (body.status && ['Accepted', 'Declined', 'Paid', 'Processing'].includes(body.status)) {
-            updateData.status = body.status;
-            if (body.status === 'Paid') {
+        if (targetStatus && ['Accepted', 'Declined', 'Paid', 'Processing'].includes(targetStatus)) {
+            updateData.status = targetStatus;
+            if (targetStatus === 'Paid') {
                 updateData.paid_at = new Date().toISOString();
             }
         }
 
         // If they act to accept a proposal, maybe they passed a signature block update
         if (body.signatureData) {
-            // Fetch current blocks to patch the signature block securely Without letting them overwrite everything
-            const { data: currData, error: fetchErr } = await supabaseService.from(tableName).select('blocks').eq('id', id).single();
-            
-            if (fetchErr) {
-                console.error('Error fetching current blocks:', fetchErr);
-            } else if (currData && Array.isArray(currData.blocks)) {
-                updateData.blocks = currData.blocks.map((b: any) => 
+            if (Array.isArray(doc.blocks)) {
+                updateData.blocks = doc.blocks.map((b: any) => 
                     b.type === 'signature' ? { 
                         ...b, 
                         signed: true, 
@@ -124,73 +146,104 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
 
         // CREATE NOTIFICATION
         try {
-            // Fetch minimal info for notification if we don't have it
-            const { data: doc } = await supabaseService
-                .from(tableName)
-                .select('workspace_id, title, client_name')
-                .eq('id', id)
-                .single();
-
             if (doc && doc.workspace_id) {
                 let notifTitle = '';
                 let notifMsg = '';
                 const docName = doc.title || 'Untitled';
 
-                if (type === 'proposal' && body.status === 'Accepted') {
+                if (type === 'proposal' && targetStatus === 'Accepted') {
                     notifTitle = 'Proposal Signed 🎉';
                     notifMsg = `${doc.client_name || 'A client'} just signed the proposal "${docName}"`;
-                } else if (type === 'proposal' && body.status === 'Declined') {
+                } else if (type === 'proposal' && targetStatus === 'Declined') {
                     notifTitle = 'Proposal Declined 😞';
                     notifMsg = `${doc.client_name || 'A client'} just declined the proposal "${docName}"`;
-                } else if (type === 'invoice' && body.status === 'Processing') {
+                } else if (type === 'invoice' && targetStatus === 'Processing') {
                     notifTitle = 'Payment Received — Verify Now 💳';
                     notifMsg = `${doc.client_name || 'A client'} reported a payment for "${docName}". Open to verify.`;
-                } else if (type === 'invoice' && body.status === 'Paid') {
+                } else if (type === 'invoice' && targetStatus === 'Paid') {
                     notifTitle = 'Invoice Paid 💸';
                     notifMsg = `${doc.client_name || 'A client'} just marked the invoice "${docName}" as paid`;
+                    if (isAutoPaid) notifMsg = `${doc.client_name || 'A client'} paid the invoice "${docName}". Receipt sent automatically.`;
                 }
 
                 if (notifTitle) {
-                    // For payment_verification, fetch extra invoice data for receipt dispatch
+                    // For payment_verification or auto-receipt, gather invoice data
                     let notifType = 'info';
                     let notifMetadata: Record<string, any> | null = null;
 
-                    if (type === 'invoice' && body.status === 'Processing') {
-                        notifType = 'payment_verification';
-                        // Fetch invoice meta for receipt vars
-                        const { data: invoiceData } = await supabaseService
-                            .from('invoices')
-                            .select('meta, amount, invoice_number')
-                            .eq('id', id)
-                            .single();
-
-                        const invoiceMeta = (invoiceData?.meta as any) || {};
+                    if (type === 'invoice' && (targetStatus === 'Processing' || targetStatus === 'Paid')) {
+                        const invoiceMeta = (doc.meta as any) || {};
                         const clientEmail = invoiceMeta.clientEmail || invoiceMeta.assignedClients?.[0]?.email || '';
-                        const invoiceNumber = invoiceMeta.invoiceNumber || invoiceData?.invoice_number || id.slice(0, 8).toUpperCase();
-                        const amountRaw = invoiceData?.amount || 0;
+                        const invoiceNumber = invoiceMeta.invoiceNumber || doc.invoice_number || id.slice(0, 8).toUpperCase();
+                        const amountRaw = doc.amount || 0;
                         const currency = invoiceMeta.currency || 'USD';
                         const amount = new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amountRaw);
 
-                        notifMetadata = {
-                            invoice_id: id,
-                            payment_method: body.paymentMethod,
-                            to: clientEmail,
-                            variables: {
-                                client_name: doc.client_name || '',
-                                invoice_number: invoiceNumber,
-                                amount_paid: amount,
-                                amount_due: amount,
-                                payment_date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-                                document_link: body.document_link || '',
-                            },
+                        const vars = {
+                            client_name: doc.client_name || '',
+                            invoice_number: invoiceNumber,
+                            amount_paid: amount,
+                            amount_due: amount,
+                            payment_date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+                            currency_symbol: '', // Ensure placeholder is removed from template
+                            document_link: body.document_link || `${new URL(req.url).origin}/p/invoice/${id}`,
                         };
+
+                        if (targetStatus === 'Processing') {
+                            notifType = 'payment_verification';
+                            notifMetadata = {
+                                invoice_id: id,
+                                payment_method: body.paymentMethod,
+                                to: clientEmail,
+                                variables: vars,
+                            };
+                        } else if (targetStatus === 'Paid') {
+                            // If it's Paid, we might need to send a receipt
+                            // Case A: isAutoPaid (System just flipped it from Processing -> Paid)
+                            // Case B: body.status was Paid (Client marked as Paid directly, e.g. for some methods)
+                            
+                            // Check tool settings for auto-receipt on client pay
+                            const { data: toolSettings } = await supabaseService
+                                .from('workspace_tool_settings')
+                                .select('settings')
+                                .eq('workspace_id', doc.workspace_id)
+                                .eq('tool', 'invoices')
+                                .single();
+
+                            const settings = toolSettings?.settings || {};
+                            
+                            // If auto_receipt_on_client_pay is on, OR if it was already Paid and regular auto_receipt is on
+                            // (Though usually for client-side marking, we use the specific new setting)
+                            if (settings.auto_receipt_on_client_pay && clientEmail) {
+                                // Auto-send receipt
+                                (async () => {
+                                    try {
+                                        await fetch(`${new URL(req.url).origin}/api/send-email`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({
+                                                workspace_id: doc.workspace_id,
+                                                template_key: 'receipt',
+                                                to: clientEmail,
+                                                variables: vars,
+                                            }),
+                                        });
+                                    } catch (err) {
+                                        console.error('Auto-receipt send failed:', err);
+                                    }
+                                })();
+                                if (!isAutoPaid) {
+                                    notifMsg += ' (Receipt sent automatically)';
+                                }
+                            }
+                        }
                     }
 
                     await supabaseService.from('notifications').insert({
                         workspace_id: doc.workspace_id,
                         title: notifTitle,
                         message: notifMsg,
-                        link: body.status === 'Processing' ? `/invoices/${id}` : `/${type}s/${id}`,
+                        link: targetStatus === 'Processing' ? `/invoices/${id}` : `/${type}s/${id}`,
                         read: false,
                         type: notifType,
                         metadata: notifMetadata,
@@ -198,8 +251,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
                 }
             }
         } catch (notifErr) {
-            console.error('Failed to create notification silent error:', notifErr);
-            // Don't fail the main request if notification fails
+            console.error('Failed to create notification or send receipt:', notifErr);
+            // Don't fail the main request
         }
 
         return NextResponse.json({ success: true, updateData });

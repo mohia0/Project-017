@@ -17,7 +17,7 @@ export function renderTemplate(
 ) {
     if (!template) return '';
     
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key, offset) => {
+    return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, key, offset) => {
         // Context Awareness: Check if we are inside an HTML tag (e.g. style="background: {{var}}")
         const before = template.substring(0, offset);
         const lastOpen = before.lastIndexOf('<');
@@ -115,7 +115,7 @@ export const buildEmailHtml = (body: string, options: {
     let fullHtml = wrapperHtml
         .replace('{{logo_img}}', logoHtml)
         .replace('{{email_body}}', finalBody)
-        .replace(/\{\{(\w+)\}\}/g, (m, k) => allVars[k] ?? m);
+        .replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k) => allVars[k] ?? m);
 
     // 3. If in preview, inject the editing bridge
     if (isPreview) {

@@ -64,8 +64,23 @@ export default function ProposalsSettingsPage() {
     const { toolSettings, fetchToolSettings, updateToolSettings, hasFetched } = useSettingsStore();
 
     const saved = toolSettings[TOOL] || DEFAULT_SETTINGS;
-    const [form, setForm] = useState({ ...DEFAULT_SETTINGS, ...saved });
-    const [isSaving, setIsSaving] = useState(false);
+    
+    // Section 1: Numbering
+    const [numberingForm, setNumberingForm] = useState({
+        prefix: saved.prefix ?? DEFAULT_SETTINGS.prefix,
+        counter: saved.counter ?? DEFAULT_SETTINGS.counter,
+        suffix: saved.suffix ?? DEFAULT_SETTINGS.suffix,
+        assign_to_draft: saved.assign_to_draft ?? DEFAULT_SETTINGS.assign_to_draft,
+    });
+    const [isSavingNumbering, setIsSavingNumbering] = useState(false);
+
+    // Section 2: Preferences
+    const [prefForm, setPrefForm] = useState({
+        auto_reminder: saved.auto_reminder ?? DEFAULT_SETTINGS.auto_reminder,
+        require_signature: saved.require_signature ?? DEFAULT_SETTINGS.require_signature,
+        show_logo: saved.show_logo ?? DEFAULT_SETTINGS.show_logo,
+    });
+    const [isSavingPref, setIsSavingPref] = useState(false);
 
     useEffect(() => {
         if (activeWorkspaceId && !hasFetched[`toolSettings_${TOOL}`]) {
@@ -74,24 +89,48 @@ export default function ProposalsSettingsPage() {
     }, [activeWorkspaceId]);
 
     useEffect(() => {
-        setForm({ ...DEFAULT_SETTINGS, ...saved });
+        const current = toolSettings[TOOL] || DEFAULT_SETTINGS;
+        setNumberingForm({
+            prefix: current.prefix ?? DEFAULT_SETTINGS.prefix,
+            counter: current.counter ?? DEFAULT_SETTINGS.counter,
+            suffix: current.suffix ?? DEFAULT_SETTINGS.suffix,
+            assign_to_draft: current.assign_to_draft ?? DEFAULT_SETTINGS.assign_to_draft,
+        });
+        setPrefForm({
+            auto_reminder: current.auto_reminder ?? DEFAULT_SETTINGS.auto_reminder,
+            require_signature: current.require_signature ?? DEFAULT_SETTINGS.require_signature,
+            show_logo: current.show_logo ?? DEFAULT_SETTINGS.show_logo,
+        });
     }, [toolSettings]);
 
-    const field = (key: string) => ({
-        value: form[key as keyof typeof form],
-        onChange: (val: any) => setForm(prev => ({ ...prev, [key]: val })),
+    const numberingHasChanges = JSON.stringify(numberingForm) !== JSON.stringify({
+        prefix: saved.prefix ?? DEFAULT_SETTINGS.prefix,
+        counter: saved.counter ?? DEFAULT_SETTINGS.counter,
+        suffix: saved.suffix ?? DEFAULT_SETTINGS.suffix,
+        assign_to_draft: saved.assign_to_draft ?? DEFAULT_SETTINGS.assign_to_draft,
     });
 
-    const hasChanges = JSON.stringify(form) !== JSON.stringify({ ...DEFAULT_SETTINGS, ...saved });
+    const prefHasChanges = JSON.stringify(prefForm) !== JSON.stringify({
+        auto_reminder: saved.auto_reminder ?? DEFAULT_SETTINGS.auto_reminder,
+        require_signature: saved.require_signature ?? DEFAULT_SETTINGS.require_signature,
+        show_logo: saved.show_logo ?? DEFAULT_SETTINGS.show_logo,
+    });
 
-    const handleSave = async () => {
+    const handleSaveNumbering = async () => {
         if (!activeWorkspaceId) return;
-        setIsSaving(true);
-        await updateToolSettings(activeWorkspaceId, TOOL, form);
-        setIsSaving(false);
+        setIsSavingNumbering(true);
+        await updateToolSettings(activeWorkspaceId, TOOL, { ...saved, ...numberingForm });
+        setIsSavingNumbering(false);
     };
 
-    const previewNumber = `${form.prefix || ''}${form.counter}${form.suffix || ''}`;
+    const handleSavePref = async () => {
+        if (!activeWorkspaceId) return;
+        setIsSavingPref(true);
+        await updateToolSettings(activeWorkspaceId, TOOL, { ...saved, ...prefForm });
+        setIsSavingPref(false);
+    };
+
+    const previewNumber = `${numberingForm.prefix || ''}${numberingForm.counter}${numberingForm.suffix || ''}`;
 
     return (
         <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
@@ -107,9 +146,9 @@ export default function ProposalsSettingsPage() {
             <SettingsCard
                 title="Proposal Number (ID)"
                 description="Control the format of auto-generated proposal identifiers."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasChanges}
+                onSave={handleSaveNumbering}
+                isSaving={isSavingNumbering}
+                unsavedChanges={numberingHasChanges}
             >
                 <InfoBanner isDark={isDark}>
                     The next proposal number will be&nbsp;
@@ -125,20 +164,20 @@ export default function ProposalsSettingsPage() {
                     <div className="flex gap-2">
                         <SettingsInput
                             placeholder="Prefix"
-                            value={form.prefix}
-                            onChange={e => setForm(f => ({ ...f, prefix: e.target.value }))}
+                            value={numberingForm.prefix}
+                            onChange={e => setNumberingForm(f => ({ ...f, prefix: e.target.value }))}
                             className="font-mono flex-1"
                         />
                         <SettingsInput
                             placeholder="0001"
-                            value={form.counter}
-                            onChange={e => setForm(f => ({ ...f, counter: e.target.value }))}
+                            value={numberingForm.counter}
+                            onChange={e => setNumberingForm(f => ({ ...f, counter: e.target.value }))}
                             className="font-mono text-center flex-1"
                         />
                         <SettingsInput
                             placeholder="Suffix"
-                            value={form.suffix}
-                            onChange={e => setForm(f => ({ ...f, suffix: e.target.value }))}
+                            value={numberingForm.suffix}
+                            onChange={e => setNumberingForm(f => ({ ...f, suffix: e.target.value }))}
                             className="font-mono flex-1"
                         />
                     </div>
@@ -155,7 +194,7 @@ export default function ProposalsSettingsPage() {
                         <span className="text-sm font-medium">Assign a number to draft.</span>
                         <HelpTip isDark={isDark} text="When enabled, draft proposals are assigned a sequential number immediately. Disable to assign numbers only when sent." />
                     </div>
-                    <SettingsToggle checked={form.assign_to_draft} onChange={v => setForm(f => ({ ...f, assign_to_draft: v }))} />
+                    <SettingsToggle checked={numberingForm.assign_to_draft} onChange={v => setNumberingForm(f => ({ ...f, assign_to_draft: v }))} />
                 </div>
             </SettingsCard>
 
@@ -163,9 +202,9 @@ export default function ProposalsSettingsPage() {
             <SettingsCard
                 title="Proposal Preferences"
                 description="Automate actions and control how proposals behave."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasChanges}
+                onSave={handleSavePref}
+                isSaving={isSavingPref}
+                unsavedChanges={prefHasChanges}
             >
                 <div className="flex flex-col gap-3">
                     {/* Toggle Row */}
@@ -198,8 +237,8 @@ export default function ProposalsSettingsPage() {
                                 <HelpTip isDark={isDark} text={help} />
                             </div>
                             <SettingsToggle
-                                checked={!!form[key as keyof typeof form]}
-                                onChange={v => setForm(f => ({ ...f, [key]: v }))}
+                                checked={!!(prefForm as any)[key]}
+                                onChange={v => setPrefForm(f => ({ ...f, [key]: v }))}
                             />
                         </div>
                     ))}

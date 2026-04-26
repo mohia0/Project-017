@@ -162,6 +162,37 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
             set((state) => ({
                 invoices: state.invoices.map((i) => (i.id === id ? data : i)),
             }));
+
+            // Auto-send receipt if status was changed to Paid and auto_receipt is enabled
+            if (updates.status === 'Paid' && current?.status !== 'Paid') {
+                const { toolSettings } = (await import('./useSettingsStore')).useSettingsStore.getState();
+                const settings = toolSettings['invoices'];
+                
+                if (settings?.auto_receipt) {
+                    const { formatAmount, getCurrencySymbol } = await import('@/components/ui/MoneyAmount');
+                    const { fmtDate } = await import('@/lib/dateUtils');
+                    
+                    fetch('/api/send-email', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            workspace_id: data.workspace_id,
+                            template_key: 'receipt',
+                            to: data.meta?.clientEmail || '',
+                            variables: {
+                                client_name: data.client_name || '',
+                                invoice_number: data.invoice_number || '',
+                                currency_symbol: '', // Removed as per user request to avoid redundancy with formatted amount
+                                amount_due: formatAmount(Number(data.amount || 0), data.meta?.currency || 'USD'),
+                                amount_paid: formatAmount(Number(data.amount || 0), data.meta?.currency || 'USD'),
+                                payment_date: fmtDate(data.paid_at || new Date().toISOString()),
+                                due_date: data.due_date ? fmtDate(data.due_date) : '',
+                                document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${data.id}` : '',
+                                days_overdue: '0',
+                            }
+                        })
+                    }).catch(err => console.error("Auto-receipt failed:", err));
+                }
+            }
         }
     },
 

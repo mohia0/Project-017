@@ -78,8 +78,21 @@ export default function ProjectsSettingsPage() {
     const { toolSettings, fetchToolSettings, updateToolSettings, hasFetched } = useSettingsStore();
 
     const saved = toolSettings[TOOL] || DEFAULT_SETTINGS;
-    const [form, setForm] = useState({ ...DEFAULT_SETTINGS, ...saved });
-    const [isSaving, setIsSaving] = useState(false);
+    
+    // Section 1: Workspace Preferences
+    const [wsForm, setWsForm] = useState({
+        ws_task_position: saved.ws_task_position ?? DEFAULT_SETTINGS.ws_task_position,
+    });
+    const [isSavingWs, setIsSavingWs] = useState(false);
+
+    // Section 2: Personal Preferences
+    const [personalForm, setPersonalForm] = useState({
+        personal_task_position: saved.personal_task_position ?? DEFAULT_SETTINGS.personal_task_position,
+        default_task_view: saved.default_task_view ?? DEFAULT_SETTINGS.default_task_view,
+        show_archived: saved.show_archived ?? DEFAULT_SETTINGS.show_archived,
+        default_reminder: saved.default_reminder ?? DEFAULT_SETTINGS.default_reminder,
+    });
+    const [isSavingPersonal, setIsSavingPersonal] = useState(false);
 
     useEffect(() => {
         if (activeWorkspaceId && !hasFetched[`toolSettings_${TOOL}`]) {
@@ -88,16 +101,41 @@ export default function ProjectsSettingsPage() {
     }, [activeWorkspaceId]);
 
     useEffect(() => {
-        setForm({ ...DEFAULT_SETTINGS, ...saved });
+        const current = toolSettings[TOOL] || DEFAULT_SETTINGS;
+        setWsForm({
+            ws_task_position: current.ws_task_position ?? DEFAULT_SETTINGS.ws_task_position,
+        });
+        setPersonalForm({
+            personal_task_position: current.personal_task_position ?? DEFAULT_SETTINGS.personal_task_position,
+            default_task_view: current.default_task_view ?? DEFAULT_SETTINGS.default_task_view,
+            show_archived: current.show_archived ?? DEFAULT_SETTINGS.show_archived,
+            default_reminder: current.default_reminder ?? DEFAULT_SETTINGS.default_reminder,
+        });
     }, [toolSettings]);
 
-    const hasChanges = JSON.stringify(form) !== JSON.stringify({ ...DEFAULT_SETTINGS, ...saved });
+    const wsHasChanges = JSON.stringify(wsForm) !== JSON.stringify({
+        ws_task_position: saved.ws_task_position ?? DEFAULT_SETTINGS.ws_task_position,
+    });
 
-    const handleSave = async () => {
+    const personalHasChanges = JSON.stringify(personalForm) !== JSON.stringify({
+        personal_task_position: saved.personal_task_position ?? DEFAULT_SETTINGS.personal_task_position,
+        default_task_view: saved.default_task_view ?? DEFAULT_SETTINGS.default_task_view,
+        show_archived: saved.show_archived ?? DEFAULT_SETTINGS.show_archived,
+        default_reminder: saved.default_reminder ?? DEFAULT_SETTINGS.default_reminder,
+    });
+
+    const handleSaveWs = async () => {
         if (!activeWorkspaceId) return;
-        setIsSaving(true);
-        await updateToolSettings(activeWorkspaceId, TOOL, form);
-        setIsSaving(false);
+        setIsSavingWs(true);
+        await updateToolSettings(activeWorkspaceId, TOOL, { ...saved, ...wsForm });
+        setIsSavingWs(false);
+    };
+
+    const handleSavePersonal = async () => {
+        if (!activeWorkspaceId) return;
+        setIsSavingPersonal(true);
+        await updateToolSettings(activeWorkspaceId, TOOL, { ...saved, ...personalForm });
+        setIsSavingPersonal(false);
     };
 
     const taskPositionOptions = [
@@ -134,15 +172,15 @@ export default function ProjectsSettingsPage() {
             <SettingsCard
                 title="Workspace Preferences"
                 description="These settings apply for all members in this workspace."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasChanges}
+                onSave={handleSaveWs}
+                isSaving={isSavingWs}
+                unsavedChanges={wsHasChanges}
             >
                 <SelectField
                     label="Position of newly created tasks"
                     description="Where new tasks are inserted in task lists by default."
-                    value={form.ws_task_position}
-                    onChange={v => setForm(f => ({ ...f, ws_task_position: v }))}
+                    value={wsForm.ws_task_position}
+                    onChange={v => setWsForm(f => ({ ...f, ws_task_position: v }))}
                     options={taskPositionOptions}
                     isDark={isDark}
                 />
@@ -152,9 +190,9 @@ export default function ProjectsSettingsPage() {
             <SettingsCard
                 title="Personal Preferences"
                 description="These settings apply only to your account."
-                onSave={handleSave}
-                isSaving={isSaving}
-                unsavedChanges={hasChanges}
+                onSave={handleSavePersonal}
+                isSaving={isSavingPersonal}
+                unsavedChanges={personalHasChanges}
             >
                 <InfoBanner isDark={isDark}>
                     These preferences only affect your account — other workspace members are unaffected.
@@ -163,8 +201,8 @@ export default function ProjectsSettingsPage() {
                 <div className="flex flex-col gap-3">
                     <SelectField
                         label="Position of newly created tasks"
-                        value={form.personal_task_position}
-                        onChange={v => setForm(f => ({ ...f, personal_task_position: v }))}
+                        value={personalForm.personal_task_position}
+                        onChange={v => setPersonalForm(f => ({ ...f, personal_task_position: v }))}
                         options={taskPositionOptions}
                         isDark={isDark}
                     />
@@ -172,8 +210,8 @@ export default function ProjectsSettingsPage() {
                     <SelectField
                         label="Default task view"
                         description="The view shown when you open a project."
-                        value={form.default_task_view}
-                        onChange={v => setForm(f => ({ ...f, default_task_view: v }))}
+                        value={personalForm.default_task_view}
+                        onChange={v => setPersonalForm(f => ({ ...f, default_task_view: v }))}
                         options={taskViewOptions}
                         isDark={isDark}
                     />
@@ -189,16 +227,16 @@ export default function ProjectsSettingsPage() {
                             </p>
                         </div>
                         <SettingsToggle
-                            checked={form.show_archived}
-                            onChange={v => setForm(f => ({ ...f, show_archived: v }))}
+                            checked={personalForm.show_archived}
+                            onChange={v => setPersonalForm(f => ({ ...f, show_archived: v }))}
                         />
                     </div>
 
                     <SelectField
                         label="Default reminder"
                         description="When should you be reminded about a task due date?"
-                        value={form.default_reminder}
-                        onChange={v => setForm(f => ({ ...f, default_reminder: v }))}
+                        value={personalForm.default_reminder}
+                        onChange={v => setPersonalForm(f => ({ ...f, default_reminder: v }))}
                         options={reminderOptions}
                         isDark={isDark}
                     />

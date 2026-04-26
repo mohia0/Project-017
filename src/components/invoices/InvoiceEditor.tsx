@@ -25,6 +25,7 @@ import { motion } from 'framer-motion';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
 import { cn, getBackgroundImageWithOpacity, isDarkColor, replaceVariables } from '@/lib/utils';
+import { fmtDate } from '@/lib/dateUtils';
 import { supabase } from '@/lib/supabase';
 import { CURRENCIES, getCurrency } from '@/lib/currencies';
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
@@ -493,7 +494,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 invoice_number: meta.invoiceNumber || '',
                 amount_paid: formatAmount(totals.total, meta.currency),
                 amount_due: formatAmount(totals.total, meta.currency),
-                payment_date: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
+                payment_date: fmtDate(new Date().toISOString()),
+                currency_symbol: '', // Removed as per user request
                 document_link: docLink,
             };
 
@@ -506,7 +508,10 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         workspace_id: activeWorkspaceId,
                         template_key: 'receipt',
                         to: meta.clientEmail,
-                        variables: receiptVars,
+                        variables: {
+                            ...receiptVars,
+                            due_date: meta.dueDate ? fmtDate(meta.dueDate) : '',
+                        },
                     }),
                 })
                     .then(r => r.json())
@@ -527,7 +532,10 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         invoice_id: id,
                         workspace_id: activeWorkspaceId,
                         to: meta.clientEmail || '',
-                        variables: receiptVars,
+                        variables: {
+                            ...receiptVars,
+                            due_date: meta.dueDate ? fmtDate(meta.dueDate) : '',
+                        },
                     },
                 });
                 appToast.info('Receipt Queued', 'Check your notifications to send manually');
@@ -862,7 +870,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         type="invoice"
                                         status={meta.status as any}
                                         amountDue={convertAmount(totals.total, meta.currency)}
-                                        paidAt="July 4, 2026"
+                                        paidAt="04/07/2026"
                                         inline={true}
                                         design={meta.design}
                                         onDownloadPDF={handleDownloadPDF}
@@ -925,7 +933,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                         type="invoice"
                                                         status={meta.status as any}
                                                         amountDue={convertAmount(totals.total, meta.currency)}
-                                                        paidAt="July 4, 2026"
+                                                        paidAt="04/07/2026"
                                                         isMobile={true}
                                                         inline={true}
                                                         design={meta.design}
@@ -1565,9 +1573,10 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 variables={{
                     client_name: meta.clientName || '',
                     invoice_number: meta.invoiceNumber || '',
+                    currency_symbol: '', // Removed as per user request
                     amount_due: formatAmount(totals.total, meta.currency),
                     amount_paid: formatAmount(totals.total, meta.currency),
-                    due_date: meta.dueDate || '',
+                    due_date: meta.dueDate ? fmtDate(meta.dueDate) : '',
                     document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${id}` : '',
                     days_overdue: meta.dueDate ? String(Math.max(0, Math.floor((new Date().getTime() - new Date(meta.dueDate).getTime()) / (1000 * 3600 * 24)))) : '0',
                 }}

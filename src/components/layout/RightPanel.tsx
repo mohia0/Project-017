@@ -121,27 +121,6 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
             try {
                 const { useInvoiceStore } = await import('@/store/useInvoiceStore');
                 await useInvoiceStore.getState().updateInvoice(invoiceId, { status: action });
-
-                if (action === 'Paid') {
-                    const { useSettingsStore } = await import('@/store/useSettingsStore');
-                    const { useUIStore: uiStore } = await import('@/store/useUIStore');
-                    const settings = useSettingsStore.getState();
-                    const workspaceId = uiStore.getState().activeWorkspaceId;
-                    const meta = notif.metadata || {};
-                    
-                    if (settings.toolSettings?.invoices?.auto_receipt !== false && meta.to) {
-                        await fetch('/api/send-email', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                workspace_id: workspaceId,
-                                template_key: 'receipt',
-                                to: meta.to,
-                                variables: meta.variables || {},
-                            }),
-                        });
-                    }
-                }
             } catch (err) {
                 console.error('Verify payment background failed:', err);
             }
