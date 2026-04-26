@@ -237,7 +237,10 @@ export default function InvoicesSettingsPage() {
                     'flex items-center justify-between px-4 py-3.5 rounded-xl border',
                     isDark ? 'border-white/8 bg-white/[0.02]' : 'border-black/8 bg-black/[0.02]'
                 )}>
-                    <span className="text-sm font-medium">Default due period is within</span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Default due period is within</span>
+                        <HelpTip isDark={isDark} text="Sets the automatic due date for new invoices. If set to 7, a new invoice created today will have a due date 7 days from now. You can always change this manually for individual invoices." />
+                    </div>
                     <div className="flex items-center gap-2">
                         <input
                             type="number"

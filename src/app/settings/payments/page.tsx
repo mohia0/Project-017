@@ -24,6 +24,7 @@ const DEFAULT_PAYMENTS: Omit<WorkspacePayments, 'workspace_id'> = {
     payment_terms: 'Net 30',
     invoice_prefix: 'INV-',
     invoice_start_number: 1,
+    paypal_enabled: true,
 };
 
 export default function PaymentsSettingsPage() {
@@ -56,6 +57,7 @@ export default function PaymentsSettingsPage() {
                 payment_terms: payments.payment_terms || DEFAULT_PAYMENTS.payment_terms,
                 invoice_prefix: payments.invoice_prefix || DEFAULT_PAYMENTS.invoice_prefix,
                 invoice_start_number: payments.invoice_start_number ?? DEFAULT_PAYMENTS.invoice_start_number,
+                paypal_enabled: payments.paypal_enabled ?? DEFAULT_PAYMENTS.paypal_enabled,
             });
         } else {
             setFormData(DEFAULT_PAYMENTS);
@@ -69,7 +71,8 @@ export default function PaymentsSettingsPage() {
 
     const hasPayPalChanges = () => {
         const compareTo = payments || DEFAULT_PAYMENTS;
-        return formData.paypal_email !== (compareTo.paypal_email || '');
+        return formData.paypal_email !== (compareTo.paypal_email || '') || 
+               formData.paypal_enabled !== (compareTo.paypal_enabled ?? DEFAULT_PAYMENTS.paypal_enabled);
     };
 
     const handleSaveSection = async (section: string, updates: Partial<WorkspacePayments>) => {
@@ -360,17 +363,43 @@ export default function PaymentsSettingsPage() {
             <SettingsCard
                 title="PayPal"
                 description="Accept payments via PayPal. Enter your PayPal email address."
-                onSave={() => handleSaveSection('PayPal', { paypal_email: formData.paypal_email })}
+                onSave={() => handleSaveSection('PayPal', { paypal_email: formData.paypal_email, paypal_enabled: formData.paypal_enabled })}
                 isSaving={isSaving['PayPal']}
                 unsavedChanges={hasPayPalChanges()}
             >
-                <SettingsField label="PayPal Email">
-                    <SettingsInput 
-                        value={formData.paypal_email || ''} 
-                        onChange={e => setFormData({ ...formData, paypal_email: e.target.value })}
-                        placeholder="your@email.com"
-                    />
-                </SettingsField>
+                <div className="flex flex-col gap-6">
+                    <div className={cn(
+                        "flex items-center justify-between px-4 py-3.5 rounded-xl border transition-colors",
+                        isDark ? "border-white/8 bg-white/[0.02]" : "border-black/8 bg-black/[0.02]"
+                    )}>
+                        <div className="flex flex-col">
+                            <span className="text-[13px] font-bold">Show PayPal on public pages</span>
+                            <span className={cn("text-[11px] opacity-40 font-medium", isDark ? "text-white" : "text-black")}>
+                                When disabled, PayPal will not appear as a payment option.
+                            </span>
+                        </div>
+                        <button 
+                            onClick={() => setFormData({ ...formData, paypal_enabled: !formData.paypal_enabled })}
+                            className={cn(
+                                "relative w-9 h-5 rounded-full transition-all duration-300",
+                                formData.paypal_enabled ? "bg-primary" : (isDark ? "bg-white/10" : "bg-black/10")
+                            )}
+                        >
+                            <div className={cn(
+                                "absolute top-[3px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-all duration-300",
+                                formData.paypal_enabled ? "left-[19px]" : "left-[3px]"
+                            )} />
+                        </button>
+                    </div>
+
+                    <SettingsField label="PayPal Email">
+                        <SettingsInput 
+                            value={formData.paypal_email || ''} 
+                            onChange={e => setFormData({ ...formData, paypal_email: e.target.value })}
+                            placeholder="your@email.com"
+                        />
+                    </SettingsField>
+                </div>
             </SettingsCard>
 
 

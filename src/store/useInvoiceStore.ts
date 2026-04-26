@@ -28,7 +28,7 @@ interface InvoiceState {
     error: string | null;
     fetchInvoices: () => Promise<void>;
     addInvoice: (invoice: Omit<Invoice, 'id' | 'created_at' | 'workspace_id'>) => Promise<Invoice | null>;
-    updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<void>;
+    updateInvoice: (id: string, updates: Partial<Invoice>, options?: { forceReceipt?: boolean }) => Promise<void>;
     deleteInvoice: (id: string) => Promise<void>;
     bulkDeleteInvoices: (ids: string[]) => Promise<void>;
 }
@@ -114,7 +114,7 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
         }
     },
 
-    updateInvoice: async (id, updates) => {
+    updateInvoice: async (id, updates, options) => {
         const state = useInvoiceStore.getState();
         const current = state.invoices.find(i => i.id === id);
         
@@ -168,29 +168,67 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
                 const { toolSettings } = (await import('./useSettingsStore')).useSettingsStore.getState();
                 const settings = toolSettings['invoices'];
                 
-                if (settings?.auto_receipt) {
-                    const { formatAmount, getCurrencySymbol } = await import('@/components/ui/MoneyAmount');
-                    const { fmtDate } = await import('@/lib/dateUtils');
-                    
+                // Centralized receipt automation logic
+                // If forceReceipt is true (from manual verification), we ignore the auto_receipt setting
+                const autoReceiptEnabled = options?.forceReceipt || settings?.auto_receipt !== false;
+                
+                const { formatAmount } = await import('@/components/ui/MoneyAmount');
+                const { fmtDate } = await import('@/lib/dateUtils');
+                const { appToast } = await import('@/lib/toast');
+                const { useNotificationStore } = await import('./useNotificationStore');
+                
+                const clientEmail = data.meta?.clientEmail || '';
+                const hasEmail = !!clientEmail;
+                const amountFormatted = formatAmount(Number(data.amount || 0), data.meta?.currency || 'USD');
+                const docLink = typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${data.id}` : '';
+
+                const receiptVars = {
+                    client_name: data.client_name || '',
+                    invoice_number: data.invoice_number || '',
+                    currency_symbol: '',
+                    amount_due: amountFormatted,
+                    amount_paid: amountFormatted,
+                    payment_date: fmtDate(data.paid_at || new Date().toISOString()),
+                    due_date: data.due_date ? fmtDate(data.due_date) : '',
+                    document_link: docLink,
+                    days_overdue: '0',
+                };
+
+                if (autoReceiptEnabled && hasEmail) {
                     fetch('/api/send-email', {
                         method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             workspace_id: data.workspace_id,
                             template_key: 'receipt',
-                            to: data.meta?.clientEmail || '',
-                            variables: {
-                                client_name: data.client_name || '',
-                                invoice_number: data.invoice_number || '',
-                                currency_symbol: '', // Removed as per user request to avoid redundancy with formatted amount
-                                amount_due: formatAmount(Number(data.amount || 0), data.meta?.currency || 'USD'),
-                                amount_paid: formatAmount(Number(data.amount || 0), data.meta?.currency || 'USD'),
-                                payment_date: fmtDate(data.paid_at || new Date().toISOString()),
-                                due_date: data.due_date ? fmtDate(data.due_date) : '',
-                                document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${data.id}` : '',
-                                days_overdue: '0',
-                            }
+                            to: clientEmail,
+                            variables: receiptVars
                         })
-                    }).catch(err => console.error("Auto-receipt failed:", err));
+                    }).then(r => r.json())
+                      .then(res => {
+                          if (res.success) {
+                              appToast.success('Receipt Sent', 'Client has been notified.');
+                          } else {
+                              appToast.error('Receipt Failed', res.error || 'Could not send auto-receipt');
+                          }
+                      })
+                      .catch(err => console.error("Auto-receipt failed:", err));
+                } else {
+                    // Push actionable notification for manual dispatch
+                    const reason = !hasEmail ? 'No client email on file.' : 'Auto-receipt is disabled.';
+                    useNotificationStore.getState().addNotification({
+                        title: `Receipt pending — ${data.client_name || 'Client'}`,
+                        message: `${reason} Open the notification to send the receipt for ${data.invoice_number || 'this invoice'} (${amountFormatted}).`,
+                        link: `/invoices/${data.id}`,
+                        type: 'receipt_pending',
+                        metadata: {
+                            invoice_id: data.id,
+                            workspace_id: data.workspace_id,
+                            to: clientEmail,
+                            variables: receiptVars,
+                        },
+                    });
+                    appToast.info('Receipt Queued', 'Check your notifications to send manually');
                 }
             }
         }

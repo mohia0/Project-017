@@ -483,64 +483,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             return;
         }
         updateMeta({ status: newStatus as any });
-
-        // Receipt logic when status → Paid
-        if (newStatus === 'Paid') {
-            const autoReceiptEnabled = toolSettings?.invoices?.auto_receipt !== false;
-            const hasEmail = !!meta.clientEmail;
-            const docLink = typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${id}` : '';
-            const receiptVars = {
-                client_name: meta.clientName || '',
-                invoice_number: meta.invoiceNumber || '',
-                amount_paid: formatAmount(totals.total, meta.currency),
-                amount_due: formatAmount(totals.total, meta.currency),
-                payment_date: fmtDate(new Date().toISOString()),
-                currency_symbol: '', // Removed as per user request
-                document_link: docLink,
-            };
-
-            if (autoReceiptEnabled && hasEmail) {
-                // Auto-send receipt
-                fetch('/api/send-email', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        workspace_id: activeWorkspaceId,
-                        template_key: 'receipt',
-                        to: meta.clientEmail,
-                        variables: {
-                            ...receiptVars,
-                            due_date: meta.dueDate ? fmtDate(meta.dueDate) : '',
-                        },
-                    }),
-                })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data.success) appToast.success('Email Sent');
-                        else appToast.error('Email Failed', data.error || 'Auto-receipt could not be sent');
-                    })
-                    .catch(err => console.error('Auto-receipt failed:', err));
-            } else {
-                // Push actionable notification for manual dispatch
-                const reason = !hasEmail ? 'No client email on file.' : 'Auto-receipt is disabled.';
-                useNotificationStore.getState().addNotification({
-                    title: `Receipt pending — ${meta.clientName || 'Client'}`,
-                    message: `${reason} Open the notification to send the receipt for ${meta.invoiceNumber || 'this invoice'} (${formatAmount(totals.total, meta.currency)}).`,
-                    link: `/invoices/${id}`,
-                    type: 'receipt_pending',
-                    metadata: {
-                        invoice_id: id,
-                        workspace_id: activeWorkspaceId,
-                        to: meta.clientEmail || '',
-                        variables: {
-                            ...receiptVars,
-                            due_date: meta.dueDate ? fmtDate(meta.dueDate) : '',
-                        },
-                    },
-                });
-                appToast.info('Receipt Queued', 'Check your notifications to send manually');
-            }
-        }
     };
 
     const confirmStatusChange = () => {
@@ -1340,7 +1282,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     >
                                         <div className="flex flex-col gap-1.5 mt-1">
                                             {/* PayPal Option */}
-                                            {payments?.paypal_email && (
+                                            {payments?.paypal_email && (payments?.paypal_enabled !== false) && (
                                                 <label className="flex items-center gap-2 cursor-pointer group">
                                                     <input 
                                                         type="checkbox"

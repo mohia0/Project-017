@@ -47,7 +47,7 @@ export function PaymentMethodSelectorModal({
     // Filter methods based on what's configured in settings
     const availableMethods: any[] = [];
     
-    if (paymentMethods.includes('paypal') && payments?.paypal_email) {
+    if (paymentMethods.includes('paypal') && payments?.paypal_email && (payments?.paypal_enabled !== false)) {
         availableMethods.push({
             id: 'paypal',
             name: 'PayPal',
@@ -179,7 +179,7 @@ export function PaymentMethodSelectorModal({
                                         {method.icon}
                                     </div>
                                     <div className="flex-1 text-left overflow-hidden">
-                                        <div className={cn("text-[13px] font-bold truncate Uppercase", isDark ? "text-white/90" : "text-black/90")}>
+                                        <div className={cn("text-[13px] font-bold truncate uppercase", isDark ? "text-white/90" : "text-black/90")}>
                                             {method.name}
                                         </div>
                                         {method.subName && (

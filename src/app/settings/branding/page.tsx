@@ -6,7 +6,7 @@ import { SettingsField, SettingsInput } from '@/components/settings/SettingsFiel
 import { ColorisInput } from '@/components/ui/ColorisInput';
 import { useSettingsStore, WorkspaceBranding } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
-import { RotateCcw, Upload, Image as ImageIcon, Check, Trash2 } from 'lucide-react';
+import { RotateCcw, Upload, Image as ImageIcon, Check, Trash2, HelpCircle } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
@@ -143,6 +143,30 @@ function LogoUpload({
     );
 }
 
+function HelpTip({ text, isDark }: { text: string; isDark: boolean }) {
+    const [show, setShow] = useState(false);
+    return (
+        <div className="relative inline-flex">
+            <button
+                type="button"
+                onMouseEnter={() => setShow(true)}
+                onMouseLeave={() => setShow(false)}
+                className={cn('opacity-30 hover:opacity-100 transition-all p-1.5 rounded-lg', isDark ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/10')}
+            >
+                <HelpCircle size={15} strokeWidth={2.5} />
+            </button>
+            {show && (
+                <div className={cn(
+                    'absolute top-full right-0 mt-2 w-64 px-3 py-2.5 rounded-xl text-[11px] shadow-2xl z-[100] pointer-events-none leading-relaxed animate-in fade-in zoom-in-95 duration-200',
+                    isDark ? 'bg-[#222] text-white/80 border border-white/10' : 'bg-white text-black/70 border border-black/10'
+                )}>
+                    {text}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function BrandingSettingsPage() {
     const { theme, activeWorkspaceId } = useUIStore();
     const isDark = theme === 'dark';
@@ -257,10 +281,10 @@ export default function BrandingSettingsPage() {
         <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
             <SettingsCard
                 title="White Label"
-                description="These settings apply globally to documents, portals, and PDFs."
                 onSave={handleSaveWhiteLabel}
                 isSaving={isSavingWhiteLabel}
                 unsavedChanges={whiteLabelHasChanges}
+                extra={<HelpTip isDark={isDark} text="Editing these settings will update your workspace's visual identity across all public portals, invoices, proposals, and system emails in real-time." />}
             >
                 <SettingsField 
                     label="Accent Color" 

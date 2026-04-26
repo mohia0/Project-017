@@ -120,7 +120,7 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
         (async () => {
             try {
                 const { useInvoiceStore } = await import('@/store/useInvoiceStore');
-                await useInvoiceStore.getState().updateInvoice(invoiceId, { status: action });
+                await useInvoiceStore.getState().updateInvoice(invoiceId, { status: action }, { forceReceipt: action === 'Paid' });
             } catch (err) {
                 console.error('Verify payment background failed:', err);
             }

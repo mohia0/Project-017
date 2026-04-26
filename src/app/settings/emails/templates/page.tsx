@@ -102,7 +102,7 @@ export default function EmailTemplatesPage() {
 
     const accentColor  = branding?.primary_color || '#10b981';
     const isAccentDark = getBrightness(accentColor) < 128;
-    const logoUrl      = (isAccentDark ? branding?.logo_light_url : (branding?.logo_dark_url || branding?.logo_light_url)) || undefined;
+    const logoUrl      = branding?.logo_light_url || branding?.logo_dark_url || undefined;
     const senderName   = emailConfig?.from_name || 'Acme Studio';
     const sampleVars   = { ...def.sample, sender_name: senderName, accent_color: accentColor };
 

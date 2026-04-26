@@ -33,6 +33,7 @@ export interface WorkspacePayments {
   business_address: string | null;
   tax_number: string | null;
   paypal_email: string | null;
+  paypal_enabled: boolean;
   bank_name: string | null;
   iban: string | null;
   swift: string | null;
