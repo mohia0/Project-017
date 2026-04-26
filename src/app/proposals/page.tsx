@@ -752,7 +752,6 @@ export default function ProposalsPage() {
                 variables={{
                     client_name: sendingItem?.meta?.assignedClients?.[0]?.name || sendingItem?.client_name || '',
                     proposal_number: sendingItem?.proposal_number || '',
-                    currency_symbol: '',
                     amount: formatAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD'),
                     document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/proposal/${sendingItem?.id}` : '',
                 }}

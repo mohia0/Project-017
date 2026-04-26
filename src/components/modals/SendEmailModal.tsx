@@ -286,7 +286,7 @@ export function SendEmailModal({
                                     isDark={isDark}
                                     align="left"
                                     zIndex={1000000}
-                                    className="w-full sm:w-[320px]"
+                                    matchTriggerWidth={true}
                                 >
                                     {emailConfigs.map(c => (
                                         <DItem

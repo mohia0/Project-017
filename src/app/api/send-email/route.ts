@@ -82,21 +82,27 @@ export async function POST(req: NextRequest) {
         if (dbTemplate?.is_html !== undefined) is_html = dbTemplate.is_html;
         if (fallbackTemplate?.is_html !== undefined && is_html === undefined) is_html = fallbackTemplate.is_html;
 
-        // Resolve subject variables
-        const subjectVars = { ...variables };
-        finalSubject = renderTemplate(finalSubject, subjectVars);
-
-        // Fetch Branding
+        // Fetch Branding (needed for subject + body)
         const { data: branding } = await supabaseService
             .from('workspace_branding')
             .select('*')
             .eq('workspace_id', workspace_id)
             .single();
 
+        const accentColor = branding?.primary_color || '#10b981';
+
+        // Resolve subject variables (include sender_name so "Invoice from {{sender_name}}" works)
+        const subjectVars = {
+            sender_name: config.from_name || 'Sender',
+            accent_color: accentColor,
+            ...variables
+        };
+        finalSubject = renderTemplate(finalSubject, subjectVars, false, true);
+
         // 1:1 Parity Build using shared logic
         const html = buildEmailHtml(finalBody, {
             senderName:   config.from_name || 'Sender',
-            accentColor:  branding?.primary_color || '#10b981',
+            accentColor,
             logoUrl:      branding?.logo_light_url || branding?.logo_dark_url || undefined,
             isHtml:       is_html !== false,
             wrapperHtml:  dbTemplate?.wrapper || undefined,

@@ -491,12 +491,10 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             const receiptVars = {
                 client_name: meta.clientName || '',
                 invoice_number: meta.invoiceNumber || '',
-                currency_symbol: '',
                 amount_paid: formatAmount(totals.total, meta.currency),
                 amount_due: formatAmount(totals.total, meta.currency),
                 payment_date: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
                 document_link: docLink,
-                sender_name: '',
             };
 
             if (autoReceiptEnabled && hasEmail) {
@@ -1567,7 +1565,6 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 variables={{
                     client_name: meta.clientName || '',
                     invoice_number: meta.invoiceNumber || '',
-                    currency_symbol: '',
                     amount_due: formatAmount(totals.total, meta.currency),
                     amount_paid: formatAmount(totals.total, meta.currency),
                     due_date: meta.dueDate || '',

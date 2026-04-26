@@ -1079,7 +1079,6 @@ export default function InvoicesPage() {
                 variables={{
                     client_name: sendingItem?.client_name || '',
                     invoice_number: sendingItem?.invoice_number || '',
-                    currency_symbol: '',
                     amount_due: formatAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD'),
                     amount_paid: formatAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD'),
                     due_date: sendingItem?.due_date || '',

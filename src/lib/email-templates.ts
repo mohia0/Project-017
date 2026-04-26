@@ -9,7 +9,12 @@ export interface EmailTemplateDef {
     is_html?: boolean;
 }
 
-export function renderTemplate(template: string, vars: Record<string, any>, protectVars = false) {
+export function renderTemplate(
+    template: string,
+    vars: Record<string, any>,
+    protectVars = false,
+    suppressUnknown = false
+) {
     if (!template) return '';
     
     return template.replace(/\{\{(\w+)\}\}/g, (match, key, offset) => {
@@ -20,12 +25,18 @@ export function renderTemplate(template: string, vars: Record<string, any>, prot
         const isInsideTag = lastOpen > lastClose;
 
         const val = vars[key];
-        const resolved = val !== undefined ? String(val) : match;
+        // If suppressUnknown=true (real sends), unknown vars resolve to '' instead of raw {{tag}}
+        const resolved = val !== undefined ? String(val) : (suppressUnknown ? '' : match);
 
         if (isInsideTag) return resolved;
 
-        if (key === 'document_link' && val !== undefined) {
-            return linkBtn('View Document', vars['accent_color'] || '{{accent_color}}', resolved);
+        if (key === 'document_link') {
+            // Only emit a button if we have a real URL
+            if (val && String(val).trim()) {
+                return linkBtn('View Document', vars['accent_color'] || '#10b981', resolved);
+            }
+            // If no URL (e.g. suppressUnknown resolved to ''), emit nothing
+            return '';
         }
 
         if (protectVars && val !== undefined) {
@@ -93,13 +104,17 @@ export const buildEmailHtml = (body: string, options: {
         ? `<img src="${logoUrl}" alt="${senderName}" style="max-height:30px;display:block;" />`
         : `<span style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.5px;">${senderName}</span>`;
 
-    // 1. Resolve content body first (including buttons)
-    const resolvedBody = isHtml ? renderTemplate(body, allVars, isPreview) : body.replace(/\n/g, '<br/>');
+    // 1. Resolve vars in the body first (always — even for plain-text so {{vars}} get filled)
+    // suppressUnknown=true for real sends; isPreview keeps raw {{tags}} visible for editing
+    const resolvedBody = renderTemplate(body, allVars, isPreview, !isPreview);
 
-    // 2. Wrap in shell
+    // 2. For plain-text mode, convert line breaks to <br> AFTER variable resolution
+    const finalBody = isHtml ? resolvedBody : resolvedBody.replace(/\n/g, '<br/>');
+
+    // 3. Wrap in shell
     let fullHtml = wrapperHtml
         .replace('{{logo_img}}', logoHtml)
-        .replace('{{email_body}}', resolvedBody)
+        .replace('{{email_body}}', finalBody)
         .replace(/\{\{(\w+)\}\}/g, (m, k) => allVars[k] ?? m);
 
     // 3. If in preview, inject the editing bridge
