@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Check } from 'lucide-react';
@@ -13,9 +13,10 @@ interface DropdownProps {
     className?: string;
     /** The ref of the trigger element to anchor to. Required for portal mode. */
     triggerRef?: React.RefObject<HTMLElement | null>;
+    zIndex?: number;
 }
 
-export function Dropdown({ open, onClose, isDark, children, align = 'right', className, triggerRef }: DropdownProps) {
+export function Dropdown({ open, onClose, isDark, children, align = 'right', className, triggerRef, zIndex = 9999 }: DropdownProps) {
     const menuRef = useRef<HTMLDivElement>(null);
     const [coords, setCoords] = useState<{ top: number; left: number; minWidth: number } | null>(null);
 
@@ -64,7 +65,7 @@ export function Dropdown({ open, onClose, isDark, children, align = 'right', cla
                     top: coords.top, 
                     left: coords.left, 
                     minWidth: coords.minWidth, 
-                    zIndex: 9999,
+                    zIndex: zIndex,
                     transform: align === 'center' ? 'translateX(-50%)' : align === 'right' ? 'translateX(-100%)' : 'none'
                 }}
                 className={cn(

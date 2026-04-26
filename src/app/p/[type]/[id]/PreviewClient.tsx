@@ -958,8 +958,8 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     if (!payload.new) return;
                     const raw = payload.new as any;
                     
-                    // If the payload is empty due to RLS filtering out data for the anon client, resync via API
-                    if (Object.keys(raw).length === 0) {
+                    // If the payload is empty or only contains primary keys due to RLS filtering out data for the anon client, resync via API
+                    if (Object.keys(raw).length <= 2) {
                         fetch(`/api/p/${type}/${data.id}`)
                             .then(res => res.json())
                             .then(json => {
@@ -1048,6 +1048,10 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     const handleUpdateStatus = async (status: string, signatureData?: any) => {
         if (isUpdating) return;
 
+        // Optimistic UI Update
+        const previousStatus = liveData.status;
+        setLiveData((prev: any) => ({ ...prev, status }));
+
         // If accepting a proposal, trigger the full-screen celebration immediately
         if (status === 'Accepted') {
             setCelebrationName(signatureData?.name ? signatureData.name.split(' ')[0] : 'there');
@@ -1076,6 +1080,8 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
             }
         } catch (e) {
             console.error('Failed to update document status:', e);
+            // Revert optimistic update on failure
+            setLiveData((prev: any) => ({ ...prev, status: previousStatus }));
         } finally {
             setIsUpdating(false);
         }

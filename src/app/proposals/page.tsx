@@ -25,7 +25,7 @@ import { appToast } from '@/lib/toast';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { SearchInput } from '@/components/ui/SearchInput';
-import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
+import { MoneyAmount, convertAmount, formatAmountOnly, getCurrencySymbol } from '@/components/ui/MoneyAmount';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/FilterPanel';
@@ -752,8 +752,9 @@ export default function ProposalsPage() {
                 variables={{
                     client_name: sendingItem?.meta?.assignedClients?.[0]?.name || sendingItem?.client_name || '',
                     proposal_number: sendingItem?.proposal_number || '',
+                    currency_symbol: getCurrencySymbol(sendingItem?.meta?.currency || 'USD'),
+                    amount: formatAmountOnly(Number(sendingItem?.amount || 0)),
                     document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/proposal/${sendingItem?.id}` : '',
-                    amount: convertAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD')
                 }}
                 workspaceId={activeWorkspaceId || ''}
                 documentTitle={sendingItem?.title || 'Proposal'}

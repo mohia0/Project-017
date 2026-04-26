@@ -81,15 +81,18 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     },
 
     markAsRead: async (id: string) => {
+        const previousNotifications = get().notifications;
+        set(state => ({
+            notifications: state.notifications.map(n => n.id === id ? { ...n, read: true } : n)
+        }));
+
         const { error } = await supabase
             .from('notifications')
             .update({ read: true })
             .eq('id', id);
 
-        if (!error) {
-            set(state => ({
-                notifications: state.notifications.map(n => n.id === id ? { ...n, read: true } : n)
-            }));
+        if (error) {
+            set({ notifications: previousNotifications });
         }
     },
 
@@ -113,15 +116,18 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         const unreadIds = get().notifications.filter(n => !n.read).map(n => n.id);
         if (unreadIds.length === 0) return;
 
+        const previousNotifications = get().notifications;
+        set(state => ({
+            notifications: state.notifications.map(n => ({ ...n, read: true }))
+        }));
+
         const { error } = await supabase
             .from('notifications')
             .update({ read: true })
             .in('id', unreadIds);
 
-        if (!error) {
-            set(state => ({
-                notifications: state.notifications.map(n => ({ ...n, read: true }))
-            }));
+        if (error) {
+            set({ notifications: previousNotifications });
         }
     },
 
@@ -166,30 +172,35 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) return;
 
+        const previousNotifications = get().notifications;
+        set({ notifications: [] });
+
         const { error } = await supabase
             .from('notifications')
             .delete()
             .eq('workspace_id', workspaceId);
 
         if (!error) {
-            set({ notifications: [] });
             appToast.success('Notifications cleared');
         } else {
+            set({ notifications: previousNotifications });
             appToast.error('Failed to clear notifications');
         }
     },
 
     deleteNotification: async (id: string) => {
+        const previousNotifications = get().notifications;
+        set(state => ({
+            notifications: state.notifications.filter(n => n.id !== id)
+        }));
+
         const { error } = await supabase
             .from('notifications')
             .delete()
             .eq('id', id);
 
-        if (!error) {
-            set(state => ({
-                notifications: state.notifications.filter(n => n.id !== id)
-            }));
-        } else {
+        if (error) {
+            set({ notifications: previousNotifications });
             appToast.error('Failed to delete notification');
         }
     }

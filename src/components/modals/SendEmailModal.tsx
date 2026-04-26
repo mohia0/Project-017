@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import {
     X, Send, Mail, Check, AlertCircle, Settings2,
     FileText, Receipt, FileCheck, Calendar, Clock,
-    ChevronDown
+    ChevronDown, Monitor, Smartphone
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -18,6 +18,7 @@ import {
     DEFAULT_TEMPLATES,
     getBrightness
 } from '@/lib/email-templates';
+import { Dropdown, DItem } from '@/components/ui/Dropdown';
 
 interface SendEmailModalProps {
     isOpen: boolean;
@@ -62,6 +63,11 @@ export function SendEmailModal({
     const [error, setError]         = useState<string | null>(null);
     const [mounted, setMounted]     = React.useState(false);
 
+    const [isConfigMenuOpen, setIsConfigMenuOpen] = useState(false);
+    const configMenuRef = useRef<HTMLButtonElement>(null);
+    const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+    const lastPushedBodyRef = useRef('');
+
     const activeConfig = emailConfigs.find(c => c.id === selectedConfigId) || emailConfigs.find(c => c.is_default) || emailConfigs[0];
 
     const iframeRef  = useRef<HTMLIFrameElement>(null);
@@ -83,6 +89,8 @@ export function SendEmailModal({
         setError(null);
         setTo(initialTo);
         fetchEmailConfigs(workspaceId);
+        
+        lastPushedBodyRef.current = ''; // Reset so it definitely pushes to the iframe
 
         const dbTemplate = emailTemplates.find(t => t.template_key === templateKey);
         const fallback   = DEFAULT_TEMPLATES[templateKey] || DEFAULT_TEMPLATES.invoice;
@@ -135,6 +143,9 @@ export function SendEmailModal({
 
     useEffect(() => {
         if (!isOpen || !body) return;
+        if (body === lastPushedBodyRef.current) return;
+        
+        lastPushedBodyRef.current = body;
         pushToIframe(buildPreview(body));
     }, [isOpen, body, buildPreview, pushToIframe]);
 
@@ -142,6 +153,7 @@ export function SendEmailModal({
     useEffect(() => {
         const handler = (e: MessageEvent) => {
             if (e.data?.type === 'EMAIL_VISUAL_EDIT') {
+                lastPushedBodyRef.current = e.data.payload;
                 setBody(e.data.payload);
             }
         };
@@ -246,81 +258,124 @@ export function SendEmailModal({
 
                 {/* ── From / To / Subject ── */}
                 <div className={cn(
-                    "shrink-0 px-6 py-4 flex flex-col gap-3",
-                    isDark ? "bg-[#111]" : "bg-[#fafafa]"
+                    "shrink-0 flex flex-col border-b",
+                    isDark ? "bg-[#111] border-[#252525]" : "bg-[#fafafa] border-[#f0f0f0]"
                 )}>
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="flex items-center gap-4">
-                            <span className={cn("text-[10px] font-bold uppercase tracking-widest shrink-0 w-12", isDark ? "text-white/25" : "text-black/25")}>From</span>
-                            {emailConfigs.length > 1 ? (
-                                <div className="relative flex-1">
-                                    <select
-                                        value={selectedConfigId}
-                                        onChange={(e) => setSelectedConfigId(e.target.value)}
-                                        className={cn(
-                                            "w-full pl-3 pr-8 py-2 rounded-xl border outline-none text-[13px] font-bold transition-all appearance-none cursor-pointer bg-transparent",
-                                            isDark ? "border-white/8 text-white focus:border-white/20" : "border-black/8 text-[#111] focus:border-black/20"
-                                        )}
-                                    >
-                                        {emailConfigs.map(c => (
-                                            <option key={c.id} value={c.id} className={isDark ? "bg-[#141414] text-white" : "bg-white text-black"}>
-                                                {c.from_name} ({c.from_address})
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none" />
-                                </div>
-                            ) : (
-                                <div className={cn(
-                                    "flex-1 px-4 py-2 rounded-xl border text-[13px] font-bold opacity-60",
-                                    isDark ? "bg-white/[0.03] border-white/8 text-white" : "bg-black/[0.02] border-black/8 text-[#111]"
-                                )}>
-                                    {activeConfig?.from_name} ({activeConfig?.from_address})
-                                </div>
-                            )}
+                    <div className="grid grid-cols-2 border-b" style={{ borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}>
+                        <div className="flex items-center gap-2 px-5 py-1.5 border-r" style={{ borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}>
+                            <span className={cn("text-[9.5px] font-bold uppercase tracking-wide shrink-0 w-9", isDark ? "text-white/40" : "text-black/40")}>From:</span>
+                            <div className="relative flex-1 min-w-0">
+                                <button
+                                    ref={configMenuRef}
+                                    onClick={() => setIsConfigMenuOpen(true)}
+                                    className={cn(
+                                        "w-full flex items-center justify-between py-1 text-[11px] font-medium transition-colors hover:opacity-70",
+                                        isDark ? "text-white" : "text-[#111]"
+                                    )}
+                                >
+                                    <span className="truncate">
+                                        {activeConfig?.from_name || 'Select sender...'}
+                                    </span>
+                                    <ChevronDown size={12} className="opacity-40 ml-2 shrink-0" />
+                                </button>
+                                
+                                <Dropdown
+                                    open={isConfigMenuOpen}
+                                    onClose={() => setIsConfigMenuOpen(false)}
+                                    triggerRef={configMenuRef}
+                                    isDark={isDark}
+                                    align="left"
+                                    zIndex={1000000}
+                                    className="w-full sm:w-[320px]"
+                                >
+                                    {emailConfigs.map(c => (
+                                        <DItem
+                                            key={c.id}
+                                            label={
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold">{c.from_name}</span>
+                                                    <span className="text-[10px] opacity-50 italic">{c.from_address}</span>
+                                                </div>
+                                            }
+                                            active={c.id === selectedConfigId}
+                                            onClick={() => {
+                                                setSelectedConfigId(c.id);
+                                                setIsConfigMenuOpen(false);
+                                            }}
+                                            isDark={isDark}
+                                        />
+                                    ))}
+                                </Dropdown>
+                            </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
-                            <span className={cn("text-[10px] font-bold uppercase tracking-widest shrink-0 w-12", isDark ? "text-white/25" : "text-black/25")}>To</span>
-                            <div className={cn(
-                                "flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors",
-                                isDark ? "bg-white/[0.03] border-white/8 focus-within:border-white/20" : "bg-black/[0.02] border-black/8 focus-within:border-black/20"
-                            )}>
-                                <Mail size={13} className="opacity-30 shrink-0" />
-                                <input
-                                    type="email"
-                                    value={to}
-                                    onChange={e => setTo(e.target.value)}
-                                    className={cn("flex-1 bg-transparent outline-none text-[13px] font-bold", isDark ? "text-white" : "text-[#111]")}
-                                />
-                            </div>
+                        <div className="flex items-center gap-2 px-5 py-1.5">
+                            <span className={cn("text-[9.5px] font-bold uppercase tracking-wide shrink-0 w-9", isDark ? "text-white/40" : "text-black/40")}>To:</span>
+                            <input
+                                type="email"
+                                value={to}
+                                onChange={e => setTo(e.target.value)}
+                                className={cn("flex-1 bg-transparent outline-none text-[11px] font-medium py-1", isDark ? "text-white" : "text-[#111]")}
+                            />
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 border-t pt-3 mt-1" style={{ borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}>
-                        <span className={cn("text-[10px] font-bold uppercase tracking-widest shrink-0 w-12", isDark ? "text-white/25" : "text-black/25")}>Subject</span>
+                    <div className="flex items-center gap-2 px-5 py-1.5">
+                        <span className={cn("text-[9.5px] font-bold uppercase tracking-wide shrink-0 w-9", isDark ? "text-white/40" : "text-black/40")}>Subj:</span>
                         <input
                             type="text"
                             value={subject}
                             onChange={e => setSubject(e.target.value)}
-                            className={cn(
-                                "flex-1 px-4 py-2 rounded-xl border outline-none text-[13px] font-medium transition-colors",
-                                isDark
-                                    ? "bg-white/[0.03] border-white/8 text-white focus:border-white/20"
-                                    : "bg-black/[0.02] border-black/8 text-[#111] focus:border-black/20"
-                            )}
+                            className={cn("flex-1 bg-transparent outline-none text-[11px] font-medium py-1", isDark ? "text-white" : "text-[#111]")}
                         />
                     </div>
                 </div>
 
                 {/* ── Editor (Iframe) ── */}
-                <div className={cn("flex-1 overflow-hidden", isDark ? "bg-[#0a0a0a]" : "bg-[#e2e2e2]")}>
-                    <iframe
-                        ref={iframeRef}
-                        className="w-full h-full border-none block"
-                        title="Email Preview"
-                        sandbox="allow-scripts allow-same-origin"
-                    />
+                <div className={cn("flex-1 overflow-hidden relative flex flex-col", isDark ? "bg-[#0a0a0a]" : "bg-[#f5f5f5]")}>
+                    {/* View Toggle Overlay */}
+                    <div className={cn(
+                        "absolute top-4 left-4 z-10 flex items-center p-1 rounded-lg border shadow-lg backdrop-blur-md",
+                        isDark ? "bg-[#1c1c1c]/80 border-[#2e2e2e]" : "bg-white/80 border-[#e0e0e0]"
+                    )}>
+                        <button
+                            onClick={() => setPreviewMode('desktop')}
+                            className={cn(
+                                "p-1.5 rounded-md transition-all flex items-center justify-center",
+                                previewMode === 'desktop'
+                                    ? (isDark ? "bg-white/10 text-white" : "bg-white shadow text-black")
+                                    : (isDark ? "text-white/40 hover:text-white/80" : "text-black/40 hover:text-black/80")
+                            )}
+                        >
+                            <Monitor size={14} />
+                        </button>
+                        <button
+                            onClick={() => setPreviewMode('mobile')}
+                            className={cn(
+                                "p-1.5 rounded-md transition-all flex items-center justify-center",
+                                previewMode === 'mobile'
+                                    ? (isDark ? "bg-white/10 text-white" : "bg-white shadow text-black")
+                                    : (isDark ? "text-white/40 hover:text-white/80" : "text-black/40 hover:text-black/80")
+                            )}
+                        >
+                            <Smartphone size={14} />
+                        </button>
+                    </div>
+
+                    <div className={cn(
+                        "h-full w-full mx-auto transition-all duration-300 flex justify-center",
+                        previewMode === 'mobile' ? "max-w-[375px]" : "max-w-full"
+                    )}>
+                        <iframe
+                            ref={iframeRef}
+                            className={cn(
+                                "w-full h-full border-none block bg-white",
+                                previewMode === 'mobile' && "shadow-2xl border-x border-black/5"
+                            )}
+                            title="Email Preview"
+                            sandbox="allow-scripts allow-same-origin"
+                        />
+                    </div>
                 </div>
 
                 {/* ── Footer ── */}

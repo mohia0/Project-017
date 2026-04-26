@@ -27,7 +27,7 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
-import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
+import { MoneyAmount, convertAmount, formatAmountOnly, getCurrencySymbol } from '@/components/ui/MoneyAmount';
 import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/FilterPanel';
 import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterUtils';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
@@ -1079,8 +1079,9 @@ export default function InvoicesPage() {
                 variables={{
                     client_name: sendingItem?.client_name || '',
                     invoice_number: sendingItem?.invoice_number || '',
-                    amount_due: convertAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD'),
-                    amount_paid: convertAmount(Number(sendingItem?.amount || 0), sendingItem?.meta?.currency || 'USD'),
+                    currency_symbol: getCurrencySymbol(sendingItem?.meta?.currency || 'USD'),
+                    amount_due: formatAmountOnly(Number(sendingItem?.amount || 0)),
+                    amount_paid: formatAmountOnly(Number(sendingItem?.amount || 0)),
                     due_date: sendingItem?.due_date || '',
                     document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${sendingItem?.id}` : '',
                     days_overdue: sendingItem?.due_date ? String(Math.max(0, Math.floor((new Date().getTime() - new Date(sendingItem.due_date).getTime()) / (1000 * 3600 * 24)))) : '0',

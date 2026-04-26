@@ -50,7 +50,7 @@ import ClientEditor from '@/components/clients/ClientEditor';
 import { useSectionTemplateStore } from '@/store/useSectionTemplateStore';
 import { appToast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
-import { MoneyAmount, convertAmount } from '@/components/ui/MoneyAmount';
+import { MoneyAmount, convertAmount, formatAmountOnly, getCurrencySymbol } from '@/components/ui/MoneyAmount';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -1688,7 +1688,10 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 to={meta.clientEmail || ''}
                 variables={{
                     client_name: meta.clientName || '',
+                    proposal_number: meta.proposalNumber || '',
                     document_title: meta.projectName || 'Proposal',
+                    currency_symbol: getCurrencySymbol(meta.currency || 'USD'),
+                    amount: formatAmountOnly(totals.total),
                     document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/proposal/${id}` : '',
                 }}
                 workspaceId={activeWorkspaceId || ''}

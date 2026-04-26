@@ -65,6 +65,12 @@ export function BankTransferModal({
 
     const isLoading = isOpen && activeWorkspaceId && !hasFetched.payments;
 
+    const handleMarkAsPaid = () => {
+        // Fire and forget to make the UI feel instant
+        Promise.resolve(onMarkAsPaid()).catch(console.error);
+        onClose();
+    };
+
     return createPortal(
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className={cn(
@@ -144,10 +150,7 @@ export function BankTransferModal({
                 )}>
                     <div className="flex gap-3">
                         <button 
-                            onClick={() => {
-                                onMarkAsPaid();
-                                onClose();
-                            }}
+                            onClick={handleMarkAsPaid}
                             className={cn(
                                 "flex-1 flex items-center justify-center py-3 rounded-xl text-[14px] font-bold transition-all",
                                 isDark ? "bg-white text-black hover:bg-[#ddd]" : "bg-[#1c1c1e] text-white hover:bg-black"

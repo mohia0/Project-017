@@ -52,7 +52,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useSectionTemplateStore } from '@/store/useSectionTemplateStore';
 import { appToast } from '@/lib/toast';
-import { MoneyAmount, convertAmount, formatAmount } from '@/components/ui/MoneyAmount';
+import { MoneyAmount, convertAmount, formatAmount, formatAmountOnly, getCurrencySymbol } from '@/components/ui/MoneyAmount';
 import { AppLoader } from '@/components/ui/AppLoader';
 
 /* ═══════════════════════════════════════════════════════
@@ -491,8 +491,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
             const receiptVars = {
                 client_name: meta.clientName || '',
                 invoice_number: meta.invoiceNumber || '',
-                amount_paid: formatAmount(totals.total, meta.currency),
-                amount_due: formatAmount(totals.total, meta.currency),
+                currency_symbol: getCurrencySymbol(meta.currency),
+                amount_paid: formatAmountOnly(totals.total),
+                amount_due: formatAmountOnly(totals.total),
                 payment_date: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
                 document_link: docLink,
                 sender_name: '',
@@ -521,7 +522,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 const reason = !hasEmail ? 'No client email on file.' : 'Auto-receipt is disabled.';
                 useNotificationStore.getState().addNotification({
                     title: `Receipt pending — ${meta.clientName || 'Client'}`,
-                    message: `${reason} Open the notification to send the receipt for ${meta.invoiceNumber || 'this invoice'} (${convertAmount(totals.total, meta.currency)}).`,
+                    message: `${reason} Open the notification to send the receipt for ${meta.invoiceNumber || 'this invoice'} (${getCurrencySymbol(meta.currency)}${formatAmountOnly(totals.total)}).`,
                     link: `/invoices/${id}`,
                     type: 'receipt_pending',
                     metadata: {
@@ -1050,22 +1051,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         />
                                     </MetaField>
 
-                                    <MetaField
-                                        label="Reference"
-                                        isDark={isDark}
-                                        icon={<Info size={11} className="opacity-50" />}
-                                        onReset={() => updateMeta({ reference: '' })}
-                                    >
-                                        <input
-                                            value={meta.reference}
-                                            onChange={e => updateMeta({ reference: e.target.value })}
-                                            placeholder="PO # or internal ref..."
-                                            className={cn(
-                                                "w-full text-[12px] bg-transparent outline-none font-medium",
-                                                isDark ? "text-[#ccc] placeholder:text-[#444]" : "text-[#333] placeholder:text-[#ccc]"
-                                            )}
-                                        />
-                                    </MetaField>
+
 
                                     <MetaField 
                                         label="Client" 
@@ -1581,8 +1567,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 variables={{
                     client_name: meta.clientName || '',
                     invoice_number: meta.invoiceNumber || '',
-                    amount_due: convertAmount(totals.total, meta.currency),
-                    amount_paid: convertAmount(totals.total, meta.currency),
+                    currency_symbol: getCurrencySymbol(meta.currency),
+                    amount_due: formatAmountOnly(totals.total),
+                    amount_paid: formatAmountOnly(totals.total),
                     due_date: meta.dueDate || '',
                     document_link: typeof window !== 'undefined' ? `${window.location.origin}/p/invoice/${id}` : '',
                     days_overdue: meta.dueDate ? String(Math.max(0, Math.floor((new Date().getTime() - new Date(meta.dueDate).getTime()) / (1000 * 3600 * 24)))) : '0',

@@ -221,10 +221,14 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                 >
                                         <div
                                             onClick={() => {
-                                                if (!notif.read) markAsRead(notif.id);
                                                 if (notif.link && notif.type !== 'receipt_pending') {
                                                     router.push(notif.link);
                                                     toggleNotifications();
+                                                    if (!notif.read) markAsRead(notif.id);
+                                                } else if (notif.type === 'receipt_pending' && notif.read === false) {
+                                                    // Do not toggle notifications for receipt pending action unless it's read
+                                                } else {
+                                                    if (!notif.read) markAsRead(notif.id);
                                                 }
                                             }}
                                             className={cn(
@@ -232,7 +236,12 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                 notif.type !== 'receipt_pending' && (isDark ? "hover:bg-white/[0.02]" : "hover:bg-[#f9f9f9]")
                                             )}
                                         >
-                                            <div className={cn("w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5", 
+                                            <div 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (!notif.read) markAsRead(notif.id);
+                                                }}
+                                                className={cn("w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 cursor-pointer hover:opacity-80 transition-opacity", 
                                                 isDark ? "bg-[#222]" : "bg-[#f0f0f0]"
                                             )}>
                                                 {(() => {

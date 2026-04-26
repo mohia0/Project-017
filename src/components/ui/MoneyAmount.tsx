@@ -73,6 +73,17 @@ export function formatAmount(amount: number, currency: string, abbreviate: boole
     }
 }
 
+export function formatAmountOnly(amount: number): string {
+    return amount.toLocaleString('en-US', { 
+        minimumFractionDigits: 0, 
+        maximumFractionDigits: 2 
+    });
+}
+
+export function getCurrencySymbol(currency: string): string {
+    return getCurrency(currency)?.symbol ?? '$';
+}
+
 import { Tooltip } from './Tooltip';
 
 export function MoneyAmount({ amount, currency = 'USD', className, showBadge = false, abbreviate = false, forceOriginal }: MoneyAmountProps) {
