@@ -602,53 +602,62 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
         const pendingIds = uploads.filter(u => u.status === 'pending').map(u => u.id);
         if (pendingIds.length === 0) return;
 
-        pendingIds.forEach(id => {
+        pendingIds.forEach(async (id) => {
             const uploadObj = uploads.find(u => u.id === id);
             if (!uploadObj) return;
 
             setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'uploading', progress: 0 } : u));
 
-            const formData = new FormData();
-            formData.append("file", uploadObj.file);
+            try {
+                // 1. Get presigned URL
+                const presignResp = await fetch("/api/upload/presign", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        fileName: uploadObj.file.name,
+                        contentType: uploadObj.file.type
+                    })
+                });
 
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", "/api/upload", true);
+                if (!presignResp.ok) throw new Error("Failed to get upload authorization");
+                const { presignedUrl, fileUrl } = await presignResp.json();
 
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const progress = Math.round((event.loaded / event.total) * 100);
-                    setUploads(prev => prev.map(u => u.id === id ? { ...u, progress } : u));
-                }
-            };
+                // 2. Upload directly to B2/S3
+                const xhr = new XMLHttpRequest();
+                xhr.open("PUT", presignedUrl, true);
+                
+                // Important: S3/B2 requires the Content-Type to match what was signed
+                xhr.setRequestHeader("Content-Type", uploadObj.file.type);
 
-            xhr.onload = () => {
-                if (xhr.status === 200) {
-                    try {
-                        const resp = JSON.parse(xhr.responseText);
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const progress = Math.round((event.loaded / event.total) * 100);
+                        setUploads(prev => prev.map(u => u.id === id ? { ...u, progress } : u));
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200 || xhr.status === 204) {
                         setUploads(prev => prev.map(u => u.id === id ? {
                             ...u,
                             status: 'done',
                             progress: 100,
-                            fileUrl: resp.url
+                            fileUrl: fileUrl
                         } : u));
-                    } catch {
-                        setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: 'Invalid server response' } : u));
+                    } else {
+                        setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: `S3 Error: ${xhr.status}` } : u));
                     }
-                } else {
-                    let errorMsg = 'Upload failed';
-                    try {
-                        const errBody = JSON.parse(xhr.responseText);
-                        errorMsg = errBody.details || errBody.error || errorMsg;
-                    } catch (e) {}
-                    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: errorMsg } : u));
-                }
-            };
+                };
 
-            xhr.onerror = () => {
-                setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: 'Network error' } : u));
-            };
+                xhr.onerror = () => {
+                    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: 'Network error' } : u));
+                };
 
-            xhr.send(formData);
+                xhr.send(uploadObj.file);
+
+            } catch (err: any) {
+                setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: err.message } : u));
+            }
         });
     };
 
@@ -701,7 +710,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
     const itemBg = isDark ? 'bg-[#1e1e1e] border-[#2a2a2a]' : 'bg-[#fafafa] border-[#eeeeee]';
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
             <div
                 className={cn('relative rounded-2xl border shadow-2xl w-[560px] max-h-[86vh] flex flex-col overflow-hidden', panelBg)}
                 onClick={e => e.stopPropagation()}
@@ -1360,7 +1369,7 @@ export default function FilesPage() {
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
 
-        // Initialize progress toast
+        // Initialize progress toast — uses duration: Infinity to stay visible
         const toastId = appToast.message(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}...`, {
             description: <ProgressContent progress={0} isDark={isDark} />,
             duration: Infinity
@@ -1372,23 +1381,37 @@ export default function FilesPage() {
             if (totalSize === 0) {
                 const total = progresses.reduce((a, b) => a + b, 0);
                 const average = total / files.length;
-                appToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} /> });
+                appToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} />, duration: Infinity } as any);
                 return;
             }
             const totalLoaded = files.reduce((acc, f, i) => acc + (f.size * (progresses[i] / 100)), 0);
             const overallProgress = (totalLoaded / totalSize) * 100;
             appToast.update(toastId, {
-                description: <ProgressContent progress={overallProgress} isDark={isDark} />
-            });
+                description: <ProgressContent progress={overallProgress} isDark={isDark} />,
+                duration: Infinity,
+            } as any);
         };
 
         try {
             const newItems: FileItem[] = [];
             
             await Promise.all(files.map(async (file, idx) => {
+                const presignResp = await fetch("/api/upload/presign", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        contentType: file.type
+                    })
+                });
+
+                if (!presignResp.ok) throw new Error(`Failed to authorize upload for ${file.name}`);
+                const { presignedUrl, fileUrl } = await presignResp.json();
+
                 return new Promise<void>((subResolve, subReject) => {
                     const xhr = new XMLHttpRequest();
-                    xhr.open("POST", "/api/upload", true);
+                    xhr.open("PUT", presignedUrl, true);
+                    xhr.setRequestHeader("Content-Type", file.type);
                     
                     xhr.upload.onprogress = (event) => {
                         if (event.lengthComputable) {
@@ -1398,27 +1421,24 @@ export default function FilesPage() {
                     };
 
                     xhr.onload = () => {
-                        if (xhr.status === 200) {
-                            const resp = JSON.parse(xhr.responseText);
+                        if (xhr.status === 200 || xhr.status === 204) {
                             newItems.push({
                                 id: `file-${Date.now()}-${Math.random()}`,
                                 name: file.name,
                                 type: detectType(file.name),
                                 parentId: currentFolderId,
                                 size: file.size,
-                                downloadUrl: resp.url,
+                                downloadUrl: fileUrl,
                                 createdAt: new Date().toISOString(),
                                 modifiedAt: new Date().toISOString(),
                             });
                             subResolve();
                         } else {
-                            subReject(new Error(`Failed to upload ${file.name}`));
+                            subReject(new Error(`Failed to upload ${file.name} (S3: ${xhr.status})`));
                         }
                     };
                     xhr.onerror = () => subReject(new Error("Network error during upload"));
-                    const formData = new FormData();
-                    formData.append("file", file);
-                    xhr.send(formData);
+                    xhr.send(file);
                 });
             }));
             await addFilesToDb(newItems);

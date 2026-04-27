@@ -17,6 +17,7 @@ export const appToast = {
   warning: (title: string, description?: ReactNode, options?: any) => {
     return goeyToast.warning(title, { description, ...options });
   },
+
   
   promise: async <T>(
     promise: Promise<T>, 
@@ -34,12 +35,13 @@ export const appToast = {
     goeyToast.dismiss(id);
   },
 
-  update: (id: string | number, updates: { description?: ReactNode; title?: string; type?: any }) => {
+  update: (id: string | number, updates: { description?: ReactNode; title?: string; type?: any; duration?: number; [key: string]: any }) => {
     goeyToast.update(id, {
       title: updates.title,
       description: updates.description,
       type: updates.type,
-    });
+      duration: updates.duration,
+    } as any);
   },
 
   message: (title: string, options?: any) => {

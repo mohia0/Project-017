@@ -30,6 +30,9 @@ const nextConfig: NextConfig = {
       "@blocknote/core",
       "@blocknote/mantine",
     ],
+    serverActions: {
+      bodySizeLimit: "600mb",
+    },
   },
 };
 
