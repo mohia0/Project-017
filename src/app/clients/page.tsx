@@ -6,8 +6,10 @@ import {
     Users, Mail, Phone, MapPin, Building2,
     Globe, Briefcase, Trash2, Archive, ArchiveRestore,
     Copy, Check, SquareCheck, X, MoreHorizontal,
-    FileSpreadsheet, Upload, Download, ChevronDown, ArrowUpDown, ArrowRightLeft
+    FileSpreadsheet, Upload, Download, ChevronDown, ArrowUpDown, ArrowRightLeft,
+    SlidersHorizontal
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { appToast } from '@/lib/toast';
 import { useClientStore } from '@/store/useClientStore';
 import { useCompanyStore } from '@/store/useCompanyStore';
@@ -68,6 +70,7 @@ export default function ClientsPage() {
     const { clients, addClient, fetchClients, isLoading: isClientsLoading } = useClientStore();
     const { companies, fetchCompanies, isLoading: isCompaniesLoading } = useCompanyStore();
     const { theme, openRightPanel, rightPanel, setImportModalOpen, setCreateModalOpen, pageViews, setPageView } = useUIStore();
+    const isMobile = useIsMobile();
     const isDark = theme === 'dark';
     const [tab, setTab] = usePersistentState<Tab>('clients_filter_tab', 'people');
     const view = (pageViews['clients'] as ViewMode) || 'grid';
@@ -407,178 +410,246 @@ export default function ClientsPage() {
             </div>
 
             {/* ── Toolbar ── */}
-            <div className={cn("flex items-center gap-0 px-3 md:px-4 py-1.5 shrink-0 overflow-visible flex-wrap", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-[#f7f7f7]")}>
-                {(['people', 'companies'] as Tab[]).map(t => (
-                    <button
-                        key={t}
-                        onClick={() => { setTab(t); setSearch(''); }}
-                        className={cn(
-                            "px-2.5 py-1 text-[11px] font-medium rounded transition-colors capitalize mr-1",
-                            tab === t
-                                ? (isDark ? "bg-white/8 text-white" : "bg-[#f0f0f0] text-[#111]")
-                                : (isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]")
-                        )}
-                    >
-                        {t === 'people' ? 'People' : 'Companies'}
-                    </button>
-                ))}
-                <div className="flex-1" />
-
-                <SearchInput 
-                    value={search} 
-                    onChange={setSearch} 
-                    isDark={isDark} 
-                />
-                
-                <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
-                
-                <ViewToggle 
-                    view={view} 
-                    onViewChange={(v) => { setView(v); setSelectedIds(new Set()); }} 
-                    isDark={isDark} 
-                    options={[
-                        { id: 'grid', icon: <LayoutGrid size={12}/> },
-                        { id: 'list', icon: <List size={12}/> }
-                    ]}
-                />
-
-                <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
-
-                <div className="flex items-center gap-1">
-                    {/* Advanced filter */}
-                    <div className="relative">
-                        <FilterButton
-                            activeCount={filterRows.filter(r => r.field && r.value != null && r.value !== '' && !(Array.isArray(r.value) && r.value.length === 0)).length}
-                            onClick={() => setFilterOpen(v => !v)}
-                            isDark={isDark}
-                        />
-                        
-                        <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark} align="left">
-                            <div className="py-1 min-w-[160px]">
-                                <div 
-                                    onClick={() => { setFilterOpen(false); setAdvancedFilterOpen(true); }}
-                                    className={cn("flex items-center gap-2 px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-black/5", isDark ? "hover:bg-white/5" : "")}>
-                                    <Plus size={11} className="opacity-40" />
-                                    <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
-                                </div>
-                                
-                                {savedFilters.length > 0 && (
-                                    <>
-                                        <div className={cn("h-px my-1", isDark ? "bg-[#252525]" : "bg-[#efefef]")} />
-                                        <SavedFilterPills
-                                            saved={savedFilters}
-                                            activeId={activeFilterId}
-                                            onLoad={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setFilterOpen(false); }}
-                                            onDelete={(id) => { deleteSavedFilter(id); if (activeFilterId === id) { setActiveFilterId(null); } }}
-                                            onClear={() => { setFilterRows([]); setActiveFilterId(null); setFilterOpen(false); }}
-                                            isDark={isDark}
-                                        />
-                                    </>
+            {isMobile ? (
+                <div className="flex flex-col shrink-0">
+                    <div className={cn("flex items-center gap-2 px-3 py-2 border-b",
+                        isDark ? "border-[#252525] bg-[#141414]" : "border-[#f0f0f0] bg-white")}>
+                        {/* Search */}
+                        <div className={cn("relative flex-1")}>
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 opacity-40" size={12} />
+                            <input
+                                type="text"
+                                placeholder={`Search ${tab}...`}
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className={cn(
+                                    "w-full pl-7 pr-3 py-1.5 text-[12px] rounded-[8px] border focus:outline-none transition-all",
+                                    isDark
+                                        ? "bg-white/[0.05] border-white/10 text-white placeholder:text-white/25"
+                                        : "bg-[#f5f5f5] border-transparent text-[#111] placeholder:text-[#aaa]"
                                 )}
-
-                                
-                            </div>
-                        </Dropdown>
-
-                        {advancedFilterOpen && (
-                            <FilterPanel
-                                fields={filterFields}
-                                rows={filterRows}
-                                savedFilters={savedFilters}
-                                onChange={setFilterRows}
-                                onApply={(rows) => { setFilterRows(rows); setActiveFilterId(null); }}
-                                onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); if (f) setActiveFilterId(f.id); }}
-                                onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }}
-                                onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }}
-                                isDark={isDark}
-                                onClose={() => setAdvancedFilterOpen(false)}
                             />
-                        )}
-                    </div>
-
-                    {savedFilters.length > 0 && (
-                        <div className={cn("w-[1px] h-4 mx-1.5", isDark ? "bg-[#2e2e2e]" : "bg-[#e0e0e0]")} />
-                    )}
-
-                    <div className="relative">
-                    <TbBtn 
-                        label="Order by"
-                        icon={<ArrowUpDown size={11}/>}
-                        active={orderOpen}
-                        onClick={() => setOrderOpen(!orderOpen)}
-                        isDark={isDark}
-                        hasArrow
-                    />
-                        <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
-                            <div className="py-1">
-                                <DItem label="Alphabetical (A-Z)" active={orderBy === 'name'} onClick={() => { setOrderBy('name'); setOrderOpen(false); }} isDark={isDark} />
-                                <DItem label="Alphabetical (Z-A)" active={orderBy === 'name-desc'} onClick={() => { setOrderBy('name-desc'); setOrderOpen(false); }} isDark={isDark} />
-                                <DItem label="Recently Added" active={orderBy === 'recent'} onClick={() => { setOrderBy('recent'); setOrderOpen(false); }} isDark={isDark} />
-                                <DItem label="Oldest Added" active={orderBy === 'oldest'} onClick={() => { setOrderBy('oldest'); setOrderOpen(false); }} isDark={isDark} />
-                            </div>
-                        </Dropdown>
-                    </div>
-
-                    {/* Bulk actions */}
-                    {selectedIds.size > 0 && (
-                        <div className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border mr-2', isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}>
-                            <span className={cn('text-[11px] font-semibold mr-1', isDark ? 'text-[#aaa]' : 'text-[#666]')}>{selectedIds.size} selected</span>
-                            <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
-                            
-                            <Tooltip content="Duplicate" side="bottom">
-                                <button onClick={async () => {
-                                    const ids = Array.from(selectedIds);
-                                    const { bulkDuplicateClients } = useClientStore.getState();
-                                    const { bulkDuplicateCompanies } = useCompanyStore.getState();
-                                    if (tab === 'people') await bulkDuplicateClients(ids);
-                                    else await bulkDuplicateCompanies(ids);
-                                    appToast.success(`${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated`);
-                                    setSelectedIds(new Set());
-                                }}
-                                    className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
-                                    <Copy size={11}/>
-                                </button>
-                            </Tooltip>
-                            
-                            <Tooltip content="Delete" side="bottom">
-                                <button onClick={() => setDeletingId('bulk')}
-                                    className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
-                                    <Trash2 size={11}/>
-                                </button>
-                            </Tooltip>
-
-                            {selectedIds.size >= 2 && (
-                                <Tooltip content={selectedIds.size === (tab === 'people' ? filteredPeople.length : filteredCompanies.length) ? "Deselect All" : "Select All"} side="bottom">
-                                    <button onClick={() => toggleAll(tab === 'people' ? filteredPeople : filteredCompanies)}
-                                        className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
-                                        <SquareCheck size={11}/>
-                                    </button>
-                                </Tooltip>
-                            )}
-                            <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
-                            <Tooltip content="Clear selection" side="bottom">
-                                <button onClick={() => setSelectedIds(new Set())}
-                                    className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
-                                    <X size={11}/>
-                                </button>
-                            </Tooltip>
                         </div>
-                    )}
-
-                    <div className="relative">
-                        <TbBtn label="Import / Export" icon={<ArrowRightLeft size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} active={importExportOpen} />
-                        <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
-                            <div className="py-1">
-                                <DItem label="Import CSV" icon={<Download size={12} />} onClick={() => { setImportModalOpen(true, tab === 'people' ? 'Contact' : 'Company'); setImportExportOpen(false); }} isDark={isDark} />
-                                <DItem label="Export CSV" icon={<Upload size={12} />} onClick={handleExportCSV} isDark={isDark} />
-                                <DItem label="Import JSON" icon={<Download size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
-                                <DItem label="Export JSON" icon={<Upload size={12} />} onClick={handleExportJSON} isDark={isDark} />
-                            </div>
-                        </Dropdown>
-                        <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
+                        {/* Actions */}
+                        <div className="relative shrink-0 flex items-center gap-1.5">
+                            <button
+                                onClick={() => setFilterOpen(v => !v)}
+                                className={cn(
+                                    "w-[34px] h-[34px] rounded-[8px] flex items-center justify-center border transition-all",
+                                    filterOpen
+                                        ? "bg-primary/15 border-primary/40 text-primary"
+                                        : isDark ? "bg-white/[0.05] border-white/10 text-[#888]" : "bg-[#f5f5f5] border-transparent text-[#888]"
+                                )}
+                            >
+                                <SlidersHorizontal size={14} />
+                            </button>
+                            <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
+                                <div className={cn("px-3.5 py-2.5 border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>SORT BY</div>
+                                <div className="py-1">
+                                    <DItem label="Alphabetical (A-Z)" active={orderBy === 'name'} onClick={() => { setOrderBy('name'); setFilterOpen(false); }} isDark={isDark} />
+                                    <DItem label="Alphabetical (Z-A)" active={orderBy === 'name-desc'} onClick={() => { setOrderBy('name-desc'); setFilterOpen(false); }} isDark={isDark} />
+                                    <DItem label="Recently Added" active={orderBy === 'recent'} onClick={() => { setOrderBy('recent'); setFilterOpen(false); }} isDark={isDark} />
+                                    <DItem label="Oldest Added" active={orderBy === 'oldest'} onClick={() => { setOrderBy('oldest'); setFilterOpen(false); }} isDark={isDark} />
+                                </div>
+                                <div className={cn("px-3.5 py-2.5 border-t border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>OPTIONS</div>
+                                <div className="py-1">
+                                    <DItem label="Import / Export" icon={<ArrowRightLeft size={12} />} onClick={() => { setImportExportOpen(true); setFilterOpen(false); }} isDark={isDark} />
+                                </div>
+                            </Dropdown>
+                            {/* Import/Export sub-dropdown for mobile if needed, or just open modal */}
+                        </div>
+                    </div>
+                    {/* Tabs row */}
+                    <div className={cn("flex items-center gap-1.5 px-3 py-2 border-b",
+                        isDark ? "border-[#252525] bg-[#141414]" : "border-[#f0f0f0] bg-white")}>
+                        {(['people', 'companies'] as Tab[]).map(t => (
+                            <button
+                                key={t}
+                                onClick={() => { setTab(t); setSearch(''); }}
+                                className={cn(
+                                    "px-3 py-1.5 text-[11px] font-semibold rounded-[8px] border transition-all capitalize",
+                                    tab === t
+                                        ? isDark ? "bg-white/10 border-white/10 text-white" : "bg-white border-[#e0e0e0] shadow-sm text-[#111]"
+                                        : isDark ? "border-transparent text-[#555] hover:text-[#aaa]" : "border-transparent text-[#aaa] hover:text-[#555]"
+                                )}
+                            >
+                                {t === 'people' ? 'People' : 'Companies'}
+                            </button>
+                        ))}
                     </div>
                 </div>
-            </div>
+            ) : (
+                <div className={cn("flex items-center gap-0 px-3 md:px-4 py-1.5 shrink-0 overflow-visible flex-wrap", isDark ? "bg-[#141414] border-b border-[#252525]" : "bg-[#f7f7f7]")}>
+                    {(['people', 'companies'] as Tab[]).map(t => (
+                        <button
+                            key={t}
+                            onClick={() => { setTab(t); setSearch(''); }}
+                            className={cn(
+                                "px-2.5 py-1 text-[11px] font-medium rounded transition-colors capitalize mr-1",
+                                tab === t
+                                    ? (isDark ? "bg-white/8 text-white" : "bg-[#f0f0f0] text-[#111]")
+                                    : (isDark ? "text-[#555] hover:text-[#aaa] hover:bg-white/5" : "text-[#777] hover:text-[#333] hover:bg-[#f0f0f0]")
+                            )}
+                        >
+                            {t === 'people' ? 'People' : 'Companies'}
+                        </button>
+                    ))}
+                    <div className="flex-1" />
+
+                    <SearchInput 
+                        value={search} 
+                        onChange={setSearch} 
+                        isDark={isDark} 
+                    />
+                    
+                    <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+                    
+                    <ViewToggle 
+                        view={view} 
+                        onViewChange={(v) => { setView(v); setSelectedIds(new Set()); }} 
+                        isDark={isDark} 
+                        options={[
+                            { id: 'grid', icon: <LayoutGrid size={12}/> },
+                            { id: 'list', icon: <List size={12}/> }
+                        ]}
+                    />
+
+                    <div className={cn('w-[1px] h-4 mx-1', isDark ? 'bg-[#2e2e2e]' : 'bg-[#e0e0e0]')}/>
+
+                    <div className="flex items-center gap-1">
+                        {/* Advanced filter */}
+                        <div className="relative">
+                            <FilterButton
+                                activeCount={filterRows.filter(r => r.field && r.value != null && r.value !== '' && !(Array.isArray(r.value) && r.value.length === 0)).length}
+                                onClick={() => setFilterOpen(v => !v)}
+                                isDark={isDark}
+                            />
+                            
+                            <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark} align="left">
+                                <div className="py-1 min-w-[160px]">
+                                    <div 
+                                        onClick={() => { setFilterOpen(false); setAdvancedFilterOpen(true); }}
+                                        className={cn("flex items-center gap-2 px-3.5 py-2.5 cursor-pointer transition-colors hover:bg-black/5", isDark ? "hover:bg-white/5" : "")}>
+                                        <Plus size={11} className="opacity-40" />
+                                        <span className={cn("text-[11px] font-medium", isDark ? "text-[#777]" : "text-[#aaa]")}>New filter</span>
+                                    </div>
+                                    
+                                    {savedFilters.length > 0 && (
+                                        <>
+                                            <div className={cn("h-px my-1", isDark ? "bg-[#252525]" : "bg-[#efefef]")} />
+                                            <SavedFilterPills
+                                                saved={savedFilters}
+                                                activeId={activeFilterId}
+                                                onLoad={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setFilterOpen(false); }}
+                                                onDelete={(id) => { deleteSavedFilter(id); if (activeFilterId === id) { setActiveFilterId(null); } }}
+                                                onClear={() => { setFilterRows([]); setActiveFilterId(null); setFilterOpen(false); }}
+                                                isDark={isDark}
+                                            />
+                                        </>
+                                    )}
+                                </div>
+                            </Dropdown>
+
+                            {advancedFilterOpen && (
+                                <FilterPanel
+                                    fields={filterFields}
+                                    rows={filterRows}
+                                    savedFilters={savedFilters}
+                                    onChange={setFilterRows}
+                                    onApply={(rows) => { setFilterRows(rows); setActiveFilterId(null); }}
+                                    onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); if (f) setActiveFilterId(f.id); }}
+                                    onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }}
+                                    onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }}
+                                    isDark={isDark}
+                                    onClose={() => setAdvancedFilterOpen(false)}
+                                />
+                            )}
+                        </div>
+
+                        {savedFilters.length > 0 && (
+                            <div className={cn("w-[1px] h-4 mx-1.5", isDark ? "bg-[#2e2e2e]" : "bg-[#e0e0e0]")} />
+                        )}
+
+                        <div className="relative">
+                        <TbBtn 
+                            label="Order by"
+                            icon={<ArrowUpDown size={11}/>}
+                            active={orderOpen}
+                            onClick={() => setOrderOpen(!orderOpen)}
+                            isDark={isDark}
+                            hasArrow
+                        />
+                            <Dropdown open={orderOpen} onClose={() => setOrderOpen(false)} isDark={isDark}>
+                                <div className="py-1">
+                                    <DItem label="Alphabetical (A-Z)" active={orderBy === 'name'} onClick={() => { setOrderBy('name'); setOrderOpen(false); }} isDark={isDark} />
+                                    <DItem label="Alphabetical (Z-A)" active={orderBy === 'name-desc'} onClick={() => { setOrderBy('name-desc'); setOrderOpen(false); }} isDark={isDark} />
+                                    <DItem label="Recently Added" active={orderBy === 'recent'} onClick={() => { setOrderBy('recent'); setOrderOpen(false); }} isDark={isDark} />
+                                    <DItem label="Oldest Added" active={orderBy === 'oldest'} onClick={() => { setOrderBy('oldest'); setOrderOpen(false); }} isDark={isDark} />
+                                </div>
+                            </Dropdown>
+                        </div>
+
+                        {/* Bulk actions */}
+                        {selectedIds.size > 0 && (
+                            <div className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border mr-2', isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}>
+                                <span className={cn('text-[11px] font-semibold mr-1', isDark ? 'text-[#aaa]' : 'text-[#666]')}>{selectedIds.size} selected</span>
+                                <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                
+                                <Tooltip content="Duplicate" side="bottom">
+                                    <button onClick={async () => {
+                                        const ids = Array.from(selectedIds);
+                                        const { bulkDuplicateClients } = useClientStore.getState();
+                                        const { bulkDuplicateCompanies } = useCompanyStore.getState();
+                                        if (tab === 'people') await bulkDuplicateClients(ids);
+                                        else await bulkDuplicateCompanies(ids);
+                                        appToast.success(`${selectedIds.size} item${selectedIds.size > 1 ? 's' : ''} duplicated`);
+                                        setSelectedIds(new Set());
+                                    }}
+                                        className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                        <Copy size={11}/>
+                                    </button>
+                                </Tooltip>
+                                
+                                <Tooltip content="Delete" side="bottom">
+                                    <button onClick={() => setDeletingId('bulk')}
+                                        className="px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors text-red-500/70 hover:text-red-500 hover:bg-red-500/10">
+                                        <Trash2 size={11}/>
+                                    </button>
+                                </Tooltip>
+
+                                {selectedIds.size >= 2 && (
+                                    <Tooltip content={selectedIds.size === (tab === 'people' ? filteredPeople.length : filteredCompanies.length) ? "Deselect All" : "Select All"} side="bottom">
+                                        <button onClick={() => toggleAll(tab === 'people' ? filteredPeople : filteredCompanies)}
+                                            className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                            <SquareCheck size={11}/>
+                                        </button>
+                                    </Tooltip>
+                                )}
+                                <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                <Tooltip content="Clear selection" side="bottom">
+                                    <button onClick={() => setSelectedIds(new Set())}
+                                        className={cn('px-1.5 py-0.5 text-[10px] font-medium rounded transition-colors', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
+                                        <X size={11}/>
+                                    </button>
+                                </Tooltip>
+                            </div>
+                        )}
+
+                        <div className="relative">
+                            <TbBtn label="Import / Export" icon={<ArrowRightLeft size={11} />} hasArrow onClick={() => setImportExportOpen(v => !v)} isDark={isDark} active={importExportOpen} />
+                            <Dropdown open={importExportOpen} onClose={() => setImportExportOpen(false)} isDark={isDark}>
+                                <div className="py-1">
+                                    <DItem label="Import CSV" icon={<Download size={12} />} onClick={() => { setImportModalOpen(true, tab === 'people' ? 'Contact' : 'Company'); setImportExportOpen(false); }} isDark={isDark} />
+                                    <DItem label="Export CSV" icon={<Upload size={12} />} onClick={handleExportCSV} isDark={isDark} />
+                                    <DItem label="Import JSON" icon={<Download size={12} />} onClick={() => { fileInputRef.current?.click(); setImportExportOpen(false); }} isDark={isDark} />
+                                    <DItem label="Export JSON" icon={<Upload size={12} />} onClick={handleExportJSON} isDark={isDark} />
+                                </div>
+                            </Dropdown>
+                            <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Content ── */}
             <div className={cn("flex-1 overflow-auto p-5", gridBg)}>
@@ -639,7 +710,7 @@ export default function ClientsPage() {
                                     + New Contact
                                 </button>
                             </div>
-                        ) : view === 'grid' ? (
+                        ) : (view === 'grid' || isMobile) ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                 {filteredPeople.map(client => {
                                     const isSelected = selectedIds.has(client.id);
@@ -777,7 +848,7 @@ export default function ClientsPage() {
                                     + New Company
                                 </button>
                             </div>
-                        ) : view === 'grid' ? (
+                        ) : (view === 'grid' || isMobile) ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                 {filteredCompanies.map(company => {
                                     const linkedCount = clients.filter(c => c.company_name === company.name).length;
