@@ -705,7 +705,7 @@ export default function CreateEntryModal() {
                     )}
 
                     {/* ── Content Area ── */}
-                    <div className="flex-1 relative overflow-hidden" style={{ height: isMobile ? 'min(520px, calc(85vh - 150px))' : 'min(640px, calc(90vh - 100px))' }} key={tab}>
+                    <div className="flex-1 relative overflow-hidden" style={{ minHeight: isMobile ? '560px' : '400px', height: isMobile ? '95vh' : 'min(640px, calc(90vh - 100px))' }} key={tab}>
                         <div className="absolute inset-0 overflow-y-auto no-scrollbar pb-[76px]">
                         <div className="flex flex-col gap-3 px-6 pt-5 pb-6">
                                 {/* ── Contact Form ── */}

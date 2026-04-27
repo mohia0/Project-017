@@ -169,43 +169,40 @@ export function MobileLeftDrawer({ isOpen, onClose }: MobileLeftDrawerProps) {
 
                         {/* ── Footer: user actions ── */}
                         <div className={cn(
-                            'shrink-0 border-t px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+12px)]',
+                            'shrink-0 border-t p-3 pb-[calc(env(safe-area-inset-bottom)+12px)] flex flex-col gap-1.5',
                             isDark ? 'border-[#222]' : 'border-[#f0f0f0]'
                         )}>
-                            {/* Action buttons (Top part) */}
-                            <div className="flex flex-col gap-0.5 mt-1">
-                                {/* Dual Row: Theme & Templates */}
-                                <div className="flex items-center gap-1.5 mb-1 px-1">
-                                    <button
-                                        onClick={() => { toggleTheme(); }}
-                                        className={cn(
-                                            "flex-1 h-[38px] rounded-[11px] flex items-center justify-center transition-all",
-                                            isDark 
-                                                ? "bg-white/5 text-[#888] hover:bg-white/10 hover:text-white" 
-                                                : "bg-black/[0.04] text-[#888] hover:bg-black/[0.08] hover:text-[#fa6e34]"
-                                        )}
-                                    >
-                                        {isDark ? <Moon size={16} className="text-[#888] group-hover:text-white" /> : <Sun size={16} className="text-[#fa6e34]" />}
-                                    </button>
+                            {/* Dual Row: Theme & Templates */}
+                            <div className="grid grid-cols-2 gap-1.5">
+                                <button
+                                    onClick={() => { toggleTheme(); }}
+                                    className={cn(
+                                        "h-[42px] rounded-[13px] flex items-center justify-center transition-all",
+                                        isDark 
+                                            ? "bg-white/5 text-[#888] hover:bg-white/10 hover:text-white" 
+                                            : "bg-black/[0.04] text-[#888] hover:bg-black/[0.08] hover:text-[#fa6e34]"
+                                    )}
+                                >
+                                    {isDark ? <Moon size={16} className="text-[#888] hover:text-white transition-colors" /> : <Sun size={16} className="text-[#fa6e34]" />}
+                                </button>
 
-                                    <button
-                                        onClick={() => { router.push('/templates'); onClose(); }}
-                                        className={cn(
-                                            "flex-1 h-[38px] rounded-[11px] flex items-center justify-center transition-all",
-                                            isDark 
-                                                ? "bg-white/5 text-[#888] hover:bg-white/10 hover:text-white"
-                                                : "bg-[#f0f0f0] text-[#888] hover:bg-[#e8e8e8] hover:text-[#555]"
-                                        )}
-                                    >
-                                        <LayoutTemplate size={16} />
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={() => { router.push('/templates'); onClose(); }}
+                                    className={cn(
+                                        "h-[42px] rounded-[13px] flex items-center justify-center transition-all",
+                                        isDark 
+                                            ? "bg-white/5 text-[#888] hover:bg-white/10 hover:text-white"
+                                            : "bg-[#f0f0f0] text-[#888] hover:bg-[#e8e8e8] hover:text-[#555]"
+                                    )}
+                                >
+                                    <LayoutTemplate size={16} />
+                                </button>
                             </div>
 
                             {/* User profile row */}
                             <div className={cn(
-                                'flex items-center gap-3 px-3 py-2.5 rounded-[13px] mb-1',
-                                isDark ? 'bg-white/[0.03]' : 'bg-black/[0.02]'
+                                'flex items-center gap-3 px-3 py-2.5 rounded-[13px]',
+                                isDark ? 'bg-white/[0.04]' : 'bg-black/[0.03]'
                             )}>
                                 <Avatar
                                     src={avatarUrl}
@@ -215,7 +212,7 @@ export function MobileLeftDrawer({ isOpen, onClose }: MobileLeftDrawerProps) {
                                 />
                                 <div className="min-w-0 flex-1">
                                     <p className={cn(
-                                        'text-[12px] font-semibold truncate leading-tight',
+                                        'text-[13px] font-semibold truncate leading-tight',
                                         isDark ? 'text-white' : 'text-[#111]'
                                     )}>
                                         {displayName || 'Account'}
@@ -223,42 +220,44 @@ export function MobileLeftDrawer({ isOpen, onClose }: MobileLeftDrawerProps) {
                                 </div>
                             </div>
 
-                            {/* Action buttons (Bottom part) */}
-                            <div className="flex flex-col gap-0.5 mt-1">
+                            {/* Settings */}
+                            <button
+                                onClick={() => { router.push('/settings'); onClose(); }}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-[13px] text-[13px] font-medium transition-colors active:scale-[0.98]',
+                                    isDark ? 'text-[#888] hover:text-white hover:bg-white/[0.04]' : 'text-[#aaa] hover:text-[#333] hover:bg-black/[0.04]'
+                                )}
+                            >
+                                <div className={cn(
+                                    'w-7 h-7 rounded-[9px] flex items-center justify-center shrink-0',
+                                    isDark ? 'bg-white/[0.06]' : 'bg-black/[0.04]'
+                                )}>
+                                    <Settings size={14} />
+                                </div>
+                                Settings
+                                <ChevronRight size={14} className="ml-auto opacity-30" />
+                            </button>
 
-                                <button
-                                    onClick={() => { router.push('/settings'); onClose(); }}
-                                    className={cn(
-                                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-[13px] text-[13px] font-medium transition-colors active:scale-[0.98]',
-                                        isDark ? 'text-[#888] hover:text-white hover:bg-white/[0.04]' : 'text-[#aaa] hover:text-[#333] hover:bg-black/[0.04]'
-                                    )}
-                                >
-                                    <div className={cn(
-                                        'w-7 h-7 rounded-[9px] flex items-center justify-center shrink-0',
-                                        isDark ? 'bg-white/[0.06]' : 'bg-black/[0.04]'
-                                    )}>
-                                        <Settings size={13} />
-                                    </div>
-                                    Settings
-                                    <ChevronRight size={13} className="ml-auto opacity-30" />
-                                </button>
-
-                                <div className={cn('h-px mx-2 my-1', isDark ? 'bg-white/[0.05]' : 'bg-[#f0f0f0]')} />
-
-                                <button
-                                    onClick={async () => {
-                                        await useAuthStore.getState().signOut();
-                                        onClose();
-                                        router.push('/login');
-                                    }}
-                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[13px] text-[13px] font-medium text-red-500 hover:bg-red-500/[0.07] transition-colors active:scale-[0.98]"
-                                >
-                                    <div className="w-7 h-7 rounded-[9px] bg-red-500/10 flex items-center justify-center shrink-0">
-                                        <LogOut size={13} />
-                                    </div>
-                                    Sign Out
-                                </button>
-                            </div>
+                            {/* Sign Out */}
+                            <button
+                                onClick={async () => {
+                                    await useAuthStore.getState().signOut();
+                                    onClose();
+                                    router.push('/login');
+                                }}
+                                className={cn(
+                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-[13px] text-[13px] font-medium transition-colors active:scale-[0.98]',
+                                    isDark ? 'text-red-400 hover:bg-red-400/10' : 'text-red-500 hover:bg-red-500/10'
+                                )}
+                            >
+                                <div className={cn(
+                                    'w-7 h-7 rounded-[9px] flex items-center justify-center shrink-0',
+                                    isDark ? 'bg-red-400/10' : 'bg-red-500/10'
+                                )}>
+                                    <LogOut size={14} />
+                                </div>
+                                Sign Out
+                            </button>
                         </div>
                     </motion.div>
                 </>
