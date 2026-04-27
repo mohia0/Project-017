@@ -116,7 +116,15 @@ function WorkspaceDataSync() {
 
     // ── Background preload: Actual image files for browser cache ────────────
     const files = useFileStore(s => s.items);
+    const { profile } = useSettingsStore();
+
     useEffect(() => {
+        // Preload Account Avatar
+        if (profile?.avatar_url) {
+            const img = new Image();
+            img.src = profile.avatar_url;
+        }
+
         if (!files.length) return;
         
         // Filter for images and preload their URLs
@@ -129,7 +137,7 @@ function WorkspaceDataSync() {
                 i.src = src;
             }
         });
-    }, [files]);
+    }, [files, profile?.avatar_url]);
 
     return null;
 }

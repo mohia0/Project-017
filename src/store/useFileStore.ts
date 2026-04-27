@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from './useUIStore';
 
-export type ItemType = 'folder' | 'file' | 'link' | 'image' | 'video' | 'audio' | 'doc' | 'code' | 'archive';
+export type ItemType = 'folder' | 'file' | 'link' | 'image' | 'video' | 'audio' | 'doc' | 'code' | 'archive' | 'adobe';
 
 export interface FileItem {
     id: string;

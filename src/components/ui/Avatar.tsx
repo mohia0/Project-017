@@ -16,16 +16,20 @@ const loadedImages = new Set<string>();
 export function Avatar({ src, name, className, isDark, fallbackClassName }: AvatarProps) {
     const isAlreadyLoaded = src ? loadedImages.has(src) : false;
     const [isLoading, setIsLoading] = useState(!isAlreadyLoaded && !!src);
+    const [hasError, setHasError] = useState(false);
     
     useEffect(() => {
         if (!src) {
             setIsLoading(false);
+            setHasError(false);
             return;
         }
         if (loadedImages.has(src)) {
             setIsLoading(false);
+            setHasError(false);
         } else {
             setIsLoading(true);
+            setHasError(false);
         }
     }, [src]);
 
@@ -36,6 +40,7 @@ export function Avatar({ src, name, className, isDark, fallbackClassName }: Avat
 
     const handleError = () => {
         setIsLoading(false);
+        setHasError(true);
     };
 
     const getInitials = (name: string | null) => {
@@ -50,15 +55,17 @@ export function Avatar({ src, name, className, isDark, fallbackClassName }: Avat
 
     return (
         <div className={cn("relative overflow-hidden shrink-0 rounded-lg", className)}>
-            {src ? (
+            {(src && !hasError) ? (
                 <>
                     {isLoading && <div className={skeletonClasses} />}
                     <img
                         src={src}
                         alt={name || "Avatar"}
+                        data-ignore-global-handler="true"
                         className={cn(
-                            "w-full h-full object-cover transition-opacity duration-300",
-                            isLoading ? "opacity-0" : "opacity-100"
+                            "w-full h-full object-cover",
+                            isLoading ? "opacity-0" : "opacity-100",
+                            !isAlreadyLoaded && "transition-opacity duration-300"
                         )}
                         onLoad={handleLoad}
                         onError={handleError}

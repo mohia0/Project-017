@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Folder, FolderOpen, FolderPlus, File, FileText, FileImage, FileVideo,
     FileAudio, FileCode, FileArchive, Link2, Search, Upload, Download,
-    Trash2, Copy, Scissors, ClipboardPaste, Plus,
+    Trash2, Copy, Scissors, Clipboard as ClipboardIcon, ClipboardPaste, Plus,
     ChevronRight, ChevronDown, LayoutGrid, List, SortAsc, SortDesc,
     Star, StarOff, Eye, Check, X, RefreshCw,
     ArrowLeft, ArrowRight, Home, Image, Music, Video, Archive,
@@ -89,7 +89,15 @@ function detectType(filename: string): ItemType {
     if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'txt', 'md', 'rtf'].includes(ext)) return 'doc';
     if (['ts', 'tsx', 'js', 'jsx', 'py', 'rs', 'go', 'rb', 'php', 'java', 'cs', 'cpp', 'c', 'html', 'css', 'json', 'yaml', 'yml', 'toml', 'sh', 'bash'].includes(ext)) return 'code';
     if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext)) return 'archive';
+    if (['ai', 'eps', 'psd', 'indd'].includes(ext)) return 'adobe';
     return 'file';
+}
+
+function getEffectiveType(item: FileItem): ItemType {
+    const extensionType = detectType(item.name);
+    // If it's a specific type (image, video, adobe, code, etc.), prioritize the extension
+    if (extensionType !== 'file') return extensionType;
+    return item.type || 'file';
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -114,15 +122,19 @@ function getTypeLabel(type: ItemType): string {
     const map: Record<ItemType, string> = {
         folder: 'Folder', file: 'File', link: 'Link',
         image: 'Image', video: 'Video', audio: 'Audio',
-        doc: 'Document', code: 'Code', archive: 'Archive'
+        doc: 'Document', code: 'Code', archive: 'Archive',
+        adobe: 'Adobe Design'
     };
     return map[type] || 'File';
 }
 
 // ─── Icon Rendering ───────────────────────────────────────────────────────────
 
-function getItemIcon(type: ItemType, size = 16, color?: string) {
+function getItemIcon(item: FileItem, size = 16) {
+    const type = getEffectiveType(item);
     const cls = "shrink-0";
+    const color = item.color;
+    
     switch (type) {
         case 'folder': return <Folder size={size} className={cls} style={{ color: color || '#f59e0b' }} />;
         case 'image': return <FileImage size={size} className={cls} style={{ color: '#ec4899' }} />;
@@ -132,6 +144,27 @@ function getItemIcon(type: ItemType, size = 16, color?: string) {
         case 'code': return <FileCode size={size} className={cls} style={{ color: '#10b981' }} />;
         case 'archive': return <FileArchive size={size} className={cls} style={{ color: '#6b7280' }} />;
         case 'link': return <Link2 size={size} className={cls} style={{ color: '#06b6d4' }} />;
+        case 'adobe': {
+            const ext = item.name.split('.').pop()?.toUpperCase() || 'AI';
+            const adobeColor = ext === 'PSD' ? '#31a8ff' : '#ff4b00'; // Blue for PSD, Orange for others
+            return (
+                <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+                    <File size={size} className={cls} style={{ color: adobeColor }} />
+                    <span 
+                        className="absolute font-bold tracking-tighter" 
+                        style={{ 
+                            color: adobeColor, 
+                            bottom: size * 0.15,
+                            fontSize: size * 0.22,
+                            left: '50%',
+                            transform: 'translateX(-50%)'
+                        }}
+                    >
+                        {ext.slice(0, 2)}
+                    </span>
+                </div>
+            );
+        }
         default: return <File size={size} className={cls} style={{ color: '#9ca3af' }} />;
     }
 }
@@ -468,7 +501,7 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
         return (
             <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
                 <div className={`w-24 h-24 rounded-3xl flex items-center justify-center shadow-xl ${isDark ? 'bg-[#1a1a1a]' : 'bg-[#f5f5f5]'}`}>
-                    {getItemIcon(item.type, 42, item.color)}
+                    {getItemIcon(item, 42)}
                 </div>
                 <div className="text-center">
                     <p className={`text-[15px] font-bold ${isDark ? 'text-[#ccc]' : 'text-[#444]'}`}>{item.name}</p>
@@ -491,11 +524,11 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                 {/* Header */}
                 <div className={`flex items-center gap-3 px-5 py-3.5 border-b shrink-0 ${isDark ? 'border-[#1e1e1e]' : 'border-[#f0f0f0]'}`}>
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${isDark ? 'bg-white/5' : 'bg-[#f5f5f5]'}`}>
-                        {getItemIcon(item.type, 16, item.color)}
+                        {getItemIcon(item, 16)}
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className={`text-[13px] font-bold truncate ${isDark ? 'text-white' : 'text-[#111]'}`}>{item.name}</p>
-                        <p className={`text-[10px] ${muted}`}>{getTypeLabel(item.type)} · {formatBytes(item.size)} · Modified {formatDate(item.modifiedAt)}</p>
+                        <p className={`text-[10px] ${muted}`}>{getTypeLabel(getEffectiveType(item))} · {formatBytes(item.size)} · Modified {formatDate(item.modifiedAt)}</p>
                     </div>
                     {/* Actions */}
                     <div className="flex items-center gap-1 shrink-0">
@@ -549,7 +582,7 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
 
                 {/* Footer info bar */}
                 <div className={`flex items-center gap-4 px-5 py-2.5 border-t text-[10px] shrink-0 ${isDark ? 'border-[#1a1a1a] text-[#444]' : 'border-[#f0f0f0] text-[#bbb]'}`}>
-                    <span>Type: <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{getTypeLabel(item.type)}</strong></span>
+                    <span>Type: <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{getTypeLabel(getEffectiveType(item))}</strong></span>
                     <span>Size: <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{formatBytes(item.size)}</strong></span>
                     <span>Created: <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{formatDate(item.createdAt)}</strong></span>
                     <span>Modified: <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{formatDate(item.modifiedAt)}</strong></span>
@@ -785,7 +818,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                                 <div key={upload.id} className={cn('flex items-center gap-3 p-3 rounded-xl border', itemBg)}>
                                     {/* Icon */}
                                     <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', isDark ? 'bg-white/5' : 'bg-white')}>
-                                        {getItemIcon(upload.type, 14)}
+                                        {getItemIcon({ name: upload.file.name, type: upload.type } as FileItem, 14)}
                                     </div>
 
                                     {/* Info + Progress */}
@@ -909,7 +942,7 @@ function TreeNode({
                 >
                     {isExpanded ? <ChevronDown size={10} strokeWidth={2.5}/> : <ChevronRight size={10} strokeWidth={2.5}/>}
                 </button>
-                {isExpanded
+                {isActive
                     ? <FolderOpen size={13} style={{ color: item.color || '#f59e0b' }} className="shrink-0"/>
                     : <Folder size={13} style={{ color: item.color || '#f59e0b' }} className="shrink-0"/>}
                 <span className="text-[11.5px] font-medium truncate flex-1">{item.name}</span>
@@ -976,9 +1009,10 @@ function RenameInput({ value, onConfirm, onCancel, isDark }: { value: string; on
 
 interface CtxMenu { x: number; y: number; itemId: string | null; }
 
-function ContextMenu({ menu, items, isDark, onAction, onClose }: {
+function ContextMenu({ menu, items, isDark, onAction, onClose, clipboard }: {
     menu: CtxMenu; items: FileItem[]; isDark: boolean;
     onAction: (action: string, itemId: string | null) => void; onClose: () => void;
+    clipboard: any;
 }) {
     const item = menu.itemId ? items.find(i => i.id === menu.itemId) : null;
     const menuRef = useRef<HTMLDivElement>(null);
@@ -1006,8 +1040,11 @@ function ContextMenu({ menu, items, isDark, onAction, onClose }: {
             className={cn('w-full flex items-center gap-2.5 px-3 py-1.5 text-[12px] font-medium text-left transition-colors rounded-lg',
                 danger ? isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'
                 : accent ? 'text-primary hover:bg-primary/10'
-                : isDark ? 'text-[#ccc] hover:bg-white/5 hover:text-white' : 'text-[#444] hover:bg-[#f5f5f5] hover:text-[#111]'
-            )}>
+                : action === 'paste' && !accent 
+                    ? isDark ? 'text-[#333] cursor-not-allowed opacity-50' : 'text-[#ccc] cursor-not-allowed opacity-50'
+                    : isDark ? 'text-[#ccc] hover:bg-white/5 hover:text-white' : 'text-[#444] hover:bg-[#f5f5f5] hover:text-[#111]'
+            )}
+            disabled={action === 'paste' && !accent}>
             {icon} {label}
         </button>
     );
@@ -1051,7 +1088,8 @@ function ContextMenu({ menu, items, isDark, onAction, onClose }: {
                     )}
                     {mi('Rename', <Pencil size={13}/>, 'rename')}
                     {mi('Duplicate', <Copy size={13}/>, 'duplicate')}
-                    {mi('Move to…', <FolderSymlink size={13}/>, 'move')}
+                    {mi('Copy', <ClipboardIcon size={13}/>, 'copy')}
+                    {mi('Cut', <Scissors size={13}/>, 'cut')}
                     {divider}
                     {item.starred
                         ? mi('Remove Star', <StarOff size={13}/>, 'unstar')
@@ -1068,7 +1106,7 @@ function ContextMenu({ menu, items, isDark, onAction, onClose }: {
                     {mi('New Link', <Link2 size={13}/>, 'newLink')}
                     {mi('Upload Files', <Upload size={13}/>, 'upload')}
                     {divider}
-                    {mi('Paste', <ClipboardPaste size={13}/>, 'paste')}
+                    {mi('Paste', <ClipboardPaste size={13}/>, 'paste', false, !!clipboard)}
                 </>
             )}
         </div>
@@ -1216,6 +1254,7 @@ export default function FilesPage() {
     const [deleteWarning, setDeleteWarning] = useState<string[] | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [globalDragOver, setGlobalDragOver] = useState(false);
+    const [clipboard, setClipboard] = useState<{ type: 'copy' | 'cut', ids: string[] } | null>(null);
     const errorShown = useRef(false);
 
     // Sync files from Supabase
@@ -1470,7 +1509,7 @@ export default function FilesPage() {
         }]);
         if (!error) {
             setItems(prev => [...prev, newItem]);
-            appToast.success('Folder Created', `"${name}" has been created`);
+            appToast.success('Folder created');
             setNewDialog(null);
         }
     };
@@ -1488,7 +1527,7 @@ export default function FilesPage() {
         }]);
         if (!error) {
             setItems(prev => [...prev, newItem]);
-            appToast.success('Link Added', `Link "${name}" has been added`);
+            appToast.success('Link added');
             setNewDialog(null);
         }
     };
@@ -1501,6 +1540,7 @@ export default function FilesPage() {
         if (!error) {
             setItems(prev => prev.map(i => i.id === id ? { ...i, name: newName, modifiedAt: new Date().toISOString() } : i));
             setRenamingId(null);
+            appToast.success('Item renamed');
         }
     };
     const deleteItems = async (ids: string[]) => {
@@ -1517,7 +1557,7 @@ export default function FilesPage() {
             setItems(prev => prev.filter(i => !toDelete.has(i.id)));
             setSelectedIds(new Set());
             setDeleteWarning(null);
-            appToast.error('Items Deleted', `${ids.length} item${ids.length !== 1 ? 's' : ''} have been removed`);
+            appToast.success(ids.length === 1 ? 'Item deleted' : `${ids.length} items deleted`);
         }
     };
 
@@ -1549,7 +1589,70 @@ export default function FilesPage() {
         const { error } = await supabase.from('files').insert(dbClones);
         if (!error) {
             setItems(prev => [...prev, ...clones]);
-            appToast.success('Duplicated', ids.length === 1 ? 'Item duplicated successfully' : `${ids.length} items duplicated successfully`);
+            appToast.success(ids.length === 1 ? 'Item duplicated' : `${ids.length} items duplicated`);
+        }
+    };
+    
+    const handlePaste = async () => {
+        if (!clipboard || clipboard.ids.length === 0) return;
+        
+        const ids = clipboard.ids;
+        
+        if (clipboard.type === 'cut') {
+            // MOVE logic
+            const { error } = await supabase
+                .from('files')
+                .update({ parent_id: currentFolderId, modified_at: new Date().toISOString() })
+                .in('id', ids)
+                .eq('workspace_id', activeWorkspaceId);
+                
+            if (!error) {
+                setItems(prev => prev.map(i => ids.includes(i.id) ? { ...i, parentId: currentFolderId, modifiedAt: new Date().toISOString() } : i));
+                appToast.success(ids.length === 1 ? 'Item moved' : `${ids.length} items moved`);
+                setClipboard(null);
+            } else {
+                appToast.error('Move failed', 'Could not move items');
+            }
+            return;
+        }
+
+        // COPY logic (existing)
+        const clones = ids.map(id => { 
+            const src = items.find(i => i.id === id);
+            if (!src) return null;
+            return { 
+                ...src, 
+                id: `${src.id}-copy-${Date.now()}`, 
+                parentId: currentFolderId,
+                name: `${src.name} (copy)`, 
+                createdAt: new Date().toISOString(), 
+                modifiedAt: new Date().toISOString() 
+            }; 
+        }).filter(Boolean) as FileItem[];
+
+        if (clones.length === 0) return;
+
+        const dbClones = clones.map(c => ({
+            id: c.id, 
+            name: c.name, 
+            type: c.type, 
+            parent_id: c.parentId, 
+            size: c.size, 
+            download_url: c.downloadUrl, 
+            starred: c.starred, 
+            color: c.color,
+            workspace_id: activeWorkspaceId,
+            created_at: c.createdAt,
+            modified_at: c.modifiedAt
+        }));
+
+        const { error } = await supabase.from('files').insert(dbClones);
+        if (!error) {
+            setItems(prev => [...prev, ...clones]);
+            appToast.success(ids.length === 1 ? 'Item pasted' : `${ids.length} items pasted`);
+            setClipboard(null);
+        } else {
+            appToast.error('Paste Failed', 'Could not paste items');
         }
     };
     const toggleStar = async (id: string) => {
@@ -1563,8 +1666,7 @@ export default function FilesPage() {
             .eq('workspace_id', activeWorkspaceId);
         if (!error) {
             setItems(prev => prev.map(i => i.id === id ? { ...i, starred: newState } : i));
-            if (newState) appToast.success('Starred', 'Item added to favorites');
-            else appToast.message('Unstarred');
+            appToast.success(newState ? 'Added to stars' : 'Removed from stars');
         }
     };
     const toggleLock = async (id: string) => {
@@ -1597,9 +1699,9 @@ export default function FilesPage() {
         const absoluteLink = (link.startsWith('/') && baseUrl) ? `${baseUrl}${link}` : link;
 
         navigator.clipboard.writeText(absoluteLink).then(() => {
-            appToast.success('Link Copied', 'Download link copied to clipboard');
+            appToast.success('Download link copied');
         }).catch(() => {
-            appToast.error('Copy Failed', 'Could not copy link to clipboard');
+            appToast.error('Copy failed');
         });
     };
 
@@ -1636,6 +1738,7 @@ export default function FilesPage() {
         if (action === 'newFolder') setNewDialog('folder');
         else if (action === 'newLink') setNewDialog('link');
         else if (action === 'upload') setShowUpload(true);
+        else if (action === 'paste') handlePaste();
         else if (itemId) {
             const item = items.find(i => i.id === itemId);
             if (action === 'open') {
@@ -1645,6 +1748,24 @@ export default function FilesPage() {
             }
             else if (action === 'rename') setRenamingId(itemId);
             else if (action === 'duplicate') duplicateItems([itemId]);
+            else if (action === 'copy') {
+                if (selectedIds.has(itemId)) {
+                    setClipboard({ type: 'copy', ids: Array.from(selectedIds) });
+                    appToast.success(`${selectedIds.size} items copied`);
+                } else {
+                    setClipboard({ type: 'copy', ids: [itemId] });
+                    appToast.success('Item copied');
+                }
+            }
+            else if (action === 'cut') {
+                if (selectedIds.has(itemId)) {
+                    setClipboard({ type: 'cut', ids: Array.from(selectedIds) });
+                    appToast.success(`${selectedIds.size} items cut`);
+                } else {
+                    setClipboard({ type: 'cut', ids: [itemId] });
+                    appToast.success('Item cut');
+                }
+            }
             else if (action === 'delete') {
                 if (itemId && selectedIds.has(itemId)) {
                     requestDelete(Array.from(selectedIds));
@@ -1967,6 +2088,9 @@ export default function FilesPage() {
                                     const isSelected = selectedIds.has(item.id);
                                     const isDragging = draggedId === item.id;
                                     const isRenaming = renamingId === item.id;
+                                    const isCopied = clipboard?.type === 'copy' && clipboard.ids.includes(item.id);
+                                    const isCut = clipboard?.type === 'cut' && clipboard.ids.includes(item.id);
+
                                     return (
                                         <div key={item.id}
                                             draggable={!item.locked}
@@ -1982,7 +2106,9 @@ export default function FilesPage() {
                                                 isSelected ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20'
                                                 : dragOver === item.id && item.type === 'folder' ? isDark ? 'border-primary/40 bg-primary/5' : 'border-primary/40 bg-primary/5'
                                                 : isDark ? 'hover:border-[#2e2e2e] hover:bg-[#1d1d1d]' : 'hover:border-[#d8d8d8] hover:shadow-sm hover:shadow-black/5',
-                                                isDragging && 'opacity-40 scale-95')}>
+                                                isDragging && 'opacity-40 scale-95',
+                                                isCopied && 'border-dashed border-2 border-primary/60',
+                                                isCut && 'opacity-80 border-dashed border-primary/40')}>
 
                                             {/* Checkbox */}
                                             <div className={cn('absolute top-0 left-0 p-2 z-10 transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
@@ -2025,7 +2151,7 @@ export default function FilesPage() {
                                                         src={item.downloadUrl}
                                                         alt={item.name}
                                                         isDark={isDark}
-                                                        fallback={getItemIcon(item.type, 22, item.color)}
+                                                        fallback={getItemIcon(item, 22)}
                                                     />
                                                 ) : item.type === 'doc' && item.name.toLowerCase().endsWith('.pdf') ? (
                                                     <div className="w-12 h-14 rounded-xl flex flex-col items-center justify-center gap-1 transition-transform group-hover:scale-105 shadow-sm"
@@ -2036,7 +2162,7 @@ export default function FilesPage() {
                                                 ) : (
                                                     <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105',
                                                         isDark ? 'bg-white/[0.03]' : 'bg-[#f5f5f5]')}>
-                                                        {getItemIcon(item.type, 22, item.color)}
+                                                        {getItemIcon(item, 22)}
                                                     </div>
                                                 )}
                                             </div>
@@ -2049,7 +2175,7 @@ export default function FilesPage() {
                                                     <span className={cn('text-[12.5px] font-medium truncate block', textPrimary)}>{item.name}</span>
                                                 )}
                                                 <span className={cn('text-[9.5px] mt-0.5 block opacity-60', muted)}>
-                                                    {item.type === 'link' ? 'Link' : item.size ? formatBytes(item.size) : getTypeLabel(item.type)}
+                                                    {item.type === 'link' ? 'Link' : item.size ? formatBytes(item.size) : getTypeLabel(getEffectiveType(item))}
                                                 </span>
                                             </div>
 
@@ -2150,6 +2276,9 @@ export default function FilesPage() {
                                         const isSelected = selectedIds.has(item.id);
                                         const isDragging = draggedId === item.id;
                                         const isRenaming = renamingId === item.id;
+                                        const isCopied = clipboard?.type === 'copy' && clipboard.ids.includes(item.id);
+                                        const isCut = clipboard?.type === 'cut' && clipboard.ids.includes(item.id);
+
                                         return (
                                             <div key={item.id}
                                                 draggable={!item.locked}
@@ -2166,7 +2295,9 @@ export default function FilesPage() {
                                                     isSelected ? isDark ? 'bg-primary/5' : 'bg-primary/5'
                                                     : dragOver === item.id && item.type === 'folder' ? isDark ? 'bg-white/5' : 'bg-primary/5'
                                                     : isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-[#fafafa]',
-                                                    isDragging && 'opacity-40')}
+                                                    isDragging && 'opacity-40',
+                                                    isCopied && 'bg-primary/[0.03] border-dashed border-primary/40',
+                                                    isCut && 'opacity-80 border-dashed border-primary/40')}
                                                 style={{ gridTemplateColumns: '32px 32px 1fr 80px 120px 120px 100px', minHeight: '38px' }}>
 
                                                 <div className="flex items-center justify-center" onClick={e => { e.stopPropagation(); toggleSelect(item.id); }}>
@@ -2174,6 +2305,35 @@ export default function FilesPage() {
                                                         isSelected ? 'bg-primary border-primary' : isDark ? 'border-white/10 opacity-0 group-hover:opacity-100' : 'border-[#ccc] opacity-0 group-hover:opacity-100')}>
                                                         {isSelected && <Check size={9} strokeWidth={4} className="text-black"/>}
                                                     </div>
+                                                </div>
+
+                                                {/* Icon */}
+                                                <div className="flex items-center justify-center shrink-0">
+                                                    {getItemIcon(item, 16)}
+                                                </div>
+
+                                                {/* Name */}
+                                                <div className="flex items-center min-w-0 pr-4">
+                                                    {isRenaming ? (
+                                                        <RenameInput value={item.name} onConfirm={v => renameItem(item.id, v)} onCancel={() => setRenamingId(null)} isDark={isDark}/>
+                                                    ) : (
+                                                        <span className={cn('text-[12px] font-medium truncate', textPrimary)}>{item.name}</span>
+                                                    )}
+                                                </div>
+
+                                                {/* Type */}
+                                                <div className={cn('text-[11px] font-medium', muted)}>
+                                                    {getTypeLabel(getEffectiveType(item))}
+                                                </div>
+
+                                                {/* Size */}
+                                                <div className={cn('text-[11px] tabular-nums', muted)}>
+                                                    {item.type === 'folder' ? '—' : formatBytes(item.size)}
+                                                </div>
+
+                                                {/* Modified */}
+                                                <div className={cn('text-[11px] tabular-nums', muted)}>
+                                                    {formatDate(item.modifiedAt)}
                                                 </div>
                                                 {/* Row actions */}
                                                 {selectedIds.size === 0 && (
@@ -2261,7 +2421,7 @@ export default function FilesPage() {
 
             {/* ── Context Menu ── */}
             {ctxMenu && (
-                <ContextMenu menu={ctxMenu} items={items} isDark={isDark} onAction={handleCtxAction} onClose={() => setCtxMenu(null)}/>
+                <ContextMenu menu={ctxMenu} items={items} isDark={isDark} onAction={handleCtxAction} onClose={() => setCtxMenu(null)} clipboard={clipboard}/>
             )}
 
             {/* ── New Item Dialog ── */}
