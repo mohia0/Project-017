@@ -7,6 +7,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { useClientStore } from '@/store/useClientStore';
 import ClientEditor from '@/components/clients/ClientEditor';
 import { appToast } from '@/lib/toast';
+import { Avatar } from '@/components/ui/Avatar';
 
 export interface AssignedClient {
     id: string;
@@ -135,24 +136,13 @@ export function ClientCell({
                                     : 'bg-[#f5f5f5] border-[#e5e5e5] text-[#333]'
                             )}
                         >
-                             {ac.avatar_url ? (
-                                <div className="relative shrink-0 w-4 h-4 -ml-1 flex items-center justify-center rounded-full">
-                                    <User size={12} className={cn("absolute z-0", isDark ? "text-white/40" : "opacity-50")} />
-                                    <img
-                                        src={ac.avatar_url}
-                                        alt={ac.name || 'Avatar'}
-                                        className={cn(
-                                            "w-full h-full rounded-full object-cover absolute inset-0 z-10",
-                                            isDark ? "bg-[#161616]" : "bg-white"
-                                        )}
-                                        onError={(e) => {
-                                            e.currentTarget.style.display = 'none';
-                                        }}
-                                    />
-                                </div>
-                             ) : (
-                                <User size={12} className={cn("shrink-0 -ml-0.5", isDark ? "text-white opacity-80" : "opacity-50")} />
-                            )}
+                            <Avatar
+                                src={ac.avatar_url}
+                                name={ac.name}
+                                isDark={isDark}
+                                className="w-4 h-4 -ml-1 rounded-full"
+                                fallbackIcon={<User size={10} className={isDark ? "text-white/40" : "text-black/30"} />}
+                            />
                             <span className="truncate max-w-[120px]">{ac.name}</span>
                         </span>
                         <div
@@ -187,7 +177,7 @@ export function ClientCell({
                 className={cn(
                     'text-left transition-colors',
                     variant === 'table'
-                        ? 'w-full h-full px-4 py-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'
+                        ? 'w-full h-full px-4 py-3'
                         : ''
                 )}
             >
@@ -255,24 +245,13 @@ export function ClientCell({
                                     )}
                                 >
                                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                                         {c.avatar_url ? (
-                                            <div className="relative shrink-0 w-5 h-5 flex items-center justify-center rounded-full">
-                                                <User size={14} className={cn("absolute z-0", isDark ? "text-white/40" : "opacity-40")} />
-                                                <img
-                                                    src={c.avatar_url}
-                                                    alt="av"
-                                                    className={cn(
-                                                        "w-full h-full rounded-full object-cover absolute inset-0 z-10",
-                                                        isDark ? "bg-[#161616]" : "bg-white"
-                                                    )}
-                                                    onError={(e) => {
-                                                        e.currentTarget.style.display = 'none';
-                                                    }}
-                                                />
-                                            </div>
-                                         ) : (
-                                            <User size={14} className={cn("shrink-0", isDark ? "text-white opacity-70" : "opacity-40")} />
-                                        )}
+                                        <Avatar
+                                            src={c.avatar_url}
+                                            name={c.contact_person || c.company_name}
+                                            isDark={isDark}
+                                            className="w-5 h-5 rounded-full"
+                                            fallbackIcon={<User size={12} className={isDark ? "text-white/40" : "text-black/30"} />}
+                                        />
                                         <div className="flex-1 min-w-0">
                                             <div
                                                 className={cn(

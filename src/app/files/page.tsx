@@ -910,13 +910,17 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId, checkStorag
 // ─── Tree Node ────────────────────────────────────────────────────────────────
 
 function TreeNode({
-    item, items, depth, currentFolderId, onNavigate, isDark, expandedIds, toggleExpand, dragOver, onDragOver, onDrop, onContextMenu
+    item, items, depth, currentFolderId, onNavigate, isDark, expandedIds, toggleExpand, dragOver, onDragOver, onDrop, onContextMenu,
+    renamingId, onRename, onSetRenamingId
 }: {
     item: FileItem; items: FileItem[]; depth: number; currentFolderId: string;
     onNavigate: (id: string) => void; isDark: boolean; expandedIds: Set<string>;
     toggleExpand: (id: string) => void; dragOver: string | null;
     onDragOver: (id: string | null) => void; onDrop: (targetId: string) => void;
     onContextMenu: (e: React.MouseEvent, itemId: string) => void;
+    renamingId: string | null;
+    onRename: (id: string, name: string) => void;
+    onSetRenamingId: (id: string | null) => void;
 }) {
     if (!item) return null;
     const children = items.filter(i => i.parentId === item.id && i.type === 'folder');
@@ -947,16 +951,49 @@ function TreeNode({
                 >
                     {isExpanded ? <ChevronDown size={10} strokeWidth={2.5}/> : <ChevronRight size={10} strokeWidth={2.5}/>}
                 </button>
-                {isActive
-                    ? <FolderOpen size={13} style={{ color: item.color || '#f59e0b' }} className="shrink-0"/>
-                    : <Folder size={13} style={{ color: item.color || '#f59e0b' }} className="shrink-0"/>}
-                <span className="text-[11.5px] font-medium truncate flex-1">{item.name}</span>
+                {item.id === 'root' ? (
+                    <Home size={13} fill="currentColor" className={cn("shrink-0", isDark ? "text-white/40" : "text-black/30")} />
+                ) : isActive ? (
+                    <FolderOpen size={13} style={{ color: item.color || '#f59e0b' }} className="shrink-0"/>
+                ) : (
+                    <Folder size={13} style={{ color: item.color || '#f59e0b' }} className="shrink-0"/>
+                )}
+                
+                {renamingId === item.id ? (
+                    <input
+                        autoFocus
+                        defaultValue={item.name}
+                        onClick={e => e.stopPropagation()}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                                onRename(item.id, e.currentTarget.value);
+                            } else if (e.key === 'Escape') {
+                                onSetRenamingId(null);
+                            }
+                        }}
+                        onBlur={e => {
+                            if (e.target.value !== item.name) {
+                                onRename(item.id, e.target.value);
+                            } else {
+                                onSetRenamingId(null);
+                            }
+                        }}
+                        className={cn(
+                            "flex-1 bg-transparent border-none outline-none text-[11.5px] font-medium p-0 m-0",
+                            isDark ? "text-white" : "text-black"
+                        )}
+                    />
+                ) : (
+                    <span className="text-[11.5px] font-medium truncate flex-1">{item.name}</span>
+                )}
                 {item.starred && <Star size={9} fill="currentColor" className="text-amber-400 opacity-60 shrink-0"/>}
             </div>
             {isExpanded && children.map(child => (
                 <TreeNode key={child.id} item={child} items={items} depth={depth + 1} currentFolderId={currentFolderId}
                     onNavigate={onNavigate} isDark={isDark} expandedIds={expandedIds} toggleExpand={toggleExpand}
-                    dragOver={dragOver} onDragOver={onDragOver} onDrop={onDrop} onContextMenu={onContextMenu}/>
+                    dragOver={dragOver} onDragOver={onDragOver} onDrop={onDrop} onContextMenu={onContextMenu}
+                    renamingId={renamingId} onRename={onRename} onSetRenamingId={onSetRenamingId}
+                />
             ))}
         </div>
     );
@@ -1953,6 +1990,9 @@ export default function FilesPage() {
                                 expandedIds={expandedIds} toggleExpand={toggleExpand} dragOver={dragOver}
                                 onDragOver={setDragOver} onDrop={handleDrop}
                                 onContextMenu={(e, itemId) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ x: e.clientX, y: e.clientY, itemId }); }}
+                                renamingId={renamingId}
+                                onRename={renameItem}
+                                onSetRenamingId={setRenamingId}
                             />
                         )}
                         {/* Quick Links */}
@@ -2210,12 +2250,6 @@ export default function FilesPage() {
                                                         isDark={isDark}
                                                         fallback={getItemIcon(item, 22)}
                                                     />
-                                                ) : item.type === 'doc' && item.name.toLowerCase().endsWith('.pdf') ? (
-                                                    <div className="w-12 h-14 rounded-xl flex flex-col items-center justify-center gap-1 transition-transform group-hover:scale-105 shadow-sm"
-                                                        style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
-                                                        <FileText size={18} className="text-white"/>
-                                                        <span className="text-[8px] font-bold text-white/80 uppercase tracking-wider">PDF</span>
-                                                    </div>
                                                 ) : (
                                                     <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105',
                                                         isDark ? 'bg-white/[0.03]' : 'bg-[#f5f5f5]')}>
