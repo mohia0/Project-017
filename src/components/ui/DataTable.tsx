@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, ReactNode } from 'react';
+import React, { useMemo, useState, useEffect, ReactNode, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
@@ -45,14 +45,14 @@ export function SortableHeader({ id, children, onLeftResizeStart, onRightResizeS
         zIndex: isDragging ? 20 : 1,
     };
     return (
-        <div ref={setNodeRef} style={style} className={cn(
+        <div ref={setNodeRef} style={style} data-col-id={id} className={cn(
             "relative px-4 py-2 flex items-center select-none group/header border-x border-transparent",
             isDragging ? "bg-blue-500/10" : "",
             isDark ? "hover:border-[#2e2e2e]" : "hover:border-[#e0e0e0]"
         )}>
             {onLeftResizeStart && (
                 <div onMouseDown={onLeftResizeStart} className={cn(
-                    "absolute -left-[12px] top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-20 group/resizer transition-colors",
+                    "absolute -left-[12px] top-0 bottom-0 w-[24px] flex items-center justify-center cursor-ew-resize z-20 group/resizer transition-colors",
                     "hover:bg-primary/5 active:bg-primary/10"
                 )}>
                     <div className="w-[2px] h-5 rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
@@ -62,8 +62,11 @@ export function SortableHeader({ id, children, onLeftResizeStart, onRightResizeS
                 {children}
             </div>
             {onRightResizeStart && (
-                <div onMouseDown={onRightResizeStart} className={cn(
-                    "absolute -right-[12px] top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-20 group/resizer transition-colors",
+                <div onMouseDown={(e) => {
+                    e.stopPropagation();
+                    onRightResizeStart(e);
+                }} className={cn(
+                    "absolute -right-[12px] top-0 bottom-0 w-[24px] flex items-center justify-center cursor-ew-resize z-50 group/resizer transition-colors",
                     "hover:bg-primary/5 active:bg-primary/10"
                 )}>
                     <div className="w-[2px] h-5 rounded-full opacity-0 group-hover/resizer:opacity-100 transition-opacity bg-primary" />
@@ -106,12 +109,13 @@ export function DataTable<T extends { id: string }>({
 }: DataTableProps<T>) {
     const { activeWorkspaceId } = useUIStore();
     const { toolSettings, fetchToolSettings, updateToolSettings, hasFetched } = useSettingsStore();
+    const containerRef = useRef<HTMLDivElement>(null);
     const storageKey = activeWorkspaceId ? `${activeWorkspaceId}_${storageKeyPrefix}` : storageKeyPrefix;
 
     const currentSettings = toolSettings[storageKeyPrefix] || {};
     const [columnOrder, setColumnOrder] = useState<string[]>(columns.map(c => c.id));
     const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-        const initial: Record<string, number> = { select: 44, right_slot: rightHeaderWidth || 80 };
+        const initial: Record<string, number> = { select: 44, right_slot: rightHeaderWidth || 80, ghost: 0 };
         columns.forEach(c => initial[c.id] = c.defaultWidth);
         return initial;
     });
@@ -176,34 +180,92 @@ export function DataTable<T extends { id: string }>({
         return () => clearTimeout(timer);
     }, [columnOrder, colWidths, activeWorkspaceId, storageKeyPrefix, updateToolSettings, hasFetched]);
 
-    const handleResizeStart = (leftKey: string, rightKey: string, e: React.MouseEvent) => {
+    const handleResizeStart = (leftKey: string, rightKey: string, e: React.MouseEvent, mode: 'adjacent' | 'left-only' | 'right-only' = 'adjacent') => {
         e.preventDefault();
         e.stopPropagation();
         const startX = e.clientX;
-        const startWidthLeft = colWidths[leftKey];
-        const startWidthRight = colWidths[rightKey];
+        
+        let actualStartLeft = colWidths[leftKey] || 150;
+        let actualStartRight = colWidths[rightKey] || 150;
+        
+        if (containerRef.current) {
+            const headerGrid = containerRef.current.querySelector('.grid') as HTMLElement;
+            if (headerGrid) {
+                const leftEl = headerGrid.querySelector(`[data-col-id="${leftKey}"]`);
+                if (leftEl) actualStartLeft = leftEl.getBoundingClientRect().width;
+                
+                const rightEl = headerGrid.querySelector(`[data-col-id="${rightKey}"]`);
+                if (rightEl) actualStartRight = rightEl.getBoundingClientRect().width;
+            }
+        }
+        
+        const startWidthLeft = actualStartLeft;
+        const startWidthRight = actualStartRight;
+        
+        let finalWidthLeft = mode === 'right-only' ? (colWidths[leftKey] || startWidthLeft) : startWidthLeft;
+        let finalWidthRight = mode === 'left-only' ? (colWidths[rightKey] || startWidthRight) : startWidthRight;
 
         const onMouseMove = (moveEvent: MouseEvent) => {
             const delta = moveEvent.clientX - startX;
             
-            // Try to set new widths
-            let newWidthLeft = Math.max(30, startWidthLeft + delta);
-            let finalDelta = newWidthLeft - startWidthLeft;
-            let newWidthRight = Math.max(30, startWidthRight - finalDelta);
-            
-            // Re-adjust if right column hit minimum
-            finalDelta = startWidthRight - newWidthRight;
-            newWidthLeft = startWidthLeft + finalDelta;
+            let newWidthLeft = Math.max(20, startWidthLeft + delta);
+            let newWidthRight = startWidthRight;
 
-            setColWidths(prev => ({ 
-                ...prev, 
-                [leftKey]: newWidthLeft,
-                [rightKey]: newWidthRight 
-            }));
+            if (mode === 'adjacent') {
+                let actualDelta = newWidthLeft - startWidthLeft;
+                newWidthRight = Math.max(20, startWidthRight - actualDelta);
+                
+                // Re-adjust if right column hit minimum
+                actualDelta = startWidthRight - newWidthRight;
+                newWidthLeft = startWidthLeft + actualDelta;
+            } else if (mode === 'left-only') {
+                newWidthLeft = Math.max(20, startWidthLeft + delta);
+            } else if (mode === 'right-only') {
+                newWidthRight = Math.max(20, startWidthRight - delta);
+            }
+
+            if (mode !== 'right-only') finalWidthLeft = newWidthLeft;
+            if (mode !== 'left-only') finalWidthRight = newWidthRight;
+
+            // Direct DOM manipulation for smoothness
+            if (containerRef.current) {
+                const tempWidths = { ...colWidths };
+                if (mode !== 'right-only') tempWidths[leftKey] = newWidthLeft;
+                if (mode !== 'left-only') tempWidths[rightKey] = newWidthRight;
+                
+                const parts = [`${tempWidths.select || 44}px`];
+                columnOrder.forEach(id => {
+                    const col = columns.find(c => c.id === id);
+                    const w = tempWidths[id] || col?.defaultWidth || 150;
+                    if (col?.flexible) parts.push(`minmax(${w}px, 1fr)`);
+                    else parts.push(`${w}px`);
+                });
+                const ghostWidth = tempWidths['ghost'] || 0;
+                parts.push(`minmax(${ghostWidth}px, 1fr)`);
+                
+                if (rightHeaderSlot || rightCellSlot) {
+                    parts.push(`${tempWidths['right_slot'] || rightHeaderWidth || 80}px`);
+                }
+
+                const template = parts.join(' ');
+                
+                // Apply to all grid containers (Header + Rows)
+                const grids = containerRef.current.querySelectorAll('.grid');
+                grids.forEach((g: any) => (g as HTMLElement).style.gridTemplateColumns = template);
+            }
         };
+
         const onMouseUp = () => {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
+            
+            // Commit to state on finish
+            setColWidths(prev => {
+                const next = { ...prev };
+                if (mode !== 'right-only') next[leftKey] = finalWidthLeft;
+                if (mode !== 'left-only') next[rightKey] = finalWidthRight;
+                return next;
+            });
         };
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
@@ -232,6 +294,9 @@ export function DataTable<T extends { id: string }>({
             if (col?.flexible) parts.push(`minmax(${colWidths[id] || col?.defaultWidth || 150}px, 1fr)`);
             else parts.push(`${colWidths[id] || col?.defaultWidth || 150}px`);
         });
+        // Ghost column — place before right_slot to keep right_slot at far right
+        parts.push(`minmax(${colWidths['ghost'] || 0}px, 1fr)`);
+        
         if (rightHeaderSlot || rightCellSlot) {
             parts.push(`${colWidths['right_slot'] || rightHeaderWidth || 80}px`);
         }
@@ -243,7 +308,7 @@ export function DataTable<T extends { id: string }>({
     // Loading Shimmer Block
     const renderShimmer = () => (
         <div className="flex flex-col">{Array.from({ length: 15 }).map((_, i) => (
-            <div key={i} className={cn("grid px-0 border-b items-center h-[45px]", isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")} style={{ gridTemplateColumns: gridTemplate }}>
+            <div key={i} className={cn("grid w-full px-0 border-b items-center h-[45px]", isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")} style={{ gridTemplateColumns: gridTemplate }}>
                 <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
                 {columnOrder.map(colId => (
                     <div key={colId} className="px-4"><div className={cn("h-3 w-3/4 max-w-[120px] rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
@@ -258,15 +323,15 @@ export function DataTable<T extends { id: string }>({
     }
 
     return (
-        <div className={cn("overflow-x-auto no-scrollbar rounded-xl border", isDark ? "border-[#222]" : "border-[#ebebeb]")}>
+        <div ref={containerRef} className={cn("overflow-x-auto no-scrollbar rounded-xl border", isDark ? "border-[#222]" : "border-[#ebebeb]")}>
             <div className="min-w-full w-max flex flex-col">
                 {/* Header */}
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <div className={cn("grid border-b text-[10px] font-semibold uppercase tracking-wider sticky top-0 z-30",
+                    <div className={cn("grid w-full border-b text-[10px] font-semibold uppercase tracking-wider sticky top-0 z-30",
                         isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}
                         style={{ gridTemplateColumns: gridTemplate }}>
                         
-                        <div className={cn("relative px-0 py-2 flex items-center justify-center shrink-0", isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]")}>
+                        <div data-col-id="select" className={cn("relative px-0 py-2 flex items-center justify-center shrink-0", isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]")}>
                             <div className="cursor-pointer" onClick={(e) => { e.stopPropagation(); onToggleAll(); }}>
                                 <Chk checked={isAllSelected} indeterminate={selectedIds.size > 0 && !isAllSelected} isDark={isDark} />
                             </div>
@@ -288,13 +353,13 @@ export function DataTable<T extends { id: string }>({
                                         width={colWidths[col.id]}
                                         flexible={col.flexible}
                                         noBorder={col.noBorder}
-                                        onLeftResizeStart={prevColId ? (e) => handleResizeStart(prevColId, col.id, e) : undefined}
+                                        onLeftResizeStart={prevColId 
+                                            ? (e) => handleResizeStart(prevColId, col.id, e, prevColId === columnOrder[0] ? 'left-only' : 'adjacent') 
+                                            : undefined}
                                         onRightResizeStart={
                                             nextColId 
-                                                ? (e) => handleResizeStart(col.id, nextColId, e) 
-                                                : (rightHeaderSlot || rightCellSlot) 
-                                                    ? (e) => handleResizeStart(col.id, 'right_slot', e) 
-                                                    : undefined
+                                                ? (e) => handleResizeStart(col.id, nextColId, e, index === 0 ? 'left-only' : 'adjacent') 
+                                                : (e) => handleResizeStart(col.id, 'ghost', e, index === 0 ? 'left-only' : 'adjacent')
                                         }
                                     >
                                         {col.label}
@@ -303,16 +368,19 @@ export function DataTable<T extends { id: string }>({
                             })}
                         </SortableContext>
 
+                        {/* Ghost column header cell */}
+                        <div data-col-id="ghost" className="flex-1 self-stretch" />
+
                         {(rightHeaderSlot || rightCellSlot) && (
-                            <div className={cn("relative px-4 py-2 flex items-center justify-end font-semibold sticky right-0 z-40 group/header", 
+                            <div data-col-id="right_slot" className={cn("relative px-4 py-2 flex items-center justify-end font-semibold sticky right-0 z-40 group/header", 
                                 isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]")}
                                 style={{ width: colWidths.right_slot }}
                             >
                                 {columnOrder.length > 0 && (
                                     <div 
-                                        onMouseDown={(e) => handleResizeStart(columnOrder[columnOrder.length - 1], 'right_slot', e)} 
+                                        onMouseDown={(e) => handleResizeStart('ghost', 'right_slot', e, 'right-only')} 
                                         className={cn(
-                                            "absolute -left-[12px] top-0 bottom-0 w-[24px] flex items-center justify-center cursor-col-resize z-50 group/resizer transition-colors",
+                                            "absolute -left-[12px] top-0 bottom-0 w-[24px] flex items-center justify-center cursor-ew-resize z-50 group/resizer transition-colors",
                                             "hover:bg-primary/5 active:bg-primary/10"
                                         )}
                                     >
@@ -341,14 +409,15 @@ export function DataTable<T extends { id: string }>({
                                             if (!col) return null;
                                             const isLastCol = idx === columnOrder.length - 1 && !rightHeaderSlot && !rightCellSlot;
                                             return (
-                                                <div key={colId} className={cn(
-                                                    "min-w-0 self-stretch flex items-center h-full"
-                                                )}>
+                                                <div key={colId} className="min-w-0 self-stretch flex items-center h-full">
                                                     {col.cell(item)}
                                                 </div>
                                             );
-                                        })}
-                                        {(rightHeaderSlot || rightCellSlot) && (
+                                            })}
+                                            {/* Ghost column cell */}
+                                            <div className="flex-1 self-stretch" />
+                                            
+                                            {(rightHeaderSlot || rightCellSlot) && (
                                             <div className={cn(
                                                 "px-3 py-1.5 self-stretch flex items-center justify-end sticky right-0 z-10 transition-colors",
                                                 isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]"
@@ -374,7 +443,7 @@ export function DataTable<T extends { id: string }>({
                                             animate={{ opacity: 1 }}
                                             exit={{ opacity: 0 }}
                                             transition={{ duration: 0.15 }}
-                                            className={cn("grid px-0 text-[12px] cursor-pointer group transition-colors",
+                                            className={cn("grid w-full px-0 text-[12px] cursor-pointer group transition-colors",
                                                 !isLastRow && (isDark ? "border-b border-[#1f1f1f]" : "border-b border-[#f0f0f0]"),
                                                 isDark ? "hover:bg-white/[0.025]" : "bg-white hover:bg-[#fafafa]",
                                                 isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
@@ -394,7 +463,7 @@ export function DataTable<T extends { id: string }>({
                                         animate={{ opacity: 1 }}
                                         exit={{ opacity: 0 }}
                                         transition={{ duration: 0.15 }}
-                                        className={cn("grid px-0 text-[12px] cursor-pointer group transition-colors",
+                                        className={cn("grid w-full px-0 text-[12px] cursor-pointer group transition-colors",
                                             !isLastRow && (isDark ? "border-b border-[#1f1f1f]" : "border-b border-[#f0f0f0]"),
                                             isDark ? "hover:bg-white/[0.025]" : "bg-white hover:bg-[#fafafa]",
                                             isSelected && (isDark ? "bg-blue-900/10" : "bg-blue-50/40"))}
