@@ -699,14 +699,28 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
             const uploaded: {id: string, name: string, url: string, size: number, type: string}[] = [];
             let totalBytes = files.reduce((acc, f) => acc + f.size, 0);
             let uploadedBytes = 0;
-
             for (const file of files) {
-                const fd = new FormData();
-                fd.append('file', file);
+                const contentType = file.type || 'application/octet-stream';
                 
+                // 1. Get Presigned URL
+                const presignResp = await fetch("/api/upload/presign", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        contentType: contentType
+                    })
+                });
+                
+                if (!presignResp.ok) continue;
+                const { presignedUrl, fileUrl } = await presignResp.json();
+
+                // 2. Direct PUT to S3
                 const json = await new Promise<any>((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
-                    xhr.open('POST', '/api/upload');
+                    xhr.open('PUT', presignedUrl);
+                    xhr.setRequestHeader('Content-Type', contentType);
+                    
                     let fileUploaded = 0;
                     xhr.upload.onprogress = (ev) => {
                         if (ev.lengthComputable) {
@@ -718,20 +732,20 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                     };
                     xhr.onload = () => {
                         uploadedBytes += file.size; // finalize this file's bytes length
-                        try {
-                            resolve(JSON.parse(xhr.responseText));
-                        } catch(err) {
-                            reject(err);
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve({ url: fileUrl });
+                        } else {
+                            reject(new Error('S3 Upload failed'));
                         }
                     };
                     xhr.onerror = () => reject(new Error('Network Error'));
-                    xhr.send(fd);
+                    xhr.send(file);
                 });
 
                 if (json.url) {
                     uploaded.push({ id: crypto.randomUUID(), name: file.name, url: json.url, size: file.size, type: file.type });
                 } else {
-                    appToast.error('Upload failed', json.details || 'Unknown error');
+                    appToast.error('Upload failed', 'Unknown error');
                 }
             }
             if (uploaded.length) {

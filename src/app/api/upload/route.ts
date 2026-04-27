@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
+import { Readable } from "stream";
 
 const s3Client = new S3Client({
     region: process.env.B2_REGION || "us-east-005",
@@ -8,57 +10,71 @@ const s3Client = new S3Client({
         accessKeyId: process.env.B2_ACCESS_KEY_ID || "",
         secretAccessKey: process.env.B2_SECRET_ACCESS_KEY || "",
     },
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
 });
 
 export async function POST(req: NextRequest) {
     try {
-        const formData = await req.formData();
-        const file = formData.get("file") as File | null;
+        const fileName = req.headers.get("X-File-Name");
+        const contentType = req.headers.get("Content-Type") || "application/octet-stream";
         
-        if (!file) {
-            return NextResponse.json({ error: "No file provided" }, { status: 400 });
+        if (!fileName) {
+            return NextResponse.json({ error: "No X-File-Name header provided" }, { status: 400 });
         }
 
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        // Clean filename to prevent issues
-        const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const fileName = `${Date.now()}-${cleanName}`;
+        const rawFileName = decodeURIComponent(fileName);
 
-        const command = new PutObjectCommand({
-            Bucket: process.env.B2_BUCKET_NAME,
-            Key: fileName,
-            Body: buffer,
-            ContentType: file.type,
+        // Sanitize filename
+        const cleanName = rawFileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const uniqueFileName = `${Date.now()}-${cleanName}`;
+
+        // Stream body directly to S3
+        // Next.js req.body is a web ReadableStream
+        const bodyStream = req.body;
+        
+        if (!bodyStream) {
+            return NextResponse.json({ error: "No request body provided" }, { status: 400 });
+        }
+
+        console.log(`Streaming ${uniqueFileName} to B2...`);
+
+        // Convert Web ReadableStream to Node.js Readable Stream for AWS SDK
+        const nodeStream = Readable.fromWeb(bodyStream as any);
+
+        const upload = new Upload({
+            client: s3Client,
+            params: {
+                Bucket: process.env.B2_BUCKET_NAME,
+                Key: uniqueFileName,
+                Body: nodeStream,
+                ContentType: contentType,
+            },
+            // CRITICAL FOR ACCURATE PROGRESS TRACKING:
+            // Force strict backpressure by only keeping 1 chunk (5MB) in memory at a time.
+            // This prevents the Proxy from swallowing the file instantly on localhost,
+            // which slows down the browser's XHR progress bar to match the exact speed of B2!
+            queueSize: 1,
+            partSize: 5 * 1024 * 1024, // 5 MB
         });
 
-        await s3Client.send(command);
+        await upload.done();
 
-        // Return a proxy URL through our own domain — works for private buckets,
-        // and links look like https://yourdomain.com/api/files/filename.png
-        const fileUrl = `/api/files/${encodeURIComponent(fileName)}`;
+        console.log(`Upload complete: ${uniqueFileName}`);
 
-        return NextResponse.json({ 
-            success: true, 
-            url: fileUrl,
-            name: file.name,
-            size: file.size
+        const fileUrl = `/api/files/${encodeURIComponent(uniqueFileName)}`;
+
+        return NextResponse.json({
+            success: true,
+            fileUrl,
+            fileName: uniqueFileName,
         });
 
     } catch (error: any) {
-        console.error("Upload error details:", {
-            message: error.message,
-            stack: error.stack,
-            code: error.code,
-            region: process.env.B2_REGION,
-            endpoint: process.env.B2_ENDPOINT,
-            bucket: process.env.B2_BUCKET_NAME ? 'set' : 'not set',
-            keys: process.env.B2_ACCESS_KEY_ID ? 'set' : 'not set'
-        });
-        return NextResponse.json({ 
-            error: "Upload failed", 
-            details: error.message,
-            code: error.code 
-        }, { status: 500 });
+        console.error("Upload route error:", error);
+        return NextResponse.json(
+            { error: "Upload failed", details: error.message },
+            { status: 500 }
+        );
     }
 }

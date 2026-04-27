@@ -63,8 +63,17 @@ export default function FileUploadModal({
                     continue;
                 }
 
-                const formData = new FormData();
-                formData.append('file', file);
+                const contentType = file.type || 'application/octet-stream';
+                
+                // Get Auth
+                const presignResp = await fetch("/api/upload/presign", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ fileName: file.name, contentType })
+                });
+                
+                if (!presignResp.ok) throw new Error('Failed to authorize upload');
+                const { presignedUrl, fileUrl } = await presignResp.json();
 
                 const data = await new Promise<any>((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
@@ -86,15 +95,10 @@ export default function FileUploadModal({
                     });
                     
                     xhr.addEventListener('load', () => {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (xhr.status >= 200 && xhr.status < 300) {
-                                resolve(response);
-                            } else {
-                                reject(new Error(response.details || response.error || 'Upload failed'));
-                            }
-                        } catch (e) {
-                            reject(new Error('Invalid response from server'));
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve({ fileUrl });
+                        } else {
+                            reject(new Error(`Upload failed with status ${xhr.status}.`));
                         }
                     });
                     
@@ -102,11 +106,12 @@ export default function FileUploadModal({
                         reject(new Error('Network error occurred during upload.'));
                     });
                     
-                    xhr.open('POST', '/api/upload');
-                    xhr.send(formData);
+                    xhr.open('PUT', presignedUrl);
+                    xhr.setRequestHeader('Content-Type', contentType);
+                    xhr.send(file);
                 });
                 
-                uploadedUrls.push(data.url);
+                uploadedUrls.push(data.fileUrl || data.url);
             }
             
             if (uploadedUrls.length === 0 && filesToUpload.length > 0) {

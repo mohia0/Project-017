@@ -609,25 +609,23 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
             setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'uploading', progress: 0 } : u));
 
             try {
-                // 1. Get presigned URL
+                // 1. Get presigned PUT URL
                 const presignResp = await fetch("/api/upload/presign", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         fileName: uploadObj.file.name,
-                        contentType: uploadObj.file.type
+                        contentType: uploadObj.file.type || "application/octet-stream"
                     })
                 });
 
                 if (!presignResp.ok) throw new Error("Failed to get upload authorization");
                 const { presignedUrl, fileUrl } = await presignResp.json();
 
-                // 2. Upload directly to B2/S3
+                // 2. Upload directly to B2
                 const xhr = new XMLHttpRequest();
                 xhr.open("PUT", presignedUrl, true);
-                
-                // Important: S3/B2 requires the Content-Type to match what was signed
-                xhr.setRequestHeader("Content-Type", uploadObj.file.type);
+                xhr.setRequestHeader("Content-Type", uploadObj.file.type || "application/octet-stream");
 
                 xhr.upload.onprogress = (event) => {
                     if (event.lengthComputable) {
@@ -637,7 +635,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                 };
 
                 xhr.onload = () => {
-                    if (xhr.status === 200 || xhr.status === 204) {
+                    if (xhr.status >= 200 && xhr.status < 300) {
                         setUploads(prev => prev.map(u => u.id === id ? {
                             ...u,
                             status: 'done',
@@ -650,7 +648,7 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                 };
 
                 xhr.onerror = () => {
-                    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: 'Network error' } : u));
+                    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'error', errorMessage: 'Network error (CORS Check)' } : u));
                 };
 
                 xhr.send(uploadObj.file);
@@ -1369,10 +1367,10 @@ export default function FilesPage() {
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
 
-        // Initialize progress toast — uses duration: Infinity to stay visible
+        // Initialize progress toast — duration: 0 keeps it pinned until manually dismissed
         const toastId = appToast.message(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}...`, {
             description: <ProgressContent progress={0} isDark={isDark} />,
-            duration: Infinity
+            duration: 0
         });
         const progresses = new Array(files.length).fill(0);
 
@@ -1381,14 +1379,14 @@ export default function FilesPage() {
             if (totalSize === 0) {
                 const total = progresses.reduce((a, b) => a + b, 0);
                 const average = total / files.length;
-                appToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} />, duration: Infinity } as any);
+                appToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} />, duration: 0 } as any);
                 return;
             }
             const totalLoaded = files.reduce((acc, f, i) => acc + (f.size * (progresses[i] / 100)), 0);
             const overallProgress = (totalLoaded / totalSize) * 100;
             appToast.update(toastId, {
                 description: <ProgressContent progress={overallProgress} isDark={isDark} />,
-                duration: Infinity,
+                duration: 0,
             } as any);
         };
 
@@ -1396,12 +1394,13 @@ export default function FilesPage() {
             const newItems: FileItem[] = [];
             
             await Promise.all(files.map(async (file, idx) => {
+                const contentType = file.type || "application/octet-stream";
                 const presignResp = await fetch("/api/upload/presign", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         fileName: file.name,
-                        contentType: file.type
+                        contentType: contentType
                     })
                 });
 
@@ -1411,8 +1410,8 @@ export default function FilesPage() {
                 return new Promise<void>((subResolve, subReject) => {
                     const xhr = new XMLHttpRequest();
                     xhr.open("PUT", presignedUrl, true);
-                    xhr.setRequestHeader("Content-Type", file.type);
-                    
+                    xhr.setRequestHeader("Content-Type", contentType);
+
                     xhr.upload.onprogress = (event) => {
                         if (event.lengthComputable) {
                             progresses[idx] = (event.loaded / event.total) * 100;
@@ -1421,7 +1420,7 @@ export default function FilesPage() {
                     };
 
                     xhr.onload = () => {
-                        if (xhr.status === 200 || xhr.status === 204) {
+                        if (xhr.status >= 200 && xhr.status < 300) {
                             newItems.push({
                                 id: `file-${Date.now()}-${Math.random()}`,
                                 name: file.name,
@@ -1442,11 +1441,17 @@ export default function FilesPage() {
                 });
             }));
             await addFilesToDb(newItems);
+            // Show 100% before dismissing so the user sees the completed state
+            appToast.update(toastId, {
+                description: <ProgressContent progress={100} isDark={isDark} />,
+                duration: 0,
+            } as any);
+            await new Promise(r => setTimeout(r, 800));
+            appToast.dismiss(toastId);
             appToast.success('Upload complete', 'All files have been uploaded successfully');
-            appToast.dismiss(toastId);
         } catch (err: any) {
-            appToast.error('Upload failed', (err as { message?: string })?.message || 'An error occurred during upload');
             appToast.dismiss(toastId);
+            appToast.error('Upload failed', (err as { message?: string })?.message || 'An error occurred during upload');
         }
     }, [currentFolderId, addFilesToDb, isDark]);
 

@@ -4,6 +4,7 @@ import './globals.css';
 import '@mantine/core/styles.css';
 import AppLayout from '@/components/layout/AppLayout';
 import { Providers } from '@/components/layout/Providers';
+import { GlobalImageErrorHandler } from '@/components/layout/GlobalImageErrorHandler';
 import { BrandingProvider } from '@/components/settings/BrandingProvider';
 import { createSupabaseServer } from '@/lib/supabase/server';
 import { supabaseService } from '@/lib/supabase-service';
@@ -113,6 +114,7 @@ export default async function RootLayout({
       <body suppressHydrationWarning>
         <Providers session={session}>
           <BrandingProvider>
+            <GlobalImageErrorHandler />
             <AppLayout>{children}</AppLayout>
           </BrandingProvider>
         </Providers>
