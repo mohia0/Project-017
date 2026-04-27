@@ -34,10 +34,10 @@ export function Dropdown({ open, onClose, isDark, children, align = 'right', cla
         if (!open) return;
         updateCoords();
         const handleClickOutside = (e: MouseEvent) => {
-            if (
-                menuRef.current && !menuRef.current.contains(e.target as Node) &&
-                triggerRef?.current && !triggerRef.current.contains(e.target as Node)
-            ) {
+            const isOutsideMenu = menuRef.current && !menuRef.current.contains(e.target as Node);
+            const isOutsideTrigger = !triggerRef?.current || !triggerRef.current.contains(e.target as Node);
+            
+            if (isOutsideMenu && isOutsideTrigger) {
                 onClose();
             }
         };

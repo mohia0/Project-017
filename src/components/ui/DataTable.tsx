@@ -8,6 +8,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ContextMenuRow } from './RowContextMenu';
 import { useUIStore } from '@/store/useUIStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 export function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
     return (
@@ -104,28 +105,76 @@ export function DataTable<T extends { id: string }>({
     rowMenuItems, isDark, rightHeaderSlot, rightHeaderWidth, rightCellSlot, isLoading, emptyState, afterRows
 }: DataTableProps<T>) {
     const { activeWorkspaceId } = useUIStore();
+    const { toolSettings, fetchToolSettings, updateToolSettings, hasFetched } = useSettingsStore();
     const storageKey = activeWorkspaceId ? `${activeWorkspaceId}_${storageKeyPrefix}` : storageKeyPrefix;
 
-    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-        const saved = typeof window !== 'undefined' ? localStorage.getItem(`${storageKey}_col_order`) : null;
-        return saved ? JSON.parse(saved) : columns.map(c => c.id);
-    });
-
+    const currentSettings = toolSettings[storageKeyPrefix] || {};
+    const [columnOrder, setColumnOrder] = useState<string[]>(columns.map(c => c.id));
     const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-        const saved = typeof window !== 'undefined' ? localStorage.getItem(`${storageKey}_col_widths`) : null;
-        if (saved) return JSON.parse(saved);
         const initial: Record<string, number> = { select: 44, right_slot: rightHeaderWidth || 80 };
         columns.forEach(c => initial[c.id] = c.defaultWidth);
         return initial;
     });
 
+    // 1. Initial Fetch
     useEffect(() => {
-        localStorage.setItem(`${storageKey}_col_order`, JSON.stringify(columnOrder));
-    }, [columnOrder, storageKey]);
+        if (activeWorkspaceId && !hasFetched[`toolSettings_${storageKeyPrefix}`]) {
+            fetchToolSettings(activeWorkspaceId, storageKeyPrefix);
+        }
+    }, [activeWorkspaceId, storageKeyPrefix, fetchToolSettings, hasFetched]);
 
+    // 2. Sync from Settings Store (Remote ground truth)
     useEffect(() => {
-        localStorage.setItem(`${storageKey}_col_widths`, JSON.stringify(colWidths));
-    }, [colWidths, storageKey]);
+        if (currentSettings.columnOrder) setColumnOrder(currentSettings.columnOrder);
+        if (currentSettings.colWidths) setColWidths(currentSettings.colWidths);
+    }, [currentSettings.columnOrder, currentSettings.colWidths]);
+
+    // 3. Migration logic (Local -> Remote)
+    useEffect(() => {
+        if (typeof window === 'undefined' || !activeWorkspaceId) return;
+        if (hasFetched[`toolSettings_${storageKeyPrefix}`] && !currentSettings.columnOrder && !currentSettings.colWidths) {
+            const savedOrder = localStorage.getItem(`${storageKey}_col_order`);
+            const savedWidths = localStorage.getItem(`${storageKey}_col_widths`);
+            const legacyOrder = localStorage.getItem(`${storageKeyPrefix}_col_order`);
+            const legacyWidths = localStorage.getItem(`${storageKeyPrefix}_col_widths`);
+
+            const order = savedOrder || legacyOrder;
+            const widths = savedWidths || legacyWidths;
+
+            if (order || widths) {
+                const nextSettings = { ...currentSettings };
+                if (order) nextSettings.columnOrder = JSON.parse(order);
+                if (widths) nextSettings.colWidths = JSON.parse(widths);
+                
+                updateToolSettings(activeWorkspaceId, storageKeyPrefix, nextSettings);
+                
+                // Clear local
+                localStorage.removeItem(`${storageKey}_col_order`);
+                localStorage.removeItem(`${storageKey}_col_widths`);
+                localStorage.removeItem(`${storageKeyPrefix}_col_order`);
+                localStorage.removeItem(`${storageKeyPrefix}_col_widths`);
+            }
+        }
+    }, [activeWorkspaceId, storageKey, storageKeyPrefix, hasFetched, currentSettings, updateToolSettings]);
+
+    // 4. Persist changes to Remote (Debounced)
+    useEffect(() => {
+        if (!activeWorkspaceId || !hasFetched[`toolSettings_${storageKeyPrefix}`]) return;
+        
+        const timer = setTimeout(() => {
+            // Only update if different
+            if (JSON.stringify(columnOrder) !== JSON.stringify(currentSettings.columnOrder) || 
+                JSON.stringify(colWidths) !== JSON.stringify(currentSettings.colWidths)) {
+                updateToolSettings(activeWorkspaceId, storageKeyPrefix, {
+                    ...currentSettings,
+                    columnOrder,
+                    colWidths
+                });
+            }
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [columnOrder, colWidths, activeWorkspaceId, storageKeyPrefix, updateToolSettings, hasFetched]);
 
     const handleResizeStart = (leftKey: string, rightKey: string, e: React.MouseEvent) => {
         e.preventDefault();

@@ -390,11 +390,11 @@ function SaveDialog({
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center" onClick={onCancel}>
+    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 backdrop-blur-sm transition-all animate-in fade-in duration-200" onClick={onCancel}>
       <div
         onClick={e => e.stopPropagation()}
         className={cn(
-          'w-[320px] rounded-[16px] border shadow-2xl p-5 flex flex-col gap-4',
+          'w-[320px] rounded-[16px] border shadow-2xl p-5 flex flex-col gap-4 animate-in zoom-in-95 duration-200',
           isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-white border-[#e0e0e0]'
         )}
       >
@@ -474,6 +474,15 @@ export function FilterPanel({
     setLocalRows(rows.length > 0 ? rows : [makeFilterRow()]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Handle Escape key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !showSaveDialog) onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose, showSaveDialog]);
 
   const updateRow = useCallback((id: string, patch: Partial<FilterRow>) => {
     setLocalRows(prev => prev.map(r => {
