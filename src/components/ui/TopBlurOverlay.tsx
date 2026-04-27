@@ -38,12 +38,12 @@ export function TopBlurOverlay({ design }: TopBlurOverlayProps) {
 
     // ── BLUR FADE (smooth frosted glass) ───────────────────────────────────
     if (style === 'blur') {
-        // Stretched fade map for a very long bleed off
-        const maskGradient = 'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0.5) 50%, transparent 100%)';
+        // Shorter fade map for a more contained bleed off
+        const maskGradient = 'linear-gradient(to bottom, black 0%, rgba(0,0,0,0.95) 20%, rgba(0,0,0,0.5) 60%, transparent 100%)';
         return (
             <>
                 <div
-                    className="absolute inset-x-0 -top-8 h-[360px] pointer-events-none"
+                    className="absolute inset-x-0 -top-8 h-[200px] pointer-events-none"
                     style={{
                         background: isDark
                             ? 'linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 100%)'
@@ -57,7 +57,7 @@ export function TopBlurOverlay({ design }: TopBlurOverlayProps) {
                 
                 {/* Heavy Digital Noise Layer */}
                 <div
-                    className="absolute inset-x-0 -top-8 h-[360px] pointer-events-none"
+                    className="absolute inset-x-0 -top-8 h-[200px] pointer-events-none"
                     style={{
                         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
                         backgroundSize: '100px 100px',

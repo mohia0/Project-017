@@ -332,7 +332,7 @@ export default function ClientsPage() {
             </div>
         )},
         { id: 'email', label: 'Email', defaultWidth: 180, cell: (c: any) => (
-            <div className="flex items-center px-4 py-1.5 h-full truncate text-[#3b82f6]">{c.email || <span className={textSecondary}>—</span>}</div>
+            <div className="flex items-center px-4 py-1.5 h-full truncate text-primary">{c.email || <span className={textSecondary}>—</span>}</div>
         )},
         { id: 'phone', label: 'Phone', defaultWidth: 140, cell: (c: any) => (
             <div className={cn("flex flex-col justify-center px-4 py-1.5 h-full truncate", textSecondary)}><span className="text-[12px]">{c.phone || '—'}</span></div>
@@ -356,13 +356,13 @@ export default function ClientsPage() {
             <div className={cn("flex flex-col justify-center px-4 py-1.5 h-full truncate", textSecondary)}><span className="text-[12px]">{c.industry || '—'}</span></div>
         )},
         { id: 'email', label: 'Email', defaultWidth: 180, cell: (c: any) => (
-            <div className="flex items-center px-4 py-1.5 h-full truncate text-[#3b82f6]">{c.email || <span className={textSecondary}>—</span>}</div>
+            <div className="flex items-center px-4 py-1.5 h-full truncate text-primary">{c.email || <span className={textSecondary}>—</span>}</div>
         )},
         { id: 'phone', label: 'Phone', defaultWidth: 140, cell: (c: any) => (
             <div className={cn("flex flex-col justify-center px-4 py-1.5 h-full truncate", textSecondary)}><span className="text-[12px]">{c.phone || '—'}</span></div>
         )},
         { id: 'website', label: 'Website', defaultWidth: 160, cell: (c: any) => (
-            <div className={cn("flex items-center px-4 py-1.5 h-full truncate text-[#3b82f6]")}>{c.website || <span className={textSecondary}>—</span>}</div>
+            <div className={cn("flex items-center px-4 py-1.5 h-full truncate text-primary")}>{c.website || <span className={textSecondary}>—</span>}</div>
         )},
         { id: 'contacts', label: 'Contacts', defaultWidth: 100, cell: (c: any) => {
             const linkedCount = clients.filter(client => client.company_name === c.name).length;

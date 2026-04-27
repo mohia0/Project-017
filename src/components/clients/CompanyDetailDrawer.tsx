@@ -120,7 +120,7 @@ export default function CompanyDetailDrawer({ company, onClose }: Props) {
                                 </button>
                                 <button onClick={handleSave} disabled={saving}
                                     className={cn("flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-[8px] transition-colors",
-                                        saved ? "bg-emerald-500 text-white" : "bg-[#4dbf39] hover:bg-[#59d044] text-black disabled:opacity-60")}>
+                                        saved ? "bg-emerald-500 text-white" : "bg-primary hover:brightness-110 text-primary-foreground disabled:opacity-60")}>
                                     {saved ? <><Check size={11} /> Saved</> : <><Save size={11} /> {saving ? 'Saving…' : 'Save'}</>}
                                 </button>
                             </>
@@ -201,8 +201,8 @@ export default function CompanyDetailDrawer({ company, onClose }: Props) {
                     <div className="px-4 pt-3">
                         <a href={`mailto:${form.email}`}
                             className={cn("flex items-center justify-between gap-2 px-4 py-2.5 rounded-lg text-[12px] font-medium transition-colors group",
-                                isDark ? "bg-[#1a1a1a] border border-[#252525] text-[#4dbf39] hover:bg-[#1e1e1e]"
-                                    : "bg-[#f0fdf4] border border-[#d1fad4] text-[#299b1a] hover:bg-[#e8fbe8]")}>
+                                isDark ? "bg-primary/5 border border-primary/20 text-primary hover:bg-primary/10"
+                                    : "bg-primary/5 border border-primary/20 text-primary hover:bg-primary/10")}>
                             <div className="flex items-center gap-2 min-w-0">
                                 <Mail size={12} /><span className="truncate">{form.email}</span>
                             </div>

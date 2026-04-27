@@ -7,6 +7,7 @@ import { arrayMove, SortableContext, horizontalListSortingStrategy, sortableKeyb
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ContextMenuRow } from './RowContextMenu';
+import { useUIStore } from '@/store/useUIStore';
 
 export function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
     return (
@@ -102,14 +103,16 @@ export function DataTable<T extends { id: string }>({
     data, columns, storageKeyPrefix, selectedIds, onToggleAll, onToggleRow, onRowClick,
     rowMenuItems, isDark, rightHeaderSlot, rightHeaderWidth, rightCellSlot, isLoading, emptyState, afterRows
 }: DataTableProps<T>) {
+    const { activeWorkspaceId } = useUIStore();
+    const storageKey = activeWorkspaceId ? `${activeWorkspaceId}_${storageKeyPrefix}` : storageKeyPrefix;
 
     const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-        const saved = typeof window !== 'undefined' ? localStorage.getItem(`${storageKeyPrefix}_col_order`) : null;
+        const saved = typeof window !== 'undefined' ? localStorage.getItem(`${storageKey}_col_order`) : null;
         return saved ? JSON.parse(saved) : columns.map(c => c.id);
     });
 
     const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
-        const saved = typeof window !== 'undefined' ? localStorage.getItem(`${storageKeyPrefix}_col_widths`) : null;
+        const saved = typeof window !== 'undefined' ? localStorage.getItem(`${storageKey}_col_widths`) : null;
         if (saved) return JSON.parse(saved);
         const initial: Record<string, number> = { select: 44, right_slot: rightHeaderWidth || 80 };
         columns.forEach(c => initial[c.id] = c.defaultWidth);
@@ -117,12 +120,12 @@ export function DataTable<T extends { id: string }>({
     });
 
     useEffect(() => {
-        localStorage.setItem(`${storageKeyPrefix}_col_order`, JSON.stringify(columnOrder));
-    }, [columnOrder, storageKeyPrefix]);
+        localStorage.setItem(`${storageKey}_col_order`, JSON.stringify(columnOrder));
+    }, [columnOrder, storageKey]);
 
     useEffect(() => {
-        localStorage.setItem(`${storageKeyPrefix}_col_widths`, JSON.stringify(colWidths));
-    }, [colWidths, storageKeyPrefix]);
+        localStorage.setItem(`${storageKey}_col_widths`, JSON.stringify(colWidths));
+    }, [colWidths, storageKey]);
 
     const handleResizeStart = (leftKey: string, rightKey: string, e: React.MouseEvent) => {
         e.preventDefault();
