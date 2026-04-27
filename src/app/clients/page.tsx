@@ -487,7 +487,7 @@ export default function ClientsPage() {
                                 savedFilters={savedFilters}
                                 onChange={setFilterRows}
                                 onApply={(rows) => { setFilterRows(rows); setActiveFilterId(null); }}
-                                onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); setActiveFilterId(f.id); }}
+                                onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); if (f) setActiveFilterId(f.id); }}
                                 onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }}
                                 onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }}
                                 isDark={isDark}

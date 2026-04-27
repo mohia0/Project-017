@@ -521,7 +521,7 @@ export default function ProposalsPage() {
                                 </div>
                             </Dropdown>
                             {advancedFilterOpen && (
-                                <FilterPanel fields={PROPOSAL_FILTER_FIELDS} rows={filterRows} savedFilters={savedFilters} onChange={setFilterRows} onApply={(rows) => { setFilterRows(rows); setActiveFilterId(null); }} onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); setActiveFilterId(f.id); }} onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }} onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }} isDark={isDark} onClose={() => setAdvancedFilterOpen(false)} />
+                                <FilterPanel fields={PROPOSAL_FILTER_FIELDS} rows={filterRows} savedFilters={savedFilters} onChange={setFilterRows} onApply={(rows) => { setFilterRows(rows); setActiveFilterId(null); }} onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); if (f) setActiveFilterId(f.id); }} onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }} onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }} isDark={isDark} onClose={() => setAdvancedFilterOpen(false)} />
                             )}
                         </div>
                         <div className={cn("w-[1px] h-4 mx-0.5", isDark ? "bg-[#2e2e2e]" : "bg-[#e0e0e0]")} />
