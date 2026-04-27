@@ -41,6 +41,7 @@ export const appToast = {
       description: updates.description,
       type: updates.type,
       duration: updates.duration,
+      ...updates,
     } as any);
   },
 
@@ -49,11 +50,14 @@ export const appToast = {
       return (goeyToast as any)[options.type](title, {
         description: options?.description,
         duration: options?.duration,
+        ...options,
       });
     }
     return goeyToast(title, {
       description: options?.description,
       duration: options?.duration,
+      // Pass all remaining options (e.g. timing, id, etc.) so nothing is silently dropped
+      ...options,
     });
   }
 };

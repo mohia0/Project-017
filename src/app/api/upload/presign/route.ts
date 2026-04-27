@@ -16,10 +16,31 @@ const s3Client = new S3Client({
 
 export async function POST(req: NextRequest) {
     try {
-        const { fileName, contentType } = await req.json();
+        const { fileName, contentType, workspaceId, fileSize } = await req.json();
 
         if (!fileName || !contentType) {
             return NextResponse.json({ error: "Missing filename or contentType" }, { status: 400 });
+        }
+
+        // Hard limit enforcement (100GB)
+        const STORAGE_LIMIT_GB = 100;
+        const STORAGE_LIMIT_BYTES = STORAGE_LIMIT_GB * 1024 * 1024 * 1024;
+
+        if (workspaceId && fileSize) {
+            const { data: files, error: filesError } = await (await import('@/lib/supabase-service')).supabaseService
+                .from('files')
+                .select('size')
+                .eq('workspace_id', workspaceId);
+
+            if (!filesError && files) {
+                const currentUsage = files.reduce((acc, f) => acc + (Number(f.size) || 0), 0);
+                if (currentUsage + fileSize > STORAGE_LIMIT_BYTES) {
+                    return NextResponse.json({ 
+                        error: "Storage limit reached", 
+                        details: `Your workspace has reached its ${STORAGE_LIMIT_GB}GB limit. Please delete some files and try again.` 
+                    }, { status: 403 });
+                }
+            }
         }
 
         // Clean filename to prevent issues

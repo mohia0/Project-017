@@ -46,11 +46,7 @@ const ProgressContent = ({ progress, isDark }: { progress: number; isDark: boole
             </div>
             <div className="flex justify-between items-center mt-2">
                 <div className="flex items-center gap-1.5">
-                    {isComplete ? (
-                        <AppLoader size="xs" />
-                    ) : (
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                    )}
+                    <AppLoader size="xs" />
                     <span className={cn("text-[10px] font-medium uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#aaa]")}>
                         {isComplete ? 'Finalizing library...' : 'Uploading files...'}
                     </span>
@@ -607,11 +603,13 @@ const ACCEPTED_FORMATS = [
     { label: 'Archives', exts: ['ZIP', 'RAR', '7Z', 'TAR', 'GZ'], color: '#6b7280', icon: <FileArchive size={13}/> },
 ];
 
-function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
+function UploadModal({ isDark, onClose, onUploaded, currentFolderId, checkStorageLimit, activeWorkspaceId }: {
     isDark: boolean;
     onClose: () => void;
     onUploaded: (files: FileItem[]) => void;
     currentFolderId: string;
+    checkStorageLimit: (files: File[] | FileList) => boolean;
+    activeWorkspaceId: string | null;
 }) {
     const [uploads, setUploads] = useState<UploadFile[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
@@ -632,8 +630,13 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
     const removeUpload = (id: string) => setUploads(prev => prev.filter(u => u.id !== id));
 
     const startUpload = () => {
-        const pendingIds = uploads.filter(u => u.status === 'pending').map(u => u.id);
-        if (pendingIds.length === 0) return;
+        const pending = uploads.filter(u => u.status === 'pending');
+        if (pending.length === 0) return;
+
+        // Check storage limit before starting anything
+        if (!checkStorageLimit(pending.map(u => u.file))) return;
+
+        const pendingIds = pending.map(u => u.id);
 
         pendingIds.forEach(async (id) => {
             const uploadObj = uploads.find(u => u.id === id);
@@ -648,7 +651,9 @@ function UploadModal({ isDark, onClose, onUploaded, currentFolderId }: {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         fileName: uploadObj.file.name,
-                        contentType: uploadObj.file.type || "application/octet-stream"
+                        contentType: uploadObj.file.type || "application/octet-stream",
+                        workspaceId: activeWorkspaceId,
+                        fileSize: uploadObj.file.size
                     })
                 });
 
@@ -1406,10 +1411,15 @@ export default function FilesPage() {
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
 
-        // Initialize progress toast — duration: 0 keeps it pinned until manually dismissed
+        // Check storage limit before starting anything
+        if (!checkStorageLimit(files)) return;
+
+        // Initialize progress toast
+        // GooeyToast internal auto-dismiss timer (Infinity overflows to 1ms in setTimeout).
         const toastId = appToast.message(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}...`, {
             description: <ProgressContent progress={0} isDark={isDark} />,
-            duration: 0
+            timing: { displayDuration: 0 },
+            icon: <CloudUpload size={18} className="text-primary" />
         });
         const progresses = new Array(files.length).fill(0);
 
@@ -1418,14 +1428,13 @@ export default function FilesPage() {
             if (totalSize === 0) {
                 const total = progresses.reduce((a, b) => a + b, 0);
                 const average = total / files.length;
-                appToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} />, duration: 0 } as any);
+                appToast.update(toastId, { description: <ProgressContent progress={average} isDark={isDark} /> } as any);
                 return;
             }
             const totalLoaded = files.reduce((acc, f, i) => acc + (f.size * (progresses[i] / 100)), 0);
             const overallProgress = (totalLoaded / totalSize) * 100;
             appToast.update(toastId, {
                 description: <ProgressContent progress={overallProgress} isDark={isDark} />,
-                duration: 0,
             } as any);
         };
 
@@ -1439,7 +1448,9 @@ export default function FilesPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         fileName: file.name,
-                        contentType: contentType
+                        contentType: contentType,
+                        workspaceId: activeWorkspaceId,
+                        fileSize: file.size
                     })
                 });
 
@@ -1483,11 +1494,10 @@ export default function FilesPage() {
             // Show 100% before dismissing so the user sees the completed state
             appToast.update(toastId, {
                 description: <ProgressContent progress={100} isDark={isDark} />,
-                duration: 0,
             } as any);
             await new Promise(r => setTimeout(r, 800));
             appToast.dismiss(toastId);
-            appToast.success('Upload complete', 'All files have been uploaded successfully');
+            appToast.success('Upload complete', files.length === 1 ? '1 file uploaded successfully' : `${files.length} files uploaded successfully`);
         } catch (err: any) {
             appToast.dismiss(toastId);
             appToast.error('Upload failed', (err as { message?: string })?.message || 'An error occurred during upload');
@@ -1548,11 +1558,47 @@ export default function FilesPage() {
         const addChildren = (id: string) => items.filter(i => i.parentId === id).forEach(child => { toDelete.add(child.id); addChildren(child.id); });
         ids.forEach(addChildren);
         
+        // 1. Identify raw files that are scheduled for deletion
+        const filesToDelete = items.filter(i => 
+            toDelete.has(i.id) && 
+            i.type !== 'folder' && 
+            i.type !== 'link' && 
+            i.downloadUrl
+        );
+
+        // 2. Ensure we only physically delete files if there are NO remaining references to them in the database
+        // (This protects duplicated files that share the exact same storage URL)
+        const safeToDeletePhysical = filesToDelete.filter(file => {
+            const allReferences = items.filter(i => i.downloadUrl === file.downloadUrl);
+            return allReferences.every(ref => toDelete.has(ref.id));
+        });
+
+        // 3. Extract unique filenames from the URLs
+        const uniqueTargetUrls = Array.from(new Set(safeToDeletePhysical.map(f => f.downloadUrl!)));
+        
+        // 4. Request physical deletion from the API in the background
+        uniqueTargetUrls.forEach(url => {
+            try {
+                const parts = url.split('/api/files/');
+                if (parts.length > 1) {
+                    const fileName = decodeURIComponent(parts[1]);
+                    fetch('/api/upload/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fileName })
+                    }).catch(console.error);
+                }
+            } catch (err) {
+                console.error("Failed to parse deletion URL", err);
+            }
+        });
+
         const { error } = await supabase
             .from('files')
             .delete()
             .in('id', Array.from(toDelete))
             .eq('workspace_id', activeWorkspaceId);
+            
         if (!error) {
             setItems(prev => prev.filter(i => !toDelete.has(i.id)));
             setSelectedIds(new Set());
@@ -1808,9 +1854,20 @@ export default function FilesPage() {
         { id: 'starred', label: 'Starred', icon: <Star size={11}/> },
     ];
 
+    // Storage constants
+    const STORAGE_LIMIT_GB = 100;
+    const storageTotal = STORAGE_LIMIT_GB * 1024 * 1024 * 1024;
     const storageUsed = items.reduce((acc, i) => acc + (i.size || 0), 0);
-    const storageTotal = 10 * 1024 * 1024 * 1024;
     const storagePct = Math.min((storageUsed / storageTotal) * 100, 100);
+
+    const checkStorageLimit = (newFiles: FileList | File[]) => {
+        const incomingSize = Array.from(newFiles).reduce((acc, f) => acc + f.size, 0);
+        if (storageUsed + incomingSize > storageTotal) {
+            appToast.error('Storage full', `You've reached your ${STORAGE_LIMIT_GB}GB limit. Delete some files to make space.`);
+            return false;
+        }
+        return true;
+    };
 
     return (
         <div className={cn('flex flex-col h-full overflow-hidden font-sans text-[13px]', isDark ? 'bg-[#141414] text-[#e5e5e5]' : 'bg-[#f7f7f7] text-[#111]')}
@@ -1931,7 +1988,7 @@ export default function FilesPage() {
                     <div className={cn('px-3 py-3 border-t', border)}>
                         <div className="flex items-center justify-between mb-1.5">
                             <span className={cn('text-[10px] font-semibold', muted)}>Storage</span>
-                            <span className={cn('text-[10px] font-bold tabular-nums', isDark ? 'text-[#666]' : 'text-[#999]')}>{formatBytes(storageUsed)} / 10 GB</span>
+                            <span className={cn('text-[10px] font-bold tabular-nums', isDark ? 'text-[#666]' : 'text-[#999]')}>{formatBytes(storageUsed)} / {STORAGE_LIMIT_GB} GB</span>
                         </div>
                         <div className={cn('h-1.5 rounded-full overflow-hidden', isDark ? 'bg-white/5' : 'bg-[#f0f0f0]')}>
                             <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${storagePct}%` }}/>
@@ -2438,6 +2495,8 @@ export default function FilesPage() {
                     onClose={() => setShowUpload(false)}
                     currentFolderId={currentFolderId}
                     onUploaded={addFilesToDb}
+                    checkStorageLimit={checkStorageLimit}
+                    activeWorkspaceId={activeWorkspaceId}
                 />
             )}
 

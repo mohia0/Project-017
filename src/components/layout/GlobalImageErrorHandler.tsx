@@ -2,9 +2,9 @@
 
 import { useEffect } from 'react';
 
-// A minimal, neutral SVG that looks like a subtle image placeholder with a slash 
-// ensuring it looks good in both light and dark modes
-const BROKEN_IMAGE_FALLBACK = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='18' height='18' rx='3' ry='3' fill='%239ca3af' fill-opacity='0.1'></rect><circle cx='8.5' cy='8.5' r='1.5' fill='%239ca3af'></circle><polyline points='21 15 16 10 5 21' fill='%239ca3af' fill-opacity='0.2'></polyline></svg>";
+// A minimal, ultra-modern SVG that looks like a subtle image placeholder (Notion/Linear style) 
+// ensuring it looks sleek in both light and dark modes
+const BROKEN_IMAGE_FALLBACK = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='1.2' opacity='0.5'><rect x='5' y='5' width='14' height='14' rx='4'/><line x1='5' y1='5' x2='19' y2='19'/></svg>";
 
 export function GlobalImageErrorHandler() {
     useEffect(() => {

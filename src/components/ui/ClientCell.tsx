@@ -66,20 +66,61 @@ export function ClientCell({
     const filtered = useMemo(() => {
         if (!search) return clients;
         const s = search.toLowerCase();
-        return clients.filter(
+        
+        const matched = clients.filter(
             (c) =>
                 c.contact_person?.toLowerCase().includes(s) ||
                 c.company_name?.toLowerCase().includes(s)
         );
+
+        matched.sort((a, b) => {
+            const aName = a.contact_person?.toLowerCase() || '';
+            const bName = b.contact_person?.toLowerCase() || '';
+            const aComp = a.company_name?.toLowerCase() || '';
+            const bComp = b.company_name?.toLowerCase() || '';
+
+            let scoreA = 0;
+            if (aName === s) scoreA += 100;
+            else if (aName.startsWith(s)) scoreA += 50;
+            else if (aName.includes(s)) scoreA += 10;
+            
+            if (aComp === s) scoreA += 5;
+            else if (aComp.startsWith(s)) scoreA += 2;
+            else if (aComp.includes(s)) scoreA += 1;
+
+            let scoreB = 0;
+            if (bName === s) scoreB += 100;
+            else if (bName.startsWith(s)) scoreB += 50;
+            else if (bName.includes(s)) scoreB += 10;
+            
+            if (bComp === s) scoreB += 5;
+            else if (bComp.startsWith(s)) scoreB += 2;
+            else if (bComp.includes(s)) scoreB += 1;
+
+            return scoreB - scoreA;
+        });
+
+        return matched;
     }, [clients, search]);
 
     const activeClient = useMemo(() => clients.find((c) => c.id === currentId), [clients, currentId]);
 
-    const activeClients: AssignedClient[] = assignedClients?.length
-        ? assignedClients
-        : currentId
-        ? [{ id: currentId, name: currentName || '', avatar_url: activeClient?.avatar_url }]
-        : [];
+    const activeClients: AssignedClient[] = useMemo(() => {
+        const base = assignedClients?.length
+            ? assignedClients
+            : currentId
+            ? [{ id: currentId, name: currentName || '', avatar_url: activeClient?.avatar_url }]
+            : [];
+            
+        return base.map(ac => {
+            const fresh = clients.find(c => c.id === ac.id);
+            return {
+                ...ac,
+                avatar_url: fresh?.avatar_url || ac.avatar_url,
+                name: fresh ? (fresh.contact_person || fresh.company_name || ac.name) : ac.name
+            };
+        });
+    }, [assignedClients, currentId, currentName, activeClient, clients]);
 
     const display =
         activeClients.length > 0 ? (
@@ -94,14 +135,23 @@ export function ClientCell({
                                     : 'bg-[#f5f5f5] border-[#e5e5e5] text-[#333]'
                             )}
                         >
-                            {ac.avatar_url ? (
-                                <img
-                                    src={ac.avatar_url}
-                                    alt={ac.name || 'Avatar'}
-                                    className="w-4 h-4 rounded-full shrink-0 object-cover -ml-1"
-                                />
-                            ) : (
-                                <User size={12} className="opacity-50 shrink-0 -ml-0.5" />
+                             {ac.avatar_url ? (
+                                <div className="relative shrink-0 w-4 h-4 -ml-1 flex items-center justify-center rounded-full">
+                                    <User size={12} className={cn("absolute z-0", isDark ? "text-white/40" : "opacity-50")} />
+                                    <img
+                                        src={ac.avatar_url}
+                                        alt={ac.name || 'Avatar'}
+                                        className={cn(
+                                            "w-full h-full rounded-full object-cover absolute inset-0 z-10",
+                                            isDark ? "bg-[#161616]" : "bg-white"
+                                        )}
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                             ) : (
+                                <User size={12} className={cn("shrink-0 -ml-0.5", isDark ? "text-white opacity-80" : "opacity-50")} />
                             )}
                             <span className="truncate max-w-[120px]">{ac.name}</span>
                         </span>
@@ -205,14 +255,23 @@ export function ClientCell({
                                     )}
                                 >
                                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                                        {c.avatar_url ? (
-                                            <img
-                                                src={c.avatar_url}
-                                                alt="av"
-                                                className="w-5 h-5 rounded-full object-cover shrink-0"
-                                            />
-                                        ) : (
-                                            <User size={14} className="opacity-40 shrink-0" />
+                                         {c.avatar_url ? (
+                                            <div className="relative shrink-0 w-5 h-5 flex items-center justify-center rounded-full">
+                                                <User size={14} className={cn("absolute z-0", isDark ? "text-white/40" : "opacity-40")} />
+                                                <img
+                                                    src={c.avatar_url}
+                                                    alt="av"
+                                                    className={cn(
+                                                        "w-full h-full rounded-full object-cover absolute inset-0 z-10",
+                                                        isDark ? "bg-[#161616]" : "bg-white"
+                                                    )}
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                    }}
+                                                />
+                                            </div>
+                                         ) : (
+                                            <User size={14} className={cn("shrink-0", isDark ? "text-white opacity-70" : "opacity-40")} />
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <div

@@ -9,11 +9,12 @@ interface AvatarProps {
     className?: string;
     isDark?: boolean;
     fallbackClassName?: string;
+    fallbackIcon?: React.ReactNode;
 }
 
 const loadedImages = new Set<string>();
 
-export function Avatar({ src, name, className, isDark, fallbackClassName }: AvatarProps) {
+export function Avatar({ src, name, className, isDark, fallbackClassName, fallbackIcon }: AvatarProps) {
     const isAlreadyLoaded = src ? loadedImages.has(src) : false;
     const [isLoading, setIsLoading] = useState(!isAlreadyLoaded && !!src);
     const [hasError, setHasError] = useState(false);
@@ -74,10 +75,10 @@ export function Avatar({ src, name, className, isDark, fallbackClassName }: Avat
             ) : (
                 <div className={cn(
                     "w-full h-full flex items-center justify-center text-[10px] font-bold rounded-inherit",
-                    isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]",
+                    fallbackIcon ? "" : (isDark ? "bg-white/8 text-[#888]" : "bg-[#f0f0f0] text-[#777]"),
                     fallbackClassName
                 )}>
-                    {getInitials(name ?? null)}
+                    {fallbackIcon ? fallbackIcon : getInitials(name ?? null)}
                 </div>
             )}
         </div>
