@@ -133,34 +133,26 @@ export function MobileLeftDrawer({ isOpen, onClose }: MobileLeftDrawerProps) {
                                             href={item.href}
                                             onClick={onClose}
                                             className={cn(
-                                                'flex items-center gap-3 px-3 py-2.5 rounded-[13px] transition-all active:scale-[0.98]',
+                                                'flex items-center gap-3 px-4 py-2.5 rounded-[13px] transition-all active:scale-[0.98]',
                                                 isActive
                                                     ? isDark
-                                                        ? 'bg-[#4dbf39]/10 text-[#4dbf39]'
-                                                        : 'bg-[#4dbf39]/10 text-[#3aad28]'
+                                                        ? 'bg-primary/12 text-primary shadow-sm'
+                                                        : 'bg-primary/10 text-primary shadow-sm'
                                                     : isDark
                                                         ? 'text-[#888] hover:text-white hover:bg-white/[0.04]'
                                                         : 'text-[#aaa] hover:text-[#333] hover:bg-black/[0.04]'
                                             )}
                                         >
-                                            {/* Active bar */}
-                                            <div className={cn(
-                                                'w-[3px] h-5 rounded-full shrink-0 transition-all',
-                                                isActive ? 'bg-[#4dbf39]' : 'bg-transparent'
-                                            )} />
                                             <Icon
-                                                size={17}
+                                                size={18}
                                                 strokeWidth={isActive ? 2.25 : 1.75}
                                                 className="shrink-0"
                                             />
                                             <span className={cn(
-                                                'text-[13.5px] font-medium flex-1',
+                                                'text-[14px] font-semibold flex-1',
                                             )}>
                                                 {item.label}
                                             </span>
-                                            {isActive && (
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#4dbf39] shrink-0" />
-                                            )}
                                         </Link>
                                     );
                                 })}
@@ -220,44 +212,34 @@ export function MobileLeftDrawer({ isOpen, onClose }: MobileLeftDrawerProps) {
                                 </div>
                             </div>
 
-                            {/* Settings */}
-                            <button
-                                onClick={() => { router.push('/settings'); onClose(); }}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-[13px] text-[13px] font-medium transition-colors active:scale-[0.98]',
-                                    isDark ? 'text-[#888] hover:text-white hover:bg-white/[0.04]' : 'text-[#aaa] hover:text-[#333] hover:bg-black/[0.04]'
-                                )}
-                            >
-                                <div className={cn(
-                                    'w-7 h-7 rounded-[9px] flex items-center justify-center shrink-0',
-                                    isDark ? 'bg-white/[0.06]' : 'bg-black/[0.04]'
-                                )}>
-                                    <Settings size={14} />
-                                </div>
-                                Settings
-                                <ChevronRight size={14} className="ml-auto opacity-30" />
-                            </button>
+                            {/* Settings & Sign Out Grid */}
+                            <div className="grid grid-cols-2 gap-1.5 px-1">
+                                <button
+                                    onClick={() => { router.push('/settings'); onClose(); }}
+                                    className={cn(
+                                        'h-[42px] rounded-[13px] flex items-center justify-center transition-all active:scale-[0.85]',
+                                        isDark ? 'text-[#555] hover:text-[#aaa]' : 'text-[#bbb] hover:text-[#666]'
+                                    )}
+                                    title="Settings"
+                                >
+                                    <Settings size={20} />
+                                </button>
 
-                            {/* Sign Out */}
-                            <button
-                                onClick={async () => {
-                                    await useAuthStore.getState().signOut();
-                                    onClose();
-                                    router.push('/login');
-                                }}
-                                className={cn(
-                                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-[13px] text-[13px] font-medium transition-colors active:scale-[0.98]',
-                                    isDark ? 'text-red-400 hover:bg-red-400/10' : 'text-red-500 hover:bg-red-500/10'
-                                )}
-                            >
-                                <div className={cn(
-                                    'w-7 h-7 rounded-[9px] flex items-center justify-center shrink-0',
-                                    isDark ? 'bg-red-400/10' : 'bg-red-500/10'
-                                )}>
-                                    <LogOut size={14} />
-                                </div>
-                                Sign Out
-                            </button>
+                                <button
+                                    onClick={async () => {
+                                        await useAuthStore.getState().signOut();
+                                        onClose();
+                                        router.push('/login');
+                                    }}
+                                    className={cn(
+                                        'h-[42px] rounded-[13px] flex items-center justify-center transition-all active:scale-[0.85]',
+                                        isDark ? 'text-red-500/40 hover:text-red-500/70' : 'text-red-500/40 hover:text-red-500/70'
+                                    )}
+                                    title="Sign Out"
+                                >
+                                    <LogOut size={20} />
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 </>
@@ -323,10 +305,10 @@ export function MobileNavBar() {
                     >
                         <div className={cn(
                             'w-[48px] h-[48px] rounded-[16px] flex items-center justify-center',
-                            'bg-[#4dbf39] shadow-[0_4px_20px_rgba(77,191,57,0.45)]',
-                            'hover:bg-[#59d044] transition-colors',
+                            'bg-primary shadow-[0_4px_20px_-4px_rgba(var(--brand-primary-rgb),0.5)]',
+                            'hover:bg-primary-hover transition-colors',
                         )}>
-                            <Plus size={24} strokeWidth={2.5} className="text-black" />
+                            <Plus size={24} strokeWidth={2.5} className="text-primary-foreground" />
                         </div>
                     </button>
 
