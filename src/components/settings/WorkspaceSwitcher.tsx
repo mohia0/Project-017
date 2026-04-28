@@ -10,11 +10,13 @@ import { Check, ChevronRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLightSidebar?: boolean, isBranded?: boolean }) {
     const router = useRouter();
     const { workspaces, fetchWorkspaces, createWorkspace, isLoading } = useWorkspaceStore();
     const { activeWorkspaceId, setActiveWorkspaceId, isLeftMenuExpanded, theme } = useUIStore();
+    const { user } = useAuthStore();
     const { profile } = useSettingsStore();
     const isDark = theme === 'dark';
     
@@ -96,11 +98,13 @@ export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLig
                                 {activeWorkspace?.name || 'My Workspace'}
                             </span>
                             <span className={cn(
-                                "text-[10px] font-medium",
-                                isBranded
-                                    ? (isLightSidebar ? "text-black" : "text-white")
-                                    : (isLightSidebar ? "text-black/40" : "text-white/40")
-                            )}>Free Plan</span>
+                                "px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest uppercase w-fit",
+                                isLightSidebar 
+                                    ? "bg-black/[0.06] text-black/60" 
+                                    : "bg-white/[0.06] text-white/60"
+                            )}>
+                                {user?.email === 'mo7a.classico@gmail.com' ? 'ADMIN' : 'Free Plan'}
+                            </span>
                         </div>
                         <ChevronRight size={13} strokeWidth={2.5} className={cn(
                             "transition-transform shrink-0",
