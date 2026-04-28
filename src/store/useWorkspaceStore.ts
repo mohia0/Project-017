@@ -20,6 +20,9 @@ export interface Workspace {
     working_hours?: any;
     additional_details?: any;
     metadata?: any;
+    meta_title?: string | null;
+    meta_description?: string | null;
+    meta_image_url?: string | null;
 }
 interface WorkspaceState {
     workspaces: Workspace[];

@@ -113,21 +113,20 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
     const [localHsv, setLocalHsv] = useState(hsv);
     const [localAlpha, setLocalAlpha] = useState(colorObj.a);
     const [isDragging, setIsDragging] = useState<'satVal' | 'hue' | null>(null);
-
-    const satValRef = useRef<HTMLDivElement>(null);
-    const hueRef = useRef<HTMLDivElement>(null);
+    const stateRef = useRef({ localHsv, localAlpha, isDragging });
 
     useEffect(() => {
+        stateRef.current = { localHsv, localAlpha, isDragging };
+    }, [localHsv, localAlpha, isDragging]);
+
+    useEffect(() => {
+        if (stateRef.current.isDragging) return;
         setLocalHsv(hsv);
         setLocalAlpha(colorObj.a);
     }, [hsv, colorObj.a]);
 
-    const updateColor = useCallback((newHsv: { h: number, s: number, v: number }, newAlpha: number) => {
-        setLocalHsv(newHsv);
-        setLocalAlpha(newAlpha);
-        const rgb = hsvToRgb(newHsv.h, newHsv.s, newHsv.v);
-        onChange(rgbaToHex(rgb.r, rgb.g, rgb.b, newAlpha));
-    }, [onChange]);
+    const satValRef = useRef<HTMLDivElement>(null);
+    const hueRef = useRef<HTMLDivElement>(null);
 
     const updateCoords = useCallback(() => {
         // Centering is now handled by CSS, no need for complex calculations
@@ -163,11 +162,12 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
         const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
         const y = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
         
-        const nextHsv = { ...localHsv, s: x * 100, v: y * 100 };
+        const { localHsv: curHsv, localAlpha: curAlpha } = stateRef.current;
+        const nextHsv = { ...curHsv, s: x * 100, v: y * 100 };
         setLocalHsv(nextHsv);
         const rgb = hsvToRgb(nextHsv.h, nextHsv.s, nextHsv.v);
-        onChange(rgbaToHex(rgb.r, rgb.g, rgb.b, localAlpha));
-    }, [onChange, localAlpha, localHsv]);
+        onChange(rgbaToHex(rgb.r, rgb.g, rgb.b, curAlpha));
+    }, [onChange]);
 
     const handleHueDrag = useCallback((e: MouseEvent | TouchEvent) => {
         if (!hueRef.current) return;
@@ -175,27 +175,29 @@ export function ColorisInput({ value, onChange, className, isDark: isDarkProp, c
         const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
         const h = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
         
-        const nextHsv = { ...localHsv, h: h * 360 };
+        const { localHsv: curHsv, localAlpha: curAlpha } = stateRef.current;
+        const nextHsv = { ...curHsv, h: h * 360 };
         setLocalHsv(nextHsv);
         const rgb = hsvToRgb(nextHsv.h, nextHsv.s, nextHsv.v);
-        onChange(rgbaToHex(rgb.r, rgb.g, rgb.b, localAlpha));
-    }, [onChange, localAlpha, localHsv]);
+        onChange(rgbaToHex(rgb.r, rgb.g, rgb.b, curAlpha));
+    }, [onChange]);
 
     useEffect(() => {
         if (!isDragging) return;
 
         const handleMove = (e: MouseEvent | TouchEvent) => {
-            if (isDragging === 'satVal') handleSatValDrag(e);
-            if (isDragging === 'hue') handleHueDrag(e);
+            const dragType = stateRef.current.isDragging;
+            if (dragType === 'satVal') handleSatValDrag(e);
+            if (dragType === 'hue') handleHueDrag(e);
         };
 
         const handleEnd = () => {
             setIsDragging(null);
         };
 
-        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mousemove', handleMove, { passive: true });
         window.addEventListener('mouseup', handleEnd);
-        window.addEventListener('touchmove', handleMove);
+        window.addEventListener('touchmove', handleMove, { passive: false });
         window.addEventListener('touchend', handleEnd);
 
         return () => {

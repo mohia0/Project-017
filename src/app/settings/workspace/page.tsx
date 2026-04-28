@@ -6,7 +6,7 @@ import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsField, SettingsInput, SettingsTextarea, SettingsToggle, SettingsSelect } from '@/components/settings/SettingsField';
 import { useWorkspaceStore, Workspace } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
-import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, FileText, Code, HelpCircle, AlertTriangle } from 'lucide-react';
+import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, FileText, Code, HelpCircle, AlertTriangle, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -85,7 +85,7 @@ export default function WorkspaceSettingsPage() {
     const isDark = theme === 'dark';
     
     const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
-    const activeDomain = domains.find(d => d.status === 'active');
+    const activeDomain = domains.find(d => d.is_primary);
     
     // General State
     const [name, setName] = useState('');
@@ -94,6 +94,12 @@ export default function WorkspaceSettingsPage() {
     const [logoUrl, setLogoUrl] = useState('');
     const [timezone, setTimezone] = useState('UTC');
     const [weekStartDay, setWeekStartDay] = useState('Saturday');
+    
+    // Metadata State
+    const [metaTitle, setMetaTitle] = useState('');
+    const [metaDescription, setMetaDescription] = useState('');
+    const [metaImageUrl, setMetaImageUrl] = useState('');
+    const [isMetaUploadModalOpen, setIsMetaUploadModalOpen] = useState(false);
     
     // Contact State
     const [emails, setEmails] = useState<{value: string, type: string}[]>([]);
@@ -177,6 +183,10 @@ export default function WorkspaceSettingsPage() {
             setAdditionalDetails(activeWorkspace.additional_details || { tax_id: '', reg_number: '', vat_number: '', notes: '' });
 
 
+            // Metadata
+            setMetaTitle(activeWorkspace.meta_title || '');
+            setMetaDescription(activeWorkspace.meta_description || '');
+            setMetaImageUrl(activeWorkspace.meta_image_url || '');
         }
     }, [activeWorkspace]);
 
@@ -230,6 +240,8 @@ export default function WorkspaceSettingsPage() {
                 return JSON.stringify(workingHours) !== JSON.stringify(activeWorkspace.working_hours || {});
             case 'additionalDetails':
                 return JSON.stringify(additionalDetails) !== JSON.stringify(activeWorkspace.additional_details || { tax_id: '', reg_number: '', vat_number: '', notes: '' });
+            case 'metadata':
+                return metaTitle !== (activeWorkspace.meta_title || '') || metaDescription !== (activeWorkspace.meta_description || '') || metaImageUrl !== (activeWorkspace.meta_image_url || '');
 
             default:
                 return false;
@@ -355,7 +367,6 @@ export default function WorkspaceSettingsPage() {
                     <SettingsField 
                         label="Workspace Description" 
                         description="This will appear as the site description for clients visiting your dashboard via custom domains."
-                        extra={<HelpTip text="This description and your custom logo will be used when sharing your portal link on social media or in messages." isDark={isDark} />}
                     >
                         <SettingsTextarea 
                             value={description} 
@@ -363,6 +374,129 @@ export default function WorkspaceSettingsPage() {
                             placeholder="A premium CRM solution for scaling operations."
                         />
                     </SettingsField>
+                </div>
+            </SettingsCard>
+
+            {/* Metadata Settings */}
+            <SettingsCard
+                title="Metadata"
+                description="Optimize how your portal appears on search engines and social media platforms."
+                onSave={() => handleSaveSection('metadata', { meta_title: metaTitle, meta_description: metaDescription, meta_image_url: metaImageUrl })}
+                isSaving={isSaving['metadata']}
+                unsavedChanges={hasChanged('metadata')}
+                collapsible
+                defaultCollapsed
+                extra={<HelpTip text="These settings define the title, description, and thumbnail used for SEO and social sharing (Open Graph)." isDark={isDark} />}
+            >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+
+                    {/* LEFT – Live Social Card Preview */}
+                    <div className="flex flex-col gap-2">
+                        <span className={cn("text-[11px] font-bold uppercase tracking-widest opacity-40", isDark ? "text-white" : "text-black")}>Live Social Preview</span>
+                        <div className={cn(
+                            "rounded-2xl overflow-hidden border shadow-sm transition-all",
+                            isDark ? "bg-[#191919] border-white/8" : "bg-white border-black/8"
+                        )}>
+                            {/* OG Banner – click to upload */}
+                            <div className="relative group/banner">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsMetaUploadModalOpen(true)}
+                                    className={cn(
+                                        "w-full h-40 flex flex-col items-center justify-center gap-2 relative overflow-hidden transition-all",
+                                        isDark ? "bg-white/[0.04] hover:bg-white/[0.07]" : "bg-black/[0.04] hover:bg-black/[0.06]"
+                                    )}
+                                >
+                                    {metaImageUrl ? (
+                                        <>
+                                            <img src={metaImageUrl} alt="OG Thumbnail" className="absolute inset-0 w-full h-full object-cover" />
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/50 opacity-0 group-hover/banner:opacity-100 transition-opacity">
+                                                <ImageIcon size={18} className="text-white" />
+                                                <span className="text-white text-xs font-bold tracking-wide">Replace Image</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className={cn(
+                                                "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover/banner:scale-105",
+                                                isDark ? "bg-white/10" : "bg-black/8"
+                                            )}>
+                                                <ImageIcon size={20} className={cn("transition-opacity", isDark ? "text-white/30 group-hover/banner:text-white/60" : "text-black/25 group-hover/banner:text-black/50")} />
+                                            </div>
+                                            <span className={cn("text-[11px] font-semibold transition-opacity", isDark ? "text-white/30 group-hover/banner:text-white/60" : "text-black/30 group-hover/banner:text-black/55")}>
+                                                Click to add a social thumbnail
+                                            </span>
+                                        </>
+                                    )}
+                                </button>
+                                
+                                {metaImageUrl && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setMetaImageUrl(''); }}
+                                        className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center bg-black/50 hover:bg-black/75 text-white opacity-0 group-hover/banner:opacity-100 transition-all z-10"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Card text content */}
+                            <div className="flex flex-col gap-1.5 px-4 py-3.5">
+                                <span className={cn("text-[10px] font-mono font-medium tracking-wide opacity-35 uppercase", isDark ? "text-white" : "text-black")}>
+                                    {activeDomain?.domain || `${slug || 'your-workspace'}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com'}`}
+                                </span>
+                                <h5 className={cn("text-[14px] font-bold leading-tight line-clamp-1", isDark ? "text-white" : "text-black")}>
+                                    {metaTitle || name || 'Your Workspace Title'}
+                                </h5>
+                                <p className={cn("text-[12px] leading-relaxed line-clamp-2 opacity-60", isDark ? "text-white" : "text-black")}>
+                                    {metaDescription || description || 'A short description of your workspace shown in search results and social media previews.'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT – Form Fields */}
+                    <div className="flex flex-col gap-6">
+                        <SettingsField
+                            label="Meta Title"
+                            description="The page title shown in search results and browser tabs."
+                        >
+                            <div className="relative">
+                                <SettingsInput
+                                    value={metaTitle}
+                                    onChange={e => setMetaTitle(e.target.value.slice(0, 70))}
+                                    placeholder={name || 'Your Workspace — Premium Portal'}
+                                />
+                                <span className={cn(
+                                    "absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono font-bold tabular-nums pointer-events-none",
+                                    metaTitle.length > 60 ? "text-amber-500" : (isDark ? "text-white/20" : "text-black/20")
+                                )}>
+                                    {metaTitle.length}/70
+                                </span>
+                            </div>
+                        </SettingsField>
+
+                        <SettingsField
+                            label="Meta Description"
+                            description="A concise summary for search engines and social sharing."
+                        >
+                            <div className="relative">
+                                <SettingsTextarea
+                                    value={metaDescription}
+                                    onChange={e => setMetaDescription(e.target.value.slice(0, 160))}
+                                    placeholder={description || 'Describe your workspace in 1–2 sentences…'}
+                                    rows={4}
+                                />
+                                <span className={cn(
+                                    "absolute right-3 bottom-3 text-[10px] font-mono font-bold tabular-nums pointer-events-none",
+                                    metaDescription.length > 140 ? "text-amber-500" : (isDark ? "text-white/20" : "text-black/20")
+                                )}>
+                                    {metaDescription.length}/160
+                                </span>
+                            </div>
+                        </SettingsField>
+                    </div>
                 </div>
             </SettingsCard>
 
@@ -698,6 +832,13 @@ export default function WorkspaceSettingsPage() {
                 onClose={() => setIsUploadModalOpen(false)}
                 onUpload={(url) => setLogoUrl(url)}
                 title="Upload Workspace Logo"
+            />
+
+            <ImageUploadModal 
+                isOpen={isMetaUploadModalOpen}
+                onClose={() => setIsMetaUploadModalOpen(false)}
+                onUpload={(url) => setMetaImageUrl(url)}
+                title="Upload Metadata Thumbnail"
             />
 
             {/* Danger Zone */}

@@ -71,7 +71,7 @@ export async function generateMetadata(): Promise<Metadata> {
       const [workspaceRes, brandingRes] = await Promise.all([
         supabaseService
           .from('workspaces')
-          .select('name, description, logo_url')
+          .select('name, description, logo_url, meta_title, meta_description, meta_image_url')
           .eq('id', workspaceId)
           .single(),
         supabaseService
@@ -81,18 +81,43 @@ export async function generateMetadata(): Promise<Metadata> {
           .single()
       ]);
 
-      if (workspaceRes.data?.name) {
-        title = workspaceRes.data.name;
-        // Use custom description if available, otherwise fallback
-        description = workspaceRes.data.description || `${title} — Workspace`;
-      }
-      
-      if (workspaceRes.data?.logo_url) {
-          ogImage = workspaceRes.data.logo_url;
-      }
+      if (workspaceRes.data) {
+        const d = workspaceRes.data;
+        // Tab title stays as Workspace Name (or default)
+        title = d.name || title;
+        
+        // Metadata description prioritization
+        description = d.meta_description || d.description || `${title} — Workspace`;
+        
+        // Thumbnail prioritization
+        ogImage = d.meta_image_url || d.logo_url || '';
+        
+        // OG Title can be specific if meta_title exists
+        const ogTitle = d.meta_title || title;
+        
+        if (brandingRes.data?.favicon_url) {
+          favicon = brandingRes.data.favicon_url;
+        }
 
-      if (brandingRes.data?.favicon_url) {
-        favicon = brandingRes.data.favicon_url;
+        // Return the specific object here to handle the ogTitle nuance
+        return {
+          title,
+          description,
+          icons: { icon: favicon },
+          openGraph: {
+            title: ogTitle,
+            description,
+            type: 'website',
+            siteName: title,
+            ...(ogImage && { images: [{ url: ogImage }] }),
+          },
+          twitter: {
+            card: 'summary_large_image',
+            title: ogTitle,
+            description,
+            ...(ogImage && { images: [ogImage] }),
+          },
+        };
       }
     }
   } catch {
