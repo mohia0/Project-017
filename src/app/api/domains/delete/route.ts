@@ -17,24 +17,22 @@ export async function POST(req: Request) {
         const vercelProjectId = process.env.VERCEL_PROJECT_ID;
 
         if (!vercelToken || !vercelProjectId) {
-            return NextResponse.json({
-                error: 'VERCEL_TOKEN or VERCEL_PROJECT_ID missing from environment variables.',
-            }, { status: 500 });
-        }
+            console.warn('VERCEL_TOKEN or VERCEL_PROJECT_ID missing. Skipping Vercel domain removal, proceeding with DB removal.');
+        } else {
+            // 1. Remove from Vercel
+            const deleteUrl = `https://api.vercel.com/v9/projects/${vercelProjectId}/domains/${domainName}`;
+            const vercelRes = await fetch(deleteUrl, {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bearer ${vercelToken}`,
+                },
+            });
 
-        // 1. Remove from Vercel
-        const deleteUrl = `https://api.vercel.com/v9/projects/${vercelProjectId}/domains/${domainName}`;
-        const vercelRes = await fetch(deleteUrl, {
-            method: 'DELETE',
-            headers: {
-                Authorization: `Bearer ${vercelToken}`,
-            },
-        });
-
-        if (!vercelRes.ok && vercelRes.status !== 404) {
-            const errBody = await vercelRes.json().catch(() => ({}));
-            console.error('Vercel delete error:', errBody);
-            // We continue anyway to clean up the DB
+            if (!vercelRes.ok && vercelRes.status !== 404) {
+                const errBody = await vercelRes.json().catch(() => ({}));
+                console.error('Vercel delete error:', errBody);
+                // We continue anyway to clean up the DB
+            }
         }
 
         // 2. Remove from DB

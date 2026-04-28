@@ -249,7 +249,11 @@ export default function DomainsSettingsPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ domainId: id, domainName: name }),
-            }).then(() => {
+            }).then(async (res) => {
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.error || 'Failed to remove domain');
+                }
                 if (activeWorkspaceId) fetchDomains(activeWorkspaceId);
             }),
             {
