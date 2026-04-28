@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
+import { getTintedColor } from '@/lib/utils';
 
 function hexToRgb(hex: string) {
     if (!hex) return '0, 0, 0';
@@ -74,7 +75,14 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--brand-primary-rgb', hexToRgb(primary));
             root.style.setProperty('--brand-primary-hover', darkenColor(primary)); 
             root.style.setProperty('--brand-primary-foreground', isDark ? '#ffffff' : '#000000');
-            root.style.setProperty('--brand-secondary', branding.secondary_color || '#1a1a2e');
+            
+            // Sidebar Tint Logic
+            const sidebarTint = branding.sidebar_tint ?? 3;
+            const sidebarColor = branding.apply_color_to_sidebar 
+                ? getTintedColor(primary, sidebarTint)
+                : (branding.secondary_color || '#1a1a2e');
+            
+            root.style.setProperty('--brand-secondary', sidebarColor);
             root.style.setProperty('--brand-font', branding.font_family || 'Inter, sans-serif');
             root.style.setProperty('--brand-radius', `${branding.border_radius ?? 12}px`);
             
@@ -83,7 +91,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--primary-dark', darkenColor(primary, 0.2));
             root.style.setProperty('--primary-light', darkenColor(primary, -0.2));
         } else {
-            // Default fallbacks
+            // ... (keep fallback as is)
             const defaultPrimary = '#000000';
             root.style.setProperty('--brand-primary', defaultPrimary);
             root.style.setProperty('--brand-primary-rgb', hexToRgb(defaultPrimary));

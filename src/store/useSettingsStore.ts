@@ -25,6 +25,7 @@ export interface WorkspaceBranding {
   logo_dark_url: string | null;
   favicon_url: string | null;
   branding_colors: string[] | null;
+  sidebar_tint: number;
 }
 
 export interface WorkspacePayments {

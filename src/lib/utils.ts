@@ -34,6 +34,36 @@ export function isDarkColor(hex: string): boolean {
     return getPerceivedBrightness(hex) < 128;
 }
 
+export function getTintedColor(hex: string, step: number): string {
+    let s = hex.replace('#', '');
+    if (s.length === 3) s = s.split('').map(c => c + c).join('');
+    if (s.length < 6) return hex;
+    
+    let r = parseInt(s.slice(0, 2), 16);
+    let g = parseInt(s.slice(2, 4), 16);
+    let b = parseInt(s.slice(4, 6), 16);
+    
+    const difference = step - 3;
+    if (difference === 0) return `#${s.toLowerCase()}`;
+    
+    // Use 25% increments per step (0 = 75% white, 6 = 75% black)
+    const weight = Math.abs(difference) * 0.25; 
+    
+    if (difference < 0) {
+        // Tint: Mix with white
+        r = Math.round(r + (255 - r) * weight);
+        g = Math.round(g + (255 - g) * weight);
+        b = Math.round(b + (255 - b) * weight);
+    } else {
+        // Shade: Mix with black
+        r = Math.round(r * (1 - weight));
+        g = Math.round(g * (1 - weight));
+        b = Math.round(b * (1 - weight));
+    }
+    
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
 export function getBackgroundImageWithOpacity(imageUrl?: string, bgColor?: string, opacity?: number) {
     if (!imageUrl) return 'none';
     const op = opacity ?? 1;

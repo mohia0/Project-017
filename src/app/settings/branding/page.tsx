@@ -36,11 +36,12 @@ const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
     logo_light_url: '',
     logo_dark_url: '',
     favicon_url: '',
-    branding_colors: DEFAULT_PALETTE
+    branding_colors: DEFAULT_PALETTE,
+    sidebar_tint: 3
 };
 
 // Visual-only subset we expose in settings (border_radius & font_family are hidden)
-type BrandingFormData = Pick<WorkspaceBranding, 'primary_color' | 'secondary_color' | 'apply_color_to_sidebar' | 'logo_light_url' | 'logo_dark_url' | 'favicon_url' | 'branding_colors'>;
+type BrandingFormData = Pick<WorkspaceBranding, 'primary_color' | 'secondary_color' | 'apply_color_to_sidebar' | 'logo_light_url' | 'logo_dark_url' | 'favicon_url' | 'branding_colors' | 'sidebar_tint'>;
 
 function ResetButton({ onClick, isDark }: { onClick: () => void, isDark: boolean }) {
     return (
@@ -84,7 +85,8 @@ function LogoUpload({
     value, 
     onChange, 
     isDark, 
-    onReset 
+    onReset,
+    previewBg
 }: { 
     label: string; 
     description?: string;
@@ -92,7 +94,9 @@ function LogoUpload({
     onChange: (v: string) => void;
     isDark: boolean;
     onReset: () => void;
+    previewBg?: 'dark' | 'light';
 }) {
+    const isBoxDark = previewBg === 'dark' || (previewBg === undefined && isDark);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [imgError, setImgError] = useState(false);
 
@@ -116,10 +120,10 @@ function LogoUpload({
             <div 
                 onClick={() => setIsModalOpen(true)}
                 className={cn(
-                    "w-full h-24 rounded-xl border border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all overflow-hidden relative group mt-1",
-                    isDark 
-                        ? "bg-[#1c1c1c] border-[#252525] hover:border-white/20 hover:bg-[#222]" 
-                        : "bg-[#f5f5f5] border-[#ebebeb] hover:border-black/20 hover:bg-[#efeff5]"
+                    "w-full h-24 rounded-xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all overflow-hidden relative group mt-1",
+                    isBoxDark 
+                        ? "bg-[#1c1c1c] border-[#333] hover:border-white/30 hover:bg-[#222]" 
+                        : "bg-[#f5f5f5] border-[#d0d0d0] hover:border-black/30 hover:bg-[#efeff5]"
                 )}
             >
                 {value && !imgError ? (
@@ -140,7 +144,7 @@ function LogoUpload({
                         <div
                             className="absolute inset-0 opacity-[0.35] pointer-events-none"
                             style={{
-                                backgroundImage: isDark
+                                backgroundImage: isBoxDark
                                     ? 'radial-gradient(circle, #3a3a3a 1px, transparent 1px)'
                                     : 'radial-gradient(circle, #d0d0d0 1px, transparent 1px)',
                                 backgroundSize: '12px 12px',
@@ -235,7 +239,8 @@ export default function BrandingSettingsPage() {
         logo_light_url: '',
         logo_dark_url: '',
         favicon_url: '',
-        branding_colors: DEFAULT_PALETTE
+        branding_colors: DEFAULT_PALETTE,
+        sidebar_tint: 3
     });
 
     const [hasSynced, setHasSynced] = useState(false);
@@ -257,6 +262,7 @@ export default function BrandingSettingsPage() {
                 logo_light_url: branding.logo_light_url || '',
                 logo_dark_url: branding.logo_dark_url || '',
                 favicon_url: branding.favicon_url || '',
+                sidebar_tint: branding.sidebar_tint ?? 3,
                 branding_colors: (branding.branding_colors && branding.branding_colors.length > 0) 
                     ? branding.branding_colors 
                     : DEFAULT_PALETTE
@@ -278,14 +284,35 @@ export default function BrandingSettingsPage() {
         }
     }, [debouncedBranding, activeWorkspaceId, branding, hasSynced, updateBranding]);
 
-    // Instant Visual Updates for Accent Color
+    // Instant Visual Updates for Accent Color & Sidebar Tint
     useEffect(() => {
         if (!mounted) return;
         const root = document.documentElement;
+        
+        // Helper to darken/lighten color (simplified version of the one in BrandingProvider)
+        const getTintedColor = (hex: string, step: number) => {
+            const amount = (step - 3) * 0.15;
+            let s = hex.replace('#', '');
+            if (s.length === 3) s = s.split('').map(c => c + c).join('');
+            if (s.length < 6) return hex;
+            let r = parseInt(s.slice(0, 2), 16);
+            let g = parseInt(s.slice(2, 4), 16);
+            let b = parseInt(s.slice(4, 6), 16);
+            r = Math.min(255, Math.max(0, Math.floor(r * (1 - amount))));
+            g = Math.min(255, Math.max(0, Math.floor(g * (1 - amount))));
+            b = Math.min(255, Math.max(0, Math.floor(b * (1 - amount))));
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        };
+
         root.style.setProperty('--brand-primary', formData.primary_color);
-        // We don't bother calculating RGB/Hover here as the real save will trigger BrandingProvider
-        // which handles all the derived colors. This is just for immediate feedback.
-    }, [formData.primary_color, mounted]);
+        
+        if (formData.apply_color_to_sidebar) {
+            const sidebarColor = getTintedColor(formData.primary_color, formData.sidebar_tint);
+            root.style.setProperty('--brand-secondary', sidebarColor);
+        } else {
+            root.style.setProperty('--brand-secondary', branding?.secondary_color || '#1a1a2e');
+        }
+    }, [formData.primary_color, formData.apply_color_to_sidebar, formData.sidebar_tint, mounted, branding?.secondary_color]);
 
     const resetField = (field: keyof BrandingFormData) => {
         const val = DEFAULT_BRANDING[field as keyof typeof DEFAULT_BRANDING];
@@ -337,6 +364,29 @@ export default function BrandingSettingsPage() {
                                 onChange={(v) => setFormData(p => ({ ...p, apply_color_to_sidebar: v }))}
                                 isDark={isDark} 
                             />
+
+                            {/* Minimal 6-step Slider */}
+                            {formData.apply_color_to_sidebar && (
+                                <div className="flex items-center gap-2 ml-1 animate-in fade-in slide-in-from-left-1 duration-300">
+                                    <div className="w-[1px] h-4 bg-white/10 dark:bg-white/10 mx-1" />
+                                    <div className="flex items-center gap-1.5 bg-black/5 dark:bg-white/5 p-1 px-2 rounded-lg">
+                                        {[0, 1, 2, 3, 4, 5, 6].map((step) => (
+                                            <button
+                                                key={step}
+                                                type="button"
+                                                onClick={() => setFormData(p => ({ ...p, sidebar_tint: step }))}
+                                                className={cn(
+                                                    "w-1.5 h-3.5 rounded-full transition-all",
+                                                    formData.sidebar_tint === step 
+                                                        ? "bg-[var(--brand-primary)] scale-y-125" 
+                                                        : (isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/10 hover:bg-black/20")
+                                                )}
+                                                title={step < 3 ? 'Lighter' : step > 3 ? 'Darker' : 'Original'}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </SettingsField>
@@ -354,6 +404,7 @@ export default function BrandingSettingsPage() {
                             onChange={(url) => setFormData(p => ({ ...p, logo_light_url: url }))}
                             onReset={() => resetField('logo_light_url')}
                             isDark={isDark}
+                            previewBg="dark"
                         />
 
                         <LogoUpload 
@@ -363,6 +414,7 @@ export default function BrandingSettingsPage() {
                             onChange={(url) => setFormData(p => ({ ...p, logo_dark_url: url }))}
                             onReset={() => resetField('logo_dark_url')}
                             isDark={isDark}
+                            previewBg="light"
                         />
 
                         <LogoUpload 

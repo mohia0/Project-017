@@ -392,11 +392,18 @@ export default function WorkspaceSettingsPage() {
 
                     {/* LEFT – Live Social Card Preview */}
                     <div className="flex flex-col gap-2">
-                        <span className={cn("text-[11px] font-bold uppercase tracking-widest opacity-40", isDark ? "text-white" : "text-black")}>Live Social Preview</span>
                         <div className={cn(
                             "rounded-2xl overflow-hidden border shadow-sm transition-all",
                             isDark ? "bg-[#191919] border-white/8" : "bg-white border-black/8"
                         )}>
+                            <div className={cn("px-4 py-2 border-b flex items-center justify-between", isDark ? "border-white/5 bg-white/[0.02]" : "border-black/5 bg-black/[0.01]")}>
+                                <span className={cn("text-[10px] font-bold uppercase tracking-widest opacity-40", isDark ? "text-white" : "text-black")}>Live Social Preview</span>
+                                <div className="flex gap-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-red-400 opacity-50" />
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 opacity-50" />
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400 opacity-50" />
+                                </div>
+                            </div>
                             {/* OG Banner – click to upload */}
                             <div className="relative group/banner">
                                 <button
@@ -460,7 +467,6 @@ export default function WorkspaceSettingsPage() {
                     <div className="flex flex-col gap-6">
                         <SettingsField
                             label="Meta Title"
-                            description="The page title shown in search results and browser tabs."
                         >
                             <div className="relative">
                                 <SettingsInput
@@ -479,7 +485,6 @@ export default function WorkspaceSettingsPage() {
 
                         <SettingsField
                             label="Meta Description"
-                            description="A concise summary for search engines and social sharing."
                         >
                             <div className="relative">
                                 <SettingsTextarea

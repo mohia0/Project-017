@@ -4,7 +4,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Settings, LayoutGrid, GripVertical, RotateCcw, Check, X, Eye, EyeOff, Plus, Trash } from 'lucide-react';
 import { IconPicker } from '@/components/ui/IconPicker';
-import { cn, isDarkColor } from '@/lib/utils';
+import { cn, isDarkColor, getTintedColor } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -435,11 +435,18 @@ export default function LeftSystemMenu() {
     };
 
     const applyBrandColor = branding?.apply_color_to_sidebar;
-    const isLightBg = applyBrandColor && branding?.primary_color ? !isDarkColor(branding.primary_color) : false;
+    
+    // Improved brightness detection: check the actually applied tinted color
+    const isLightBg = React.useMemo(() => {
+        if (!applyBrandColor || !branding?.primary_color) return false;
+        
+        const sidebarColor = getTintedColor(branding.primary_color, branding.sidebar_tint ?? 3);
+        return !isDarkColor(sidebarColor);
+    }, [applyBrandColor, branding?.primary_color, branding?.sidebar_tint]);
 
     return (
         <nav 
-            style={applyBrandColor ? { backgroundColor: 'var(--brand-primary)' } : undefined}
+            style={applyBrandColor ? { backgroundColor: 'var(--brand-secondary)' } : undefined}
             className={cn(
             "h-full flex flex-col items-center shrink-0 transition-all duration-300 rounded-2xl z-10 overflow-hidden border",
             applyBrandColor ? "border-black/5" : "border-white/5",
