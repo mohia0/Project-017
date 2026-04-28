@@ -1355,7 +1355,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                 {editorTab === 'editor' && (
                     <div className="flex-1 flex flex-col overflow-hidden">
                         {/* Canvas + right panel row */}
-                        <div className="flex-1 flex overflow-hidden min-h-0">
+                        <div className="flex-1 flex flex-row-reverse overflow-hidden min-h-0">
                             {/* CANVAS */}
                             <div className="flex-1 flex flex-col overflow-hidden">
                                 <div

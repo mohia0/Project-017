@@ -827,7 +827,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
             </div>
 
             {/* ── BODY ── */}
-            <div className="flex-1 flex overflow-hidden isolate">
+            <div className="flex-1 flex flex-row-reverse overflow-hidden isolate">
                 {editorTab === 'editor' && (
                     <>
                         {/* ── CANVAS ── */}

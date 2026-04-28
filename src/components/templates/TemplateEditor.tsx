@@ -455,7 +455,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                 </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden relative z-0 isolate">
+            <div className="flex-1 flex flex-row-reverse overflow-hidden relative z-0 isolate">
                 <div 
                     className="flex-1 overflow-auto relative w-full"
                     style={{ 

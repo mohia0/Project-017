@@ -833,7 +833,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
             </div>
 
             <div className="flex-1 flex flex-col overflow-hidden relative z-0 isolate">
-                <div className="flex-1 flex overflow-hidden relative">
+                <div className="flex-1 flex flex-row-reverse overflow-hidden relative">
                     {/* ── LEFT: CANVAS ── */}
                     {id && !isLoaded ? (
                         <div className="flex-1 flex flex-col items-center justify-center gap-4">

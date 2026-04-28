@@ -2,9 +2,10 @@
 
 import { useEffect } from 'react';
 
-// A minimal, ultra-modern SVG that looks like a subtle image placeholder (Notion/Linear style) 
-// ensuring it looks sleek in both light and dark modes
-const BROKEN_IMAGE_FALLBACK = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='1.2' opacity='0.5'><rect x='5' y='5' width='14' height='14' rx='4'/><line x1='5' y1='5' x2='19' y2='19'/></svg>";
+// A super minimal, ultra-clean broken image fallback.
+// Uses a thin-stroke rounded square with "IMAGE" and "BROKEN" on separate lines.
+// Designed to be practically invisible unless looked for.
+const BROKEN_IMAGE_FALLBACK = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><rect x='3' y='3' width='18' height='18' rx='4' stroke='%23888888' stroke-width='0.8' opacity='0.2'/><text x='12' y='11' text-anchor='middle' fill='%23888888' font-family='system-ui, sans-serif' font-size='2.2' font-weight='800' letter-spacing='0.5' opacity='0.4'>IMAGE</text><text x='12' y='15' text-anchor='middle' fill='%23888888' font-family='system-ui, sans-serif' font-size='2.2' font-weight='800' letter-spacing='0.5' opacity='0.4'>BROKEN</text></svg>";
 
 export function GlobalImageErrorHandler() {
     useEffect(() => {
@@ -23,7 +24,7 @@ export function GlobalImageErrorHandler() {
                         img.style.objectFit = 'contain';
                     }
                     if (!img.style.backgroundColor) {
-                        img.className = img.className + " bg-black/5 dark:bg-white/5";
+                        img.className = img.className + " bg-black/[0.03] dark:bg-white/[0.03]";
                     }
                 }
             }

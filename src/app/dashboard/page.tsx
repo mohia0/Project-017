@@ -132,13 +132,13 @@ function KpiCard({ label, value, subValue, change, icon, iconBg, isDark, currenc
 
     return (
         <div className={cn(
-            "rounded-[10px] border p-4 flex flex-col gap-3 transition-all",
+            "rounded-[10px] border p-3 flex flex-col gap-2.5 transition-all",
             isDark
                 ? "bg-[#1a1a1a] border-[#252525] hover:border-[#333]"
                 : "bg-white border-[#ebebeb] hover:border-[#d8d8d8] hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
         )}>
             <div className="flex items-center justify-between">
-                <span className={cn("text-[11px] font-medium tracking-tight",
+                <span className={cn("text-[10px] font-bold uppercase tracking-wider opacity-40",
                     isDark ? "text-[#666]" : "text-[#999]")}>
                     {label}
                 </span>
@@ -244,10 +244,10 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
 
     const CELL = 8;  // Slightly larger than 7
     const GAP_X = 4; // More horizontal spacing to fill width intuitively
-    const GAP_Y = 3; // Minimal vertical spacing to prevent height breakage
+    const GAP_Y = 2; // Minimal vertical spacing to prevent height breakage
 
     return (
-        <div className={cn("rounded-[10px] border p-4 flex flex-col h-full",
+        <div className={cn("rounded-[10px] border p-3 flex flex-col h-full",
             isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]")}>
 
             {/* Header */}
@@ -272,21 +272,21 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
             </div>
 
             {/* Grid — 2 rows × 6 months */}
-            <div className="flex-1 flex flex-col justify-center gap-3">
+            <div className="flex-1 flex flex-col justify-center gap-2">
                 {[0, 1].map(rowIdx => (
                     <div key={rowIdx} className="grid grid-cols-6 gap-1 lg:gap-2">
                         {Array.from({ length: 6 }).map((_, colIdx) => {
                             const monthIdx = rowIdx * 6 + colIdx;
                             const weeks = buildMonthWeeks(monthIdx, year);
                             return (
-                                <div key={monthIdx} className="flex flex-col gap-1.5 w-full items-center">
-                                    <div className="w-full flex items-start">
+                                <div key={monthIdx} className="flex flex-col gap-1.5 w-full items-center justify-center">
+                                    <div className="w-full flex items-center justify-center">
                                         <span className={cn("text-[9px] font-bold uppercase tracking-wider",
                                             isDark ? "text-[#444]" : "text-[#ccc]")}>
                                             {MONTH_NAMES[monthIdx]}
                                         </span>
                                     </div>
-                                    <div className="flex w-full" style={{ gap: GAP_X }}>
+                                    <div className="flex w-full justify-center" style={{ gap: GAP_X }}>
                                         {weeks.map((col, wIdx) => (
                                             <div key={wIdx} className="flex flex-col" style={{ gap: GAP_Y }}>
                                                 {col.map((cell, rIdx) => {
@@ -360,7 +360,7 @@ function IncomeHeatmap({ heatmapData, year, onYearChange, isDark }: {
             </div>
 
             {/* Total only (minimal legend) */}
-            <div className="mt-3 pt-3 border-t border-dashed border-gray-100 flex items-center justify-between">
+            <div className="mt-2 pt-2 flex items-center justify-between">
                  <div className="flex items-center gap-1">
                     {[0, 0.2, 0.4, 0.7, 1].map((v, i) => (
                         <div key={i} className="rounded-[1px]" style={{ width: 6, height: 6, backgroundColor: cellColor(v * maxVal) }} />
@@ -381,7 +381,7 @@ function StatusRow({ label, count, amount, icon, iconColor, barColor, isDark }: 
     icon: React.ReactNode; iconColor: string; barColor: string; isDark: boolean;
 }) {
     return (
-        <div className={cn("flex items-center gap-3 py-2.5 border-b last:border-b-0",
+        <div className={cn("flex items-center gap-3 py-1.5 border-b last:border-b-0",
             isDark ? "border-[#1e1e1e]" : "border-[#f5f5f5]")}>
             <div className="w-6 h-6 rounded-[6px] flex items-center justify-center shrink-0"
                 style={{ backgroundColor: `${iconColor}18`, color: iconColor }}>
@@ -609,11 +609,11 @@ export default function DashboardPage() {
             {activeTab === 'analytics' ? (
                 <DashboardAnalytics isDark={isDark} />
             ) : (
-            <div className="flex-1 overflow-auto">
-                <div className="p-3 md:p-4 flex flex-col gap-3">
+            <div className="flex-1 overflow-hidden">
+                <div className="h-full p-3 flex flex-col gap-2.5">
 
                     {/* ── Row 1: KPI Cards ── */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 shrink-0">
                         <KpiCard
                             label="Paid Invoices (3 Months)"
                             value={invoiceStats.paidLast3Amount}
@@ -653,80 +653,87 @@ export default function DashboardPage() {
                     </div>
 
                     {/* ── Row 2: Charts ── */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 h-[210px] shrink-0">
                         {/* Invoice chart */}
-                        <div className={cn("rounded-[10px] border p-4",
+                        <div className={cn("rounded-[10px] border p-3 flex flex-col",
                             isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]")}>
-                            <div className="mb-3">
-                                <div className={cn("text-[12px] font-semibold", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
+                            <div className="mb-2">
+                                <div className={cn("text-[11px] font-bold uppercase tracking-wider opacity-40", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
                                     All-Time Invoices
                                 </div>
-                                <div className={cn("text-[10px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                                <div className={cn("text-[9px] opacity-40 font-medium", isDark ? "text-[#555]" : "text-[#bbb]")}>
                                     Total value by status · <MoneyAmount amount={invoiceStats.total.amount} />
                                 </div>
                             </div>
-                            <div style={{ height: 140 }}>
+                            <div className="flex-1 min-h-0">
                                 <BarChart data={invoiceChartData} isDark={isDark} />
                             </div>
                         </div>
 
                         {/* Proposal chart */}
-                        <div className={cn("rounded-[10px] border p-4",
+                        <div className={cn("rounded-[10px] border p-3 flex flex-col",
                             isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]")}>
-                            <div className="mb-3">
-                                <div className={cn("text-[12px] font-semibold", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
+                            <div className="mb-2">
+                                <div className={cn("text-[11px] font-bold uppercase tracking-wider opacity-40", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
                                     All-Time Proposals
                                 </div>
-                                <div className={cn("text-[10px] mt-0.5", isDark ? "text-[#555]" : "text-[#bbb]")}>
+                                <div className={cn("text-[9px] opacity-40 font-medium", isDark ? "text-[#555]" : "text-[#bbb]")}>
                                     Total value by status · <MoneyAmount amount={proposalStats.total.amount} />
                                 </div>
                             </div>
-                            <div style={{ height: 140 }}>
+                            <div className="flex-1 min-h-0">
                                 <BarChart data={proposalChartData} isDark={isDark} />
                             </div>
                         </div>
                     </div>
 
-                    {/* ── Row 3: Breakdowns + Heatmap (Combined) ── */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_2fr] gap-3">
-
-                        {/* Invoice breakdown */}
-                        <div className={cn("rounded-[10px] border p-4",
-                            isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]")}>
-                            <div className={cn("text-[12px] font-semibold mb-3", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
-                                Invoice Breakdown
+                    {/* ── Row 3: Breakdowns + Heatmap (Aligned with Row 2) ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 flex-1 min-h-0">
+                        
+                        {/* Left Half: Breakdowns (split 50/50) */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                            {/* Invoice breakdown */}
+                            <div className={cn("rounded-[10px] border p-3 flex flex-col",
+                                isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]")}>
+                                <div className={cn("text-[11px] font-bold uppercase tracking-wider opacity-40 mb-2", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
+                                    Invoice Breakdown
+                                </div>
+                                <div className="flex-1 flex flex-col justify-between">
+                                    <StatusRow label="Paid" count={invoiceStats.paid.count} amount={invoiceStats.paid.amount}
+                                        icon={<CheckCircle2 size={12} />} iconColor="#22c55e" barColor="#22c55e" isDark={isDark} />
+                                    <StatusRow label="Pending" count={invoiceStats.pending.count} amount={invoiceStats.pending.amount}
+                                        icon={<Clock size={12} />} iconColor="#f59e0b" barColor="#f59e0b" isDark={isDark} />
+                                    <StatusRow label="Overdue" count={invoiceStats.overdue.count} amount={invoiceStats.overdue.amount}
+                                        icon={<AlertCircle size={12} />} iconColor="#ef4444" barColor="#ef4444" isDark={isDark} />
+                                    <StatusRow label="Draft" count={invoiceStats.draft.count} amount={invoiceStats.draft.amount}
+                                        icon={<FileText size={12} />} iconColor="#6366f1" barColor="#6366f1" isDark={isDark} />
+                                    <StatusRow label="Cancelled" count={invoiceStats.cancelled.count} amount={invoiceStats.cancelled.amount}
+                                        icon={<Ban size={12} />} iconColor="#94a3b8" barColor="#94a3b8" isDark={isDark} />
+                                </div>
                             </div>
-                            <StatusRow label="Paid" count={invoiceStats.paid.count} amount={invoiceStats.paid.amount}
-                                icon={<CheckCircle2 size={12} />} iconColor="#22c55e" barColor="#22c55e" isDark={isDark} />
-                            <StatusRow label="Pending" count={invoiceStats.pending.count} amount={invoiceStats.pending.amount}
-                                icon={<Clock size={12} />} iconColor="#f59e0b" barColor="#f59e0b" isDark={isDark} />
-                            <StatusRow label="Overdue" count={invoiceStats.overdue.count} amount={invoiceStats.overdue.amount}
-                                icon={<AlertCircle size={12} />} iconColor="#ef4444" barColor="#ef4444" isDark={isDark} />
-                            <StatusRow label="Draft" count={invoiceStats.draft.count} amount={invoiceStats.draft.amount}
-                                icon={<FileText size={12} />} iconColor="#6366f1" barColor="#6366f1" isDark={isDark} />
-                            <StatusRow label="Cancelled" count={invoiceStats.cancelled.count} amount={invoiceStats.cancelled.amount}
-                                icon={<Ban size={12} />} iconColor="#94a3b8" barColor="#94a3b8" isDark={isDark} />
+
+                            {/* Proposal breakdown */}
+                            <div className={cn("rounded-[10px] border p-3 flex flex-col",
+                                isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]")}>
+                                <div className={cn("text-[11px] font-bold uppercase tracking-wider opacity-40 mb-2", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
+                                    Proposal Breakdown
+                                </div>
+                                <div className="flex-1 flex flex-col justify-between">
+                                    <StatusRow label="Accepted" count={proposalStats.accepted.count} amount={proposalStats.accepted.amount}
+                                        icon={<CheckCircle2 size={12} />} iconColor="#22c55e" barColor="#22c55e" isDark={isDark} />
+                                    <StatusRow label="Pending" count={proposalStats.pending.count} amount={proposalStats.pending.amount}
+                                        icon={<Clock size={12} />} iconColor="#f59e0b" barColor="#f59e0b" isDark={isDark} />
+                                    <StatusRow label="Declined" count={proposalStats.declined.count} amount={proposalStats.declined.amount}
+                                        icon={<AlertCircle size={12} />} iconColor="#ef4444" barColor="#ef4444" isDark={isDark} />
+                                    <StatusRow label="Draft" count={proposalStats.draft.count} amount={proposalStats.draft.amount}
+                                        icon={<FileText size={12} />} iconColor="#6366f1" barColor="#6366f1" isDark={isDark} />
+                                    <StatusRow label="Cancelled" count={proposalStats.cancelled.count} amount={proposalStats.cancelled.amount}
+                                        icon={<Ban size={12} />} iconColor="#94a3b8" barColor="#94a3b8" isDark={isDark} />
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Proposal breakdown */}
-                        <div className={cn("rounded-[10px] border p-4",
-                            isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-white border-[#ebebeb]")}>
-                            <div className={cn("text-[12px] font-semibold mb-3", isDark ? "text-[#e5e5e5]" : "text-[#111]")}>
-                                Proposal Breakdown
-                            </div>
-                            <StatusRow label="Accepted" count={proposalStats.accepted.count} amount={proposalStats.accepted.amount}
-                                icon={<CheckCircle2 size={12} />} iconColor="#22c55e" barColor="#22c55e" isDark={isDark} />
-                            <StatusRow label="Pending" count={proposalStats.pending.count} amount={proposalStats.pending.amount}
-                                icon={<Clock size={12} />} iconColor="#f59e0b" barColor="#f59e0b" isDark={isDark} />
-                            <StatusRow label="Declined" count={proposalStats.declined.count} amount={proposalStats.declined.amount}
-                                icon={<AlertCircle size={12} />} iconColor="#ef4444" barColor="#ef4444" isDark={isDark} />
-                            <StatusRow label="Draft" count={proposalStats.draft.count} amount={proposalStats.draft.amount}
-                                icon={<FileText size={12} />} iconColor="#6366f1" barColor="#6366f1" isDark={isDark} />
-                            <StatusRow label="Cancelled" count={proposalStats.cancelled.count} amount={proposalStats.cancelled.amount}
-                                icon={<Ban size={12} />} iconColor="#94a3b8" barColor="#94a3b8" isDark={isDark} />
-                        </div>
-
-                        {/* Income Heatmap (Fits in the 3rd 2fr column) */}
+                        {/* Right Half: Income Heatmap */}
                         <IncomeHeatmap
                             heatmapData={heatmapData}
                             year={heatmapYear}

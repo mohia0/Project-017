@@ -134,10 +134,17 @@ export function FullScreenLoader({
   className?: string;
 }) {
   const [mounted, setMounted] = useState(false);
+  const [useAccent, setUseAccent] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    // Switch to accent color after a short delay for a high-end feel
+    const timer = setTimeout(() => setUseAccent(true), 1000);
+    return () => clearTimeout(timer);
   }, []);
+
+  const accentColor = "var(--brand-loader-color, #3b82f6)";
+  const initialColor = isDark ? "#ffffff" : "#000000";
 
   const content = (
     <div
@@ -147,7 +154,10 @@ export function FullScreenLoader({
         className
       )}
     >
-      <AppLoader size="lg" />
+      <AppLoader 
+        size="lg" 
+        color={useAccent ? accentColor : initialColor} 
+      />
       {label && (
         <p className={cn(
           "mt-10 text-[10px] font-bold tracking-[0.5em] uppercase opacity-50",
