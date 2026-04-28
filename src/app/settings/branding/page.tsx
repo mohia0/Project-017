@@ -6,7 +6,7 @@ import { SettingsField, SettingsInput } from '@/components/settings/SettingsFiel
 import { ColorisInput } from '@/components/ui/ColorisInput';
 import { useSettingsStore, WorkspaceBranding } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
-import { RotateCcw, Upload, Image as ImageIcon, Check, Trash2, HelpCircle } from 'lucide-react';
+import { RotateCcw, Upload, Image as ImageIcon, Check, Trash2, HelpCircle, Plus } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
@@ -28,7 +28,7 @@ const DEFAULT_PALETTE = [
 ];
 
 const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
-    primary_color: '#000000',
+    primary_color: '#f59e0b',
     secondary_color: '',
     apply_color_to_sidebar: false,
     font_family: 'Inter',
@@ -347,6 +347,7 @@ export default function BrandingSettingsPage() {
                             onChange={val => setFormData(p => ({ ...p, primary_color: val }))}
                             className="w-fit min-w-[140px]"
                             large
+                            swatches={formData.branding_colors || undefined}
                         />
                         
                         <div className={cn(
@@ -445,6 +446,7 @@ export default function BrandingSettingsPage() {
                                         newColors[index] = newColor;
                                         setFormData(p => ({ ...p, branding_colors: newColors }));
                                     }}
+                                    swatches={formData.branding_colors || undefined}
                                 />
                                 <button
                                     onClick={() => {
@@ -463,13 +465,24 @@ export default function BrandingSettingsPage() {
                                 setFormData(p => ({ ...p, branding_colors: newColors }));
                             }}
                             className={cn(
-                                "h-[45px] rounded-xl border border-dashed flex items-center justify-center gap-2 transition-all group",
+                                "flex items-center gap-2 rounded-lg transition-all border p-1 group",
                                 isDark 
-                                    ? "bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10" 
-                                    : "bg-black/5 border-black/10 hover:border-black/20 hover:bg-black/10"
+                                    ? "bg-white/5 border-white/5 hover:border-white/10" 
+                                    : "bg-black/[0.02] border-black/[0.08] hover:border-black/[0.15]"
                             )}
                         >
-                            <span className={cn("text-[11px] font-bold uppercase tracking-wider", isDark ? "text-white/40 group-hover:text-white/60" : "text-black/40 group-hover:text-black/60")}>Add Color</span>
+                            <div className={cn(
+                                "w-5 h-5 rounded shadow-inner border border-dashed shrink-0 flex items-center justify-center",
+                                isDark ? "border-white/20 bg-white/5" : "border-black/10 bg-black/5"
+                            )}>
+                                <Plus size={10} className={isDark ? "text-white/40" : "text-black/40"} />
+                            </div>
+                            <span className={cn(
+                                "text-[11px] font-bold uppercase tracking-wider pr-2",
+                                isDark ? "text-white/40 group-hover:text-white/60" : "text-black/40 group-hover:text-black/60"
+                            )}>
+                                Add Color
+                            </span>
                         </button>
                     </div>
                 </div>

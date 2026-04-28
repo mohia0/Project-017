@@ -68,7 +68,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
         const root = document.documentElement;
         if (branding) {
-            const primary = branding.primary_color || '#000000';
+            const primary = branding.primary_color || '#f59e0b';
             const isDark = getBrightness(primary) < 128;
             
             root.style.setProperty('--brand-primary', primary);
@@ -92,7 +92,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--primary-light', darkenColor(primary, -0.2));
         } else {
             // ... (keep fallback as is)
-            const defaultPrimary = '#000000';
+            const defaultPrimary = '#f59e0b';
             root.style.setProperty('--brand-primary', defaultPrimary);
             root.style.setProperty('--brand-primary-rgb', hexToRgb(defaultPrimary));
             root.style.setProperty('--brand-primary-hover', darkenColor(defaultPrimary));

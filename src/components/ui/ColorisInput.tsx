@@ -15,7 +15,13 @@ interface ColorPickerProps {
     isDark?: boolean;
     compact?: boolean;
     large?: boolean;
+    swatches?: string[];
 }
+
+const DEFAULT_PALETTE = [
+    '#f59e0b', '#ef4444', '#f97316', '#ec4899', '#8b5cf6', '#3b82f6', 
+    '#06b6d4', '#10b981', '#000000', '#6b7280', '#FFFFFF', '#333333'
+];
 
 // ── COLOR UTILS ──
 
@@ -96,10 +102,11 @@ function rgbaToHex(r: number, g: number, b: number, a: number) {
     return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
 }
 
-export function ColorisInput({ value, onChange, className, isDark: isDarkProp, compact, large }: ColorPickerProps) {
+export function ColorisInput({ value, onChange, className, isDark: isDarkProp, compact, large, swatches }: ColorPickerProps) {
     const { theme } = useUIStore();
     const { branding } = useSettingsStore();
-    const brandingColors = branding?.branding_colors || [];
+    
+    const brandingColors = swatches || branding?.branding_colors || DEFAULT_PALETTE;
 
     const isDark = isDarkProp ?? (theme === 'dark');
     const [isOpen, setIsOpen] = useState(false);

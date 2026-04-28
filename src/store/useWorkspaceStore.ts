@@ -68,15 +68,44 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         const workspaces = data as Workspace[];
         set({ workspaces, isLoading: false, hasFetched: true });
 
-        // Validate that the active workspace belongs to the user
+        // Identify which workspace should be active based on the current Domain/Subdomain
         const { activeWorkspaceId, setActiveWorkspaceId } = useUIStore.getState();
         const validWorkspaceIds = workspaces.map(w => w.id);
+        
+        let detectedWorkspaceId: string | null = null;
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com';
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
 
-        if (activeWorkspaceId && !validWorkspaceIds.includes(activeWorkspaceId)) {
+        // 1. Try to find by Subdomain (slug.rootDomain)
+        if (hostname.endsWith(`.${rootDomain}`)) {
+            const slug = hostname.split('.')[0];
+            const found = workspaces.find(w => w.slug === slug);
+            if (found) detectedWorkspaceId = found.id;
+        }
+
+        // 2. Try to find by Custom Domain (requires checking workspace_domains table)
+        if (!detectedWorkspaceId && hostname && hostname !== rootDomain && hostname !== 'localhost' && !hostname.includes('127.0.0.1')) {
+            const { data: domainData } = await supabase
+                .from('workspace_domains')
+                .select('workspace_id')
+                .eq('domain', hostname)
+                .maybeSingle();
+            
+            if (domainData) {
+                detectedWorkspaceId = domainData.workspace_id;
+            }
+        }
+
+        // Apply detected ID (prioritize URL detection over localStorage)
+        if (detectedWorkspaceId && validWorkspaceIds.includes(detectedWorkspaceId)) {
+            if (activeWorkspaceId !== detectedWorkspaceId) {
+                setActiveWorkspaceId(detectedWorkspaceId);
+            }
+        } else if (activeWorkspaceId && !validWorkspaceIds.includes(activeWorkspaceId)) {
             // Stale active workspace from local storage (previous user session)
             setActiveWorkspaceId(workspaces.length > 0 ? workspaces[0].id : null);
         } else if (!activeWorkspaceId && workspaces.length > 0) {
-            // Auto-select first workspace if none active
+            // Auto-select first workspace if none active and no direct URL match
             setActiveWorkspaceId(workspaces[0].id);
         }
     },
