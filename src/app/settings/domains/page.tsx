@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsInput } from '@/components/settings/SettingsField';
 import { useSettingsStore, WorkspaceDomain } from '@/store/useSettingsStore';
@@ -11,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { appToast } from '@/lib/toast';
 
 function DomainStatusBadge({ domain }: { domain: WorkspaceDomain }) {
     if (domain.status === 'active') {
@@ -219,11 +221,13 @@ export default function DomainsSettingsPage() {
         
         if (error || !inserted) {
             setIsAdding(false);
+            appToast.error('Failed to add domain');
             return;
         }
 
         setNewDomain('');
         fetchDomains(activeWorkspaceId);
+        appToast.success('Domain added', 'Validating DNS records...');
 
         // 2. Immediately call verify to register with Vercel + get real DNS records
         try {
@@ -240,23 +244,35 @@ export default function DomainsSettingsPage() {
 
 
     const handleRemoveDomain = async (id: string, name: string) => {
-        try {
-            await fetch('/api/domains/delete', {
+        appToast.promise(
+            fetch('/api/domains/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ domainId: id, domainName: name }),
-            });
-            if (activeWorkspaceId) fetchDomains(activeWorkspaceId);
-        } catch (err) {
-            console.error('Failed to delete domain:', err);
-        }
+            }).then(() => {
+                if (activeWorkspaceId) fetchDomains(activeWorkspaceId);
+            }),
+            {
+                loading: 'Removing domain...',
+                success: 'Domain removed successfully',
+                error: 'Failed to remove domain'
+            }
+        );
     };
 
     const handleSetPrimary = async (id: string) => {
         if (!activeWorkspaceId) return;
-        await supabase.from('workspace_domains').update({ is_primary: false }).eq('workspace_id', activeWorkspaceId);
-        await supabase.from('workspace_domains').update({ is_primary: true }).eq('id', id);
-        fetchDomains(activeWorkspaceId);
+        appToast.promise(
+            Promise.all([
+                supabase.from('workspace_domains').update({ is_primary: false }).eq('workspace_id', activeWorkspaceId),
+                supabase.from('workspace_domains').update({ is_primary: true }).eq('id', id)
+            ]).then(() => fetchDomains(activeWorkspaceId)),
+            {
+                loading: 'Updating primary domain...',
+                success: 'Primary domain updated!',
+                error: 'Failed to update primary domain'
+            }
+        );
     };
 
     const handleVerifyDomain = async (domainId: string, domainName: string) => {
@@ -324,14 +340,25 @@ export default function DomainsSettingsPage() {
                                 </span>
                             </div>
                         </div>
-                        <a 
-                            href={systemPortalUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="px-3 h-8 rounded-lg text-xs font-semibold flex items-center transition-colors dark:bg-white/10 dark:hover:bg-white/20 bg-black/5 hover:bg-black/10"
-                        >
-                            <ExternalLink size={12} className="mr-1.5" /> Visit
-                        </a>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <Link
+                                href="/settings/workspace?highlight=slug"
+                                className={cn(
+                                    "px-3 h-8 rounded-lg text-xs font-semibold flex items-center transition-colors",
+                                    isDark ? "bg-white/5 hover:bg-white/10" : "bg-black/5 hover:bg-black/10"
+                                )}
+                            >
+                                Edit
+                            </Link>
+                            <a 
+                                href={systemPortalUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 h-8 rounded-lg text-xs font-semibold flex items-center transition-colors dark:bg-white/10 dark:hover:bg-white/20 bg-black/5 hover:bg-black/10"
+                            >
+                                <ExternalLink size={12} className="mr-1.5" /> Visit
+                            </a>
+                        </div>
                     </div>
                 </SettingsCard>
             )}
@@ -365,117 +392,121 @@ export default function DomainsSettingsPage() {
                     extra={<HelpTip isDark={isDark} text="Link your own domain to white-label your client portal. Once DNS records are verified, you can set it as the primary access point for your workspace." />}
                 >
                     <div className="flex flex-col gap-4">
-                        {domains.map((domain) => (
-                            <div key={domain.id} className={cn(
-                                "p-4 border rounded-xl group transition-all",
-                                isDark ? "border-white/10 bg-white/[0.02]" : "border-black/10 bg-white/50"
-                            )}>
-                                <div className="flex items-center gap-3 justify-between">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className={cn(
-                                            "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                                            isDark ? "bg-white/5" : "bg-black/5"
-                                        )}>
-                                            <Globe size={14} className="opacity-50" />
-                                        </div>
-                                        <div className="flex flex-col min-w-0">
-                                             <div className="flex items-center gap-1.5 min-w-0">
-                                                <span className="font-semibold text-sm truncate">{domain.domain}</span>
-                                                <a 
-                                                    href={`https://${domain.domain}`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className={cn(
-                                                        "opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center translate-y-[1px]",
-                                                        isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
+                        {domains.map((domain) => {
+                            const isNew = new Date().getTime() - new Date(domain.created_at).getTime() < 30 * 60 * 1000;
+                            
+                            return (
+                                <div key={domain.id} className={cn(
+                                    "p-4 border rounded-xl group transition-all",
+                                    isDark ? "border-white/10 bg-white/[0.02]" : "border-black/10 bg-white/50"
+                                )}>
+                                    <div className="flex items-start gap-3 justify-between">
+                                        <div className="flex items-start gap-3 min-w-0">
+                                            <div className={cn(
+                                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                                                isDark ? "bg-white/5" : "bg-black/5"
+                                            )}>
+                                                <Globe size={14} className="opacity-50" />
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                 <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span className="font-semibold text-sm truncate">{domain.domain}</span>
+                                                    <a 
+                                                        href={`https://${domain.domain}`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className={cn(
+                                                            "opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center translate-y-[1px]",
+                                                            isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
+                                                        )}
+
+                                                        title={`Visit ${domain.domain}`}
+                                                    >
+                                                        <ExternalLink size={11} strokeWidth={2.5} />
+                                                    </a>
+                                                    
+                                                    {domain.is_primary && (
+                                                        <span className={cn(
+                                                            "text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ml-0.5",
+                                                            isDark ? "bg-white/10" : "bg-black/5"
+                                                        )}>Primary</span>
                                                     )}
-
-                                                    title={`Visit ${domain.domain}`}
-                                                >
-                                                    <ExternalLink size={11} strokeWidth={2.5} />
-                                                </a>
-                                                
-                                                {domain.is_primary && (
-                                                    <span className={cn(
-                                                        "text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ml-0.5",
-                                                        isDark ? "bg-white/10" : "bg-black/5"
-                                                    )}>Primary</span>
-                                                )}
-                                            </div>
-
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <DomainStatusBadge domain={domain} />
-                                            </div>
-
-                                            {domain.status === 'active' && (
-                                                <div className={cn(
-                                                    "mt-3 pt-3 border-t flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-700",
-                                                    isDark ? "border-white/5" : "border-black/5"
-                                                )}>
-                                                    <div className="flex shrink-0 w-1.5 h-1.5 rounded-full bg-[#4dbf39] animate-pulse" />
-                                                    <span className={cn(
-                                                        "text-[10px] font-semibold tracking-tight",
-                                                        isDark ? "text-white/20" : "text-black/30"
-                                                    )}>
-                                                        Domain confirmed. It may take up to 30 minutes for DNS & SSL to manifest globally.
-                                                    </span>
                                                 </div>
+
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <DomainStatusBadge domain={domain} />
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {domain.status !== 'active' && (
+                                                <button
+                                                    onClick={() => handleVerifyDomain(domain.id, domain.domain)}
+                                                    disabled={verifyingId === domain.id}
+                                                    className={cn(
+                                                        "px-3 h-8 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors",
+                                                        isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10",
+                                                        verifyingId === domain.id && "opacity-60 cursor-not-allowed"
+                                                    )}
+                                                >
+                                                    {verifyingId === domain.id ? <AppLoader size="xs" /> : <RefreshCw size={12} />}
+                                                    {verifyingId === domain.id ? 'Checking...' : 'Verify DNS'}
+                                                </button>
                                             )}
+                                            {domain.status === 'active' && !domain.is_primary && (
+                                                <button
+                                                    onClick={() => handleSetPrimary(domain.id)}
+                                                    className={cn(
+                                                        "px-3 h-8 rounded-lg text-xs font-semibold transition-colors opacity-0 group-hover:opacity-100",
+                                                        isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
+                                                    )}
+                                                >
+                                                    Make Primary
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setDomainToDelete({ id: domain.id, name: domain.domain })}
+                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                                                title="Remove Domain"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
                                         </div>
                                     </div>
-                                    
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        {domain.status !== 'active' && (
-                                            <button
-                                                onClick={() => handleVerifyDomain(domain.id, domain.domain)}
-                                                disabled={verifyingId === domain.id}
-                                                className={cn(
-                                                    "px-3 h-8 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors",
-                                                    isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10",
-                                                    verifyingId === domain.id && "opacity-60 cursor-not-allowed"
-                                                )}
-                                            >
-                                                {verifyingId === domain.id ? <AppLoader size="xs" /> : <RefreshCw size={12} />}
-                                                {verifyingId === domain.id ? 'Checking...' : 'Verify DNS'}
-                                            </button>
-                                        )}
-                                        {domain.status === 'active' && !domain.is_primary && (
-                                            <button
-                                                onClick={() => handleSetPrimary(domain.id)}
-                                                className={cn(
-                                                    "px-3 h-8 rounded-lg text-xs font-semibold transition-colors opacity-0 group-hover:opacity-100",
-                                                    isDark ? "bg-white/10 hover:bg-white/20" : "bg-black/5 hover:bg-black/10"
-                                                )}
-                                            >
-                                                Make Primary
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => setDomainToDelete({ id: domain.id, name: domain.domain })}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
-                                            title="Remove Domain"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
+                                    {domain.status === 'active' && isNew && (
+                                        <div className={cn(
+                                            "mt-3 pt-3 border-t -mx-4 px-4 flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-700",
+                                            isDark ? "border-white/5" : "border-black/5"
+                                        )}>
+                                            <div className="flex shrink-0 w-1.5 h-1.5 rounded-full bg-[#4dbf39] animate-pulse" />
+                                            <span className={cn(
+                                                "text-[10px] font-semibold tracking-tight line-clamp-1",
+                                                isDark ? "text-white/20" : "text-black/30"
+                                            )}>
+                                                Domain confirmed. It may take up to 30 minutes for DNS & SSL to manifest globally.
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {verifyMessages[domain.id] && (
+                                        <div className={cn(
+                                            "mt-3 px-3 py-2 text-[11px] font-medium rounded-lg border",
+                                            verifyMessages[domain.id].type === 'error' ? (isDark ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-red-50 text-red-600 border-red-100") :
+                                            (isDark ? "bg-[#4dbf39]/10 text-[#4dbf39] border-[#4dbf39]/20" : "bg-green-50 text-green-600 border-green-100")
+                                        )}>
+                                            {verifyMessages[domain.id].text}
+                                        </div>
+                                    )}
+
+                                    <DNSRecordCard 
+                                        domain={domain} 
+                                        onRefetch={() => fetchDomains(activeWorkspaceId!)}
+                                    />
                                 </div>
-
-                                {verifyMessages[domain.id] && (
-                                    <div className={cn(
-                                        "mx-4 mt-1 px-3 py-2 text-[11px] font-medium rounded-lg border",
-                                        verifyMessages[domain.id].type === 'error' ? (isDark ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-red-50 text-red-600 border-red-100") :
-                                        (isDark ? "bg-[#4dbf39]/10 text-[#4dbf39] border-[#4dbf39]/20" : "bg-green-50 text-green-600 border-green-100")
-                                    )}>
-                                        {verifyMessages[domain.id].text}
-                                    </div>
-                                )}
-
-                                <DNSRecordCard 
-                                    domain={domain} 
-                                    onRefetch={() => fetchDomains(activeWorkspaceId!)}
-                                />
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </SettingsCard>
             )}

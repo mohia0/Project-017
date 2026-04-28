@@ -5,10 +5,10 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
 
 function hexToRgb(hex: string) {
-    if (!hex) return '77, 191, 57';
+    if (!hex) return '0, 0, 0';
     let s = hex.replace('#', '');
     if (s.length === 3) s = s.split('').map(c => c + c).join('');
-    if (s.length < 6) return '77, 191, 57';
+    if (s.length < 6) return '0, 0, 0';
     
     try {
         const r = parseInt(s.slice(0, 2), 16);
@@ -16,15 +16,15 @@ function hexToRgb(hex: string) {
         const b = parseInt(s.slice(4, 6), 16);
         return `${r}, ${g}, ${b}`;
     } catch (e) {
-        return '77, 191, 57';
+        return '0, 0, 0';
     }
 }
 
 function darkenColor(hex: string, amount = 0.1) {
-    if (!hex) return '#3aaa29';
+    if (!hex) return '#000000';
     let s = hex.replace('#', '');
     if (s.length === 3) s = s.split('').map(c => c + c).join('');
-    if (s.length < 6) return '#3aaa29';
+    if (s.length < 6) return '#000000';
     
     try {
         let r = parseInt(s.slice(0, 2), 16);
@@ -37,7 +37,7 @@ function darkenColor(hex: string, amount = 0.1) {
         
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     } catch (e) {
-        return '#3aaa29';
+        return '#000000';
     }
 }
 
@@ -67,7 +67,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
         const root = document.documentElement;
         if (branding) {
-            const primary = branding.primary_color || '#4dbf39';
+            const primary = branding.primary_color || '#000000';
             const isDark = getBrightness(primary) < 128;
             
             root.style.setProperty('--brand-primary', primary);
@@ -84,7 +84,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--primary-light', darkenColor(primary, -0.2));
         } else {
             // Default fallbacks
-            const defaultPrimary = '#4dbf39';
+            const defaultPrimary = '#000000';
             root.style.setProperty('--brand-primary', defaultPrimary);
             root.style.setProperty('--brand-primary-rgb', hexToRgb(defaultPrimary));
             root.style.setProperty('--brand-primary-hover', darkenColor(defaultPrimary));

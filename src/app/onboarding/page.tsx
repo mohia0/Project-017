@@ -152,11 +152,11 @@ export default function OnboardingPage() {
                             <img
                                 src={portalBranding.logo_url}
                                 alt={portalBranding.name}
-                                className="h-11 w-auto object-contain mx-auto"
+                                className="h-16 w-auto object-contain mx-auto"
                             />
                         ) : (
                             <AroooXaLogo
-                                height={30}
+                                height={42}
                                 color={isDark ? 'white' : '#1a1a1a'}
                                 wave={true}
                                 className="mx-auto"

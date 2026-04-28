@@ -202,11 +202,11 @@ export default function LoginPage() {
                             <img
                                 src={portalBranding.logo_url}
                                 alt={portalBranding.name}
-                                className="h-10 w-auto object-contain mx-auto"
+                                className="h-14 w-auto object-contain mx-auto"
                             />
                         ) : (
                             <AroooXaLogo
-                                height={28}
+                                height={40}
                                 color={isDark ? 'white' : '#1a1a1a'}
                                 wave={true}
                                 className="mx-auto"

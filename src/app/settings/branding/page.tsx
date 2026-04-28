@@ -21,14 +21,14 @@ const DEFAULT_PALETTE = [
     '#3b82f6', // Blue (Video)
     '#06b6d4', // Cyan (Link)
     '#10b981', // Emerald (Code)
-    '#4dbf39', // App Green (Primary)
+    '#000000', // Primary Black
     '#6b7280', // Gray (Archive)
     '#FFFFFF', // White
-    '#000000'  // Black
+    '#333333'  // Dark Gray
 ];
 
 const DEFAULT_BRANDING: Omit<WorkspaceBranding, 'workspace_id'> = {
-    primary_color: '#4dbf39',
+    primary_color: '#000000',
     secondary_color: '',
     apply_color_to_sidebar: false,
     font_family: 'Inter',

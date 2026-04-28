@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsField, SettingsInput, SettingsTextarea, SettingsToggle, SettingsSelect } from '@/components/settings/SettingsField';
 import { useWorkspaceStore, Workspace } from '@/store/useWorkspaceStore';
@@ -124,6 +124,25 @@ export default function WorkspaceSettingsPage() {
     // Deletion workflow state
     const [isDeleting, setIsDeleting] = useState(false);
     const [confirmText, setConfirmText] = useState('');
+    
+    // Highlight functionality
+    const searchParams = useSearchParams();
+    const [highlightSlug, setHighlightSlug] = useState(false);
+    
+    useEffect(() => {
+        if (searchParams.get('highlight') === 'slug') {
+            setHighlightSlug(true);
+            setTimeout(() => setHighlightSlug(false), 3000);
+            
+            // Scroll to the field after a short delay to ensure layout is ready
+            setTimeout(() => {
+                const element = document.getElementById('portal-url-field');
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         setMounted(true);
@@ -299,6 +318,7 @@ export default function WorkspaceSettingsPage() {
 
                         <SettingsField 
                             label="Workspace Portal URL" 
+                            id="portal-url-field"
                             extra={
                                 activeDomain ? (
                                     <WarningTip 
@@ -310,7 +330,10 @@ export default function WorkspaceSettingsPage() {
                                 )
                             }
                         >
-                             <div className="flex flex-col gap-2">
+                             <div className={cn(
+                                 "flex flex-col gap-2 rounded-xl transition-all duration-700",
+                                 highlightSlug && (isDark ? "ring-2 ring-white/40 bg-white/5" : "ring-2 ring-black/10 bg-black/5")
+                             )}>
                                  <div className="flex items-center">
                                     <SettingsInput 
                                         value={slug}
@@ -329,7 +352,11 @@ export default function WorkspaceSettingsPage() {
                         </SettingsField>
                     </div>
 
-                    <SettingsField label="Workspace Description" description="This will appear as the site description for clients visiting your dashboard via custom domains.">
+                    <SettingsField 
+                        label="Workspace Description" 
+                        description="This will appear as the site description for clients visiting your dashboard via custom domains."
+                        extra={<HelpTip text="This description and your custom logo will be used when sharing your portal link on social media or in messages." isDark={isDark} />}
+                    >
                         <SettingsTextarea 
                             value={description} 
                             onChange={e => setDescription(e.target.value)}

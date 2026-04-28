@@ -11,15 +11,16 @@ interface SettingsFieldProps {
     children: React.ReactNode;
     layout?: 'horizontal' | 'vertical'; // default is vertical, but some fields look better horizontal
     extra?: React.ReactNode;
+    id?: string;
 }
 
-export function SettingsField({ label, description, children, layout = 'vertical', extra }: SettingsFieldProps) {
+export function SettingsField({ label, description, children, layout = 'vertical', extra, id }: SettingsFieldProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
 
     if (layout === 'horizontal') {
         return (
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div id={id} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                         <label className={cn("block text-sm font-semibold whitespace-nowrap", isDark ? "text-white" : "text-black")}>
@@ -41,7 +42,7 @@ export function SettingsField({ label, description, children, layout = 'vertical
     }
 
     return (
-        <div className="w-full">
+        <div id={id} className="w-full">
             <div className="flex items-center justify-between gap-2 mb-1.5">
                 <label className={cn("block text-sm font-semibold whitespace-nowrap", isDark ? "text-white" : "text-black")}>
                     {label}

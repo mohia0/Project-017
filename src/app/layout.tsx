@@ -22,6 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
   let title = 'AROOOXA';
   let description = 'A premium CRM solution for scaling operations.';
   let favicon = '/favicon.svg?v=aroooxa';
+  let ogImage = '';
 
   try {
     const headersList = await headers();
@@ -66,11 +67,11 @@ export async function generateMetadata(): Promise<Metadata> {
       // Default to a transparent SVG, overridden if they uploaded a custom favicon.
       favicon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>';
 
-      // Fetch workspace name (for tab title) and branding (for favicon) in parallel
+      // Fetch workspace name, description, logo, and branding in parallel
       const [workspaceRes, brandingRes] = await Promise.all([
         supabaseService
           .from('workspaces')
-          .select('name')
+          .select('name, description, logo_url')
           .eq('id', workspaceId)
           .single(),
         supabaseService
@@ -82,7 +83,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
       if (workspaceRes.data?.name) {
         title = workspaceRes.data.name;
-        description = `${title} — Workspace`;
+        // Use custom description if available, otherwise fallback
+        description = workspaceRes.data.description || `${title} — Workspace`;
+      }
+      
+      if (workspaceRes.data?.logo_url) {
+          ogImage = workspaceRes.data.logo_url;
       }
 
       if (brandingRes.data?.favicon_url) {
@@ -104,11 +110,13 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       type: 'website',
       siteName: title,
+      ...(ogImage && { images: [{ url: ogImage }] }),
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      ...(ogImage && { images: [ogImage] }),
     },
   };
 }
