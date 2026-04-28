@@ -17,7 +17,7 @@ interface AppLoaderProps {
 export function AppLoader({
   className,
   size = "md",
-  color = "var(--brand-loader-color, #000000)",
+  color = "var(--brand-loader-color, currentColor)",
 }: AppLoaderProps) {
   const sizeMap = {
     xs: 16,

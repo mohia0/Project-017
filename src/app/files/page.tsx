@@ -193,11 +193,11 @@ function ImageThumb({ src, alt, isDark, fallback }: {
     return (
         <div 
             className="w-full h-[100px] overflow-hidden relative"
-            style={{ 
-                background: isDark 
-                    ? 'linear-gradient(45deg, #161616 25%, #1a1a1a 25%, #1a1a1a 50%, #161616 50%, #161616 75%, #1a1a1a 75%, #1a1a1a 100%)' 
-                    : '#f0f0f0',
+            style={isDark ? { 
+                backgroundImage: 'linear-gradient(45deg, #161616 25%, #1a1a1a 25%, #1a1a1a 50%, #161616 50%, #161616 75%, #1a1a1a 75%, #1a1a1a 100%)',
                 backgroundSize: '10px 10px'
+            } : {
+                backgroundColor: '#f0f0f0'
             }}
         >
             {/* Loading skeleton */}
@@ -1894,7 +1894,14 @@ export default function FilesPage() {
                         if (selectedIds.size > 0) {
                             e.preventDefault();
                             setClipboard({ type: 'copy', ids: Array.from(selectedIds) });
-                            appToast.success(`${selectedIds.size} items copied`);
+                            appToast.success(`${selectedIds.size} item${selectedIds.size !== 1 ? 's' : ''} copied`);
+                        }
+                        break;
+                    case 'x':
+                        if (selectedIds.size > 0) {
+                            e.preventDefault();
+                            setClipboard({ type: 'cut', ids: Array.from(selectedIds) });
+                            appToast.success(`${selectedIds.size} item${selectedIds.size !== 1 ? 's' : ''} cut`);
                         }
                         break;
                     case 'v':
@@ -2290,7 +2297,7 @@ export default function FilesPage() {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex flex-col items-center pt-4 pb-1">
+                                                <div className="flex-1 flex flex-col items-center justify-center py-3">
                                                     {/* Checkbox */}
                                                     <div className={cn('absolute top-0 left-0 p-2 z-10 transition-all cursor-pointer', isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}
                                                         onClick={e => { e.stopPropagation(); toggleSelect(item.id); }}>

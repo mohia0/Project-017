@@ -53,7 +53,7 @@ function getBrightness(hex: string) {
 }
 
 export function BrandingProvider({ children }: { children: React.ReactNode }) {
-    const { activeWorkspaceId } = useUIStore();
+    const { activeWorkspaceId, theme } = useUIStore();
     const { branding, fetchBranding, hasFetched } = useSettingsStore();
 
     useEffect(() => {
@@ -63,21 +63,24 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     }, [activeWorkspaceId, fetchBranding]);
 
     useEffect(() => {
-        // Do not jump to conclusions and apply default aroooxa styling while branding is still fetching from Supabase.
+        // Do not apply branding while it's still loading from Supabase
         if (activeWorkspaceId && !hasFetched.branding) return;
+
+        // Apply CSS variables whenever branding OR theme changes
+        const isDarkMode = theme === 'dark';
 
         const root = document.documentElement;
         if (branding) {
             const primary = branding.primary_color || '#f59e0b';
-            const isDark = getBrightness(primary) < 128;
+            const isDarkAccent = getBrightness(primary) < 128;
             
             root.style.setProperty('--brand-primary', primary);
             root.style.setProperty('--brand-primary-rgb', hexToRgb(primary));
             root.style.setProperty('--brand-primary-hover', darkenColor(primary)); 
-            root.style.setProperty('--brand-primary-foreground', isDark ? '#ffffff' : '#000000');
+            root.style.setProperty('--brand-primary-foreground', isDarkAccent ? '#ffffff' : '#000000');
             
-            // Loader color: use primary only if explicitly customized, otherwise default to black
-            const loaderColor = branding.primary_color ? primary : '#000000';
+            // Loader color: use custom primary when explicitly set; otherwise use white/black based on theme
+            const loaderColor = branding.primary_color ? primary : (isDarkMode ? '#ffffff' : '#000000');
             root.style.setProperty('--brand-loader-color', loaderColor);
             
             // Sidebar Tint Logic
@@ -95,7 +98,6 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--primary-dark', darkenColor(primary, 0.2));
             root.style.setProperty('--primary-light', darkenColor(primary, -0.2));
         } else {
-            // ... (keep fallback as is)
             const defaultPrimary = '#f59e0b';
             root.style.setProperty('--brand-primary', defaultPrimary);
             root.style.setProperty('--brand-primary-rgb', hexToRgb(defaultPrimary));
@@ -104,13 +106,14 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--brand-secondary', '#1a1a2e');
             root.style.setProperty('--brand-font', 'Inter, sans-serif');
             root.style.setProperty('--brand-radius', '12px');
-            root.style.setProperty('--brand-loader-color', '#000000');
+            // No custom accent — use white in dark mode, black in light mode
+            root.style.setProperty('--brand-loader-color', isDarkMode ? '#ffffff' : '#000000');
 
             root.style.setProperty('--primary', defaultPrimary);
             root.style.setProperty('--primary-dark', darkenColor(defaultPrimary, 0.2));
             root.style.setProperty('--primary-light', darkenColor(defaultPrimary, -0.2));
         }
-    }, [branding, hasFetched.branding, activeWorkspaceId]);
+    }, [branding, hasFetched.branding, activeWorkspaceId, theme]);
     
     // Update favicon dynamically — only override when a custom favicon_url is set.
     // We intentionally do NOT fall back to /favicon.svg here; the SSR <head> tag
