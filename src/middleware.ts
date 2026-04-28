@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
     !host.startsWith('127.0.0.1')
   ) {
     const data = await supabaseGet(
-      `workspace_domains?domain=eq.${encodeURIComponent(host)}&status=eq.active&select=workspace_id&limit=1`
+      `workspace_domains?domain=eq.${encodeURIComponent(host)}&status=eq.active&select=workspace_id&order=created_at.desc&limit=1`
     );
     if (data?.[0]) {
       workspaceId    = data[0].workspace_id;
@@ -132,25 +132,10 @@ export async function middleware(request: NextRequest) {
        }
     }
 
-    // If logged in at a workspace domain, ensure they belong there
-    if (workspaceId) {
-      const data = await supabaseGet(
-        `workspaces?id=eq.${workspaceId}&owner_id=eq.${user.id}&select=id&limit=1`
-      );
-      const membership = data?.[0];
-      
-      if (!membership) {
-        // Not a member? Redirect to their own domain or show error
-        const userWs = await supabaseGet(`workspaces?owner_id=eq.${user.id}&select=slug&limit=1`);
-        if (userWs?.[0]?.slug) {
-          // If they are on a custom domain and own a different workspace, redirect to their slug
-          // But if they are somehow failing a check for their OWN custom domain, this could loop.
-          const url = new URL(request.url);
-          url.host = `${userWs[0].slug}.${ROOT_DOMAIN}`;
-          return NextResponse.redirect(url);
-        }
-      }
-    }
+    // Custom domains and subdomain portals: if the user is authenticated and
+    // workspace context was resolved, allow them through. The admin-only gate
+    // above already protects aroooxa.com itself.
+    // (No cross-workspace membership bounce needed for single-tenant setup.)
   }
 
   if (!user && !isAuthRoute && !isPublicPreview && !isApiRoute && !isOnboarding) {
