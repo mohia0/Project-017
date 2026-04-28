@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Building, Globe, Upload, Loader2, XCircle } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { AroooXaLogo } from '@/components/ui/AroooXaLogo';
 
 interface PortalBranding {
     name: string;
@@ -196,21 +197,19 @@ export default function LoginPage() {
                 <div className="w-full max-w-[360px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700">
                     
                     {/* Logo */}
-                    <div className="mb-10 flex items-start">
+                    <div className="mb-10 flex items-center justify-center">
                         {portalBranding?.logo_url ? (
                             <img
                                 src={portalBranding.logo_url}
                                 alt={portalBranding.name}
-                                className="h-10 w-auto object-contain"
+                                className="h-10 w-auto object-contain mx-auto"
                             />
                         ) : (
-                            <img 
-                                src="/logo.svg" 
-                                alt="aroooxa" 
-                                className={cn(
-                                    "h-10 w-auto",
-                                    isDark && "invert brightness-[100]"
-                                )}
+                            <AroooXaLogo
+                                height={28}
+                                color={isDark ? 'white' : '#1a1a1a'}
+                                wave={true}
+                                className="mx-auto"
                             />
                         )}
                     </div>

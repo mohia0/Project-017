@@ -19,50 +19,43 @@ const mrDafoe = Mr_Dafoe({
 
 
 export async function generateMetadata(): Promise<Metadata> {
-  let title = 'aroooxa';
+  let title = 'AROOOXA';
   let description = 'A premium CRM solution for scaling operations.';
-  let favicon = '/favicon.svg';
+  let favicon = '/favicon.svg?v=aroooxa';
 
   try {
     const headersList = await headers();
-    const host = headersList.get('host') ?? '';
+    
+    // Middleware injects this header when accessed via subdomain portal or custom domain
+    const workspaceId = headersList.get('x-workspace-id');
 
-    // Strip port for local dev (e.g. "localhost:3000" → "localhost:3000" is kept, but
-    // we only match real custom domains registered in workspace_domains).
-    if (host && !host.startsWith('localhost') && !host.includes('127.0.0.1')) {
-      // Look up whether this host is a registered custom domain
-      const { data: domainData } = await supabaseService
-        .from('workspace_domains')
-        .select('workspace_id')
-        .eq('domain', host)
-        .eq('status', 'active')
-        .single();
+    if (workspaceId) {
+      // It's a workspace context (subdomain or custom domain).
+      // We must not show the main aroooxa favicon to white-labeled workspaces.
+      // Default to a transparent SVG, overridden if they uploaded a custom favicon.
+      favicon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>';
 
-      if (domainData?.workspace_id) {
-        const workspaceId = domainData.workspace_id;
-
-        // Fetch workspace name for the tab title
-        const { data: workspaceData } = await supabaseService
+      // Fetch workspace name (for tab title) and branding (for favicon) in parallel
+      const [workspaceRes, brandingRes] = await Promise.all([
+        supabaseService
           .from('workspaces')
           .select('name')
           .eq('id', workspaceId)
-          .single();
-
-        if (workspaceData?.name) {
-          title = workspaceData.name;
-          description = `${workspaceData.name} — Workspace`;
-        }
-
-        // Fetch favicon from branding
-        const { data: brandingData } = await supabaseService
+          .single(),
+        supabaseService
           .from('workspace_branding')
           .select('favicon_url')
           .eq('workspace_id', workspaceId)
-          .single();
+          .single()
+      ]);
 
-        if (brandingData?.favicon_url) {
-          favicon = brandingData.favicon_url;
-        }
+      if (workspaceRes.data?.name) {
+        title = workspaceRes.data.name;
+        description = `${title} — Workspace`;
+      }
+
+      if (brandingRes.data?.favicon_url) {
+        favicon = brandingRes.data.favicon_url;
       }
     }
   } catch {

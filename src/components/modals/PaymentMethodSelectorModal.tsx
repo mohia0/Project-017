@@ -142,7 +142,7 @@ export function PaymentMethodSelectorModal({
     const hasOnlyBank = availableMethods.length > 0 && availableMethods.every(m => m.type === 'bank');
     const footerText = hasOnlyBank 
         ? "All bank details are confidential and securely handled."
-        : `Secure payment powered by ${payments?.business_name || "aroooxa"}`;
+        : `Secure payment powered by ${payments?.business_name || "AROOOXA"}`;
 
     if (!isOpen || !mounted) return null;
 

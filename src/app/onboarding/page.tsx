@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { ArrowRight, Building, Sparkles, AlertCircle, Globe, CheckCircle2, XCircle, Loader2, Upload, Image as ImageIcon } from 'lucide-react';
 import { FullScreenLoader, AppLoader } from '@/components/ui/AppLoader';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
+import { AroooXaLogo } from '@/components/ui/AroooXaLogo';
 
 interface PortalBranding {
     name: string;
@@ -146,21 +147,19 @@ export default function OnboardingPage() {
                 <div className="w-full max-w-[400px] flex flex-col animate-in fade-in slide-in-from-bottom-8 duration-1000">
                     
                     {/* Logo */}
-                    <div className="mb-14 flex items-center justify-center">
+                    <div className="mb-10 flex items-center justify-center">
                         {portalBranding?.logo_url ? (
                             <img
                                 src={portalBranding.logo_url}
                                 alt={portalBranding.name}
-                                className="h-11 w-auto object-contain"
+                                className="h-11 w-auto object-contain mx-auto"
                             />
                         ) : (
-                            <img 
-                                src="/logo.svg" 
-                                alt="aroooxa" 
-                                className={cn(
-                                    "h-11 w-auto transform hover:rotate-3 transition-transform duration-500",
-                                    isDark && "invert brightness-[100]"
-                                )}
+                            <AroooXaLogo
+                                height={30}
+                                color={isDark ? 'white' : '#1a1a1a'}
+                                wave={true}
+                                className="mx-auto"
                             />
                         )}
                     </div>

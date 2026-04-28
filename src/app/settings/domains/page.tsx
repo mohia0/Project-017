@@ -275,7 +275,7 @@ export default function DomainsSettingsPage() {
             } else if (data.verified === false) {
                 setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'error', text: data.error || 'DNS not propagated yet.' } }));
             } else {
-                setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'success', text: 'Domain linked to aroooxa successfully!' } }));
+                setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'success', text: 'Domain linked to AROOOXA successfully!' } }));
                 // Auto-hide success message after 5s
                 setTimeout(() => {
                     setVerifyMessages(prev => {

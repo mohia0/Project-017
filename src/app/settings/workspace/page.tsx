@@ -6,7 +6,7 @@ import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsField, SettingsInput, SettingsTextarea, SettingsToggle, SettingsSelect } from '@/components/settings/SettingsField';
 import { useWorkspaceStore, Workspace } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
-import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, FileText, Code, HelpCircle } from 'lucide-react';
+import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, FileText, Code, HelpCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -50,6 +50,33 @@ export function HelpTip({ text, isDark }: { text: string; isDark: boolean }) {
     );
 }
 
+export function WarningTip({ text, isDark }: { text: string; isDark: boolean }) {
+    const [show, setShow] = useState(false);
+    return (
+        <div className="relative flex items-center justify-center">
+            <button
+                type="button"
+                onMouseEnter={() => setShow(true)}
+                onMouseLeave={() => setShow(false)}
+                className={cn('transition-all duration-200 p-1 rounded-md animate-in fade-in zoom-in-95', isDark ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20' : 'text-amber-600 bg-amber-500/10 hover:bg-amber-500/20')}
+            >
+                <AlertTriangle size={14} />
+            </button>
+            {show && (
+                <div className={cn(
+                    'absolute bottom-full right-0 mb-2 w-64 px-4 py-3 rounded-xl text-[11px] font-medium shadow-2xl z-50 pointer-events-none whitespace-normal text-left tracking-normal leading-relaxed animate-in fade-in slide-in-from-bottom-1',
+                    isDark ? 'bg-[#222] text-amber-200 border border-amber-500/20' : 'bg-white text-amber-700 border border-amber-500/20'
+                )}>
+                    <div className="flex gap-2">
+                        <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                        <span>{text}</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function WorkspaceSettingsPage() {
     const router = useRouter();
     const { workspaces, updateWorkspace, deleteWorkspace, hasFetched: hasFetchedWorkspace } = useWorkspaceStore();
@@ -58,6 +85,7 @@ export default function WorkspaceSettingsPage() {
     const isDark = theme === 'dark';
     
     const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+    const activeDomain = domains.find(d => d.status === 'active');
     
     // General State
     const [name, setName] = useState('');
@@ -86,8 +114,8 @@ export default function WorkspaceSettingsPage() {
         notes: '' 
     });
 
-    // Metadata State
-    const [metadata, setMetadata] = useState<{key: string, value: string}[]>([]);
+    // Metadata State is not used locally anymore as the section was removed
+
     
     const [isSaving, setIsSaving] = useState<Record<string, boolean>>({});
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -129,9 +157,7 @@ export default function WorkspaceSettingsPage() {
             // Additional Details
             setAdditionalDetails(activeWorkspace.additional_details || { tax_id: '', reg_number: '', vat_number: '', notes: '' });
 
-            // Metadata
-            const metaEntries = Object.entries(activeWorkspace.metadata || {}).map(([key, value]) => ({ key, value: String(value) }));
-            setMetadata(metaEntries.length > 0 ? metaEntries : [{ key: '', value: '' }]);
+
         }
     }, [activeWorkspace]);
 
@@ -149,13 +175,7 @@ export default function WorkspaceSettingsPage() {
         if (updates.links) {
             updates.links = (updates.links as any[]).filter(l => l.url.trim() !== '');
         }
-        if (section === 'metadata') {
-            const metaObj: Record<string, string> = {};
-            metadata.forEach(m => {
-                if (m.key.trim()) metaObj[m.key.trim()] = m.value;
-            });
-            (updates as any).metadata = metaObj;
-        }
+
 
         await appToast.promise(
             updateWorkspace(activeWorkspaceId, updates),
@@ -191,10 +211,7 @@ export default function WorkspaceSettingsPage() {
                 return JSON.stringify(workingHours) !== JSON.stringify(activeWorkspace.working_hours || {});
             case 'additionalDetails':
                 return JSON.stringify(additionalDetails) !== JSON.stringify(activeWorkspace.additional_details || { tax_id: '', reg_number: '', vat_number: '', notes: '' });
-            case 'metadata':
-                const currentMeta = JSON.stringify(metadata.filter(m => m.key.trim() !== ''));
-                const savedMeta = JSON.stringify(Object.entries(activeWorkspace.metadata || {}).map(([key, value]) => ({ key, value: String(value) })));
-                return currentMeta !== savedMeta;
+
             default:
                 return false;
         }
@@ -269,7 +286,10 @@ export default function WorkspaceSettingsPage() {
                     </SettingsField>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                        <SettingsField label="Workspace Name">
+                        <SettingsField 
+                            label="Workspace Name"
+                            extra={<HelpTip text="This name will be used across your portal, emails, and white-labeled documents." isDark={isDark} />}
+                        >
                             <SettingsInput 
                                 value={name} 
                                 onChange={e => setName(e.target.value)}
@@ -279,7 +299,16 @@ export default function WorkspaceSettingsPage() {
 
                         <SettingsField 
                             label="Workspace Portal URL" 
-                            extra={<HelpTip text="Your unique portal address. Clients visit slug.aroooxa.com to access their portal. You can also link a custom domain in Domains settings." isDark={isDark} />}
+                            extra={
+                                activeDomain ? (
+                                    <WarningTip 
+                                        text={`This portal is currently linked to the custom domain "${activeDomain.domain}". Changing the internal slug may affect your portal routing.`} 
+                                        isDark={isDark} 
+                                    />
+                                ) : (
+                                    <HelpTip text="Your unique portal address. Clients visit slug.aroooxa.com to access their portal. You can also link a custom domain in Domains settings." isDark={isDark} />
+                                )
+                            }
                         >
                              <div className="flex flex-col gap-2">
                                  <div className="flex items-center">
@@ -634,56 +663,6 @@ export default function WorkspaceSettingsPage() {
                             onChange={e => setAdditionalDetails({ ...additionalDetails, notes: e.target.value })}
                         />
                     </SettingsField>
-                </div>
-            </SettingsCard>
-
-            {/* Metadata (Advanced) */}
-            <SettingsCard
-                title="System Metadata"
-                description="Custom properties passed automatically to checkout and API environments."
-                onSave={() => handleSaveSection('metadata', {})}
-                isSaving={isSaving['metadata']}
-                unsavedChanges={hasChanged('metadata')}
-                collapsible
-                defaultCollapsed
-            >
-                <div className="flex flex-col gap-3">
-                    {metadata.map((meta, idx) => (
-                        <div key={idx} className="flex gap-2 items-center group">
-                            <SettingsInput 
-                                placeholder="Key (e.g. tracking_id)" 
-                                className="flex-1 font-mono text-xs" 
-                                value={meta.key}
-                                onChange={e => {
-                                    const next = [...metadata];
-                                    next[idx].key = e.target.value;
-                                    setMetadata(next);
-                                }}
-                            />
-                            <SettingsInput 
-                                placeholder="Value" 
-                                className="flex-1 font-mono text-xs" 
-                                value={meta.value}
-                                onChange={e => {
-                                    const next = [...metadata];
-                                    next[idx].value = e.target.value;
-                                    setMetadata(next);
-                                }}
-                            />
-                            <button 
-                                onClick={() => setMetadata(metadata.length === 1 ? [{ key: '', value: '' }] : metadata.filter((_, i) => i !== idx))}
-                                className={cn(
-                                    "h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-xl border transition-all opacity-0 group-hover:opacity-100",
-                                    isDark ? "border-white/10 hover:bg-red-500/10 hover:text-red-500" : "border-black/10 hover:bg-black/5"
-                                )}
-                            >
-                                <X size={14} />
-                            </button>
-                        </div>
-                    ))}
-                    <button onClick={() => setMetadata([...metadata, { key: '', value: '' }])} className="text-xs font-bold opacity-60 hover:opacity-100 flex items-center gap-1">
-                        <Plus size={14} /> Add Property
-                    </button>
                 </div>
             </SettingsCard>
 

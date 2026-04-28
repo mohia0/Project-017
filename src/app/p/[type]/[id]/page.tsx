@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ type: str
     const title = document.title || document.name || 'Untitled';
     let faviconUrl = '/favicon.svg';
 
-    let workspaceName = 'aroooxa';
+    let workspaceName = 'AROOOXA';
 
     if (document.workspace_id) {
         const { data: branding } = await supabaseService
