@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
-import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Building, Globe, Upload, Loader2, XCircle } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
 
 interface PortalBranding {
@@ -31,6 +31,7 @@ function usePortalBranding() {
 
 export default function LoginPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, isLoading } = useAuthStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
@@ -47,15 +48,64 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
 
+    // Signup Step 2 (Workspace)
+    const [wizardStep, setWizardStep] = useState(1);
+    const [workspaceName, setWorkspaceName] = useState('');
+    const [slug, setSlug] = useState('');
+    const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+    const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+    const [slugError, setSlugError] = useState<string | null>(null);
+    const checkTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
     useEffect(() => {
         if (user) {
             router.push('/');
         }
     }, [user, router]);
 
+    useEffect(() => {
+        const errorParam = searchParams?.get('error');
+        if (errorParam === 'restricted') {
+            setError("Standard accounts must log in via their workspace portal. Admin only access here.");
+        }
+    }, [searchParams]);
+
+    const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+        setSlug(val);
+        
+        setSlugAvailable(null);
+        setSlugError(null);
+        
+        if (checkTimeoutRef.current) clearTimeout(checkTimeoutRef.current);
+        
+        if (val.length < 3) {
+            if (val.length > 0) setSlugError('URL must be at least 3 characters');
+            return;
+        }
+
+        setIsCheckingSlug(true);
+        checkTimeoutRef.current = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/workspace/check-slug?slug=${encodeURIComponent(val)}`);
+                const data = await res.json();
+                if (res.ok && data.available) {
+                    setSlugAvailable(true);
+                    setSlugError(null);
+                } else {
+                    setSlugAvailable(false);
+                    setSlugError(data.error || 'This URL is already taken');
+                }
+            } catch (err) {
+                setSlugError('Failed to verify availability');
+            } finally {
+                setIsCheckingSlug(false);
+            }
+        }, 600);
+    };
+
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setError('');
         setSuccessMsg('');
 
@@ -71,18 +121,34 @@ export default function LoginPage() {
                 setSuccessMsg("Reset link sent! Please check your email.");
             } else {
                 // Sign Up flow
-                if (password !== confirmPassword) {
-                    setError("Passwords do not match.");
-                    setLoading(false);
+                if (wizardStep === 1) {
+                    if (password !== confirmPassword) {
+                        setError("Passwords do not match.");
+                        return;
+                    }
+                    if (!name.trim()) {
+                        setError("Please enter your name.");
+                        return;
+                    }
+                    setWizardStep(2);
                     return;
                 }
 
-                const { error } = await supabase.auth.signUp({ 
+                // If wizardStep === 2, proceed to real signup
+                if (!workspaceName.trim() || !slug.trim() || slugAvailable === false || isCheckingSlug) {
+                    setError("Please complete all workspace details properly.");
+                    return;
+                }
+
+                setLoading(true);
+                const { error } = await supabase.auth.signUp({  
                     email, 
                     password,
                     options: {
                         data: {
-                            full_name: name
+                            full_name: name,
+                            workspace_name: workspaceName,
+                            workspace_slug: slug
                         }
                     }
                 });
@@ -150,25 +216,104 @@ export default function LoginPage() {
                     </div>
 
                     <div className="w-full flex flex-col mb-8">
-                        <h1 className="text-3xl font-bold tracking-tight mb-2.5">
+                        <h1 className="text-3xl font-bold tracking-tight mb-2.5 text-center">
                             {mode === 'signin' 
                                 ? `Sign in${portalBranding ? ` to ${portalBranding.name}` : ' to portal'}.` 
-                                : mode === 'signup' ? 'Create your account.' : 'Reset password.'}
+                                : mode === 'signup' 
+                                    ? (wizardStep === 1 ? 'Create your account.' : 'Build your headquarters.') 
+                                    : 'Reset password.'}
                         </h1>
                         <p className={cn(
-                            "text-[15px] font-medium transition-colors",
+                            "text-[15px] font-medium transition-colors text-center",
                             isDark ? "text-white/50" : "text-black/50"
                         )}>
                             {mode === 'signin' 
                                 ? 'Enter your details below to proceed.' 
                                 : mode === 'signup' 
-                                    ? 'Join the platform to run your operations.' 
+                                    ? (wizardStep === 1 ? 'Join the platform to run your operations.' : 'Give your workspace a name and claim your portal URL.') 
                                     : 'Enter your email to receive a reset link.'}
                         </p>
                     </div>
 
                     <form onSubmit={handleAuth} className="flex flex-col gap-4">
-                        {mode === 'signup' && (
+                        {mode === 'signup' && wizardStep === 2 && (
+                            <div className="flex flex-col gap-5 animate-in slide-in-from-right-4 duration-500">
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-col relative group">
+                                        <div className={cn(
+                                            "absolute left-4 top-1/2 -translate-y-1/2 transition-colors",
+                                            isDark ? "text-white/20" : "text-black/20"
+                                        )}>
+                                            <Building size={18} />
+                                        </div>
+                                        <input 
+                                            type="text"
+                                            required
+                                            value={workspaceName}
+                                            onChange={e => {
+                                                setWorkspaceName(e.target.value);
+                                                if (!slug && e.target.value.length > 0) {
+                                                    const suggested = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32);
+                                                    setSlug(suggested);
+                                                    handleSlugChange({ target: { value: suggested } } as any);
+                                                }
+                                            }}
+                                            className={cn(
+                                                "w-full h-12 pl-12 pr-4 rounded-xl text-[14px] font-medium transition-all focus:outline-none focus:ring-2",
+                                                isDark 
+                                                    ? "bg-[#141414] border border-white/10 hover:border-white/20 focus:border-white/30 focus:ring-white/10 placeholder:text-white/30" 
+                                                    : "bg-white border border-black/10 hover:border-black/20 focus:border-black/30 focus:ring-black/5 placeholder:text-black/40 shadow-sm"
+                                            )}
+                                            placeholder="Workspace Name (e.g. Acme Studio)"
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col relative group">
+                                        <div className={cn(
+                                            "absolute left-4 top-1/2 -translate-y-1/2 transition-colors z-10",
+                                            isDark ? "text-white/20" : "text-black/20"
+                                        )}>
+                                            <Globe size={18} />
+                                        </div>
+                                        <div className="relative flex items-center w-full">
+                                            <input 
+                                                type="text"
+                                                required
+                                                value={slug}
+                                                onChange={handleSlugChange}
+                                                className={cn(
+                                                    "w-full h-12 pl-12 pr-4 rounded-xl text-[14px] font-medium transition-all focus:outline-none focus:ring-2 relative z-0 text-right pr-[100px]",
+                                                    isDark 
+                                                        ? "bg-[#141414] border border-white/10 hover:border-white/20 focus:border-white/30 focus:ring-white/10 placeholder:text-white/30" 
+                                                        : "bg-white border border-black/10 hover:border-black/20 focus:border-black/30 focus:ring-black/5 placeholder:text-black/40 shadow-sm",
+                                                    slugError ? "!border-red-500/50 !focus:ring-red-500/20" : "",
+                                                    slugAvailable ? "!border-green-500/50" : ""
+                                                )}
+                                                placeholder="your-url"
+                                            />
+                                            <div className={cn(
+                                                "absolute right-4 top-1/2 -translate-y-1/2 font-medium text-xs pointer-events-none transition-colors",
+                                                isDark ? "text-white/40" : "text-black/40"
+                                            )}>
+                                                .aroooxa.com
+                                            </div>
+                                        </div>
+                                        <div className="absolute right-[-28px] top-1/2 -translate-y-1/2 flex items-center justify-center">
+                                            {isCheckingSlug && <Loader2 size={14} className="animate-spin text-blue-500" />}
+                                            {!isCheckingSlug && slugAvailable === true && <CheckCircle2 size={14} className="text-green-500" />}
+                                            {!isCheckingSlug && (slugAvailable === false || slugError) && slug.length > 0 && <XCircle size={14} className="text-red-500" />}
+                                        </div>
+                                    </div>
+                                    {slugError && (
+                                        <div className="text-red-500 text-xs font-semibold pl-1 animate-in slide-in-from-top-1">
+                                            {slugError}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {mode === 'signup' && wizardStep === 1 && (
                             <div className="flex flex-col">
                                 <input 
                                     type="text"
@@ -251,7 +396,7 @@ export default function LoginPage() {
                             </div>
                         )}
 
-                        {mode === 'signup' && (
+                        {mode === 'signup' && wizardStep === 1 && (
                             <div className="relative group">
                                 <input 
                                     type={showConfirmPassword ? "text" : "password"}
@@ -307,7 +452,7 @@ export default function LoginPage() {
                                 <AppLoader size="xs" color="currentColor" />
                             ) : (
                                 <>
-                                    {mode === 'signin' ? 'Sign in securely' : mode === 'signup' ? 'Create account' : 'Send reset link'}
+                                    {mode === 'signin' ? 'Sign in securely' : mode === 'signup' ? (wizardStep === 1 ? 'Continue' : 'Create account') : 'Send reset link'}
                                     <ArrowRight size={16} />
                                 </>
                             )}
@@ -316,7 +461,7 @@ export default function LoginPage() {
 
                     <div className="mt-8 flex flex-col gap-2.5">
                         {(mode === 'signin' || mode === 'forgot_password') && (
-                            <div className="flex items-center gap-2 text-[13px] font-medium">
+                            <div className="flex items-center justify-center gap-2 text-[13px] font-medium">
                                 <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
                                     Don't have an account?
                                 </span>
@@ -324,6 +469,7 @@ export default function LoginPage() {
                                     type="button"
                                     onClick={() => {
                                         setMode('signup');
+                                        setWizardStep(1);
                                         setError('');
                                         setSuccessMsg('');
                                     }}
@@ -337,10 +483,25 @@ export default function LoginPage() {
                             </div>
                         )}
 
-                        {(mode === 'signup' || mode === 'forgot_password') && (
-                            <div className="flex items-center gap-2 text-[13px] font-medium">
+                        {mode === 'signup' && wizardStep === 2 && (
+                            <div className="flex items-center justify-center gap-2 text-[13px] font-medium animate-in fade-in duration-700">
+                                <button 
+                                    type="button"
+                                    onClick={() => setWizardStep(1)}
+                                    className={cn(
+                                        "opacity-50 hover:opacity-100 transition-opacity flex items-center gap-1.5",
+                                        isDark ? "text-white" : "text-black"
+                                    )}
+                                >
+                                    &larr; Back to account details
+                                </button>
+                            </div>
+                        )}
+                        
+                        {(mode === 'signup' && wizardStep === 1) && (
+                            <div className="flex items-center justify-center gap-2 text-[13px] font-medium">
                                 <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
-                                    {mode === 'signup' ? "Already have an account?" : "Remember your password?"}
+                                    Already have an account?
                                 </span>
                                 <button 
                                     type="button"

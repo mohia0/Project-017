@@ -276,6 +276,14 @@ export default function DomainsSettingsPage() {
                 setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'error', text: data.error || 'DNS not propagated yet.' } }));
             } else {
                 setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'success', text: 'Domain linked to aroooxa successfully!' } }));
+                // Auto-hide success message after 5s
+                setTimeout(() => {
+                    setVerifyMessages(prev => {
+                        const next = { ...prev };
+                        delete next[domainId];
+                        return next;
+                    });
+                }, 5000);
             }
             
             // Update Supabase manually here to reflect the latest status!
@@ -398,6 +406,21 @@ export default function DomainsSettingsPage() {
                                             <div className="flex items-center gap-2 mt-1">
                                                 <DomainStatusBadge domain={domain} />
                                             </div>
+
+                                            {domain.status === 'active' && (
+                                                <div className={cn(
+                                                    "mt-3 pt-3 border-t flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-700",
+                                                    isDark ? "border-white/5" : "border-black/5"
+                                                )}>
+                                                    <div className="flex shrink-0 w-1.5 h-1.5 rounded-full bg-[#4dbf39] animate-pulse" />
+                                                    <span className={cn(
+                                                        "text-[10px] font-semibold tracking-tight",
+                                                        isDark ? "text-white/20" : "text-black/30"
+                                                    )}>
+                                                        Domain confirmed. It may take up to 30 minutes for DNS & SSL to manifest globally.
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     

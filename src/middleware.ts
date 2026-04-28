@@ -108,6 +108,51 @@ export async function middleware(request: NextRequest) {
   const isApiRoute      = pathname.startsWith('/api/');
   const isOnboarding    = pathname === '/onboarding';
 
+  // ─────────────────────────────────────────────────────────────
+  // 4. Auth & Domain Restrictions
+  // ─────────────────────────────────────────────────────────────
+  const ADMIN_EMAIL = 'mo7a.classico@gmail.com';
+  const isRootDomain = host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`;
+
+  if (user) {
+    // If logged in at root domain, only allow admin
+    if (isRootDomain && user.email !== ADMIN_EMAIL) {
+       // Find user's workspace to redirect them
+       const data = await supabaseGet(`workspaces?owner_id=eq.${user.id}&select=slug&limit=1`);
+       if (data?.[0]?.slug) {
+         const url = new URL(request.url);
+         url.host = `${data[0].slug}.${ROOT_DOMAIN}`;
+         url.pathname = '/';
+         return NextResponse.redirect(url);
+       } else {
+         // Fallback if no workspace found - sign out or show error
+         const url = new URL('/login', request.url);
+         url.searchParams.set('error', 'restricted');
+         return NextResponse.redirect(url);
+       }
+    }
+
+    // If logged in at a workspace domain, ensure they belong there
+    if (workspaceId) {
+      const { data: membership } = await supabase
+        .from('workspaces')
+        .select('id')
+        .eq('id', workspaceId)
+        .eq('owner_id', user.id)
+        .maybeSingle();
+      
+      if (!membership) {
+        // Not a member? Redirect to their own domain or show error
+        const data = await supabaseGet(`workspaces?owner_id=eq.${user.id}&select=slug&limit=1`);
+        if (data?.[0]?.slug) {
+          const url = new URL(request.url);
+          url.host = `${data[0].slug}.${ROOT_DOMAIN}`;
+          return NextResponse.redirect(url);
+        }
+      }
+    }
+  }
+
   if (!user && !isAuthRoute && !isPublicPreview && !isApiRoute && !isOnboarding) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
