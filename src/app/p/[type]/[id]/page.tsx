@@ -34,6 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<{ type: str
     let faviconUrl = '/favicon.svg';
 
     let workspaceName = 'AROOOXA';
+    let ogImage = '';
 
     if (document.workspace_id) {
         const { data: branding } = await supabaseService
@@ -45,10 +46,12 @@ export async function generateMetadata({ params }: { params: Promise<{ type: str
 
         const { data: workspace } = await supabaseService
             .from('workspaces')
-            .select('name')
+            .select('name, logo_url, meta_image_url')
             .eq('id', document.workspace_id)
             .single();
+        
         if (workspace?.name) workspaceName = workspace.name;
+        ogImage = workspace?.meta_image_url || workspace?.logo_url || '';
     }
 
     const fullTitle = `${title} | ${workspaceName}`;
@@ -62,10 +65,12 @@ export async function generateMetadata({ params }: { params: Promise<{ type: str
             title: fullTitle,
             type: 'website',
             siteName: workspaceName,
+            ...(ogImage && { images: [{ url: ogImage }] }),
         },
         twitter: {
             card: 'summary_large_image',
             title: fullTitle,
+            ...(ogImage && { images: [ogImage] }),
         }
     };
 }
