@@ -153,7 +153,7 @@ function LogoUpload({
                         {/* Gradient icon blob */}
                         <div className={cn(
                             "relative z-10 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-300 group-hover:scale-110",
-                            isDark
+                            isBoxDark
                                 ? "bg-gradient-to-br from-white/8 to-white/3 border border-white/8 shadow-inner"
                                 : "bg-gradient-to-br from-black/6 to-black/2 border border-black/8 shadow-inner"
                         )}>
@@ -162,7 +162,7 @@ function LogoUpload({
                                     size={16}
                                     className={cn(
                                         "transition-colors duration-200",
-                                        isDark ? "text-yellow-500/50 group-hover:text-yellow-500/70" : "text-yellow-600/50 group-hover:text-yellow-600/70"
+                                        isBoxDark ? "text-yellow-500/50 group-hover:text-yellow-500/70" : "text-yellow-600/50 group-hover:text-yellow-600/70"
                                     )}
                                 />
                             ) : (
@@ -170,7 +170,7 @@ function LogoUpload({
                                     size={16}
                                     className={cn(
                                         "transition-colors duration-200",
-                                        isDark ? "text-white/25 group-hover:text-white/60" : "text-black/25 group-hover:text-black/50"
+                                        isBoxDark ? "text-white/25 group-hover:text-white/60" : "text-black/25 group-hover:text-black/50"
                                     )}
                                 />
                             )}
@@ -179,12 +179,12 @@ function LogoUpload({
                             <span className={cn(
                                 "text-[11px] font-semibold transition-colors duration-200",
                                 imgError
-                                    ? (isDark ? "text-yellow-500/50 group-hover:text-yellow-500/80" : "text-yellow-600/60 group-hover:text-yellow-600/80")
-                                    : (isDark ? "text-white/25 group-hover:text-white/55" : "text-black/30 group-hover:text-black/55")
+                                    ? (isBoxDark ? "text-yellow-500/50 group-hover:text-yellow-500/80" : "text-yellow-600/60 group-hover:text-yellow-600/80")
+                                    : (isBoxDark ? "text-white/25 group-hover:text-white/55" : "text-black/30 group-hover:text-black/55")
                             )}>
                                 {imgError ? "Image unavailable" : "Click to upload"}
                             </span>
-                            <span className={cn("text-[9px] font-medium", isDark ? "text-white/12" : "text-black/18")}>
+                            <span className={cn("text-[9px] font-medium", isBoxDark ? "text-white/12" : "text-black/18")}>
                                 {imgError ? "Upload new image" : "PNG · SVG · WEBP"}
                             </span>
                         </div>
