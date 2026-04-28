@@ -6,7 +6,7 @@ import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsField, SettingsInput, SettingsTextarea, SettingsToggle, SettingsSelect } from '@/components/settings/SettingsField';
 import { useWorkspaceStore, Workspace } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
-import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, FileText, Code } from 'lucide-react';
+import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, FileText, Code, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -25,6 +25,31 @@ const TIMEZONE_OPTIONS = Intl.supportedValuesOf('timeZone').map(tz => {
   }
 }).sort((a, b) => a.label.localeCompare(b.label));
 
+export function HelpTip({ text, isDark }: { text: string; isDark: boolean }) {
+    const [show, setShow] = useState(false);
+    return (
+        <div className="relative flex items-center justify-center">
+            <button
+                type="button"
+                onMouseEnter={() => setShow(true)}
+                onMouseLeave={() => setShow(false)}
+                className={cn('opacity-30 hover:opacity-70 transition-opacity', isDark ? 'text-white' : 'text-black')}
+            >
+                <HelpCircle size={14} />
+            </button>
+            {show && (
+                <div className={cn(
+                    'absolute bottom-full right-0 mb-2 w-56 px-3 py-2 rounded-xl text-xs font-normal shadow-xl z-50 pointer-events-none whitespace-normal text-left tracking-normal',
+                    isDark ? 'bg-[#222] text-white/80 border border-white/10' : 'bg-white text-black/70 border border-black/10'
+                )}>
+
+                    {text}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function WorkspaceSettingsPage() {
     const router = useRouter();
     const { workspaces, updateWorkspace, deleteWorkspace, hasFetched: hasFetchedWorkspace } = useWorkspaceStore();
@@ -36,6 +61,7 @@ export default function WorkspaceSettingsPage() {
     
     // General State
     const [name, setName] = useState('');
+    const [slug, setSlug] = useState('');
     const [description, setDescription] = useState('');
     const [logoUrl, setLogoUrl] = useState('');
     const [timezone, setTimezone] = useState('UTC');
@@ -79,6 +105,7 @@ export default function WorkspaceSettingsPage() {
     useEffect(() => {
         if (activeWorkspace) {
             setName(activeWorkspace.name || '');
+            setSlug(activeWorkspace.slug || '');
             setDescription(activeWorkspace.description || '');
             setLogoUrl(activeWorkspace.logo_url || '');
             setTimezone(activeWorkspace.timezone || 'UTC');
@@ -145,7 +172,7 @@ export default function WorkspaceSettingsPage() {
         if (!activeWorkspace) return false;
         switch (section) {
             case 'general':
-                return name !== (activeWorkspace.name || '') || description !== (activeWorkspace.description || '') || logoUrl !== (activeWorkspace.logo_url || '');
+                return name !== (activeWorkspace.name || '') || slug !== (activeWorkspace.slug || '') || description !== (activeWorkspace.description || '') || logoUrl !== (activeWorkspace.logo_url || '');
             case 'regional':
                 return timezone !== (activeWorkspace.timezone || 'UTC') || weekStartDay !== (activeWorkspace.week_start_day || 'Saturday');
             case 'contact':
@@ -199,7 +226,7 @@ export default function WorkspaceSettingsPage() {
             <SettingsCard
                 title="Workspace General"
                 description="The core identity and primary access point for your workspace."
-                onSave={() => handleSaveSection('general', { name, description, logo_url: logoUrl })}
+                onSave={() => handleSaveSection('general', { name, description, slug, logo_url: logoUrl })}
                 isSaving={isSaving['general']}
                 unsavedChanges={hasChanged('general')}
             >
@@ -241,7 +268,7 @@ export default function WorkspaceSettingsPage() {
                         </div>
                     </SettingsField>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                         <SettingsField label="Workspace Name">
                             <SettingsInput 
                                 value={name} 
@@ -250,20 +277,26 @@ export default function WorkspaceSettingsPage() {
                             />
                         </SettingsField>
 
-                        <SettingsField label="Primary Domain" description="Managed via Domains tab">
-                             <div className="flex items-center">
-                                <span className={cn(
-                                    "h-10 px-3 border border-r-0 rounded-l-xl flex items-center text-xs font-mono opacity-50",
-                                    isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
-                                )}>
-                                    https://
-                                </span>
-                                <SettingsInput 
-                                    disabled
-                                    value={domains.find(d => d.is_primary)?.domain || 'subdomain.antigravity.site'} 
-                                    className="rounded-l-none font-mono opacity-70 cursor-not-allowed"
-                                />
-                            </div>
+                        <SettingsField 
+                            label="Workspace Portal URL" 
+                            extra={<HelpTip text="Your unique portal address. Clients visit slug.aroooxa.com to access their portal. You can also link a custom domain in Domains settings." isDark={isDark} />}
+                        >
+                             <div className="flex flex-col gap-2">
+                                 <div className="flex items-center">
+                                    <SettingsInput 
+                                        value={slug}
+                                        onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                        className="rounded-r-none font-mono text-left border-r-0"
+                                        placeholder="your-workspace"
+                                    />
+                                    <span className={cn(
+                                        "h-10 px-3 border border-l-0 rounded-r-xl flex items-center text-xs font-mono opacity-50 whitespace-nowrap",
+                                        isDark ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"
+                                    )}>
+                                        .{process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com'}
+                                    </span>
+                                 </div>
+                             </div>
                         </SettingsField>
                     </div>
 

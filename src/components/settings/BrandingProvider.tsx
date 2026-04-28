@@ -62,7 +62,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     }, [activeWorkspaceId, fetchBranding]);
 
     useEffect(() => {
-        // Do not jump to conclusions and apply default CRM 17 styling while branding is still fetching from Supabase.
+        // Do not jump to conclusions and apply default aroooxa styling while branding is still fetching from Supabase.
         if (activeWorkspaceId && !hasFetched.branding) return;
 
         const root = document.documentElement;

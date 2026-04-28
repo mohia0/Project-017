@@ -9,11 +9,32 @@ import { cn } from '@/lib/utils';
 import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
 
+interface PortalBranding {
+    name: string;
+    logo_url: string | null;
+    primary_color: string | null;
+}
+
+function usePortalBranding() {
+    const [branding, setBranding] = useState<PortalBranding | null>(null);
+    useEffect(() => {
+        fetch('/api/workspace/branding')
+            .then(r => r.json())
+            .then(({ branding, isCustomDomain }) => {
+                // Only apply tenant branding on genuine custom domains
+                if (isCustomDomain && branding) setBranding(branding);
+            })
+            .catch(() => {});
+    }, []);
+    return branding;
+}
+
 export default function LoginPage() {
     const router = useRouter();
     const { user, isLoading } = useAuthStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
+    const portalBranding = usePortalBranding();
 
     const [mode, setMode] = useState<'signin' | 'signup' | 'forgot_password'>('signin');
     const [email, setEmail] = useState('');
@@ -110,19 +131,29 @@ export default function LoginPage() {
                     
                     {/* Logo */}
                     <div className="mb-10 flex items-start">
-                        <img 
-                            src="/logo.svg" 
-                            alt="CRM 17" 
-                            className={cn(
-                                "h-10 w-auto",
-                                isDark && "invert brightness-[100]"
-                            )}
-                        />
+                        {portalBranding?.logo_url ? (
+                            <img
+                                src={portalBranding.logo_url}
+                                alt={portalBranding.name}
+                                className="h-10 w-auto object-contain"
+                            />
+                        ) : (
+                            <img 
+                                src="/logo.svg" 
+                                alt="aroooxa" 
+                                className={cn(
+                                    "h-10 w-auto",
+                                    isDark && "invert brightness-[100]"
+                                )}
+                            />
+                        )}
                     </div>
 
                     <div className="w-full flex flex-col mb-8">
                         <h1 className="text-3xl font-bold tracking-tight mb-2.5">
-                            {mode === 'signin' ? 'Sign in to portal.' : mode === 'signup' ? 'Create your account.' : 'Reset password.'}
+                            {mode === 'signin' 
+                                ? `Sign in${portalBranding ? ` to ${portalBranding.name}` : ' to portal'}.` 
+                                : mode === 'signup' ? 'Create your account.' : 'Reset password.'}
                         </h1>
                         <p className={cn(
                             "text-[15px] font-medium transition-colors",

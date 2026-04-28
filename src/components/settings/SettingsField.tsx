@@ -42,12 +42,13 @@ export function SettingsField({ label, description, children, layout = 'vertical
 
     return (
         <div className="w-full">
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
                 <label className={cn("block text-sm font-semibold whitespace-nowrap", isDark ? "text-white" : "text-black")}>
                     {label}
                 </label>
                 {extra}
             </div>
+
             {description && (
                 <p className={cn("text-[13px] mb-2.5", isDark ? "text-white/50" : "text-black/50")}>
                     {description}

@@ -44,7 +44,7 @@ function DocumentTitleSetter() {
         if (!hasFetched) return;
 
         const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
-        const workspaceName = activeWorkspace?.name || 'CRM 17';
+        const workspaceName = activeWorkspace?.name || 'aroooxa';
         
         const path = pathname || '/';
         let pageTitle = '';

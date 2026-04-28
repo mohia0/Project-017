@@ -5,6 +5,7 @@ import { useUIStore } from './useUIStore';
 export interface Workspace {
     id: string;
     name: string;
+    slug?: string;
     description?: string;
     logo_url: string | null;
     plan: string;
@@ -26,7 +27,7 @@ interface WorkspaceState {
     hasFetched: boolean;
     error: string | null;
     fetchWorkspaces: () => Promise<void>;
-    createWorkspace: (name: string) => Promise<Workspace | null>;
+    createWorkspace: (name: string, slug: string, logo_url?: string) => Promise<Workspace | null>;
     updateWorkspace: (id: string, updates: Partial<Workspace>) => Promise<void>;
     deleteWorkspace: (id: string) => Promise<boolean>;
 }
@@ -77,13 +78,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         }
     },
 
-    createWorkspace: async (name: string) => {
+    createWorkspace: async (name: string, slug: string, logo_url?: string) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
+        const insertData = { name, owner_id: user.id, slug, logo_url };
+
         const { data, error } = await supabase
             .from('workspaces')
-            .insert({ name, owner_id: user.id })
+            .insert(insertData)
             .select()
             .single();
 

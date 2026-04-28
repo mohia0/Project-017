@@ -19,7 +19,7 @@ const mrDafoe = Mr_Dafoe({
 
 
 export async function generateMetadata(): Promise<Metadata> {
-  let title = 'CRM 17';
+  let title = 'aroooxa';
   let description = 'A premium CRM solution for scaling operations.';
   let favicon = '/favicon.svg';
 

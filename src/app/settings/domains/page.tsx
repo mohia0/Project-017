@@ -5,7 +5,8 @@ import { SettingsCard } from '@/components/settings/SettingsCard';
 import { SettingsInput } from '@/components/settings/SettingsField';
 import { useSettingsStore, WorkspaceDomain } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
-import { Plus, Globe, Check, RefreshCw, Copy, Trash2 } from 'lucide-react';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
+import { Plus, Globe, Check, RefreshCw, Copy, Trash2, ExternalLink, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
@@ -36,15 +37,42 @@ function DomainStatusBadge({ domain }: { domain: WorkspaceDomain }) {
     );
 }
 
-function DNSRecordCard({ domain }: { domain: WorkspaceDomain }) {
+function HelpTip({ text, isDark }: { text: string; isDark: boolean }) {
+    const [show, setShow] = useState(false);
+    return (
+        <div className="relative flex items-center justify-center">
+            <button
+                type="button"
+                onMouseEnter={() => setShow(true)}
+                onMouseLeave={() => setShow(false)}
+                className={cn('opacity-30 hover:opacity-100 transition-all p-1.5 rounded-lg', isDark ? 'text-white hover:bg-white/10' : 'text-black hover:bg-black/10')}
+            >
+                <HelpCircle size={15} strokeWidth={2.5} />
+            </button>
+            {show && (
+                <div className={cn(
+                    'absolute bottom-full right-0 mb-2 w-64 px-3 py-2.5 rounded-xl text-[11px] shadow-2xl z-[100] pointer-events-none leading-relaxed animate-in fade-in zoom-in-95 duration-200',
+                    isDark ? 'bg-[#222] text-white/80 border border-white/10' : 'bg-white text-black/70 border border-black/10'
+                )}>
+                    {text}
+                </div>
+            )}
+        </div>
+    );
+}
+
+
+// ── DNSRecordCard ─────────────────────────────────────────────────────────────
+// Shows the exact DNS records returned by Vercel for this domain.
+// They're fetched + stored in the DB when the user clicks "Add Domain".
+function DNSRecordCard({ domain, onRefetch }: { domain: WorkspaceDomain; onRefetch: () => void }) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
     if (domain.status === 'active') return null;
 
-    const subdomain = domain.domain.split('.')[0] === domain.domain ? '@' : domain.domain.split('.')[0];
-    const target = 'cname.vercel-dns.com';
+    const records = domain.dns_records;
 
     const copyValue = (key: string, value: string) => {
         navigator.clipboard.writeText(value);
@@ -57,50 +85,69 @@ function DNSRecordCard({ domain }: { domain: WorkspaceDomain }) {
             "mt-3 p-4 rounded-xl flex flex-col gap-3 border",
             isDark ? "bg-[#111] border-white/5" : "bg-[#f5f5f5] border-black/5"
         )}>
-            <p className="text-[12px] opacity-50 font-medium">
-                Add this CNAME record to your DNS provider to verify ownership:
-            </p>
-            <div className={cn(
-                "flex flex-wrap items-center gap-x-10 gap-y-3 rounded-lg p-3 px-4 text-[13px]",
-                isDark ? "bg-[#1a1a1c]" : "bg-[#efefef]"
-            )}>
-                {/* Type */}
+            {!records || records.length === 0 ? (
+                // Loading state — records are being fetched from Vercel
                 <div className="flex items-center gap-2">
-                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Type:</span>
-                    <span className="font-mono font-bold">CNAME</span>
+                    <AppLoader size="xs" />
+                    <span className="text-[12px] opacity-40">Generating your custom connection settings...</span>
                     <button
-                        onClick={() => copyValue('type', 'CNAME')}
-                        className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors"
-                        title="Copy Type"
+                        onClick={onRefetch}
+                        className="ml-auto text-[11px] font-semibold text-[#4dbf39] hover:underline"
                     >
-                        {copiedKey === 'type' ? <Check size={12} /> : <Copy size={12} />}
+                        Refresh
                     </button>
                 </div>
-                {/* Name */}
-                <div className="flex items-center gap-2">
-                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Name:</span>
-                    <span className="font-mono font-bold">{subdomain}</span>
-                    <button
-                        onClick={() => copyValue('name', subdomain)}
-                        className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors"
-                        title="Copy Name"
-                    >
-                        {copiedKey === 'name' ? <Check size={12} /> : <Copy size={12} />}
-                    </button>
-                </div>
-                {/* Target */}
-                <div className="flex items-center gap-2">
-                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Target:</span>
-                    <span className="font-mono font-bold">{target}</span>
-                    <button
-                        onClick={() => copyValue('target', target)}
-                        className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors"
-                        title="Copy Target"
-                    >
-                        {copiedKey === 'target' ? <Check size={12} /> : <Copy size={12} />}
-                    </button>
-                </div>
-            </div>
+            ) : (
+                <>
+                    <p className="text-[12px] opacity-50 font-medium">
+                        Add these DNS records to your provider, then click <strong>Verify DNS</strong>:
+                    </p>
+                    <div className="flex flex-col gap-2">
+                        {records.map((rec, i) => (
+                            <div
+                                key={i}
+                                className={cn(
+                                    "flex flex-wrap items-center gap-x-8 gap-y-2 rounded-lg p-3 px-4 text-[13px]",
+                                    isDark ? "bg-[#1a1a1c]" : "bg-[#efefef]"
+                                )}
+                            >
+                                {/* Type */}
+                                <div className="flex items-center gap-1.5">
+                                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Type:</span>
+                                    <span className={cn(
+                                        "font-mono font-bold",
+                                        rec.type === 'A' ? "text-blue-500" : rec.type === 'TXT' ? "text-purple-500" : ""
+                                    )}>{rec.type}</span>
+                                </div>
+                                {/* Name */}
+                                <div className="flex items-center gap-1.5">
+                                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight">Name:</span>
+                                    <span className="font-mono font-bold">{rec.name}</span>
+                                    <button
+                                        onClick={() => copyValue(`${i}-name`, rec.name)}
+                                        className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors"
+                                    >
+                                        {copiedKey === `${i}-name` ? <Check size={12} /> : <Copy size={12} />}
+                                    </button>
+                                </div>
+                                {/* Value */}
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="opacity-40 text-[11px] font-bold uppercase tracking-tight shrink-0">
+                                        {rec.type === 'A' ? 'Value:' : 'Target:'}
+                                    </span>
+                                    <span className="font-mono font-bold text-[12px] truncate max-w-[260px]" title={rec.value}>{rec.value}</span>
+                                    <button
+                                        onClick={() => copyValue(`${i}-val`, rec.value)}
+                                        className="text-[#4dbf39] flex items-center justify-center p-1 hover:bg-[#4dbf39]/10 rounded-md transition-colors shrink-0"
+                                    >
+                                        {copiedKey === `${i}-val` ? <Check size={12} /> : <Copy size={12} />}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
         </div>
     );
 }
@@ -110,9 +157,15 @@ export default function DomainsSettingsPage() {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
     const { domains, fetchDomains, hasFetched } = useSettingsStore();
+    const { workspaces } = useWorkspaceStore();
+    
+    const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+    const domainSuffix = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com';
+    // Subdomain portal URL: slug.aroooxa.com
+    const systemPortalUrl = activeWorkspace?.slug ? `https://${activeWorkspace.slug}.${domainSuffix}` : null;
     const [newDomain, setNewDomain] = useState('');
     const [isAdding, setIsAdding] = useState(false);
-    const [domainToDelete, setDomainToDelete] = useState<string | null>(null);
+    const [domainToDelete, setDomainToDelete] = useState<{ id: string, name: string } | null>(null);
     const [mounted, setMounted] = useState(false);
     const [verifyingId, setVerifyingId] = useState<string | null>(null);
     const [verifyMessages, setVerifyMessages] = useState<Record<string, { type: 'error' | 'success', text: string }>>({});
@@ -156,26 +209,47 @@ export default function DomainsSettingsPage() {
         let cleanDomain = newDomain.toLowerCase().trim();
         cleanDomain = cleanDomain.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
         
-        // 1. Save to database
-        const { error } = await supabase.from('workspace_domains').insert({
+        // 1. Save to database first (status = pending, dns_records = [])
+        const { data: inserted, error } = await supabase.from('workspace_domains').insert({
             workspace_id: activeWorkspaceId,
             domain: cleanDomain,
             status: 'pending',
             is_primary: domains.length === 0,
-        });
+        }).select().single();
         
-        if (!error) {
-            setNewDomain('');
-            fetchDomains(activeWorkspaceId);
+        if (error || !inserted) {
+            setIsAdding(false);
+            return;
         }
+
+        setNewDomain('');
+        fetchDomains(activeWorkspaceId);
+
+        // 2. Immediately call verify to register with Vercel + get real DNS records
+        try {
+            await fetch('/api/domains/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domainId: inserted.id, domain: cleanDomain }),
+            });
+            fetchDomains(activeWorkspaceId);
+        } catch {}
 
         setIsAdding(false);
     };
 
 
-    const handleRemoveDomain = async (id: string) => {
-        await supabase.from('workspace_domains').delete().eq('id', id);
-        if (activeWorkspaceId) fetchDomains(activeWorkspaceId);
+    const handleRemoveDomain = async (id: string, name: string) => {
+        try {
+            await fetch('/api/domains/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domainId: id, domainName: name }),
+            });
+            if (activeWorkspaceId) fetchDomains(activeWorkspaceId);
+        } catch (err) {
+            console.error('Failed to delete domain:', err);
+        }
     };
 
     const handleSetPrimary = async (id: string) => {
@@ -201,7 +275,7 @@ export default function DomainsSettingsPage() {
             } else if (data.verified === false) {
                 setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'error', text: data.error || 'DNS not propagated yet.' } }));
             } else {
-                setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'success', text: 'Domain connected successfully!' } }));
+                setVerifyMessages(prev => ({ ...prev, [domainId]: { type: 'success', text: 'Domain linked to aroooxa successfully!' } }));
             }
             
             // Update Supabase manually here to reflect the latest status!
@@ -219,6 +293,40 @@ export default function DomainsSettingsPage() {
 
     return (
         <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
+            {systemPortalUrl && (
+                <SettingsCard
+                    title="Your Portal URL"
+                    description="This is your unique system-provided access URL. Share it with clients."
+                >
+                    <div className={cn(
+                        "p-4 border rounded-xl flex items-center justify-between",
+                        isDark ? "border-white/10 bg-white/[0.02]" : "border-black/10 bg-white/50"
+                    )}>
+                        <div className="flex items-center gap-3">
+                            <div className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                                isDark ? "bg-white/5 text-[#4dbf39]" : "bg-[#4dbf39]/10 text-[#4dbf39]"
+                            )}>
+                                <Globe size={14} />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-semibold text-sm font-mono">{systemPortalUrl.replace('https://', '')}</span>
+                                <span className="inline-flex mt-1 items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#4dbf39]/10 text-[#4dbf39] w-fit">
+                                    <Check size={12} /> Active
+                                </span>
+                            </div>
+                        </div>
+                        <a 
+                            href={systemPortalUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 h-8 rounded-lg text-xs font-semibold flex items-center transition-colors dark:bg-white/10 dark:hover:bg-white/20 bg-black/5 hover:bg-black/10"
+                        >
+                            <ExternalLink size={12} className="mr-1.5" /> Visit
+                        </a>
+                    </div>
+                </SettingsCard>
+            )}
             <SettingsCard
                 title="Add Custom Domain"
                 description="Use your own domain for client portals and document share links."
@@ -246,6 +354,7 @@ export default function DomainsSettingsPage() {
                 <SettingsCard
                     title="Your Domains"
                     description="Domains linked to this workspace."
+                    extra={<HelpTip isDark={isDark} text="Link your own domain to white-label your client portal. Once DNS records are verified, you can set it as the primary access point for your workspace." />}
                 >
                     <div className="flex flex-col gap-4">
                         {domains.map((domain) => (
@@ -262,15 +371,30 @@ export default function DomainsSettingsPage() {
                                             <Globe size={14} className="opacity-50" />
                                         </div>
                                         <div className="flex flex-col min-w-0">
-                                            <div className="flex items-center gap-2">
+                                             <div className="flex items-center gap-1.5 min-w-0">
                                                 <span className="font-semibold text-sm truncate">{domain.domain}</span>
+                                                <a 
+                                                    href={`https://${domain.domain}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className={cn(
+                                                        "opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center translate-y-[1px]",
+                                                        isDark ? "text-white/30 hover:text-white/60" : "text-black/30 hover:text-black/60"
+                                                    )}
+
+                                                    title={`Visit ${domain.domain}`}
+                                                >
+                                                    <ExternalLink size={11} strokeWidth={2.5} />
+                                                </a>
+                                                
                                                 {domain.is_primary && (
                                                     <span className={cn(
-                                                        "text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded",
+                                                        "text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ml-0.5",
                                                         isDark ? "bg-white/10" : "bg-black/5"
                                                     )}>Primary</span>
                                                 )}
                                             </div>
+
                                             <div className="flex items-center gap-2 mt-1">
                                                 <DomainStatusBadge domain={domain} />
                                             </div>
@@ -304,7 +428,7 @@ export default function DomainsSettingsPage() {
                                             </button>
                                         )}
                                         <button
-                                            onClick={() => setDomainToDelete(domain.id)}
+                                            onClick={() => setDomainToDelete({ id: domain.id, name: domain.domain })}
                                             className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
                                             title="Remove Domain"
                                         >
@@ -323,7 +447,10 @@ export default function DomainsSettingsPage() {
                                     </div>
                                 )}
 
-                                <DNSRecordCard domain={domain} />
+                                <DNSRecordCard 
+                                    domain={domain} 
+                                    onRefetch={() => fetchDomains(activeWorkspaceId!)}
+                                />
                             </div>
                         ))}
                     </div>
@@ -333,7 +460,7 @@ export default function DomainsSettingsPage() {
             <DeleteConfirmModal
                 open={!!domainToDelete}
                 onClose={() => setDomainToDelete(null)}
-                onConfirm={() => { if (domainToDelete) handleRemoveDomain(domainToDelete); }}
+                onConfirm={() => { if (domainToDelete) handleRemoveDomain(domainToDelete.id, domainToDelete.name); }}
                 title="Remove domain"
                 description="Are you sure you want to remove this domain? This will disconnect it from your workspace and cannot be undone."
                 isDark={isDark}

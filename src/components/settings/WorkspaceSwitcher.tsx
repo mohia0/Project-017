@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -10,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
 
 export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLightSidebar?: boolean, isBranded?: boolean }) {
+    const router = useRouter();
     const { workspaces, fetchWorkspaces, createWorkspace, isLoading } = useWorkspaceStore();
     const { activeWorkspaceId, setActiveWorkspaceId, isLeftMenuExpanded, theme } = useUIStore();
     const { profile } = useSettingsStore();
@@ -51,15 +53,7 @@ export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLig
 
     const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
 
-    const handleCreate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newWorkspaceName.trim()) return;
-        
-        await createWorkspace(newWorkspaceName);
-        setIsCreating(false);
-        setNewWorkspaceName('');
-        setIsOpen(false);
-    };
+
 
     const handleToggle = (e: React.MouseEvent) => {
         if (!isOpen && dropdownRef.current) {
@@ -174,28 +168,11 @@ export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLig
 
                         <div className="h-px bg-white/10 my-1 shrink-0" />
 
-                        {isCreating ? (
-                            <form onSubmit={handleCreate} className="p-1.5 pb-1 gap-1.5 flex flex-col shrink-0">
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    placeholder="Workspace name..."
-                                    value={newWorkspaceName}
-                                    onChange={e => setNewWorkspaceName(e.target.value)}
-                                    className="bg-black/20 border border-white/10 rounded-lg px-2.5 py-1.5 text-[12px] text-white focus:outline-none focus:border-primary/50 w-full"
-                                />
-                                <div className="flex gap-1">
-                                    <button type="submit" disabled={!newWorkspaceName.trim()} className="flex-1 bg-primary text-primary-foreground text-[11px] font-semibold py-1.5 rounded-md disabled:opacity-50">
-                                        Create
-                                    </button>
-                                    <button type="button" onClick={() => setIsCreating(false)} className="flex-1 bg-white/5 text-white/70 hover:text-white text-[11px] font-semibold py-1.5 rounded-md">
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        ) : (
                             <button
-                                onClick={() => setIsCreating(true)}
+                                onClick={() => {
+                                    closeDropdown();
+                                    router.push('/onboarding?new=true');
+                                }}
                                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-left text-white/60 hover:text-white mt-0.5 shrink-0"
                             >
                                 <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 bg-white/5 group-hover:bg-white/10">
@@ -203,7 +180,6 @@ export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLig
                                 </div>
                                 <span className="text-[12px] font-medium">New Workspace</span>
                             </button>
-                        )}
                     </div>
                 </div>,
                 document.body

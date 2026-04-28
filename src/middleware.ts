@@ -1,52 +1,122 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const ROOT_DOMAIN  = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com';
+
+async function supabaseGet(path: string) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+      cache: 'no-store',
+    });
+    return res.ok ? res.json() : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
+  const rawHost = request.headers.get('host') || '';
+  const host    = rawHost.replace(/:\d+$/, ''); // strip port for local dev
+  const pathname = request.nextUrl.pathname;
+  const requestHeaders = new Headers(request.headers);
+
+  let workspaceId:   string | null = null;
+  let workspaceSlug: string | null = null;
+  let workspaceName: string | null = null;
+  let isCustomDomain = false;
+
+  // ─────────────────────────────────────────────────────────────
+  // 1. Subdomain routing:  slug.aroooxa.com  →  workspace
+  // ─────────────────────────────────────────────────────────────
+  if (host.endsWith(`.${ROOT_DOMAIN}`)) {
+    const slug = host.slice(0, -(`.${ROOT_DOMAIN}`.length));
+    const RESERVED = new Set(['app', 'portal', 'www', 'api', 'mail', 'cdn']);
+
+    if (slug && !RESERVED.has(slug)) {
+      const data = await supabaseGet(
+        `workspaces?slug=eq.${encodeURIComponent(slug)}&select=id,name&limit=1`
+      );
+      if (data?.[0]) {
+        workspaceId   = data[0].id;
+        workspaceSlug = slug;
+        workspaceName = data[0].name;
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 2. Custom domain routing:  portal.client.com  →  workspace
+  //    (apex domains and subdomains both handled)
+  // ─────────────────────────────────────────────────────────────
+  else if (
+    host !== ROOT_DOMAIN &&
+    !host.endsWith(`.${ROOT_DOMAIN}`) &&
+    host !== 'localhost' &&
+    !host.startsWith('localhost:') &&
+    !host.startsWith('127.0.0.1')
+  ) {
+    const data = await supabaseGet(
+      `workspace_domains?domain=eq.${encodeURIComponent(host)}&status=eq.active&select=workspace_id&limit=1`
+    );
+    if (data?.[0]) {
+      workspaceId    = data[0].workspace_id;
+      isCustomDomain = true;
+
+      // Also fetch workspace name for white-label
+      if (workspaceId) {
+        const wsData = await supabaseGet(
+          `workspaces?id=eq.${encodeURIComponent(workspaceId)}&select=name&limit=1`
+        );
+        if (wsData?.[0]) workspaceName = wsData[0].name;
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // 3. Main domain (aroooxa.com) — no workspace context
+  // ─────────────────────────────────────────────────────────────
+  // No extra resolution needed; user accesses their dashboard normally.
+
+  // Inject resolved workspace context headers
+  if (workspaceId)   requestHeaders.set('x-workspace-id',   workspaceId);
+  if (workspaceSlug) requestHeaders.set('x-workspace-slug', workspaceSlug);
+  if (workspaceName) requestHeaders.set('x-workspace-name', workspaceName);
+  if (isCustomDomain) requestHeaders.set('x-custom-domain', '1');
+
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
+
+  const supabase = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
+    cookies: {
+      getAll() { return request.cookies.getAll(); },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  // Refresh session if expired - required for Server Components
   const { data: { user } } = await supabase.auth.getUser();
 
-  const isAuthRoute = request.nextUrl.pathname === '/login';
-  const isPublicPreview = request.nextUrl.pathname.startsWith('/p/');
-  const isApiRoute = request.nextUrl.pathname.startsWith('/api/');
+  const isAuthRoute     = pathname === '/login';
+  const isPublicPreview = pathname.startsWith('/p/');
+  const isApiRoute      = pathname.startsWith('/api/');
+  const isOnboarding    = pathname === '/onboarding';
 
-  // Redirect to login if unauthenticated and trying to access app pages
-  if (!user && !isAuthRoute && !isPublicPreview && !isApiRoute) {
+  if (!user && !isAuthRoute && !isPublicPreview && !isApiRoute && !isOnboarding) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  // Redirect to root if authenticated and visiting /login page
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/';
-    // Optionally redirect to onboarding if needed here, 
-    // but client AppLayout can still handle specific flow logic.
     return NextResponse.redirect(url);
   }
 
@@ -55,13 +125,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - any media extension
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

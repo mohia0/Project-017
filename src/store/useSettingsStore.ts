@@ -62,6 +62,7 @@ export interface WorkspaceDomain {
   is_primary: boolean;
   ssl_status: 'pending' | 'provisioning' | 'active' | 'error';
   error_message: string | null;
+  dns_records: { type: string; name: string; value: string }[] | null;
 }
 
 export interface WorkspaceEmailConfig {
