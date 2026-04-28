@@ -141,9 +141,6 @@ export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLig
                                 <button
                                     key={ws.id}
                                     onClick={async () => {
-                                        setActiveWorkspaceId(ws.id);
-                                        closeDropdown();
-
                                         const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com';
                                         const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
 
@@ -152,12 +149,18 @@ export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLig
                                             .select('domain')
                                             .eq('workspace_id', ws.id)
                                             .eq('is_primary', true)
-                                            .single();
+                                            .maybeSingle();
                                         
-                                        const targetHost = domainData?.domain || `${ws.slug}.${rootDomain}`;
+                                        const targetHostname = domainData?.domain || `${ws.slug}.${rootDomain}`;
+                                        const currentHostname = window.location.hostname;
                                         
-                                        if (window.location.host !== targetHost) {
-                                            window.location.href = `${protocol}://${targetHost}${window.location.pathname}${window.location.search}`;
+                                        if (currentHostname !== targetHostname) {
+                                            const port = window.location.port ? `:${window.location.port}` : '';
+                                            const finalHost = targetHostname.includes(':') ? targetHostname : `${targetHostname}${port}`;
+                                            window.location.href = `${protocol}://${finalHost}${window.location.pathname}${window.location.search}`;
+                                        } else {
+                                            setActiveWorkspaceId(ws.id);
+                                            closeDropdown();
                                         }
                                     }}
                                     className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-left group"
