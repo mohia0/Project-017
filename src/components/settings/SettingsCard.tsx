@@ -53,11 +53,12 @@ export function SettingsCard({
         <div className={cn(
             "w-full rounded-2xl mb-8 shadow-sm transition-all duration-300",
             isDark ? "bg-[#1a1a1a] border border-[#252525]" : "bg-white border border-[#ebebeb]",
-            isCollapsed && "mb-4 overflow-hidden"
+            isCollapsed && "mb-4"
         )}>
             <div 
                 className={cn(
-                    "p-6 rounded-t-2xl",
+                    "p-6 rounded-t-2xl relative z-10",
+                    isCollapsed && "rounded-b-2xl",
                     collapsible && "cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
                 )}
                 onClick={() => collapsible && setIsCollapsed(!isCollapsed)}

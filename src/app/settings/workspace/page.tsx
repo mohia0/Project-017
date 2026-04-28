@@ -277,6 +277,7 @@ export default function WorkspaceSettingsPage() {
                 onSave={() => handleSaveSection('general', { name, description, slug, logo_url: logoUrl })}
                 isSaving={isSaving['general']}
                 unsavedChanges={hasChanged('general')}
+                extra={<HelpTip text="These settings define the primary identity and routing for your portal." isDark={isDark} />}
             >
                 <div className="flex flex-col gap-8">
                     <SettingsField label="Workspace Logo" description="This logo will appear on your dashboard and public client pages.">
@@ -514,6 +515,7 @@ export default function WorkspaceSettingsPage() {
                 unsavedChanges={hasChanged('regional')}
                 collapsible
                 defaultCollapsed
+                extra={<HelpTip text="The timezone set here will be applied by default to all new schedulers in this workspace." isDark={isDark} />}
             >
                 <div className="flex flex-col gap-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -546,6 +548,7 @@ export default function WorkspaceSettingsPage() {
                 unsavedChanges={hasChanged('contact')}
                 collapsible
                 defaultCollapsed
+                extra={<HelpTip text="This information will be displayed on client portals and used in automated invoices or proposals." isDark={isDark} />}
             >
                 <div className="flex flex-col gap-8">
                     <div>
@@ -692,6 +695,7 @@ export default function WorkspaceSettingsPage() {
                 unsavedChanges={hasChanged('links')}
                 collapsible
                 defaultCollapsed
+                extra={<HelpTip text="These links automatically appear in your client portal header and email footers." isDark={isDark} />}
             >
                 <div className="flex flex-col gap-4">
                     {links.map((link, idx) => (
@@ -744,6 +748,7 @@ export default function WorkspaceSettingsPage() {
                 unsavedChanges={hasChanged('workingHours')}
                 collapsible
                 defaultCollapsed
+                extra={<HelpTip text="Changes here will affect default available times in new schedulers and client-facing business hours." isDark={isDark} />}
             >
                 <div className="flex flex-col gap-1 border rounded-2xl overflow-hidden" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
                     {DAYS.map(day => {
@@ -795,42 +800,7 @@ export default function WorkspaceSettingsPage() {
                 </div>
             </SettingsCard>
 
-            {/* Additional Details */}
-            <SettingsCard
-                title="Professional Details"
-                description="Registration references and required internal notes."
-                onSave={() => handleSaveSection('additionalDetails', { additional_details: additionalDetails })}
-                isSaving={isSaving['additionalDetails']}
-                unsavedChanges={hasChanged('additionalDetails')}
-                collapsible
-                defaultCollapsed
-            >
-                <div className="flex flex-col gap-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <SettingsField label="Registration Number">
-                            <SettingsInput 
-                                placeholder="e.g. 12345678" 
-                                value={additionalDetails.reg_number}
-                                onChange={e => setAdditionalDetails({ ...additionalDetails, reg_number: e.target.value })}
-                            />
-                        </SettingsField>
-                        <SettingsField label="VAT / TAX ID">
-                            <SettingsInput 
-                                placeholder="e.g. GB 123 4567 89" 
-                                value={additionalDetails.tax_id}
-                                onChange={e => setAdditionalDetails({ ...additionalDetails, tax_id: e.target.value })}
-                            />
-                        </SettingsField>
-                    </div>
-                    <SettingsField label="Workspace Notes" description="Private internal notes about this workspace entity.">
-                        <SettingsTextarea 
-                            placeholder="Add any internal references here..." 
-                            value={additionalDetails.notes}
-                            onChange={e => setAdditionalDetails({ ...additionalDetails, notes: e.target.value })}
-                        />
-                    </SettingsField>
-                </div>
-            </SettingsCard>
+
 
             <ImageUploadModal 
                 isOpen={isUploadModalOpen}

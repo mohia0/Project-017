@@ -160,7 +160,7 @@ export default function EmailSettingsPage() {
                                     <h4 className={cn("text-[14px] font-bold flex items-center gap-2", isDark ? "text-white" : "text-[#111]")}>
                                         {cfg.from_name}
                                         {cfg.is_default && (
-                                            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-black tracking-tighter shadow-sm">DEFAULT</span>
+                                            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[8px] font-bold tracking-widest">DEFAULT</span>
                                         )}
                                     </h4>
                                     <p className={cn("text-[12px] opacity-40")}>{cfg.from_address}</p>
