@@ -9,6 +9,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { Check, ChevronRight, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/Avatar';
+import { supabase } from '@/lib/supabase';
 
 export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLightSidebar?: boolean, isBranded?: boolean }) {
     const router = useRouter();
@@ -139,9 +140,25 @@ export default function WorkspaceSwitcher({ isLightSidebar, isBranded }: { isLig
                             {!isLoading && workspaces.map((ws) => (
                                 <button
                                     key={ws.id}
-                                    onClick={() => {
+                                    onClick={async () => {
                                         setActiveWorkspaceId(ws.id);
                                         closeDropdown();
+
+                                        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com';
+                                        const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
+
+                                        const { data: domainData } = await supabase
+                                            .from('workspace_domains')
+                                            .select('domain')
+                                            .eq('workspace_id', ws.id)
+                                            .eq('is_primary', true)
+                                            .single();
+                                        
+                                        const targetHost = domainData?.domain || `${ws.slug}.${rootDomain}`;
+                                        
+                                        if (window.location.host !== targetHost) {
+                                            window.location.href = `${protocol}://${targetHost}${window.location.pathname}${window.location.search}`;
+                                        }
                                     }}
                                     className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-left group"
                                 >
