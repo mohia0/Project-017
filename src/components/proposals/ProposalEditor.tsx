@@ -837,7 +837,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     {/* ── LEFT: CANVAS ── */}
                     {id && !isLoaded ? (
                         <div className="flex-1 flex flex-col items-center justify-center gap-4">
-                            <AppLoader size="sm" color={meta.design?.primaryColor || 'var(--primary)'} />
+                            <AppLoader size="sm" />
                             <span className="text-[13px] font-medium opacity-40">Loading document...</span>
                         </div>
                     ) : (

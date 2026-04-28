@@ -94,15 +94,17 @@ export function TopBlurOverlay({ design }: TopBlurOverlayProps) {
                     }}
                 />
                 {/* Radial accent glow from top-centre */}
-                <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                        background: isDark
-                            ? `radial-gradient(ellipse 100% 120% at 50% -10%, rgba(${rgb},0.30) 0%, rgba(${rgb},0.10) 35%, transparent 70%)`
-                            : `radial-gradient(ellipse 100% 120% at 50% -10%, rgba(${rgb},0.22) 0%, rgba(${rgb},0.06) 35%, transparent 70%)`,
-                        animation: 'glowPulse 4s ease-in-out infinite',
-                    }}
-                />
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                            background: isDark
+                                ? `radial-gradient(ellipse 100% 120% at 50% -10%, rgba(${rgb},0.30) 0%, rgba(${rgb},0.10) 35%, transparent 70%)`
+                                : `radial-gradient(ellipse 100% 120% at 50% -10%, rgba(${rgb},0.22) 0%, rgba(${rgb},0.06) 35%, transparent 70%)`,
+                            animation: 'glowPulse 4s ease-in-out infinite',
+                        }}
+                    />
+                </div>
                 <style>{`
                     @keyframes glowPulse {
                         0%, 100% { opacity: 1;    transform: scaleX(1);    }
