@@ -298,7 +298,7 @@ export default function LoginPage() {
                                             </div>
                                         </div>
                                         <div className="absolute right-[-28px] top-1/2 -translate-y-1/2 flex items-center justify-center">
-                                            {isCheckingSlug && <Loader2 size={14} className="animate-spin text-blue-500" />}
+                                            {isCheckingSlug && <Loader2 size={14} className="animate-spin text-[var(--brand-loader-color, #000000)]" />}
                                             {!isCheckingSlug && slugAvailable === true && <CheckCircle2 size={14} className="text-green-500" />}
                                             {!isCheckingSlug && (slugAvailable === false || slugError) && slug.length > 0 && <XCircle size={14} className="text-red-500" />}
                                         </div>

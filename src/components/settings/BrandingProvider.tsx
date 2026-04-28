@@ -76,6 +76,10 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--brand-primary-hover', darkenColor(primary)); 
             root.style.setProperty('--brand-primary-foreground', isDark ? '#ffffff' : '#000000');
             
+            // Loader color: use primary only if explicitly customized, otherwise default to black
+            const loaderColor = branding.primary_color ? primary : '#000000';
+            root.style.setProperty('--brand-loader-color', loaderColor);
+            
             // Sidebar Tint Logic
             const sidebarTint = branding.sidebar_tint ?? 3;
             const sidebarColor = branding.apply_color_to_sidebar 
@@ -100,6 +104,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
             root.style.setProperty('--brand-secondary', '#1a1a2e');
             root.style.setProperty('--brand-font', 'Inter, sans-serif');
             root.style.setProperty('--brand-radius', '12px');
+            root.style.setProperty('--brand-loader-color', '#000000');
 
             root.style.setProperty('--primary', defaultPrimary);
             root.style.setProperty('--primary-dark', darkenColor(defaultPrimary, 0.2));

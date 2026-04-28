@@ -17,7 +17,7 @@ interface AppLoaderProps {
 export function AppLoader({
   className,
   size = "md",
-  color = "black",
+  color = "var(--brand-loader-color, #000000)",
 }: AppLoaderProps) {
   const sizeMap = {
     xs: 16,
@@ -147,7 +147,7 @@ export function FullScreenLoader({
         className
       )}
     >
-      <AppLoader size="lg" color="black" />
+      <AppLoader size="lg" />
       {label && (
         <p className={cn(
           "mt-10 text-[10px] font-bold tracking-[0.5em] uppercase opacity-50",

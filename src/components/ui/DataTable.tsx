@@ -309,11 +309,11 @@ export function DataTable<T extends { id: string }>({
     const renderShimmer = () => (
         <div className="flex flex-col">{Array.from({ length: 15 }).map((_, i) => (
             <div key={i} className={cn("grid w-full px-0 border-b items-center h-[45px]", isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")} style={{ gridTemplateColumns: gridTemplate }}>
-                <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
+                <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse bg-primary/10")} /></div>
                 {columnOrder.map(colId => (
-                    <div key={colId} className="px-4"><div className={cn("h-3 w-3/4 max-w-[120px] rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
+                    <div key={colId} className="px-4"><div className={cn("h-3 w-3/4 max-w-[120px] rounded animate-pulse bg-primary/5")} /></div>
                 ))}
-                {(rightHeaderSlot || rightCellSlot) && <div className="px-4"><div className={cn("h-3 w-8 flex-none rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>}
+                {(rightHeaderSlot || rightCellSlot) && <div className="px-4"><div className={cn("h-3 w-8 flex-none rounded animate-pulse bg-primary/5")} /></div>}
             </div>
         ))}</div>
     );

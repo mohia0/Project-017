@@ -50,8 +50,7 @@ export function Avatar({ src, name, className, isDark, fallbackClassName, fallba
     };
 
     const skeletonClasses = cn(
-        "absolute inset-0 rounded-inherit animate-pulse",
-        isDark ? "bg-white/[0.08]" : "bg-black/[0.05]"
+        "absolute inset-0 rounded-inherit animate-pulse bg-primary/10"
     );
 
     return (
