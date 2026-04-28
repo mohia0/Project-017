@@ -577,15 +577,30 @@ function FilePreviewModal({ item, isDark, onClose, onDownload, onStar, onDelete 
                 </div>
 
                 {/* Footer info bar */}
-                <div className={`flex items-center gap-4 px-5 py-2.5 border-t text-[10px] shrink-0 ${isDark ? 'border-[#1a1a1a] text-[#444]' : 'border-[#f0f0f0] text-[#bbb]'}`}>
-                    <span>Type: <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{getTypeLabel(getEffectiveType(item))}</strong></span>
-                    <span>Size: <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{formatBytes(item.size)}</strong></span>
-                    <span>Created: <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{formatDate(item.createdAt)}</strong></span>
-                    <span>Modified: <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{formatDate(item.modifiedAt)}</strong></span>
-                    {item.starred && <span className="text-amber-400">★ Starred</span>}
-                    {item.locked && <span className={isDark ? 'text-[#555]' : 'text-[#bbb]'}>🔒 Locked</span>}
+                <div className={`flex items-center gap-6 px-5 py-3 border-t text-[10px] shrink-0 ${isDark ? 'border-[#1a1a1a] text-[#444]' : 'border-[#f0f0f0] text-[#bbb]'}`}>
+                    <div className="flex flex-col gap-0.5">
+                        <span className="opacity-60">Type:</span>
+                        <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{getTypeLabel(getEffectiveType(item))}</strong>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                        <span className="opacity-60">Size:</span>
+                        <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{formatBytes(item.size)}</strong>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                        <span className="opacity-60">Created:</span>
+                        <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{formatDate(item.createdAt)}</strong>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                        <span className="opacity-60">Modified:</span>
+                        <strong className={isDark ? 'text-[#666]' : 'text-[#999]'}>{formatDate(item.modifiedAt)}</strong>
+                    </div>
+                    {item.starred && <span className="text-amber-400 self-end mb-0.5">★ Starred</span>}
+                    {item.locked && <span className={`self-end mb-0.5 ${isDark ? 'text-[#555]' : 'text-[#bbb]'}`}>🔒 Locked</span>}
                     <div className="flex-1"/>
-                    <span className={`tabular-nums font-mono ${isDark ? 'text-[#333]' : 'text-[#ddd]'}`}>{item.id}</span>
+                    <div className="flex flex-col items-end gap-0.5">
+                        <span className="opacity-40">Object ID:</span>
+                        <span className={`tabular-nums font-mono ${isDark ? 'text-[#333]' : 'text-[#ddd]'}`}>{item.id}</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2336,45 +2351,47 @@ export default function FilesPage() {
                                                 </div>
                                             )}
 
-                                            {/* Name & Meta */}
-                                            <div className="w-full text-center px-2 pt-2 pb-1">
-                                                {isRenaming ? (
-                                                    <RenameInput value={item.name} onConfirm={v => renameItem(item.id, v)} onCancel={() => setRenamingId(null)} isDark={isDark}/>
-                                                ) : (
-                                                    <span className={cn('text-[12.5px] font-medium truncate block', textPrimary)}>{item.name}</span>
-                                                )}
-                                                <span className={cn('text-[9.5px] mt-0.5 block opacity-60', muted)}>
-                                                    {item.type === 'link' ? 'Link' : item.size ? formatBytes(item.size) : getTypeLabel(getEffectiveType(item))}
-                                                </span>
-                                            </div>
+                                            {/* Bottom Section (Name & Meta + Hover Actions) */}
+                                            <div className="relative w-full">
+                                                {/* Name & Meta */}
+                                                <div className="w-full text-center px-2 pt-2 pb-2">
+                                                    {isRenaming ? (
+                                                        <RenameInput value={item.name} onConfirm={v => renameItem(item.id, v)} onCancel={() => setRenamingId(null)} isDark={isDark}/>
+                                                    ) : (
+                                                        <span className={cn('text-[12.5px] font-medium truncate block', textPrimary)}>{item.name}</span>
+                                                    )}
+                                                    <span className={cn('text-[9.5px] mt-0.5 block opacity-60', muted)}>
+                                                        {item.type === 'link' ? 'Link' : item.size ? formatBytes(item.size) : getTypeLabel(getEffectiveType(item))}
+                                                    </span>
+                                                </div>
 
-                                            {/* Hover Action Bar — Download & Copy Link only */}
-                                            {!isRenaming && selectedIds.size === 0 && (item.downloadUrl || item.url) && (
-                                                <div className={cn(
-                                                    "w-full h-0 opacity-0 group-hover:h-8 group-hover:opacity-100 transition-all duration-200 overflow-hidden pointer-events-none group-hover:pointer-events-auto"
-                                                )}>
-                                                    <div className="flex items-center justify-center gap-1.5 py-1 border-t border-dashed border-black/5 dark:border-white/5 h-8">
+                                                {/* Hover Action Bar — Download & Copy Link only */}
+                                                {!isRenaming && selectedIds.size === 0 && (item.downloadUrl || item.url) && (
+                                                    <div className={cn(
+                                                        "absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none group-hover:pointer-events-auto rounded-b-xl border-t",
+                                                        isDark ? 'bg-[#1a1a1a] border-white/5' : 'bg-white border-black/5'
+                                                    )}>
                                                         {item.type !== 'folder' && item.downloadUrl && (
                                                             <Tooltip content="Download" side="bottom">
                                                                 <button onClick={e => { e.stopPropagation(); handleDownload(item); }}
-                                                                    className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                        isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}>
-                                                                    <Download size={11} strokeWidth={2}/>
+                                                                    className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-colors', 
+                                                                        isDark ? 'text-[#666] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#aaa] hover:text-[#4dbf39] hover:bg-black/5')}>
+                                                                    <Download size={14} strokeWidth={2}/>
                                                                 </button>
                                                             </Tooltip>
                                                         )}
                                                         {(item.downloadUrl || item.url) && (
                                                             <Tooltip content="Copy link" side="bottom">
                                                                 <button onClick={e => { e.stopPropagation(); copyDownloadLink(item.id); }}
-                                                                    className={cn('w-6.5 h-6.5 flex items-center justify-center rounded-lg transition-colors', 
-                                                                        isDark ? 'text-[#444] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#ccc] hover:text-[#4dbf39] hover:bg-black/5')}>
-                                                                    <Link size={11} strokeWidth={2}/>
+                                                                    className={cn('w-8 h-8 flex items-center justify-center rounded-lg transition-colors', 
+                                                                        isDark ? 'text-[#666] hover:text-[#4dbf39] hover:bg-white/5' : 'text-[#aaa] hover:text-[#4dbf39] hover:bg-black/5')}>
+                                                                    <Link size={14} strokeWidth={2}/>
                                                                 </button>
                                                             </Tooltip>
                                                         )}
                                                     </div>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })}

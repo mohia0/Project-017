@@ -147,7 +147,7 @@ export function FullScreenLoader({
         className
       )}
     >
-      <AppLoader size="lg" color={isDark ? "#ffffff" : "#000000"} />
+      <AppLoader size="lg" />
       {label && (
         <p className={cn(
           "mt-10 text-[10px] font-bold tracking-[0.5em] uppercase opacity-50",
