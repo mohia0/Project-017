@@ -134,19 +134,19 @@ export async function middleware(request: NextRequest) {
 
     // If logged in at a workspace domain, ensure they belong there
     if (workspaceId) {
-      const { data: membership } = await supabase
-        .from('workspaces')
-        .select('id')
-        .eq('id', workspaceId)
-        .eq('owner_id', user.id)
-        .maybeSingle();
+      const data = await supabaseGet(
+        `workspaces?id=eq.${workspaceId}&owner_id=eq.${user.id}&select=id&limit=1`
+      );
+      const membership = data?.[0];
       
       if (!membership) {
         // Not a member? Redirect to their own domain or show error
-        const data = await supabaseGet(`workspaces?owner_id=eq.${user.id}&select=slug&limit=1`);
-        if (data?.[0]?.slug) {
+        const userWs = await supabaseGet(`workspaces?owner_id=eq.${user.id}&select=slug&limit=1`);
+        if (userWs?.[0]?.slug) {
+          // If they are on a custom domain and own a different workspace, redirect to their slug
+          // But if they are somehow failing a check for their OWN custom domain, this could loop.
           const url = new URL(request.url);
-          url.host = `${data[0].slug}.${ROOT_DOMAIN}`;
+          url.host = `${userWs[0].slug}.${ROOT_DOMAIN}`;
           return NextResponse.redirect(url);
         }
       }

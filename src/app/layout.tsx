@@ -26,8 +26,39 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const headersList = await headers();
     
-    // Middleware injects this header when accessed via subdomain portal or custom domain
-    const workspaceId = headersList.get('x-workspace-id');
+    const rawHost = headersList.get('host') ?? '';
+    const host = rawHost.replace(/:\d+$/, ''); // strip port for local dev
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com';
+
+    let workspaceId: string | null = null;
+
+    if (host.endsWith(`.${rootDomain}`)) {
+      // Subdomain portal
+      const slug = host.slice(0, -(`.${rootDomain}`.length));
+      const RESERVED = new Set(['app', 'portal', 'www', 'api', 'mail', 'cdn']);
+      if (slug && !RESERVED.has(slug)) {
+        const { data } = await supabaseService
+          .from('workspaces')
+          .select('id')
+          .eq('slug', slug)
+          .single();
+        workspaceId = data?.id || null;
+      }
+    } else if (
+      host !== rootDomain &&
+      !host.endsWith(`.${rootDomain}`) &&
+      host !== 'localhost' &&
+      !host.includes('127.0.0.1')
+    ) {
+      // Custom domain
+      const { data: domainData } = await supabaseService
+        .from('workspace_domains')
+        .select('workspace_id')
+        .eq('domain', host)
+        .eq('status', 'active')
+        .single();
+      workspaceId = domainData?.workspace_id || null;
+    }
 
     if (workspaceId) {
       // It's a workspace context (subdomain or custom domain).
