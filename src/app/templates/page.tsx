@@ -226,7 +226,7 @@ export default function TemplatesPage() {
     }, [fetchTemplates, fetchSectionTemplates, fetchSnippets]);
 
     const handleDuplicateSnippet = async (s: Snippet, silent = false) => {
-        const { id, created_at, updated_at, ...payload } = s;
+        const { id, created_at, workspace_id, ...payload } = s;
         await addSnippet({
             ...payload,
             name: `${s.name} (Copy)`
@@ -245,7 +245,7 @@ export default function TemplatesPage() {
 
 
     const handleDuplicateSection = async (t: SectionTemplate, silent = false) => {
-        const { id, created_at, ...payload } = t;
+        const { id, created_at, workspace_id, ...payload } = t;
         await addSectionTemplate({
             ...payload,
             name: `${t.name} (Copy)`
