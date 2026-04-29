@@ -216,7 +216,7 @@ export default function TemplatesPage() {
     const [selectedSnippetIds, setSelectedSnippetIds] = useState<string[]>([]);
     const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([]);
 
-    const { sectionTemplates, fetchSectionTemplates, deleteSectionTemplate, isLoading: isSectionsLoading } = useSectionTemplateStore();
+    const { sectionTemplates, fetchSectionTemplates, deleteSectionTemplate, addSectionTemplate, isLoading: isSectionsLoading } = useSectionTemplateStore();
     const { snippets, fetchSnippets, deleteSnippet, updateSnippet, addSnippet, isLoading: isSnippetsLoading } = useSnippetStore();
 
     useEffect(() => {
