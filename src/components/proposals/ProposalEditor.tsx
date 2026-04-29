@@ -2539,7 +2539,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta = 
                                     {/* Total row */}
                                     <div
                                         className={cn("grid font-black", showDivider && "border-t pt-2 mt-1")}
-                                        style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}
+                                        style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', borderColor: showDivider ? 'var(--table-border-color)' : 'transparent', borderTopWidth: showDivider ? 'var(--table-stroke-width)' : '0', fontSize: 'calc(var(--table-font-size) + 2px)' }}
                                     >
                                         <span className="text-left">Total</span>
                                         <span className="text-right whitespace-nowrap"><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>

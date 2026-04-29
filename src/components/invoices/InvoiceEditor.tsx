@@ -56,6 +56,7 @@ import { useSectionTemplateStore } from '@/store/useSectionTemplateStore';
 import { appToast } from '@/lib/toast';
 import { MoneyAmount, convertAmount, formatAmount, formatAmountOnly, getCurrencySymbol } from '@/components/ui/MoneyAmount';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { RichTextDescription } from '@/components/ui/RichTextDescription';
 
 /* ═══════════════════════════════════════════════════════
    TYPES
@@ -2108,7 +2109,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                             {/* Total row */}
                                             <div
                                                 className={cn("grid font-black", showDivider && "border-t pt-2 mt-1")}
-                                                style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}
+                                                style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', borderColor: showDivider ? 'var(--table-border-color)' : 'transparent', borderTopWidth: showDivider ? 'var(--table-stroke-width)' : '0', fontSize: 'calc(var(--table-font-size) + 2px)' }}
                                             >
                                                 <span className="text-left">Total</span>
                                                 <span className="text-right whitespace-nowrap"><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
@@ -2445,23 +2446,14 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                 placeholder="Item Name..."
                                 className={cn("w-full bg-transparent outline-none font-bold text-[14px] p-0 border-none text-[inherit] placeholder:opacity-20")}
                             />
-                            <textarea
-                                dir="auto"
+                            <RichTextDescription
                                 value={row.description || ''}
-                                onChange={e => {
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = `${e.target.scrollHeight}px`;
-                                    updateRow(row.id, { description: e.target.value });
-                                }}
-                                onFocus={e => {
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = `${e.target.scrollHeight}px`;
-                                }}
-                                rows={1}
-                                className={cn(
-                                    "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] text-[inherit] opacity-60 resize-none overflow-hidden block"
-                                )}
+                                onChange={v => updateRow(row.id, { description: v })}
                                 placeholder="Description (optional)..."
+                                isDark={isDark}
+                                className={cn(
+                                    "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] text-[inherit] opacity-60 block"
+                                )}
                             />
                         </>
                     )}
@@ -2538,7 +2530,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     </div>
                 )}
             </td>
-            <td className={cn(td, "pr-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
+            <td className={cn(td, "pr-2 align-top")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
                 {isPreview ? (
                     <div className="flex flex-col">
                         <div dir="auto" className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || 'Item'}</div>
@@ -2561,23 +2553,14 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight text-[inherit] placeholder:opacity-20")}
                             style={{ fontSize: 'calc(var(--table-font-size) + 2px)', fontWeight: 700 }}
                         />
-                        <textarea
-                            dir="auto"
+                        <RichTextDescription
                             value={row.description || ''}
-                            onChange={e => {
-                                e.target.style.height = 'auto';
-                                e.target.style.height = `${e.target.scrollHeight}px`;
-                                updateRow(row.id, { description: e.target.value });
-                            }}
-                            onFocus={e => {
-                                e.target.style.height = 'auto';
-                                e.target.style.height = `${e.target.scrollHeight}px`;
-                            }}
-                            rows={1}
-                            className={cn(
-                                "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight text-[inherit] resize-none overflow-hidden block"
-                            )}
+                            onChange={v => updateRow(row.id, { description: v })}
                             placeholder="Description (optional)..."
+                            isDark={isDark}
+                            className={cn(
+                                "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight text-[inherit] block"
+                            )}
                             style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
                         />
                     </div>

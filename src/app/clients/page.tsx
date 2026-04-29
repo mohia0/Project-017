@@ -444,6 +444,43 @@ export default function ClientsPage() {
                                 <SlidersHorizontal size={14} />
                             </button>
                             <Dropdown open={filterOpen} onClose={() => setFilterOpen(false)} isDark={isDark}>
+                                <div className={cn("px-3.5 py-2.5 border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>FILTER</div>
+                                <div 
+                                    onClick={() => { setFilterOpen(false); setAdvancedFilterOpen(true); }}
+                                    className={cn("flex items-center gap-2 px-3.5 py-2.5 border-b cursor-pointer transition-colors", isDark ? "border-[#2e2e2e] hover:bg-white/5 text-[#ccc]" : "border-[#f0f0f0] hover:bg-black/5 text-[#444]")}>
+                                    <Plus size={12} className="opacity-70" />
+                                    <span className={cn("text-[12px] font-medium")}>Create filter</span>
+                                </div>
+                                {filterRows.length > 0 && !activeFilterId && (
+                                    <div 
+                                        onClick={() => { setFilterRows([]); setFilterOpen(false); }}
+                                        className={cn("flex items-center gap-2 px-3.5 py-2 border-b cursor-pointer transition-colors", isDark ? "border-[#2e2e2e] hover:bg-white/5 text-red-400" : "border-[#f0f0f0] hover:bg-black/5 text-red-500")}>
+                                        <X size={11} className="opacity-70" />
+                                        <span className="text-[12px] font-medium">Clear active filters</span>
+                                    </div>
+                                )}
+                                {savedFilters.length > 0 && (
+                                    <>
+                                        <div className={cn("px-3.5 py-2.5 border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>SAVED FILTERS</div>
+                                        <SavedFilterPills
+                                            saved={savedFilters}
+                                            activeId={activeFilterId}
+                                            onLoad={(f) => { 
+                                                if (activeFilterId === f.id) {
+                                                    setFilterRows([]); 
+                                                    setActiveFilterId(null);
+                                                } else {
+                                                    setFilterRows(f.rows); 
+                                                    setActiveFilterId(f.id); 
+                                                }
+                                                setFilterOpen(false); 
+                                            }}
+                                            onDelete={(id) => { deleteSavedFilter(id); if (activeFilterId === id) { setActiveFilterId(null); } }}
+                                            onClear={() => { setFilterRows([]); setActiveFilterId(null); setFilterOpen(false); }}
+                                            isDark={isDark}
+                                        />
+                                    </>
+                                )}
                                 <div className={cn("px-3.5 py-2.5 border-b text-[11px] font-semibold", isDark ? "border-[#2e2e2e] text-[#666]" : "border-[#f0f0f0] text-[#aaa]")}>SORT BY</div>
                                 <div className="py-1">
                                     <DItem label="Alphabetical (A-Z)" active={orderBy === 'name'} onClick={() => { setOrderBy('name'); setFilterOpen(false); }} isDark={isDark} />
@@ -550,20 +587,7 @@ export default function ClientsPage() {
                                 </div>
                             </Dropdown>
 
-                            {advancedFilterOpen && (
-                                <FilterPanel
-                                    fields={filterFields}
-                                    rows={filterRows}
-                                    savedFilters={savedFilters}
-                                    onChange={setFilterRows}
-                                    onApply={(rows) => { setFilterRows(rows); setActiveFilterId(null); }}
-                                    onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); if (f) setActiveFilterId(f.id); }}
-                                    onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }}
-                                    onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }}
-                                    isDark={isDark}
-                                    onClose={() => setAdvancedFilterOpen(false)}
-                                />
-                            )}
+
                         </div>
 
                         {savedFilters.length > 0 && (
@@ -984,6 +1008,20 @@ export default function ClientsPage() {
                     setDeletingId(null);
                 }}
             />
+            {advancedFilterOpen && (
+                <FilterPanel
+                    fields={filterFields}
+                    rows={filterRows}
+                    savedFilters={savedFilters}
+                    onChange={setFilterRows}
+                    onApply={(rows) => { setFilterRows(rows); setActiveFilterId(null); }}
+                    onSave={(name, rows) => { const f = saveFilter(name, rows); setFilterRows(rows); if (f) setActiveFilterId(f.id); }}
+                    onLoadSaved={(f) => { setFilterRows(f.rows); setActiveFilterId(f.id); setAdvancedFilterOpen(false); }}
+                    onDeleteSaved={(id) => { deleteSavedFilter(id); if (activeFilterId === id) setActiveFilterId(null); }}
+                    isDark={isDark}
+                    onClose={() => setAdvancedFilterOpen(false)}
+                />
+            )}
         </div>
     );
 }
