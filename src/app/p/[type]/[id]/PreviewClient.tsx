@@ -977,6 +977,15 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     // Otherwise update normally
                     setLiveData((prev: any) => ({ ...prev, ...raw }));
                 }
+            )
+            .on(
+                'broadcast',
+                { event: 'preview_sync' },
+                (payload) => {
+                    if (payload.payload) {
+                        setLiveData((prev: any) => ({ ...prev, ...payload.payload }));
+                    }
+                }
             );
 
         // Extra listeners for project tasks and groups
@@ -1131,7 +1140,28 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
     };
 
     const isDark = false;
-    const totals = { subtotal: liveData.amount || 0, discAmt: 0, taxAmt: 0, total: liveData.amount || 0 };
+    // Compute totals live from blocks so pricing updates sync instantly to the public page.
+    // Previously this read from liveData.amount (only updated after a DB write — too slow).
+    const totals = React.useMemo(() => {
+        const liveBlocks: any[] = liveData.blocks || [];
+        let subtotal = 0;
+        let discAmt  = 0;
+        let taxAmt   = 0;
+        liveBlocks.forEach((block: any) => {
+            if (block.type === 'pricing' && block.rows) {
+                const blockSub = block.rows.reduce((sum: number, r: any) => {
+                    const qty = block.hideQty ? 1 : (r.qty ?? 1);
+                    return sum + qty * (r.rate || 0);
+                }, 0);
+                const blockDisc = blockSub * ((block.discountRate || 0) / 100);
+                const blockTax  = (blockSub - blockDisc) * ((block.taxRate || 0) / 100);
+                subtotal += blockSub;
+                discAmt  += blockDisc;
+                taxAmt   += blockTax;
+            }
+        });
+        return { subtotal, discAmt, taxAmt, total: subtotal - discAmt + taxAmt };
+    }, [liveData.blocks]);
 
     // ── PROPOSAL ─────────────────────────────────────────────────────────────
     if (type === 'proposal') {

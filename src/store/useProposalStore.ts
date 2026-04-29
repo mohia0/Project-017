@@ -121,6 +121,7 @@ export const useProposalStore = create<ProposalState>((set) => ({
         const payload: any = { ...updates };
         if (payload.due_date === '') payload.due_date = null;
         if (payload.issue_date === '') payload.issue_date = null;
+        if (payload.client_id === '') payload.client_id = null;
 
         if (current) {
             let metaUpdated = false;
@@ -146,7 +147,7 @@ export const useProposalStore = create<ProposalState>((set) => ({
 
         const { data, error } = await supabase.from('proposals').update(payload).eq('id', id).select().single();
         if (error) {
-            console.error("Store error updating proposal:", error);
+            console.error("Store error updating proposal:", error.message, error.details, error.hint, error);
             set({ error: error.message });
         } else if (data) {
             set((state) => ({

@@ -798,6 +798,11 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
     const [isResponsesDeleteOpen, setIsResponsesDeleteOpen] = useState(false);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [lastFieldForUpload, setLastFieldForUpload] = useState<string | null>(null);
+
+    // Broadcast state for instant preview sync
+    const broadcastTitle = useDebounce(title, 50);
+    const broadcastFields = useDebounce(fields, 50);
+    const broadcastMeta = useDebounce(meta, 50);
     const [lastIndexForUpload, setLastIndexForUpload] = useState<number | null>(null);
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -925,6 +930,32 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                 .catch(() => appToast.error('Save failed', undefined, { id: `save-form-${id}`, duration: 3000 }));
         }
     }, [debouncedTitle, debouncedStatus, debouncedFields, debouncedMeta, id, isLoaded, updateForm, isTemplate, updateTemplateInStore]);
+
+    // Instant Broadcast Effect
+    useEffect(() => {
+        if (!id || !isLoaded || isTemplate) return;
+        
+        const channelName = `preview:forms:${id}`;
+        const channel = supabase.channel(channelName);
+        
+        channel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                channel.send({
+                    type: 'broadcast',
+                    event: 'preview_sync',
+                    payload: {
+                        title: title,
+                        fields: fields,
+                        meta: meta
+                    }
+                });
+            }
+        });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [broadcastTitle, broadcastFields, broadcastMeta, id, isLoaded, isTemplate]);
 
     const updateMeta = useCallback((patch: Partial<FormMeta>) => {
         setMeta(prev => ({ ...prev, ...patch }));

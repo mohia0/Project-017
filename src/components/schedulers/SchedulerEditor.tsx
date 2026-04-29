@@ -554,6 +554,10 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
     const debouncedTitle = useDebounce(title, 1000);
     const debouncedStatus = useDebounce(status, 500);
     const debouncedMeta = useDebounce(meta, 1000);
+
+    // Broadcast state for instant preview sync
+    const broadcastTitle = useDebounce(title, 50);
+    const broadcastMeta = useDebounce(meta, 50);
     const isFirst = useRef(true);
 
     useEffect(() => {
@@ -576,6 +580,31 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                 .catch(() => appToast.error('Save failed', undefined, { id: `save-scheduler-${id}`, duration: 3000 }));
         }
     }, [debouncedTitle, debouncedStatus, debouncedMeta, id, isLoaded, updateScheduler, isTemplate, updateTemplateInStore]);
+
+    // Instant Broadcast Effect
+    useEffect(() => {
+        if (!id || !isLoaded || isTemplate) return;
+        
+        const channelName = `preview:schedulers:${id}`;
+        const channel = supabase.channel(channelName);
+        
+        channel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                channel.send({
+                    type: 'broadcast',
+                    event: 'preview_sync',
+                    payload: {
+                        title: title,
+                        meta: meta
+                    }
+                });
+            }
+        });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [broadcastTitle, broadcastMeta, id, isLoaded, isTemplate]);
 
     const updateMeta = useCallback((patch: Partial<SchedulerMeta>) => {
         setMeta(prev => ({ ...prev, ...patch }));

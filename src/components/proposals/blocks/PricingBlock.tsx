@@ -165,17 +165,28 @@ export function PricingBlock({
 
                             <div className="flex-1 space-y-1">
                                 <input
+                                    dir="auto"
                                     value={item.name}
                                     onChange={(e) => updateItem(item.id, 'name', e.target.value)}
                                     className={cn("w-full font-bold bg-transparent border-none p-0 focus:ring-0", isDark ? "text-[inherit]" : "text-[inherit]")}
                                     style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}
                                     placeholder="Item Title"
                                 />
-                                <input
+                                <textarea
+                                    dir="auto"
                                     value={item.description}
-                                    onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                                    className={cn("w-full bg-transparent border-none p-0 focus:ring-0", isDark ? "text-[inherit] opacity-70" : "text-[inherit] opacity-70")}
-                                    style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
+                                    onChange={(e) => {
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = `${e.target.scrollHeight}px`;
+                                        updateItem(item.id, 'description', e.target.value);
+                                    }}
+                                    onFocus={(e) => {
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = `${e.target.scrollHeight}px`;
+                                    }}
+                                    rows={1}
+                                    className={cn("w-full bg-transparent border-none p-0 focus:ring-0 resize-none overflow-hidden block", isDark ? "text-[inherit] opacity-70" : "text-[inherit] opacity-70")}
+                                    style={{ fontSize: 'calc(var(--table-font-size) - 1px)', lineHeight: '1.4' }}
                                     placeholder="Add a description..."
                                 />
                             </div>

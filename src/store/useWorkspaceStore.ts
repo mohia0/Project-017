@@ -35,6 +35,10 @@ interface WorkspaceState {
     deleteWorkspace: (id: string) => Promise<boolean>;
 }
 
+// Module-level in-flight guard — prevents concurrent fetchWorkspaces() calls
+// from racing on the Supabase navigator lock.
+let _fetchWorkspacesInflight: Promise<void> | null = null;
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     workspaces: [],
     isLoading: false,
@@ -42,72 +46,75 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     error: null,
 
     fetchWorkspaces: async () => {
-        set({ isLoading: true, error: null });
+        // Deduplicate: reuse any in-flight promise to avoid concurrent lock contention.
+        if (_fetchWorkspacesInflight) return _fetchWorkspacesInflight;
 
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-            set({ workspaces: [], isLoading: false, hasFetched: true });
-            return;
-        }
+        _fetchWorkspacesInflight = (async () => {
+            set({ isLoading: true, error: null });
 
-        // Fetch workspaces owned by the user or where they are a member
-        // For simplicity, we fetch all where owner_id = user.id for now
-        // A more complex query could join with workspace_members later
-        const { data, error } = await supabase
-            .from('workspaces')
-            .select('*')
-            .eq('owner_id', user.id)
-            .order('created_at', { ascending: false });
+            // getSession() reads from cache — no navigator lock acquired.
+            // We only need the user ID to query the DB, so this is sufficient.
+            const { data: { session } } = await supabase.auth.getSession();
+            const user = session?.user ?? null;
 
-        if (error) {
-            set({ error: error.message, isLoading: false, hasFetched: true });
-            return;
-        }
-
-        const workspaces = data as Workspace[];
-        set({ workspaces, isLoading: false, hasFetched: true });
-
-        // Identify which workspace should be active based on the current Domain/Subdomain
-        const { activeWorkspaceId, setActiveWorkspaceId } = useUIStore.getState();
-        const validWorkspaceIds = workspaces.map(w => w.id);
-        
-        let detectedWorkspaceId: string | null = null;
-        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com';
-        const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-
-        // 1. Try to find by Subdomain (slug.rootDomain)
-        if (hostname.endsWith(`.${rootDomain}`)) {
-            const slug = hostname.split('.')[0];
-            const found = workspaces.find(w => w.slug === slug);
-            if (found) detectedWorkspaceId = found.id;
-        }
-
-        // 2. Try to find by Custom Domain (requires checking workspace_domains table)
-        if (!detectedWorkspaceId && hostname && hostname !== rootDomain && hostname !== 'localhost' && !hostname.includes('127.0.0.1')) {
-            const { data: domainData } = await supabase
-                .from('workspace_domains')
-                .select('workspace_id')
-                .eq('domain', hostname)
-                .maybeSingle();
-            
-            if (domainData) {
-                detectedWorkspaceId = domainData.workspace_id;
+            if (!user) {
+                set({ workspaces: [], isLoading: false, hasFetched: true });
+                return;
             }
-        }
 
-        // Apply detected ID (prioritize URL detection over localStorage)
-        if (detectedWorkspaceId && validWorkspaceIds.includes(detectedWorkspaceId)) {
-            if (activeWorkspaceId !== detectedWorkspaceId) {
-                setActiveWorkspaceId(detectedWorkspaceId);
+            const { data, error } = await supabase
+                .from('workspaces')
+                .select('*')
+                .eq('owner_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                set({ error: error.message, isLoading: false, hasFetched: true });
+                return;
             }
-        } else if (activeWorkspaceId && !validWorkspaceIds.includes(activeWorkspaceId)) {
-            // Stale active workspace from local storage (previous user session)
-            setActiveWorkspaceId(workspaces.length > 0 ? workspaces[0].id : null);
-        } else if (!activeWorkspaceId && workspaces.length > 0) {
-            // Auto-select first workspace if none active and no direct URL match
-            setActiveWorkspaceId(workspaces[0].id);
-        }
+
+            const workspaces = data as Workspace[];
+            set({ workspaces, isLoading: false, hasFetched: true });
+
+            // Identify which workspace should be active based on the current Domain/Subdomain
+            const { activeWorkspaceId, setActiveWorkspaceId } = useUIStore.getState();
+            const validWorkspaceIds = workspaces.map(w => w.id);
+
+            let detectedWorkspaceId: string | null = null;
+            const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com';
+            const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+
+            // 1. Try to find by Subdomain (slug.rootDomain)
+            if (hostname.endsWith(`.${rootDomain}`)) {
+                const slug = hostname.split('.')[0];
+                const found = workspaces.find(w => w.slug === slug);
+                if (found) detectedWorkspaceId = found.id;
+            }
+
+            // 2. Try to find by Custom Domain
+            if (!detectedWorkspaceId && hostname && hostname !== rootDomain && hostname !== 'localhost' && !hostname.includes('127.0.0.1')) {
+                const { data: domainData } = await supabase
+                    .from('workspace_domains')
+                    .select('workspace_id')
+                    .eq('domain', hostname)
+                    .maybeSingle();
+                if (domainData) detectedWorkspaceId = domainData.workspace_id;
+            }
+
+            // Apply detected ID (prioritize URL detection over localStorage)
+            if (detectedWorkspaceId && validWorkspaceIds.includes(detectedWorkspaceId)) {
+                if (activeWorkspaceId !== detectedWorkspaceId) setActiveWorkspaceId(detectedWorkspaceId);
+            } else if (activeWorkspaceId && !validWorkspaceIds.includes(activeWorkspaceId)) {
+                setActiveWorkspaceId(workspaces.length > 0 ? workspaces[0].id : null);
+            } else if (!activeWorkspaceId && workspaces.length > 0) {
+                setActiveWorkspaceId(workspaces[0].id);
+            }
+        })().finally(() => {
+            // Clear so future intentional calls (e.g. after creating a workspace) work normally.
+            _fetchWorkspacesInflight = null;
+        });
+
+        return _fetchWorkspacesInflight;
     },
 
     createWorkspace: async (name: string, slug: string, logo_url?: string) => {

@@ -163,6 +163,46 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+
+    const [meta, setMeta] = useState<ProposalMeta>({
+        clientName: '',
+        projectName: '',
+        issueDate: new Date().toISOString().split('T')[0],
+        expirationDate: '',
+        currency: 'USD',
+        discountCalc: 'before_tax',
+        proposalNumber: '0170371',
+        status: 'Draft',
+        logoUrl: '',
+        documentTitle: 'PROPOSAL &\nAGREEMENT',
+        design: DEFAULT_DOCUMENT_DESIGN,
+    });
+
+    const [blocks, setBlocks] = useState<BlockData[]>([
+        { id: 'b1', type: 'header' },
+        {
+            id: 'b2', type: 'text',
+            content: "We're focused on understanding your needs and creating solutions that align with your goals.\nHere's the proposal — we're happy to discuss any details."
+        },
+        {
+            id: 'b3', type: 'pricing',
+            rows: [
+                { id: 'r1', title: 'Brand Strategy & Identity', description: '', qty: 1, rate: 2500 },
+                { id: 'r2', title: 'Website Design',            description: '', qty: 1, rate: 1800 },
+                { id: 'r3', title: 'Content Creation',          description: '', qty: 3, rate: 400  },
+            ],
+            taxRate: 15, discountRate: 0, showTax: true, showDiscount: false,
+            note: ''
+        },
+        {
+            id: 'b4', type: 'signature',
+            signerName: '', signerRole: 'Client', signed: false
+        }
+    ]);
+
+    // Broadcast state for instant preview sync
+    const broadcastMeta = useDebounce(meta, 50);
+    const broadcastBlocks = useDebounce(blocks, 50);
     const [leftTab, setLeftTab] = useState<LeftPanelTab>('details');
     const [mobileBottomPanelOpen, setMobileBottomPanelOpen] = useState(false);
     const [isClientEditorOpen, setIsClientEditorOpen] = useState(false);
@@ -250,41 +290,6 @@ export default function ProposalEditor({ id }: { id?: string }) {
 
 
 
-    const [meta, setMeta] = useState<ProposalMeta>({
-        clientName: '',
-        projectName: '',
-        issueDate: new Date().toISOString().split('T')[0],
-        expirationDate: '',
-        currency: 'USD',
-        discountCalc: 'before_tax',
-        proposalNumber: '0170371',
-        status: 'Draft',
-        logoUrl: '',
-        documentTitle: 'PROPOSAL &\nAGREEMENT',
-        design: DEFAULT_DOCUMENT_DESIGN,
-    });
-
-    const [blocks, setBlocks] = useState<BlockData[]>([
-        { id: 'b1', type: 'header' },
-        {
-            id: 'b2', type: 'text',
-            content: "We're focused on understanding your needs and creating solutions that align with your goals.\nHere's the proposal — we're happy to discuss any details."
-        },
-        {
-            id: 'b3', type: 'pricing',
-            rows: [
-                { id: 'r1', title: 'Brand Strategy & Identity', description: '', qty: 1, rate: 2500 },
-                { id: 'r2', title: 'Website Design',            description: '', qty: 1, rate: 1800 },
-                { id: 'r3', title: 'Content Creation',          description: '', qty: 3, rate: 400  },
-            ],
-            taxRate: 15, discountRate: 0, showTax: true, showDiscount: false,
-            note: ''
-        },
-        {
-            id: 'b4', type: 'signature',
-            signerName: '', signerRole: 'Client', signed: false
-        }
-    ]);
 
     // Fetch projects and current link
     React.useEffect(() => {
@@ -460,6 +465,34 @@ export default function ProposalEditor({ id }: { id?: string }) {
             appToast.error('Save failed', undefined, { id: `save-${id}`, duration: 3000 });
         });
     }, [debouncedMeta, debouncedBlocks, id, isLoaded, updateProposal]);
+
+    // Instant Broadcast Effect
+    React.useEffect(() => {
+        if (!id || !isLoaded) return;
+        
+        const channelName = `preview:proposals:${id}`;
+        const channel = supabase.channel(channelName);
+        
+        channel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                channel.send({
+                    type: 'broadcast',
+                    event: 'preview_sync',
+                    payload: {
+                        ...meta,
+                        meta: meta,
+                        blocks: blocks,
+                        title: meta.projectName || 'New Proposal',
+                        client_name: meta.clientName,
+                    }
+                });
+            }
+        });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [broadcastMeta, broadcastBlocks, id, isLoaded]);
 
     /* ── Block mutations ── */
     const addBlock = (type: BlockType | 'template', afterId?: string) => {
@@ -2417,7 +2450,7 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta = 
             </div>
 
             {/* Totals Section */}
-            <div className="px-5 py-3 mt-4" style={{ 
+            <div className={cn("px-5 py-3", isPreview ? "mt-2" : "mt-4")} style={{ 
                 backgroundColor: 'transparent', 
                 color: 'var(--table-text-color, inherit)' 
             }}>
@@ -2443,55 +2476,64 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta = 
                     </div>
                 )}
                 
-                <div className="flex flex-col items-end">
-                    <div className="w-full max-w-[180px] space-y-1.5">
+                <div className="flex justify-end">
+                    <div className="space-y-1.5" style={{ minWidth: 0 }}>
                         {/* Subtotal row */}
                         {rows.length > 1 && (!hideQty || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
-                            <div className={cn("flex justify-between font-medium text-[inherit] opacity-60")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                <span>Subtotal</span>
-                                <span><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
+                            <div className="grid font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                <span className="text-left">Subtotal</span>
+                                <span className="text-right whitespace-nowrap"><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
                             </div>
                         )}
                         {/* Discount row */}
                         {(!isPreview || (block.discountRate || 0) > 0) && (
-                            <div className={cn("flex justify-between items-center font-medium text-[inherit] opacity-60")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                <div className="flex items-center gap-2">
-                                    <span>Discount{isPreview && <span className="ml-1 opacity-70">({block.discountRate}%)</span>}</span>
-                                    {!isPreview && (
-                                        <input
-                                            type="number"
-                                            value={block.discountRate || 0}
-                                            onInput={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
-                                            className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                        />
-                                    )}
-                                    {!isPreview && <span>%</span>}
+                            <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                <div className="flex items-center gap-1.5 justify-start">
+                                    <span>Discount</span>
+                                    {isPreview
+                                        ? <span className="opacity-70">({block.discountRate}%)</span>
+                                        : <>
+                                            <input
+                                                type="number"
+                                                value={block.discountRate || 0}
+                                                onInput={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
+                                                className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                            />
+                                            <span>%</span>
+                                        </>
+                                    }
                                 </div>
-                                <span>−<MoneyAmount amount={discAmt} currency={currency} forceOriginal={isPreview} /></span>
+                                <span className="text-right whitespace-nowrap">−<MoneyAmount amount={discAmt} currency={currency} forceOriginal={isPreview} /></span>
                             </div>
                         )}
-
                         {/* Tax row */}
                         {(!isPreview || (block.taxRate || 0) > 0) && (
-                            <div className={cn("flex justify-between items-center font-medium opacity-50")} style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                <div className="flex items-center gap-2">
-                                    <span>Tax{isPreview && <span className="ml-1 opacity-70">({block.taxRate}%)</span>}</span>
-                                    {!isPreview && (
-                                        <input
-                                            type="number"
-                                            value={block.taxRate || 0}
-                                            onInput={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
-                                            className={cn("w-10 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                        />
-                                    )}
-                                    {!isPreview && <span>%</span>}
+                            <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                <div className="flex items-center gap-1.5 justify-start">
+                                    <span>Tax</span>
+                                    {isPreview
+                                        ? <span className="opacity-70">({block.taxRate}%)</span>
+                                        : <>
+                                            <input
+                                                type="number"
+                                                value={block.taxRate || 0}
+                                                onInput={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
+                                                className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                            />
+                                            <span>%</span>
+                                        </>
+                                    }
                                 </div>
-                                <span><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
+                                <span className="text-right whitespace-nowrap"><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
                             </div>
                         )}
-                        <div className={cn("flex justify-between font-black pt-2 mt-1", ((rows.length > 1 && !hideQty) || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && "border-t")} style={{ borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
-                            <span>Total</span>
-                            <span><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
+                        {/* Total row */}
+                        <div
+                            className={cn("grid font-black", ((rows.length > 1 && !hideQty) || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && "border-t pt-2 mt-1")}
+                            style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}
+                        >
+                            <span className="text-left">Total</span>
+                            <span className="text-right whitespace-nowrap"><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
                         </div>
                     </div>
                 </div>
@@ -2566,9 +2608,10 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                 <div className="flex flex-col pr-12">
                     {isPreview ? (
                         <>
-                            <div className="font-bold text-[14px] leading-tight">{row.title || 'Item'}</div>
+                            <div dir="auto" className="font-bold text-[14px] leading-tight">{row.title || 'Item'}</div>
                             {row.description && (
                                 <div 
+                                    dir="auto"
                                     className="text-[12px] opacity-60 mt-1 leading-relaxed whitespace-pre-wrap break-words"
                                     dangerouslySetInnerHTML={{ __html: isPreview ? replaceVariables(row.description) : row.description }}
                                 />
@@ -2577,12 +2620,14 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     ) : (
                         <>
                             <input
+                                dir="auto"
                                 value={row.title || ''}
                                 onInput={e => updateRow(row.id, { title: e.target.value })}
                                 placeholder="Item Name..."
                                 className={cn("w-full bg-transparent outline-none font-bold text-[14px] p-0 border-none", isDark ? "text-[inherit] placeholder:opacity-20" : "text-[inherit] placeholder:opacity-20")}
                             />
                             <div
+                                dir="auto"
                                 contentEditable={!isPreview}
                                 suppressContentEditableWarning
                                 onInput={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
@@ -2671,9 +2716,10 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
             <td className={cn(td, "pr-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
                 {isPreview ? (
                     <div className="flex flex-col">
-                        <div className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || 'Item'}</div>
+                        <div dir="auto" className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || 'Item'}</div>
                         {row.description && (
                             <div 
+                                dir="auto"
                                 className={cn("mt-0.5 opacity-60 whitespace-pre-wrap break-words")} 
                                 style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
                                 dangerouslySetInnerHTML={{ __html: isPreview ? replaceVariables(row.description) : row.description }}
@@ -2683,6 +2729,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                 ) : (
                     <div className="flex flex-col">
                         <input
+                            dir="auto"
                             value={row.title || ''}
                             onInput={e => updateRow(row.id, { title: e.target.value })}
                             placeholder={row.description ? "Item title..." : "Item Name..."}
@@ -2690,13 +2737,14 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             style={{ fontSize: 'calc(var(--table-font-size) + 2px)', fontWeight: 700 }}
                         />
                         <div
+                            dir="auto"
                             contentEditable={!isPreview}
                             suppressContentEditableWarning
                             onInput={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
                             dangerouslySetInnerHTML={{ __html: row.description || '' }}
                             className={cn(
                                 "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-10 whitespace-pre-wrap break-words", 
-                                isDark ? "text-[inherit]" : "text-[inherit]"
+                                "text-[inherit]"
                             )}
                             data-placeholder="Description (optional)..."
                             style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
