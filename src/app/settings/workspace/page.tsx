@@ -25,7 +25,7 @@ const TIMEZONE_OPTIONS = Intl.supportedValuesOf('timeZone').map(tz => {
   }
 }).sort((a, b) => a.label.localeCompare(b.label));
 
-export function HelpTip({ text, isDark }: { text: string; isDark: boolean }) {
+function HelpTip({ text, isDark }: { text: string; isDark: boolean }) {
     const [show, setShow] = useState(false);
     return (
         <div className="relative flex items-center justify-center">
@@ -50,7 +50,7 @@ export function HelpTip({ text, isDark }: { text: string; isDark: boolean }) {
     );
 }
 
-export function WarningTip({ text, isDark }: { text: string; isDark: boolean }) {
+function WarningTip({ text, isDark }: { text: string; isDark: boolean }) {
     const [show, setShow] = useState(false);
     return (
         <div className="relative flex items-center justify-center">

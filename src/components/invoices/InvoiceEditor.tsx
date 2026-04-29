@@ -606,7 +606,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                         <input
                             type="text"
                             value={meta.projectName || ""}
-                            onChange={(e) => updateMeta({ projectName: e.target.value })}
+                            onChange={(e) => updateMeta({ projectName: e.currentTarget.value })}
                             className={cn(
                                 "text-[13px] font-semibold bg-transparent outline-none transition-all min-w-[150px]",
                                 isDark ? "text-white/90 placeholder:text-white/20" : "text-gray-900 placeholder:text-gray-300"
@@ -1010,7 +1010,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                     >
                                         <input
                                             value={meta.invoiceNumber}
-                                            onChange={e => updateMeta({ invoiceNumber: e.target.value })}
+                                            onChange={e => updateMeta({ invoiceNumber: e.currentTarget.value })}
                                             placeholder="Enter invoice number..."
                                             className={cn(
                                                 "w-full text-[12px] bg-transparent outline-none font-medium",
@@ -1061,7 +1061,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                             <input 
                                                 value={meta.assignedClients?.length ? clientSearchQuery : meta.clientName} 
                                                 onChange={e => {
-                                                    const val = e.target.value;
+                                                    const val = e.currentTarget.value;
                                                     setClientSearchQuery(val);
                                                     if (!meta.assignedClients?.length) updateMeta({ clientName: val });
                                                 }} 
@@ -1178,7 +1178,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                         <input
                                                             autoFocus
                                                             value={projectQuery}
-                                                            onChange={e => setProjectQuery(e.target.value)}
+                                                            onChange={e => setProjectQuery(e.currentTarget.value)}
                                                             placeholder="Search projects..."
                                                             className={cn(
                                                                 "w-full text-[11px] px-2.5 py-1.5 rounded-md outline-none",
@@ -1310,7 +1310,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                             checked={meta.paymentMethods?.includes('paypal')}
                                                             onChange={(e) => {
                                                                 const current = meta.paymentMethods || [];
-                                                                const next = e.target.checked 
+                                                                const next = e.currentTarget.checked 
                                                                     ? [...current, 'paypal']
                                                                     : current.filter(id => id !== 'paypal');
                                                                 updateMeta({ paymentMethods: next });
@@ -1344,7 +1344,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                         checked={meta.paymentMethods?.includes(acc.id)}
                                                         onChange={(e) => {
                                                             const current = meta.paymentMethods || [];
-                                                            const next = e.target.checked 
+                                                            const next = e.currentTarget.checked 
                                                                 ? [...current, acc.id]
                                                                 : current.filter(id => id !== acc.id);
                                                             updateMeta({ paymentMethods: next });
@@ -2038,7 +2038,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                     <input 
                                         type="checkbox" 
                                         checked={hideQty} 
-                                        onChange={e => updateBlock(block.id, { hideQty: e.target.checked })} 
+                                        onChange={e => updateBlock(block.id, { hideQty: e.currentTarget.checked })} 
                                         className="rounded border-gray-300" 
                                         style={{ accentColor: design.primaryColor || 'var(--brand-primary)' }}
                                     />
@@ -2075,7 +2075,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                                                 <input
                                                                     type="number"
                                                                     value={block.discountRate || 0}
-                                                                    onInput={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
+                                                                    onInput={e => updateBlock(block.id, { discountRate: Number(e.currentTarget.value) })}
                                                                     className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
                                                                 />
                                                                 <span>%</span>
@@ -2096,7 +2096,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                                                 <input
                                                                     type="number"
                                                                     value={block.taxRate || 0}
-                                                                    onInput={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
+                                                                    onInput={e => updateBlock(block.id, { taxRate: Number(e.currentTarget.value) })}
                                                                     className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
                                                                 />
                                                                 <span>%</span>
@@ -2131,7 +2131,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                     {!isPreview && (
                         <select
                             value={block.level || 1}
-                            onChange={e => updateBlock(block.id, { level: Number(e.target.value) as 1|2|3 })}
+                            onChange={e => updateBlock(block.id, { level: Number(e.currentTarget.value) as 1|2|3 })}
                             className={cn(
                                 "text-[9px] mt-1.5 bg-transparent border rounded px-1 py-0.5 opacity-0 group-hover/hb:opacity-100 transition-opacity outline-none shrink-0",
                                 isDark ? "border-[#333] text-[#666]" : "border-[#e0e0e0] text-[#ccc]"
@@ -2441,8 +2441,8 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             <input
                                 dir="auto"
                                 value={row.title || ''}
-                                onChange={e => updateRow(row.id, { title: e.target.value })}
-                                onInput={e => updateRow(row.id, { title: e.target.value })}
+                                onChange={e => updateRow(row.id, { title: e.currentTarget.value })}
+                                onInput={e => updateRow(row.id, { title: e.currentTarget.value })}
                                 placeholder="Item Name..."
                                 className={cn("w-full bg-transparent outline-none font-bold text-[14px] p-0 border-none text-[inherit] placeholder:opacity-20")}
                             />
@@ -2470,7 +2470,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                     <input
                                         type="number"
                                         value={row.qty}
-                                        onInput={e => updateRow(row.id, { qty: Number(e.target.value) })}
+                                        onInput={e => updateRow(row.id, { qty: Number(e.currentTarget.value) })}
                                         className={cn("w-10 bg-transparent outline-none font-bold text-[13px] text-[inherit]")}
                                     />
                                 )}
@@ -2484,7 +2484,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                 <input
                                     type="number"
                                     value={row.rate}
-                                    onInput={e => updateRow(row.id, { rate: Number(e.target.value) })}
+                                    onInput={e => updateRow(row.id, { rate: Number(e.currentTarget.value) })}
                                     className={cn("w-20 bg-transparent outline-none font-bold text-[13px]", isDark ? "text-[#ccc]" : "text-[#333]")}
                                 />
                             )}
@@ -2548,7 +2548,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                         <input
                             dir="auto"
                             value={row.title || ''}
-                            onInput={e => updateRow(row.id, { title: e.target.value })}
+                            onInput={e => updateRow(row.id, { title: e.currentTarget.value })}
                             placeholder={row.description ? "Item title..." : "Item Name..."}
                             className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight text-[inherit] placeholder:opacity-20")}
                             style={{ fontSize: 'calc(var(--table-font-size) + 2px)', fontWeight: 700 }}
@@ -2572,7 +2572,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                         <input
                             type="number"
                             value={row.qty}
-                            onInput={e => updateRow(row.id, { qty: Number(e.target.value) })}
+                            onInput={e => updateRow(row.id, { qty: Number(e.currentTarget.value) })}
                             className={cn("w-12 text-right bg-transparent outline-none font-medium text-[inherit]")}
                         />
                     )}
@@ -2583,7 +2583,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     <input
                         type="number"
                         value={row.rate}
-                        onInput={e => updateRow(row.id, { rate: Number(e.target.value) })}
+                        onInput={e => updateRow(row.id, { rate: Number(e.currentTarget.value) })}
                         className={cn("w-20 text-right bg-transparent outline-none p-0 border-none font-inherit leading-tight", hideQty ? "font-bold" : "font-medium")}
                         style={{ fontWeight: hideQty ? 700 : 500 }}
                     />

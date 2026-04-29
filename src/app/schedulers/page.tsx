@@ -627,8 +627,7 @@ export default function SchedulersPage() {
                         </div>
                         <div className="relative">
                             <FilterButton 
-                                count={filterRows.length} 
-                                active={advancedFilterOpen || filterRows.length > 0} 
+                                activeCount={filterRows.length} 
                                 onClick={() => setAdvancedFilterOpen(true)} 
                                 isDark={isDark} 
                             />
