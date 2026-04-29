@@ -19,6 +19,7 @@ import { useSectionTemplateStore, SectionTemplate } from '@/store/useSectionTemp
 import { useSnippetStore, Snippet } from '@/store/useSnippetStore';
 import { SnippetPreview } from '@/components/proposals/blocks/SnippetPreview';
 import { useMenuStore } from '@/store/useMenuStore';
+import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 
 function SnippetItem({ 
     snippet, 
@@ -72,26 +73,16 @@ function SnippetItem({
             isSelected ? (isDark ? "bg-white/[0.03]" : "bg-black/[0.03]") : "",
             isDark ? "border-white/5" : "border-black/5"
         )}>
-            {/* Selection Checkbox */}
-            <div className="shrink-0 mt-1.5 flex flex-col items-center gap-3">
-                <button 
-                    onClick={() => onSelect(!isSelected)}
-                    className={cn(
-                        "w-4 h-4 rounded border flex items-center justify-center transition-all",
-                        isSelected 
-                            ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-black" 
-                            : "border-black/20 dark:border-white/20 opacity-0 group-hover:opacity-100"
-                    )}
-                >
-                    {isSelected && <Check size={10} strokeWidth={3} />}
-                </button>
-                <div className="flex flex-col items-center gap-1.5">
-                    <Zap size={11} className={cn("transition-all", isSaving ? "text-yellow-500 animate-pulse" : "text-yellow-500 opacity-20 group-hover:opacity-100")} />
-                    {isSaving && <div className="w-1 h-1 rounded-full bg-yellow-500 animate-bounce" />}
+            <div className="shrink-0 mt-1 flex flex-col items-center">
+                <div className={cn(
+                    "w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                    isDark ? "bg-white/5 text-white/20" : "bg-black/5 text-black/20"
+                )}>
+                    <Zap size={14} className={isSaving ? "text-yellow-500 animate-pulse" : ""} />
                 </div>
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 pt-1.5">
                 <div className="flex items-start justify-between group/name mb-1">
                     <div className="flex-1">
                         {editingName ? (
@@ -108,21 +99,20 @@ function SnippetItem({
                                     }
                                 }}
                                 className={cn(
-                                    "bg-transparent border-none outline-none font-bold text-[10px] uppercase tracking-widest w-full py-0 leading-tight transition-opacity",
-                                    isDark ? "text-white/60" : "text-black/60"
+                                    "bg-transparent border-none outline-none font-bold text-[14px] w-full py-0 leading-tight transition-opacity",
+                                    isDark ? "text-white" : "text-black"
                                 )}
                             />
                         ) : (
                             <h3 
                                 onClick={() => setEditingName(true)}
-                                className="font-bold text-[10px] opacity-30 uppercase tracking-widest hover:opacity-60 cursor-text truncate transition-opacity py-0 max-w-[200px] leading-tight"
+                                className="font-bold text-[14px] cursor-text truncate transition-opacity py-0 leading-tight"
                             >
                                 {snippet.name}
                             </h3>
                         )}
                     </div>
 
-                    {/* Individual Actions */}
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
                         <button 
                             onClick={() => setIsEditingContent(!isEditingContent)}
@@ -132,9 +122,9 @@ function SnippetItem({
                                     ? "bg-[var(--brand-primary)] text-black" 
                                     : (isDark ? "bg-white/5 text-white/40 hover:text-white" : "bg-black/5 text-black/40 hover:text-black")
                             )}
-                            title={isEditingContent ? "Finish Editing" : "Edit Content"}
+                            title={isEditingContent ? "Save" : "Edit"}
                         >
-                            {isEditingContent ? <Check size={11} /> : <PenLine size={11} />}
+                            {isEditingContent ? <Check size={11} strokeWidth={3} /> : <PenLine size={11} />}
                         </button>
                         <button 
                             onClick={() => onDuplicate(snippet)}
@@ -146,13 +136,11 @@ function SnippetItem({
                         >
                             <Copy size={11} />
                         </button>
-                        <button 
-                            onClick={() => onDelete(snippet.id)}
-                            className="p-1.5 rounded-md transition-all hover:bg-red-500/10 text-red-500/40 hover:text-red-500"
-                            title="Delete"
-                        >
-                            <Trash2 size={11} />
-                        </button>
+                        <InlineDeleteButton 
+                            onDelete={() => onDelete(snippet.id)}
+                            isDark={isDark}
+                            className="!p-1.5 !h-auto !w-auto"
+                        />
                     </div>
                 </div>
 
@@ -168,9 +156,9 @@ function SnippetItem({
                     />
                 </div>
                 
-                {snippet.tags && snippet.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2 pb-1">
-                        {snippet.tags.map(tag => (
+                <div className="flex items-center justify-between mt-2 pb-1">
+                    <div className="flex flex-wrap gap-1">
+                        {snippet.tags && snippet.tags.length > 0 && snippet.tags.map(tag => (
                             <span key={tag} className={cn(
                                 "px-1.5 py-0.5 rounded text-[9px] font-semibold flex items-center",
                                 isDark ? "bg-white/5 text-white/40" : "bg-black/5 text-black/40"
@@ -179,7 +167,21 @@ function SnippetItem({
                             </span>
                         ))}
                     </div>
-                )}
+
+                    <div className="flex items-center gap-3 ml-auto">
+                        <button 
+                            onClick={() => onSelect(!isSelected)}
+                            className={cn(
+                                "w-4 h-4 rounded border flex items-center justify-center transition-all",
+                                isSelected 
+                                    ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-black shadow-sm" 
+                                    : isDark ? "border-white/10 text-white/10 hover:border-white/30" : "border-black/10 text-black/10 hover:border-black/30"
+                            )}
+                        >
+                            {isSelected ? <Check size={10} strokeWidth={3} /> : <div className="w-1 h-1 rounded-full bg-current opacity-50" />}
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -206,8 +208,6 @@ export default function TemplatesPage() {
     const [snippetSearch, setSnippetSearch] = usePersistentState('templates_filter_snippet_search', '');
     const [sectionToDelete, setSectionToDelete] = useState<string | null>(null);
     const [snippetToDelete, setSnippetToDelete] = useState<string | null>(null);
-    const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
-    const [editingSnippetName, setEditingSnippetName] = useState('');
     const [selectedSnippetIds, setSelectedSnippetIds] = useState<string[]>([]);
 
     const { sectionTemplates, fetchSectionTemplates, deleteSectionTemplate, isLoading: isSectionsLoading } = useSectionTemplateStore();
@@ -282,6 +282,14 @@ export default function TemplatesPage() {
             tags: snippet.tags || []
         });
         if (success) appToast.success('Snippet duplicated');
+    };
+
+    const handleBulkDuplicate = async () => {
+        const snippetsToDup = snippets.filter(s => selectedSnippetIds.includes(s.id));
+        for (const s of snippetsToDup) {
+            await handleDuplicateSnippet(s);
+        }
+        setSelectedSnippetIds([]);
     };
 
     const filteredTemplates = templates.filter(t => {
@@ -461,9 +469,12 @@ export default function TemplatesPage() {
             {/* ── Snippets Tab ── */}
             {activeCategory === 'snippet' && (
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className={cn('px-5 py-3 border-b', isDark ? 'border-[#252525]' : 'border-[#ebebeb]')}>
-                        <div className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border', isDark ? 'bg-white/5 border-white/10' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
-                            <Search size={13} className="opacity-30 shrink-0" />
+                    <div className={cn('px-5 py-3 border-b flex items-center justify-between min-h-[56px]', isDark ? 'border-[#252525]' : 'border-[#ebebeb]')}>
+                        <div className={cn('relative group/search max-w-[200px] w-full transition-all focus-within:max-w-[300px] flex items-center gap-2 px-3 py-2 rounded-xl border', isDark ? 'bg-white/5 border-white/10' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
+                            <Search size={13} className={cn(
+                                "opacity-30 shrink-0 transition-colors",
+                                isDark ? "text-white/20 group-focus-within/search:text-[var(--brand-primary)]" : "text-black/20 group-focus-within/search:text-[var(--brand-primary)]"
+                            )} />
                             <input
                                 value={snippetSearch}
                                 onChange={e => setSnippetSearch(e.target.value)}
@@ -471,9 +482,54 @@ export default function TemplatesPage() {
                                 className="flex-1 bg-transparent outline-none text-[13px] placeholder:opacity-30"
                             />
                         </div>
+
+                        <AnimatePresence>
+                            {selectedSnippetIds.length > 0 && (
+                                <motion.div 
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    className={cn(
+                                        "flex items-center gap-4 px-3 py-1.5 rounded-full shadow-lg border",
+                                        isDark ? "bg-[#1a1a1a] border-[#333]" : "bg-white border-[#ebebeb]"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-2 pr-2 border-r border-black/10 dark:border-white/10">
+                                        <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest">{selectedSnippetIds.length} Selected</span>
+                                        <button 
+                                            onClick={() => setSelectedSnippetIds([])}
+                                            className="text-[9px] font-bold opacity-30 hover:opacity-100 uppercase tracking-widest transition-opacity"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button 
+                                            onClick={handleBulkDuplicate}
+                                            className="flex items-center gap-2 text-[11px] font-bold opacity-60 hover:opacity-100 transition-opacity"
+                                        >
+                                            <Copy size={14} /> Duplicate
+                                        </button>
+                                        <InlineDeleteButton 
+                                            onDelete={async () => {
+                                                for (const id of selectedSnippetIds) {
+                                                    await deleteSnippet(id);
+                                                }
+                                                setSelectedSnippetIds([]);
+                                                appToast.success('Snippets deleted');
+                                            }}
+                                            isDark={isDark}
+                                            confirmText={`Delete ${selectedSnippetIds.length}?`}
+                                            className="!h-auto !py-0"
+                                        />
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
 
                     <div className={cn('flex-1 overflow-auto', isDark ? 'bg-[#0f0f0f]' : 'bg-[#f9f9fb]')}>
+
                         {snippets.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full opacity-40 gap-4 p-8">
                                 <div className={cn('w-20 h-20 rounded-3xl flex items-center justify-center bg-yellow-500/10')}>
@@ -494,7 +550,7 @@ export default function TemplatesPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex flex-col">
+                            <div className="flex flex-col pt-6">
                                 {snippets
                                     .filter(s => s.name.toLowerCase().includes(snippetSearch.toLowerCase()))
                                     .map(s => (
@@ -509,10 +565,7 @@ export default function TemplatesPage() {
                                         }}
                                         onDuplicate={handleDuplicateSnippet}
                                         onDelete={(id) => {
-                                            appToast.promise(
-                                                deleteSnippet(id),
-                                                { loading: 'Deleting...', success: 'Snippet deleted', error: 'Failed to delete' }
-                                            );
+                                            setSnippetToDelete(id);
                                         }}
                                         onUpdate={updateSnippet}
                                     />
@@ -817,56 +870,20 @@ export default function TemplatesPage() {
                 isDark={isDark}
             />
 
-            {/* ── Bulk Actions Toolbar ── */}
-            <AnimatePresence>
-                {selectedSnippetIds.length > 0 && activeCategory === 'snippet' && (
-                    <motion.div 
-                        initial={{ y: 100, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 100, opacity: 0 }}
-                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-2xl bg-black dark:bg-white text-white dark:text-black shadow-2xl flex items-center gap-6 border border-white/10 dark:border-black/10"
-                    >
-                        <div className="flex items-center gap-2 pr-4 border-r border-white/10 dark:border-black/10">
-                            <span className="text-[12px] font-bold">{selectedSnippetIds.length} Selected</span>
-                            <button 
-                                onClick={() => setSelectedSnippetIds([])}
-                                className="text-[10px] opacity-60 hover:opacity-100 uppercase tracking-widest font-bold"
-                            >
-                                Clear
-                            </button>
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                            <button 
-                                onClick={async () => {
-                                    const snippetsToDup = snippets.filter(s => selectedSnippetIds.includes(s.id));
-                                    for (const s of snippetsToDup) {
-                                        await handleDuplicateSnippet(s);
-                                    }
-                                    setSelectedSnippetIds([]);
-                                }}
-                                className="flex items-center gap-2 text-[11px] font-bold hover:opacity-80 transition-opacity"
-                            >
-                                <Copy size={14} /> Duplicate
-                            </button>
-                            <button 
-                                onClick={async () => {
-                                    if (confirm(`Are you sure you want to delete ${selectedSnippetIds.length} snippets?`)) {
-                                        for (const id of selectedSnippetIds) {
-                                            await deleteSnippet(id);
-                                        }
-                                        setSelectedSnippetIds([]);
-                                        appToast.success('Snippets deleted');
-                                    }
-                                }}
-                                className="flex items-center gap-2 text-[11px] font-bold text-red-500 hover:opacity-80 transition-opacity"
-                            >
-                                <Trash2 size={14} /> Delete
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <DeleteConfirmModal 
+                open={!!snippetToDelete}
+                onClose={() => setSnippetToDelete(null)}
+                onConfirm={async () => {
+                    if (snippetToDelete) {
+                        await deleteSnippet(snippetToDelete);
+                        appToast.success('Snippet deleted');
+                        setSnippetToDelete(null);
+                    }
+                }}
+                title="Delete Snippet"
+                description="Are you sure you want to delete this snippet? This cannot be undone."
+                isDark={isDark}
+            />
         </div>
     );
 }
