@@ -110,7 +110,7 @@ interface InvoiceMeta {
     reference?: string;
 }
 
-type RightPanelTab = 'details' | 'appearance' | 'automation';
+type LeftPanelTab = 'details' | 'appearance' | 'automation';
 
 
 
@@ -155,7 +155,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [isPayModalOpen, setIsPayModalOpen] = useState(false);
-    const [rightTab, setRightTab] = useState<RightPanelTab>('details');
+    const [leftTab, setLeftTab] = useState<LeftPanelTab>('details');
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showStatusMenu, setShowStatusMenu] = useState(false);
     const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -206,8 +206,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     ]);
 
     const [isLoaded, setIsLoaded] = useState(false);
-    const debouncedMeta = useDebounce(meta, 1000);
-    const debouncedBlocks = useDebounce(blocks, 1000);
+    const debouncedMeta = useDebounce(meta, 300);
+    const debouncedBlocks = useDebounce(blocks, 300);
 
     // Fetch projects and current link
     React.useEffect(() => {
@@ -926,7 +926,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
                 {!isPreview && (
                     <div className={cn(
-                        "hidden md:flex flex-col overflow-hidden border-l transition-all duration-300 relative w-[240px]",
+                        "hidden md:flex flex-col overflow-hidden transition-all duration-300 relative w-[240px]",
                         isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                     )}>
                         {/* Tab switcher */}
@@ -935,9 +935,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             isDark ? "bg-[#111] border-white/5" : "bg-[#f5f5f5] border-black/5"
                         )}>
                             {([['details', Settings, 'Details'], ['appearance', Palette, 'Design']] as const).map(([tab, Icon, label]) => {
-                                const isActive = rightTab === tab;
+                                const isActive = leftTab === tab;
                                 return (
-                                    <button key={tab} onClick={() => setRightTab(tab)}
+                                    <button key={tab} onClick={() => setLeftTab(tab)}
                                         className={cn(
                                             "flex-1 flex items-center justify-center gap-2 py-2 text-[11px] font-bold rounded-[8px] relative z-20 outline-none",
                                             isActive
@@ -946,7 +946,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                         )}>
                                         {isActive && (
                                             <motion.div
-                                                layoutId="invoiceEditorRightTabSlider"
+                                                layoutId="invoiceEditorLeftTabSlider"
                                                 className={cn(
                                                     "absolute inset-0 rounded-[8px] z-[-1] shadow-sm border",
                                                     isDark ? "bg-[#222] border-white/10" : "bg-white border-black/5"
@@ -966,7 +966,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                             })}
                         </div>
                         <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-3 space-y-1.5">
-                            {rightTab === 'details' && (
+                            {leftTab === 'details' && (
                                 <>
                                     <MetaField
                                         label="Invoice #"
@@ -1388,7 +1388,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
 
                                 </>
                             )}
-                            {rightTab === 'appearance' && (
+                            {leftTab === 'appearance' && (
                                 <DesignSettingsPanel 
                                     isDark={isDark} 
                                     meta={meta} 
@@ -1755,7 +1755,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             <div 
                                 contentEditable={!isPreview}
                                 suppressContentEditableWarning
-                                onBlur={e => updateMeta({ documentTitle: e.currentTarget.textContent || '' })}
+                                onInput={e => updateMeta({ documentTitle: e.currentTarget.textContent || '' })}
                                 className={cn(
                                     "text-3xl font-black tracking-tighter leading-[0.9] outline-none",
                                     isDark ? "text-[#ccc]" : "text-[#2a2a2a]",
@@ -1771,7 +1771,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                             <div 
                                 contentEditable={!isPreview}
                                 suppressContentEditableWarning
-                                onBlur={e => updateMeta({ clientName: e.currentTarget.textContent || '' })}
+                                onInput={e => updateMeta({ clientName: e.currentTarget.textContent || '' })}
                                 className="text-[15px] font-bold mb-4 outline-none empty:before:content-['Client_Name'] empty:before:opacity-30"
                             >
                                 Bill To: {meta.clientName}
@@ -1781,7 +1781,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                     <div 
                                         contentEditable={!isPreview}
                                         suppressContentEditableWarning
-                                        onBlur={e => updateMeta({ clientEmail: e.currentTarget.textContent || '' })}
+                                        onInput={e => updateMeta({ clientEmail: e.currentTarget.textContent || '' })}
                                         className="outline-none empty:before:content-['Email'] empty:before:opacity-30"
                                     >
                                         {meta.clientEmail}
@@ -1791,7 +1791,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                     <div 
                                         contentEditable={!isPreview}
                                         suppressContentEditableWarning
-                                        onBlur={e => updateMeta({ clientAddress: e.currentTarget.textContent || '' })}
+                                        onInput={e => updateMeta({ clientAddress: e.currentTarget.textContent || '' })}
                                         className="outline-none empty:before:content-['Address'] empty:before:opacity-30"
                                     >
                                         {meta.clientAddress}
@@ -1811,7 +1811,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 <span 
                                     contentEditable={!isPreview}
                                     suppressContentEditableWarning
-                                    onBlur={e => updateMeta({ issueDate: e.currentTarget.textContent || '' })}
+                                    onInput={e => updateMeta({ issueDate: e.currentTarget.textContent || '' })}
                                     className="outline-none min-w-[50px] text-right"
                                 >
                                     {meta.issueDate}
@@ -1822,7 +1822,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 <span 
                                     contentEditable={!isPreview}
                                     suppressContentEditableWarning
-                                    onBlur={e => updateMeta({ dueDate: e.currentTarget.textContent || '' })}
+                                    onInput={e => updateMeta({ dueDate: e.currentTarget.textContent || '' })}
                                     className="outline-none min-w-[50px] text-right"
                                 >
                                     {meta.dueDate}
@@ -1990,7 +1990,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                     </div>
 
                     {/* Summary Card */}
-                    <div className="px-5 py-3" style={{ backgroundColor: 'transparent', borderColor: 'var(--table-border-color)', borderRadius: 'var(--table-border-radius)', borderWidth: isPreview ? 0 : 'var(--table-stroke-width)', borderStyle: isPreview ? 'none' : 'solid' }}>
+                    <div className="px-5 py-3 mt-4" style={{ backgroundColor: 'transparent', color: 'var(--table-text-color, inherit)' }}>
                         {!isPreview && (
                             <div className="flex justify-between items-center mb-4">
                                 <button
@@ -2015,7 +2015,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         
                         <div className="flex flex-col items-end">
                             <div className="w-full max-w-[180px] space-y-1.5">
-                                {rows.length > 1 && (
+                                {rows.length > 1 && (!hideQty || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
                                     <div className={cn("flex justify-between text-[12px] font-medium opacity-60")} style={{ color: 'var(--table-row-text)' }}>
                                         <span>Subtotal</span>
                                         <span><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
@@ -2029,7 +2029,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                                 <input
                                                     type="number"
                                                     value={block.discountRate || 0}
-                                                    onChange={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
+                                                    onInput={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
                                                     className={cn("w-10 bg-transparent outline-none border-b text-center font-bold", isDark ? "border-white/10" : "border-black/10")}
                                                 />
                                             )}
@@ -2046,7 +2046,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                                 <input
                                                     type="number"
                                                     value={block.taxRate || 0}
-                                                    onChange={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
+                                                    onInput={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
                                                     className={cn("w-10 bg-transparent outline-none border-b text-center font-bold", isDark ? "border-white/10" : "border-black/10")}
                                                 />
                                             )}
@@ -2055,7 +2055,25 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                         <span><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
                                     </div>
                                 )}
-                                <div className={cn("flex justify-between font-black pt-2 border-t mt-1")} style={{ color: 'var(--table-row-text)', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}>
+                                <div 
+                                    className={cn("flex justify-between font-black")}
+                                    style={{
+                                        color: 'var(--table-row-text)',
+                                        fontSize: 'calc(var(--table-font-size) + 2px)',
+                                        // Only show divider when there's something above (subtotal, tax, or discount)
+                                        ...((
+                                            (rows.length > 1 && !hideQty) ||
+                                            (block.discountRate || 0) > 0 ||
+                                            (block.taxRate || 0) > 0
+                                        ) ? {
+                                            paddingTop: '0.5rem',
+                                            marginTop: '0.25rem',
+                                            borderTopWidth: 'var(--table-stroke-width)',
+                                            borderTopStyle: 'solid',
+                                            borderTopColor: 'var(--table-border-color)',
+                                        } : {})
+                                    }}
+                                >
                                     <span>Total</span>
                                     <span><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
                                 </div>
@@ -2087,7 +2105,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                     <div
                         contentEditable={!isPreview}
                         suppressContentEditableWarning
-                        onBlur={e => updateBlock(block.id, { content: e.currentTarget.textContent || '' })}
+                        onInput={e => updateBlock(block.id, { content: e.currentTarget.textContent || '' })}
                         className={cn(
                             "flex-1 outline-none",
                             cls,
@@ -2369,10 +2387,10 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                 <div className="flex flex-col pr-12">
                     {isPreview ? (
                         <>
-                            <div className="font-bold text-[14px] leading-tight">{row.title || row.description || 'Item'}</div>
-                            {row.description && row.title && (
+                            <div className="font-bold text-[14px] leading-tight">{row.title || 'Item'}</div>
+                            {row.description && (
                                 <div 
-                                    className="text-[12px] opacity-60 mt-1 leading-relaxed"
+                                    className="text-[12px] opacity-60 mt-1 leading-relaxed whitespace-pre-wrap break-words"
                                     dangerouslySetInnerHTML={{ __html: replaceVariables(row.description) }}
                                 />
                             )}
@@ -2382,16 +2400,17 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             <input
                                 value={row.title || ''}
                                 onChange={e => updateRow(row.id, { title: e.target.value })}
+                                onInput={e => updateRow(row.id, { title: e.target.value })}
                                 placeholder="Item Name..."
                                 className={cn("w-full bg-transparent outline-none font-bold text-[14px] p-0 border-none text-[inherit] placeholder:opacity-20")}
                             />
                             <div
                                 contentEditable={!isPreview}
                                 suppressContentEditableWarning
-                                onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
-                                dangerouslySetInnerHTML={{ __html: replaceVariables(row.description || '') }}
+                                onInput={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
+                                dangerouslySetInnerHTML={{ __html: row.description || '' }}
                                 className={cn(
-                                    "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] empty:before:content-[attr(data-placeholder)] empty:before:opacity-30 text-[inherit] opacity-60"
+                                    "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] empty:before:content-[attr(data-placeholder)] empty:before:opacity-30 text-[inherit] opacity-60 break-words whitespace-pre-wrap"
                                 )}
                                 data-placeholder="Description (optional)..."
                             />
@@ -2403,29 +2422,29 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     <div className="flex items-center gap-4">
                         {!hideQty && (
                             <div className="flex flex-col">
-                                <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Qty</span>
+                                <span className={cn("text-[9px] font-bold uppercase tracking-wider text-[inherit] opacity-40")}>Qty</span>
                                 {isPreview ? (
                                     <span className="text-[13px] font-bold">{row.qty}</span>
                                 ) : (
                                     <input
                                         type="number"
                                         value={row.qty}
-                                        onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
+                                        onInput={e => updateRow(row.id, { qty: Number(e.target.value) })}
                                         className={cn("w-10 bg-transparent outline-none font-bold text-[13px] text-[inherit]")}
                                     />
                                 )}
                             </div>
                         )}
                         <div className="flex flex-col">
-                            <span className={cn("text-[9px] font-bold uppercase tracking-wider", isDark ? "opacity-40" : "text-black")}>Rate</span>
+                            <span className={cn("text-[9px] font-bold uppercase tracking-wider text-[inherit] opacity-40")}>Amount</span>
                             {isPreview ? (
                                 <span className="text-[13px] font-bold"><MoneyAmount amount={row.rate} currency={currency} forceOriginal={true} /></span>
                             ) : (
                                 <input
                                     type="number"
                                     value={row.rate}
-                                    onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
-                                    className={cn("w-20 bg-transparent outline-none font-bold text-[13px] text-[inherit]")}
+                                    onInput={e => updateRow(row.id, { rate: Number(e.target.value) })}
+                                    className={cn("w-20 bg-transparent outline-none font-bold text-[13px]", isDark ? "text-[#ccc]" : "text-[#333]")}
                                 />
                             )}
                         </div>
@@ -2473,10 +2492,10 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
             <td className={cn(td, "pr-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
                 {isPreview ? (
                     <div className="flex flex-col">
-                        <div className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || row.description || 'Item'}</div>
-                        {(row.title && row.description) && (
+                        <div className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || 'Item'}</div>
+                        {row.description && (
                             <div 
-                                className={cn("mt-0.5 opacity-60")} 
+                                className={cn("mt-0.5 opacity-60 break-words whitespace-pre-wrap")} 
                                 style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
                                 dangerouslySetInnerHTML={{ __html: replaceVariables(row.description || '') }}
                             />
@@ -2486,7 +2505,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     <div className="flex flex-col">
                         <input
                             value={row.title || ''}
-                            onChange={e => updateRow(row.id, { title: e.target.value })}
+                            onInput={e => updateRow(row.id, { title: e.target.value })}
                             placeholder={row.description ? "Item title..." : "Item Name..."}
                             className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight text-[inherit] placeholder:opacity-20")}
                             style={{ fontSize: 'calc(var(--table-font-size) + 2px)', fontWeight: 700 }}
@@ -2494,10 +2513,10 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                         <div
                             contentEditable={!isPreview}
                             suppressContentEditableWarning
-                            onBlur={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
+                            onInput={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
                             dangerouslySetInnerHTML={{ __html: row.description || '' }}
                             className={cn(
-                                "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-10 text-[inherit]"
+                                "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-10 text-[inherit] break-words whitespace-pre-wrap"
                             )}
                             data-placeholder="Description (optional)..."
                             style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
@@ -2511,7 +2530,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                         <input
                             type="number"
                             value={row.qty}
-                            onChange={e => updateRow(row.id, { qty: Number(e.target.value) })}
+                            onInput={e => updateRow(row.id, { qty: Number(e.target.value) })}
                             className={cn("w-12 text-right bg-transparent outline-none font-medium text-[inherit]")}
                         />
                     )}
@@ -2522,7 +2541,7 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     <input
                         type="number"
                         value={row.rate}
-                        onChange={e => updateRow(row.id, { rate: Number(e.target.value) })}
+                        onInput={e => updateRow(row.id, { rate: Number(e.target.value) })}
                         className={cn("w-20 text-right bg-transparent outline-none p-0 border-none font-inherit leading-tight", hideQty ? "font-bold" : "font-medium")}
                         style={{ fontWeight: hideQty ? 700 : 500 }}
                     />

@@ -39,7 +39,7 @@ interface TemplateEditorProps {
     id: string;
 }
 
-type RightPanelTab = 'details' | 'appearance';
+type LeftPanelTab = 'details' | 'appearance';
 
 export default function TemplateEditor({ id }: TemplateEditorProps) {
     const router = useRouter();
@@ -52,7 +52,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [isSaving, setIsSaving] = useState(false);
-    const [rightTab, setRightTab] = useState<RightPanelTab>('details');
+    const [leftTab, setLeftTab] = useState<LeftPanelTab>('details');
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
     const [imageUploadOpen, setImageUploadOpen] = useState(false);
     const [uploadTarget, setUploadTarget] = useState<{ type: 'logo' | 'block' | 'background', blockId?: string } | null>(null);
@@ -644,49 +644,49 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
 
                 {!isPreview && (
                     <div className={cn(
-                        "w-[240px] shrink-0 flex flex-col overflow-hidden border-l",
+                        "w-[240px] shrink-0 flex flex-col overflow-hidden",
                         isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#f7f7f7] border-[#e4e4e4]"
                     )}>
                         <div className={cn(
                             "flex items-center shrink-0 p-1.5 gap-1 m-3 rounded-xl border relative z-10",
                             isDark ? "bg-[#111] border-white/5" : "bg-[#f5f5f5] border-black/5"
                         )}>
-                            {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => {
-                                const isActive = rightTab === tab;
-                                return (
-                                <button
-                                    key={tab}
-                                    onClick={() => setRightTab(tab)}
-                                    className={cn(
-                                        "flex-1 flex items-center justify-center gap-2 py-2 text-[11px] font-bold rounded-[8px] relative z-20 outline-none",
-                                        isActive
-                                            ? (isDark ? "text-white" : "text-black")
-                                            : (isDark ? "text-[#777] hover:text-[#aaa]" : "text-[#888] hover:text-[#555]")
-                                    )}
-                                >
-                                    {isActive && (
-                                        <motion.div
-                                            layoutId="templateEditorRightTabSlider"
-                                            className={cn(
-                                                "absolute inset-0 rounded-[8px] z-[-1] shadow-sm border",
-                                                isDark ? "bg-[#222] border-white/10" : "bg-white border-black/5"
-                                            )}
-                                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                                        />
-                                    )}
-                                    <Icon size={14} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
-                                    <span className={cn("transition-all duration-200 relative z-10", 
-                                        isActive ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 absolute pointer-events-none"
-                                    )}>
-                                        {label}
-                                    </span>
-                                </button>
-                                );
-                            })}
+                                {([ ['details', Settings, 'Details'], ['appearance', Palette, 'Design'] ] as const).map(([tab, Icon, label]) => {
+                                    const isActive = leftTab === tab;
+                                    return (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setLeftTab(tab)}
+                                        className={cn(
+                                            "flex-1 flex items-center justify-center gap-2 py-2 text-[11px] font-bold rounded-[8px] relative z-20 outline-none",
+                                            isActive
+                                                ? (isDark ? "text-white" : "text-black")
+                                                : (isDark ? "text-[#777] hover:text-[#aaa]" : "text-[#888] hover:text-[#555]")
+                                        )}
+                                    >
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="templateEditorLeftTabSlider"
+                                                className={cn(
+                                                    "absolute inset-0 rounded-[8px] z-[-1] shadow-sm border",
+                                                    isDark ? "bg-[#222] border-white/10" : "bg-white border-black/5"
+                                                )}
+                                                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                            />
+                                        )}
+                                        <Icon size={14} strokeWidth={isActive ? 2.5 : 2} className="relative z-10" />
+                                        <span className={cn("transition-all duration-200 relative z-10", 
+                                            isActive ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-1 absolute pointer-events-none"
+                                        )}>
+                                            {label}
+                                        </span>
+                                    </button>
+                                    );
+                                })}
                         </div>
 
                         <div className="flex-1 overflow-auto py-3 px-3 space-y-1.5">
-                            {rightTab === 'details' && (
+                            {leftTab === 'details' && (
                                 <>
                                     <MetaField
                                         label="Template Name"
@@ -749,7 +749,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                                 </>
                             )}
 
-                            {rightTab === 'appearance' && (
+                            {leftTab === 'appearance' && (
                                 <DesignSettingsPanel 
                                     isDark={isDark}
                                     meta={{ 

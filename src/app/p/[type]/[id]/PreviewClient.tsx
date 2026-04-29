@@ -1175,7 +1175,6 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             signedAt={signedAt}
                             inline={true}
                             onDownloadPDF={handleDownload}
-                            onPrint={() => window.print()}
                             onAccept={() => setIsSignModalOpen(true)}
                             onDecline={() => setIsDeclineModalOpen(true)}
                             className="w-full max-w-[850px] mx-auto"
@@ -1311,7 +1310,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                     <div className="absolute inset-0 pointer-events-none">
                         <TopBlurOverlay design={invoiceMeta.design} />
                     </div>
-                    <div className="relative z-10 w-full pointer-events-auto px-4 md:px-0">
+                    <div className="relative z-10 w-full pointer-events-auto px-4 md:px-6">
                         <ClientActionBar
                             type="invoice"
                             status={invoiceMeta.status as any}
@@ -1320,10 +1319,10 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                             paidBy={paidBy}
                             design={invoiceMeta.design}
                             inline={true}
+                            isMobile={isMobileViewport}
                             onDownloadPDF={handleDownload}
-                            onPrint={() => window.print()}
                             onPay={() => setIsBankModalOpen(true)}
-                            className="w-full max-w-[850px] mx-auto md:px-6"
+                            className="w-full max-w-[850px] mx-auto"
                         />
                     </div>
                 </div>

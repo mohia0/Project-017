@@ -82,7 +82,7 @@ const FIELD_TYPES: FieldTypeDef[] = [
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 type EditorTab  = 'editor' | 'responses';
 type CanvasStep = 'intro' | 'form' | 'confirmation';
-type RightTab   = 'details' | 'design';
+type LeftTab   = 'details' | 'design';
 
 interface FormMeta {
     activationDate: string;
@@ -778,7 +778,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
 
     const [editorTab, setEditorTab] = useState<EditorTab>('editor');
     const [canvasStep, setCanvasStep] = useState<CanvasStep>('form');
-    const [rightTab, setRightTab] = useState<RightTab>('details');
+    const [leftTab, setLeftTab] = useState<LeftTab>('details');
     const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
     const [openInsertMenu, setOpenInsertMenu] = useState<number | null>(null);
     const [responsesView, setResponsesView] = useState<'cards' | 'table'>('cards');
@@ -1354,7 +1354,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
             <div className="flex-1 flex overflow-hidden min-h-0 isolate">
                 {editorTab === 'editor' && (
                     <div className="flex-1 flex flex-col overflow-hidden">
-                        {/* Canvas + right panel row */}
+                        {/* Canvas + left panel row */}
                         <div className="flex-1 flex flex-row-reverse overflow-hidden min-h-0">
                             {/* CANVAS */}
                             <div className="flex-1 flex flex-col overflow-hidden">
@@ -1653,7 +1653,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                             {/* â”€â”€ RIGHT PANEL â”€â”€ */}
                             {!isPreview && (
                                 <div className={cn(
-                                    "hidden md:flex flex-col overflow-hidden border-l w-[240px] shrink-0",
+                                    "hidden md:flex flex-col overflow-hidden w-[240px] shrink-0",
                                     isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                                 )}>
                                     {/* Tab switcher */}
@@ -1662,10 +1662,10 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                         isDark ? "bg-[#111] border-white/5" : "bg-[#f5f5f5] border-black/5"
                                     )}>
                                         {([['details', Settings, selectedField ? 'Field' : 'Details'], ['design', Palette, 'Design']] as const).map(([tab, Icon, label]) => {
-                                            const isActive = rightTab === tab;
+                                            const isActive = leftTab === tab;
                                             return (
                                                 <button key={tab} onClick={() => {
-                                                    setRightTab(tab as any);
+                                                    setLeftTab(tab as any);
                                                     if (tab !== 'details') setSelectedFieldId(null);
                                                 }}
                                                     className={cn(
@@ -1676,7 +1676,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                     )}>
                                                     {isActive && (
                                                         <motion.div
-                                                            layoutId="formEditorRightTabSlider"
+                                                            layoutId="formEditorLeftTabSlider"
                                                             className={cn(
                                                                 "absolute inset-0 rounded-[8px] z-[-1] shadow-sm border",
                                                                 isDark ? "bg-[#222] border-white/10" : "bg-white border-black/5"
@@ -1697,7 +1697,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                     </div>
 
                                 <div className="flex-1 overflow-y-auto">
-                                    {rightTab === 'details' && (
+                                    {leftTab === 'details' && (
                                         <>
                                             {selectedField ? (
                                                 <div className={cn("border-b pb-3 mb-1", isDark ? "border-[#252525]" : "border-[#f0f0f0]")}>
@@ -1889,7 +1889,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                         </>
                                     )}
 
-                                    {rightTab === 'design' && (
+                                    {leftTab === 'design' && (
                                         <div className="px-3 py-2">
                                             <DesignSettingsPanel
                                                 isDark={isDark}

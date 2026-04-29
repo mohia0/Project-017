@@ -140,7 +140,7 @@ export function ClientActionBar({
                 <div 
                     className={cn(
                         "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
-                        isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
+                        isMobile ? "px-3 py-1.5 min-h-[32px]" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
                         getPillClass('main'),
                         pillTextClass
@@ -174,7 +174,7 @@ export function ClientActionBar({
                 <div 
                     className={cn(
                         "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
-                        isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
+                        isMobile ? "px-3 py-1.5 min-h-[32px]" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
                         getPillClass('main'),
                         pillTextClass
@@ -184,7 +184,7 @@ export function ClientActionBar({
                     <AmbientNoise />
                     <AlertTriangle size={isMobile ? 14 : 16} strokeWidth={2} className="text-gray-500" />
                     <span className={cn("font-semibold", isMobile ? "text-[11px]" : "text-[13px]")}>
-                        The owner has cancelled this {type}. It is no longer available.
+                        This {type} cancelled. It is no longer available!
                     </span>
                 </div>
             </div>
@@ -195,7 +195,7 @@ export function ClientActionBar({
         return (
             <div 
                 className={cn(
-                    "relative w-full max-w-[850px] mx-auto z-10 flex items-center transition-all no-print ClientActionBar",
+                    "relative w-full max-w-[850px] mx-auto z-10 flex items-stretch transition-all no-print ClientActionBar",
                     inline 
                         ? (isMobile ? "flex-row justify-between px-6 gap-2" : "flex-col md:flex-row md:justify-between items-center gap-3 md:gap-0") 
                         : cn("absolute inset-x-0 w-full z-50 flex pointer-events-none",
@@ -204,11 +204,10 @@ export function ClientActionBar({
                 )}
                 style={inline ? { marginTop: `${marginTop}px`, marginBottom: `${marginBottom}px` } : undefined}
             >
-                {/* Left Status Pill */}
                 <div 
                     className={cn(
                         "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
-                        isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
+                        isMobile ? "px-3 py-1.5 min-h-[36px]" : "px-4 py-2.5 min-h-[44px]",
                         !inline && "pointer-events-auto",
                         getPillClass('main'),
                         pillTextClass
@@ -241,7 +240,7 @@ export function ClientActionBar({
                             </span>
                         </>
                     ) : (
-                        <div className="flex flex-row items-baseline gap-2">
+                        <div className="flex flex-row items-center gap-2 h-full">
                             <span className={cn("font-medium opacity-50 uppercase tracking-wider", isMobile ? "text-[9px]" : "text-[10px]")}>
                                 {isMobile ? (isAccepted ? 'Paid' : 'Due') : (isAccepted ? 'Paid' : 'Due')}:
                             </span>
@@ -256,7 +255,7 @@ export function ClientActionBar({
                 <div 
                     className={cn(
                         "relative overflow-hidden flex items-center shadow-sm transition-all shrink-0",
-                        isMobile ? "gap-1 p-1" : "gap-1.5 p-1.5",
+                        isMobile ? "gap-1 px-1 py-1 min-h-[36px]" : "gap-1.5 px-1.5 py-1.5 min-h-[44px]",
                         !inline && "pointer-events-auto",
                         getPillClass('icon'),
                         pillIconTextClass
@@ -264,26 +263,19 @@ export function ClientActionBar({
                     style={{ ...parentRadiusStyle, ...getPillStyle() }}
                 >
                     <AmbientNoise />
-                    <div className="flex items-center gap-0.5 px-1.5">
+                    <div className="flex items-center gap-0.5 px-1.5 h-full">
                         <Tooltip content="Download PDF" side="bottom">
-                            <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                            <button onClick={onDownloadPDF} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center justify-center">
                                 <ArrowDownToLine size={15} />
                             </button>
                         </Tooltip>
-                        {onPrint && (
-                            <Tooltip content="Print" side="bottom">
-                                <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                    <Printer size={15} />
-                                </button>
-                            </Tooltip>
-                        )}
                     </div>
 
                     {status === 'Processing' ? (
                         <>
                             <div className={cn("w-px h-4 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />
                              <span className={cn(
-                                "font-medium whitespace-nowrap tracking-wider",
+                                "font-medium whitespace-nowrap tracking-wider flex items-center",
                                 isMobile ? "px-2 py-1 text-[10px]" : "px-4 py-1.5 text-[12px]"
                             )} style={{ color: accentColor }}>
                                 UNDER REVIEW
@@ -293,14 +285,13 @@ export function ClientActionBar({
                         <button 
                             onClick={onPay}
                             className={cn(
-                                "flex items-center justify-center font-bold shadow-sm transition-all active:scale-95 whitespace-nowrap",
-                                isMobile ? "gap-1 px-3 py-1.5 text-[11px]" : "gap-2 px-4 py-2 text-[13px] ml-1",
+                                "font-semibold shadow-sm transition-all active:scale-95 whitespace-nowrap",
+                                isMobile ? "px-4 py-2 text-[11px]" : "px-5 py-2.5 text-[14px]",
                                 isDark ? "hover:scale-105" : "hover:shadow-lg hover:scale-[1.02]"
                             )}
                             style={{ ...buttonRadiusStyle, backgroundColor: buttonBgColor, color: buttonTextColor }}
                         >
-                            <ArrowRight size={isMobile ? 12 : 14} strokeWidth={3} />
-                            Pay now
+                            Pay Now
                         </button>
                     ) : null}
                 </div>
@@ -325,7 +316,7 @@ export function ClientActionBar({
                 <div 
                     className={cn(
                         "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
-                        isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
+                        isMobile ? "px-3 py-1.5 min-h-[32px]" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
                         getPillClass('main'),
                         pillTextClass
@@ -356,13 +347,6 @@ export function ClientActionBar({
                             <ArrowDownToLine size={isMobile ? 13 : 15} />
                         </button>
                     </Tooltip>
-                    {onPrint && (
-                        <Tooltip content="Print" side="bottom">
-                            <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                <Printer size={isMobile ? 13 : 15} />
-                            </button>
-                        </Tooltip>
-                    )}
                 </div>
             </div>
         );
@@ -385,7 +369,7 @@ export function ClientActionBar({
                 <div 
                     className={cn(
                         "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
-                        isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
+                        isMobile ? "px-3 py-1.5 min-h-[32px]" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
                         getPillClass('main'),
                         pillTextClass
@@ -419,7 +403,7 @@ export function ClientActionBar({
                 <div 
                     className={cn(
                         "relative overflow-hidden flex items-center gap-2 shadow-sm transition-all",
-                        isMobile ? "px-3 py-1.5" : "px-4 py-2.5",
+                        isMobile ? "px-3 py-1.5 min-h-[32px]" : "px-4 py-2.5",
                         !inline && "pointer-events-auto",
                         getPillClass('main'),
                         pillTextClass
@@ -436,7 +420,7 @@ export function ClientActionBar({
                 {/* Right Action Icons Pill */}
                 <div 
                     className={cn(
-                        "relative overflow-hidden flex items-center shadow-sm transition-all",
+                        "relative overflow-hidden flex items-center shadow-sm transition-all self-stretch",
                         isMobile ? "gap-1 px-2 py-1" : "gap-1.5 px-3 py-2",
                         !inline && "pointer-events-auto",
                         getPillClass('icon'),
@@ -450,13 +434,6 @@ export function ClientActionBar({
                             <ArrowDownToLine size={isMobile ? 13 : 15} />
                         </button>
                     </Tooltip>
-                    {onPrint && (
-                        <Tooltip content="Print" side="bottom">
-                            <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                <Printer size={isMobile ? 13 : 15} />
-                            </button>
-                        </Tooltip>
-                    )}
                 </div>
             </div>
         );
@@ -495,13 +472,6 @@ export function ClientActionBar({
                             <ArrowDownToLine size={isMobile ? 16 : 18} strokeWidth={1.75} />
                         </button>
                     </Tooltip>
-                    {onPrint && (
-                        <Tooltip content="Print" side="bottom">
-                            <button onClick={onPrint} style={innerRadiusStyle} className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                <Printer size={isMobile ? 16 : 18} strokeWidth={1.75} />
-                            </button>
-                        </Tooltip>
-                    )}
                 </div>
 
                 <div className={cn(isMobile ? "w-px h-5 mx-0.5" : "w-px h-6 mx-1", isDark ? "bg-white/10" : "bg-black/10")} />

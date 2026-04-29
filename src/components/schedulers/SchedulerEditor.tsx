@@ -35,7 +35,7 @@ import { SettingsSelect, SettingsToggle } from '@/components/settings/SettingsFi
 ══════════════════════════════════════════════════════════ */
 type EditorTab    = 'editor' | 'bookings' | 'availability';
 type CanvasStep   = 'scheduler' | 'form' | 'confirmation';
-type RightPanelTab = 'details' | 'design';
+type LeftPanelTab = 'details' | 'design';
 
 interface SchedulerMeta {
     organizer: string;
@@ -336,8 +336,8 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
 
     const [editorTab, setEditorTab] = useState<EditorTab>('editor');
     const [canvasStep, setCanvasStep] = useState<CanvasStep>('scheduler');
-    const [rightTab, setRightTab] = useState<RightPanelTab>('details');
-    const [prevRightTab, setPrevRightTab] = useState<RightPanelTab>('details');
+    const [leftTab, setLeftTab] = useState<LeftPanelTab>('details');
+    const [prevLeftTab, setPrevLeftTab] = useState<LeftPanelTab>('details');
     const [showStatus, setShowStatus] = useState(false);
     const [mobileBottomPanelOpen, setMobileBottomPanelOpen] = useState(false);
     const [showActions, setShowActions] = useState(false);
@@ -420,10 +420,10 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
 
     useEffect(() => {
         if (selectedFieldId) {
-            setPrevRightTab(rightTab === 'details' ? prevRightTab : rightTab);
-            setRightTab('details');
+            setPrevLeftTab(leftTab === 'details' ? prevLeftTab : leftTab);
+            setLeftTab('details');
         } else {
-            setRightTab(prevRightTab);
+            setLeftTab(prevLeftTab);
         }
     }, [selectedFieldId]);
 
@@ -1242,7 +1242,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                         {/* ── RIGHT PANEL ── */}
                         {!isPreview && (
                         <div className={cn(
-                            "hidden md:flex flex-col overflow-hidden border-l w-[240px] shrink-0",
+                            "hidden md:flex flex-col overflow-hidden w-[240px] shrink-0",
                             isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
                         )}>
                             {/* Tab switcher */}
@@ -1251,10 +1251,10 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                 isDark ? "bg-[#111] border-white/5" : "bg-[#f5f5f5] border-black/5"
                             )}>
                                 {([['details', Settings, selectedFieldId ? 'Field' : 'Details'], ['design', Palette, 'Design']] as const).map(([tab, Icon, label]) => {
-                                    const isActive = rightTab === tab;
+                                    const isActive = leftTab === tab;
                                     return (
                                         <button key={tab} onClick={() => {
-                                            setRightTab(tab);
+                                            setLeftTab(tab);
                                             if (tab !== 'details') setSelectedFieldId(null);
                                         }}
                                             className={cn(
@@ -1265,7 +1265,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                             )}>
                                             {isActive && (
                                                 <motion.div
-                                                    layoutId="schedulerEditorRightTabSlider"
+                                                    layoutId="schedulerEditorLeftTabSlider"
                                                     className={cn(
                                                         "absolute inset-0 rounded-[8px] z-[-1] shadow-sm border",
                                                         isDark ? "bg-[#222] border-white/10" : "bg-white border-black/5"
@@ -1287,7 +1287,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
 
 
                             <div className="flex-1 overflow-y-auto">
-                                 {rightTab === 'details' && (
+                                 {leftTab === 'details' && (
                                     <div className={cn("divide-y", isDark ? "divide-[#252525]" : "divide-[#f0f0f0]")}>
                                         {!selectedFieldId ? (
                                             <>
@@ -1464,7 +1464,7 @@ export default function SchedulerEditor({ id, isTemplate }: { id?: string, isTem
                                     </div>
                                 )}
 
-                                {rightTab === 'design' && (
+                                {leftTab === 'design' && (
                                     <div className="px-3 py-2">
                                         <DesignSettingsPanel
                                             isDark={isDark}
