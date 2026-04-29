@@ -22,9 +22,11 @@ interface SnippetPreviewProps {
     blocks: any[];
     isDark?: boolean;
     className?: string;
+    editable?: boolean;
+    onChange?: (blocks: any[]) => void;
 }
 
-export function SnippetPreview({ blocks, isDark, className }: SnippetPreviewProps) {
+export function SnippetPreview({ blocks, isDark, className, editable = false, onChange }: SnippetPreviewProps) {
     // Sanitize blocks
     const safeBlocks = useMemo(() => {
         if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
@@ -52,24 +54,48 @@ export function SnippetPreview({ blocks, isDark, className }: SnippetPreviewProp
     };
 
     return (
-        <div className={className} style={{ pointerEvents: 'none' }}>
+        <div className={className}>
             <style jsx global>{`
                 .snippet-preview-minimal .bn-editor {
                     padding-inline: 0 !important;
                     padding-block: 0 !important;
+                    min-height: auto !important;
                 }
                 .snippet-preview-minimal .bn-container {
                     padding: 0 !important;
+                }
+                .snippet-preview-minimal .bn-block-content {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                .snippet-preview-minimal h1, 
+                .snippet-preview-minimal h2, 
+                .snippet-preview-minimal h3 {
+                    font-size: 14px !important;
+                    font-weight: 700 !important;
+                    margin-top: 0 !important;
+                    margin-bottom: 2px !important;
+                }
+                .snippet-preview-minimal p {
+                    font-size: 13px !important;
+                    line-height: 1.5 !important;
+                    margin: 0 !important;
+                    opacity: 0.8;
                 }
             `}</style>
             <div className="snippet-preview-minimal">
                 <BlockNoteView 
                     editor={editor} 
                     theme={customTheme}
-                    editable={false}
-                    slashMenu={false}
-                    formattingToolbar={false}
-                    sideMenu={false}
+                    editable={editable}
+                    slashMenu={editable}
+                    formattingToolbar={editable}
+                    sideMenu={editable}
+                    onChange={() => {
+                        if (onChange) {
+                            onChange(editor.document);
+                        }
+                    }}
                 />
             </div>
         </div>

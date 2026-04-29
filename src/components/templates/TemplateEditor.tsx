@@ -418,7 +418,7 @@ export default function TemplateEditor({ id }: TemplateEditorProps) {
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="flex items-center justify-center h-[32px] px-4 gap-2 rounded-[8px] transition-all bg-[#4dbf39] hover:bg-[#59d044] text-black font-bold text-[12px] shadow-[0_4px_12px_-4px_rgba(77,191,57,0.3)] disabled:opacity-50"
+                        className="flex items-center justify-center h-[32px] px-4 gap-2 rounded-[8px] transition-all bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-black font-bold text-[12px] shadow-[0_4px_12px_-4px_rgba(0,0,0,0.2)] disabled:opacity-50"
                     >
                         <Save size={14} />
                         Save Changes

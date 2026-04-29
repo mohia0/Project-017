@@ -328,24 +328,31 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                     formattingToolbar={() => (
                         <FormattingToolbar>
                             {/* Snippet custom button moved to left */}
-                            <Tooltip content="Save as Snippet" side="top">
-                                <button
-                                    type="button"
-                                    onMouseDown={(e) => e.preventDefault()}
-                                    onClick={() => {
-                                        const selected = editor.getSelection();
-                                        if (selected) {
-                                            setBlocksToSave(selected.blocks);
-                                            setIsSnippetModalOpen(true);
-                                        } else {
-                                            appToast.error("Selection Required", "Please select text to save as a snippet");
-                                        }
-                                    }}
-                                    className="w-[30px] h-[30px] flex items-center justify-center bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 rounded-md transition-all active:scale-90"
-                                >
-                                    <Zap size={14} fill="currentColor" />
-                                </button>
-                            </Tooltip>
+                            {(() => {
+                                const selected = editor.getSelection();
+                                const isOnlyDivider = selected?.blocks.every(b => b.type === 'horizontalRule');
+                                if (isOnlyDivider) return null;
+                                
+                                return (
+                                    <Tooltip content="Save as Snippet" side="top">
+                                        <button
+                                            type="button"
+                                            onMouseDown={(e) => e.preventDefault()}
+                                            onClick={() => {
+                                                if (selected) {
+                                                    setBlocksToSave(selected.blocks);
+                                                    setIsSnippetModalOpen(true);
+                                                } else {
+                                                    appToast.error("Selection Required", "Please select text to save as a snippet");
+                                                }
+                                            }}
+                                            className="w-[30px] h-[30px] flex items-center justify-center bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 rounded-md transition-all active:scale-90"
+                                        >
+                                            <Zap size={14} fill="currentColor" />
+                                        </button>
+                                    </Tooltip>
+                                );
+                            })()}
 
                             <BlockTypeSelect key={"blockTypeSelect"} />
 
