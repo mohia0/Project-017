@@ -117,14 +117,22 @@ function SnippetItem({
                         <button 
                             onClick={() => setIsEditingContent(!isEditingContent)}
                             className={cn(
-                                "p-1.5 rounded-md transition-all",
+                                "flex items-center gap-1.5 px-2 py-1 rounded-md transition-all",
                                 isEditingContent 
                                     ? "bg-[var(--brand-primary)] text-black" 
                                     : (isDark ? "bg-white/5 text-white/40 hover:text-white" : "bg-black/5 text-black/40 hover:text-black")
                             )}
-                            title={isEditingContent ? "Save" : "Edit"}
+                            title={isEditingContent ? "Save changes" : "Edit snippet"}
                         >
-                            {isEditingContent ? <Check size={11} strokeWidth={3} /> : <PenLine size={11} />}
+                            {isEditingContent ? (
+                                <>
+                                    <Check size={11} strokeWidth={3} />
+                                    <span className="text-[11px] font-bold">Save</span>
+                                    {isSaving && <Zap size={10} className="text-yellow-500 animate-pulse ml-0.5" />}
+                                </>
+                            ) : (
+                                <PenLine size={11} />
+                            )}
                         </button>
                         <button 
                             onClick={() => onDuplicate(snippet)}
@@ -201,14 +209,12 @@ export default function TemplatesPage() {
     
     const [isCreating, setIsCreating] = useState(false);
     const [activeTool, setActiveTool] = usePersistentState<'proposal' | 'invoice' | 'form' | 'scheduler' | 'project'>('templates_filter_active_tool', 'proposal');
-    const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
-    const [activeCategory, setActiveCategory] = usePersistentState<'document' | 'section' | 'snippet'>('templates_filter_active_category', 'document');
+    const [activeCategory, setActiveCategory] = usePersistentState<'document' | 'snippet' | 'section'>('templates_filter_active_category', 'document');
     const [sectionSearch, setSectionSearch] = usePersistentState('templates_filter_section_search', '');
     const [sectionTypeFilter, setSectionTypeFilter] = usePersistentState('templates_filter_section_type_filter', 'all');
     const [snippetSearch, setSnippetSearch] = usePersistentState('templates_filter_snippet_search', '');
-    const [sectionToDelete, setSectionToDelete] = useState<string | null>(null);
-    const [snippetToDelete, setSnippetToDelete] = useState<string | null>(null);
     const [selectedSnippetIds, setSelectedSnippetIds] = useState<string[]>([]);
+    const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([]);
 
     const { sectionTemplates, fetchSectionTemplates, deleteSectionTemplate, isLoading: isSectionsLoading } = useSectionTemplateStore();
     const { snippets, fetchSnippets, deleteSnippet, updateSnippet, addSnippet, isLoading: isSnippetsLoading } = useSnippetStore();
@@ -218,6 +224,51 @@ export default function TemplatesPage() {
         fetchSectionTemplates();
         fetchSnippets();
     }, [fetchTemplates, fetchSectionTemplates, fetchSnippets]);
+
+    const handleDuplicateSnippet = async (s: Snippet, silent = false) => {
+        const { id, created_at, updated_at, ...payload } = s;
+        await addSnippet({
+            ...payload,
+            name: `${s.name} (Copy)`
+        });
+        if (!silent) appToast.success('Snippet duplicated');
+    };
+
+    const handleBulkDeleteSnippets = async () => {
+        for (const id of selectedSnippetIds) {
+            await deleteSnippet(id);
+        }
+        setSelectedSnippetIds([]);
+        appToast.success('Snippets deleted');
+    };
+
+
+
+    const handleDuplicateSection = async (t: SectionTemplate, silent = false) => {
+        const { id, created_at, ...payload } = t;
+        await addSectionTemplate({
+            ...payload,
+            name: `${t.name} (Copy)`
+        });
+        if (!silent) appToast.success('Section duplicated');
+    };
+
+    const handleBulkDeleteSections = async () => {
+        for (const id of selectedSectionIds) {
+            await deleteSectionTemplate(id);
+        }
+        setSelectedSectionIds([]);
+        appToast.success('Sections deleted');
+    };
+
+    const handleBulkDuplicateSections = async () => {
+        for (const id of selectedSectionIds) {
+            const t = sectionTemplates.find(section => section.id === id);
+            if (t) await handleDuplicateSection(t, true);
+        }
+        appToast.success(`${selectedSectionIds.length} sections duplicated`);
+        setSelectedSectionIds([]);
+    };
 
     const handleUseTemplate = async (template: Template) => {
         setIsCreating(true);
@@ -274,21 +325,12 @@ export default function TemplatesPage() {
         }
     };
 
-    const handleDuplicateSnippet = async (snippet: Snippet) => {
-        const success = await addSnippet({
-            name: `${snippet.name} (Copy)`,
-            content_blocks: snippet.content_blocks,
-            content_text: snippet.content_text,
-            tags: snippet.tags || []
-        });
-        if (success) appToast.success('Snippet duplicated');
-    };
-
-    const handleBulkDuplicate = async () => {
+    const handleBulkDuplicateSnippets = async () => {
         const snippetsToDup = snippets.filter(s => selectedSnippetIds.includes(s.id));
         for (const s of snippetsToDup) {
-            await handleDuplicateSnippet(s);
+            await handleDuplicateSnippet(s, true);
         }
+        appToast.success(`${selectedSnippetIds.length} snippets duplicated`);
         setSelectedSnippetIds([]);
     };
 
@@ -348,32 +390,59 @@ export default function TemplatesPage() {
             {/* ── Section Templates Tab ── */}
             {activeCategory === 'section' && (
                 <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className={cn('px-5 py-3 border-b flex items-center gap-3', isDark ? 'border-[#252525]' : 'border-[#ebebeb]')}>
-                        <div className={cn('flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border', isDark ? 'bg-white/5 border-white/10' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
-                            <Search size={13} className="opacity-30 shrink-0" />
-                            <input
-                                value={sectionSearch}
-                                onChange={e => setSectionSearch(e.target.value)}
-                                placeholder="Search section templates..."
-                                className="flex-1 bg-transparent outline-none text-[13px] placeholder:opacity-30"
-                            />
+                    <div className={cn('px-5 py-3 border-b flex items-center justify-between min-h-[56px]', isDark ? 'border-[#252525]' : 'border-[#ebebeb]')}>
+                        <div className="flex items-center gap-3 flex-1">
+                            <div className={cn('relative group/search max-w-[200px] w-full transition-all focus-within:max-w-[300px] flex items-center gap-2 px-3 py-2 rounded-xl border', isDark ? 'bg-white/5 border-white/10' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
+                                <Search size={13} className="opacity-30 shrink-0" />
+                                <input
+                                    value={sectionSearch}
+                                    onChange={e => setSectionSearch(e.target.value)}
+                                    placeholder="Search sections..."
+                                    className="flex-1 bg-transparent outline-none text-[13px] placeholder:opacity-30"
+                                />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                {['all', 'content', 'pricing', 'signature', 'header'].map(type => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setSectionTypeFilter(type)}
+                                        className={cn(
+                                            'px-2.5 py-1.5 rounded-xl text-[11px] font-semibold capitalize transition-all border',
+                                            sectionTypeFilter === type
+                                                ? isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-black text-white border-black'
+                                                : isDark ? 'border-white/5 text-white/40 hover:border-white/15 hover:text-white/70' : 'border-[#e8e8e8] text-black/40 hover:border-[#ccc] hover:text-black/70'
+                                        )}
+                                    >
+                                        {type === 'all' ? 'All' : type}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                            {['all', 'content', 'pricing', 'signature', 'header'].map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => setSectionTypeFilter(type)}
-                                    className={cn(
-                                        'px-2.5 py-1.5 rounded-xl text-[11px] font-semibold capitalize transition-all border',
-                                        sectionTypeFilter === type
-                                            ? isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-black text-white border-black'
-                                            : isDark ? 'border-white/5 text-white/40 hover:border-white/15 hover:text-white/70' : 'border-[#e8e8e8] text-black/40 hover:border-[#ccc] hover:text-black/70'
-                                    )}
-                                >
-                                    {type === 'all' ? 'All' : type}
+
+                        {selectedSectionIds.length > 0 && (
+                            <div className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border ml-2', isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}>
+                                <span className={cn('text-[11px] font-semibold mr-1', isDark ? 'text-[#aaa]' : 'text-[#666]')}>{selectedSectionIds.length} selected</span>
+                                <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                
+                                <button onClick={handleBulkDuplicateSections}
+                                    className={cn('p-1.5 rounded-md transition-all', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                    <Copy size={12}/>
                                 </button>
-                            ))}
-                        </div>
+                                
+                                <InlineDeleteButton 
+                                    onDelete={handleBulkDeleteSections}
+                                    isDark={isDark}
+                                    confirmText={`Delete ${selectedSectionIds.length}?`}
+                                    className="!p-1.5 !h-auto !w-auto"
+                                />
+
+                                <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                <button onClick={() => setSelectedSectionIds([])}
+                                    className={cn('p-1.5 rounded-md transition-all', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
+                                    <Check size={12}/>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className={cn('flex-1 overflow-auto p-6', isDark ? 'bg-[#0f0f0f]' : 'bg-[#f9f9fb]')}>
@@ -402,10 +471,11 @@ export default function TemplatesPage() {
                                     )
                                     .map(t => (
                                     <div key={t.id} className={cn(
-                                        "group flex flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-xl",
+                                        "group flex flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-xl relative",
                                         isDark 
                                             ? "bg-[#181818] border-[#252525] hover:border-primary/30" 
-                                            : "bg-white border-[#ebebeb] hover:border-primary/30"
+                                            : "bg-white border-[#ebebeb] hover:border-primary/30",
+                                        selectedSectionIds.includes(t.id) && (isDark ? "border-primary/50 bg-primary/5" : "border-primary/50 bg-primary/5")
                                     )}>
                                         <div 
                                             className="h-28 relative p-4 flex flex-col items-center justify-center border-b border-inherit opacity-80"
@@ -416,18 +486,22 @@ export default function TemplatesPage() {
                                              t.block_type === 'signature' ? <PenLine size={32} className="opacity-30" /> :
                                              <FileText size={32} className="opacity-30" />}
                                              
-                                             <button 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    appToast.promise(
-                                                        useSectionTemplateStore.getState().deleteSectionTemplate(t.id),
-                                                        { loading: 'Deleting...', success: 'Template deleted', error: 'Failed to delete' }
-                                                    );
-                                                }}
-                                                className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
-                                            >
-                                                <Trash2 size={13} />
-                                            </button>
+                                             <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                                                 <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDuplicateSection(t);
+                                                    }}
+                                                    className={cn("p-1.5 rounded-lg transition-all", isDark ? "bg-white/10 text-white/40 hover:text-white" : "bg-black/5 text-black/40 hover:text-black")}
+                                                >
+                                                    <Copy size={13} />
+                                                </button>
+                                                <InlineDeleteButton 
+                                                    onDelete={() => deleteSectionTemplate(t.id)}
+                                                    isDark={isDark}
+                                                    className="!p-1.5 !h-auto !w-auto"
+                                                />
+                                             </div>
                                         </div>
                                         <div className="p-4 flex-1 flex flex-col min-h-0">
                                             <h3 className="font-bold text-[14px] truncate" title={t.name}>{t.name}</h3>
@@ -435,27 +509,29 @@ export default function TemplatesPage() {
                                                 {t.description || 'No description provided.'}
                                             </p>
                                             
-                                            <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-inherit">
-                                                <span className={cn(
-                                                    "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest",
-                                                    isDark ? "bg-white/10 text-white/70" : "bg-black/5 text-black/60"
-                                                )}>
-                                                    {t.block_type}
-                                                </span>
-                                                {t.tags?.slice(0, 2).map(tag => (
-                                                    <span key={tag} className={cn(
-                                                        "px-2 py-0.5 rounded text-[10px] font-semibold flex items-center",
-                                                        isDark ? "bg-white/5 text-white/50" : "bg-black/5 text-black/50"
-                                                    )}>
-                                                        <Tag size={9} className="mr-1" />{tag}
-                                                    </span>
-                                                ))}
-                                                {t.tags && t.tags.length > 2 && (
+                                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-inherit">
+                                                <div className="flex flex-wrap gap-1.5">
                                                     <span className={cn(
-                                                        "px-1 py-0.5 rounded text-[10px] font-semibold flex items-center opacity-50",
-                                                        isDark ? "bg-white/5" : "bg-black/5"
-                                                    )}>+{t.tags.length - 2}</span>
-                                                )}
+                                                        "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest",
+                                                        isDark ? "bg-white/10 text-white/70" : "bg-black/5 text-black/60"
+                                                    )}>
+                                                        {t.block_type}
+                                                    </span>
+                                                </div>
+                                                <button 
+                                                    onClick={() => {
+                                                        if (selectedSectionIds.includes(t.id)) setSelectedSectionIds(prev => prev.filter(id => id !== t.id));
+                                                        else setSelectedSectionIds(prev => [...prev, t.id]);
+                                                    }}
+                                                    className={cn(
+                                                        "w-4 h-4 rounded border flex items-center justify-center transition-all",
+                                                        selectedSectionIds.includes(t.id)
+                                                            ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-black shadow-sm" 
+                                                            : isDark ? "border-white/10 text-white/10 hover:border-white/30" : "border-black/10 text-black/10 hover:border-black/30"
+                                                    )}
+                                                >
+                                                    {selectedSectionIds.includes(t.id) ? <Check size={10} strokeWidth={3} /> : <div className="w-1 h-1 rounded-full bg-current opacity-50" />}
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -471,10 +547,7 @@ export default function TemplatesPage() {
                 <div className="flex-1 flex flex-col overflow-hidden">
                     <div className={cn('px-5 py-3 border-b flex items-center justify-between min-h-[56px]', isDark ? 'border-[#252525]' : 'border-[#ebebeb]')}>
                         <div className={cn('relative group/search max-w-[200px] w-full transition-all focus-within:max-w-[300px] flex items-center gap-2 px-3 py-2 rounded-xl border', isDark ? 'bg-white/5 border-white/10' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
-                            <Search size={13} className={cn(
-                                "opacity-30 shrink-0 transition-colors",
-                                isDark ? "text-white/20 group-focus-within/search:text-[var(--brand-primary)]" : "text-black/20 group-focus-within/search:text-[var(--brand-primary)]"
-                            )} />
+                            <Search size={13} className="opacity-30 shrink-0" />
                             <input
                                 value={snippetSearch}
                                 onChange={e => setSnippetSearch(e.target.value)}
@@ -483,49 +556,30 @@ export default function TemplatesPage() {
                             />
                         </div>
 
-                        <AnimatePresence>
-                            {selectedSnippetIds.length > 0 && (
-                                <motion.div 
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    className={cn(
-                                        "flex items-center gap-4 px-3 py-1.5 rounded-full shadow-lg border",
-                                        isDark ? "bg-[#1a1a1a] border-[#333]" : "bg-white border-[#ebebeb]"
-                                    )}
-                                >
-                                    <div className="flex items-center gap-2 pr-2 border-r border-black/10 dark:border-white/10">
-                                        <span className="text-[10px] font-bold opacity-40 uppercase tracking-widest">{selectedSnippetIds.length} Selected</span>
-                                        <button 
-                                            onClick={() => setSelectedSnippetIds([])}
-                                            className="text-[9px] font-bold opacity-30 hover:opacity-100 uppercase tracking-widest transition-opacity"
-                                        >
-                                            Clear
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <button 
-                                            onClick={handleBulkDuplicate}
-                                            className="flex items-center gap-2 text-[11px] font-bold opacity-60 hover:opacity-100 transition-opacity"
-                                        >
-                                            <Copy size={14} /> Duplicate
-                                        </button>
-                                        <InlineDeleteButton 
-                                            onDelete={async () => {
-                                                for (const id of selectedSnippetIds) {
-                                                    await deleteSnippet(id);
-                                                }
-                                                setSelectedSnippetIds([]);
-                                                appToast.success('Snippets deleted');
-                                            }}
-                                            isDark={isDark}
-                                            confirmText={`Delete ${selectedSnippetIds.length}?`}
-                                            className="!h-auto !py-0"
-                                        />
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        {selectedSnippetIds.length > 0 && (
+                            <div className={cn('flex items-center gap-1.5 px-3 py-1 rounded-xl border ml-2', isDark ? 'bg-[#1c1c1c] border-[#2e2e2e]' : 'bg-[#f8f8f8] border-[#e8e8e8]')}>
+                                <span className={cn('text-[11px] font-semibold mr-1', isDark ? 'text-[#aaa]' : 'text-[#666]')}>{selectedSnippetIds.length} selected</span>
+                                <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                
+                                <button onClick={handleBulkDuplicateSnippets}
+                                    className={cn('p-1.5 rounded-md transition-all', isDark ? 'text-[#777] hover:text-white hover:bg-white/5' : 'text-[#888] hover:text-[#333] hover:bg-[#ececec]')}>
+                                    <Copy size={12}/>
+                                </button>
+                                
+                                <InlineDeleteButton 
+                                    onDelete={handleBulkDeleteSnippets}
+                                    isDark={isDark}
+                                    confirmText={`Delete ${selectedSnippetIds.length}?`}
+                                    className="!p-1.5 !h-auto !w-auto"
+                                />
+
+                                <div className={cn('w-[1px] h-3', isDark ? 'bg-[#333]' : 'bg-[#ddd]')}/>
+                                <button onClick={() => setSelectedSnippetIds([])}
+                                    className={cn('p-1.5 rounded-md transition-all', isDark ? 'text-[#555] hover:text-white hover:bg-white/5' : 'text-[#bbb] hover:text-[#333] hover:bg-[#ececec]')}>
+                                    <Check size={12}/>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className={cn('flex-1 overflow-auto', isDark ? 'bg-[#0f0f0f]' : 'bg-[#f9f9fb]')}>
@@ -564,9 +618,7 @@ export default function TemplatesPage() {
                                             else setSelectedSnippetIds(prev => prev.filter(id => id !== s.id));
                                         }}
                                         onDuplicate={handleDuplicateSnippet}
-                                        onDelete={(id) => {
-                                            setSnippetToDelete(id);
-                                        }}
+                                        onDelete={(id) => deleteSnippet(id)}
                                         onUpdate={updateSnippet}
                                     />
                                 ))}
@@ -827,19 +879,11 @@ export default function TemplatesPage() {
                                             >
                                                 <BookmarkCheck size={14} fill={template.is_default ? "currentColor" : "none"} strokeWidth={template.is_default ? 2.5 : 2} />
                                             </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setTemplateToDelete(template.id);
-                                                }}
-                                                className={cn(
-                                                    "w-9 h-9 rounded-xl flex items-center justify-center transition-all border shrink-0",
-                                                    isDark ? "bg-red-500/10 border-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 border-red-100 text-red-500 hover:bg-red-100"
-                                                )}
-                                                title="Delete template"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
+                                                <InlineDeleteButton 
+                                                    onDelete={() => deleteTemplate(template.id)}
+                                                    isDark={isDark}
+                                                    className="!w-9 !h-9 !rounded-xl"
+                                                />
                                         </div>
                                     </div>
                                 </div>
@@ -849,41 +893,6 @@ export default function TemplatesPage() {
                 </div>
             </div>}
 
-            <DeleteConfirmModal 
-                open={!!templateToDelete}
-                onClose={() => setTemplateToDelete(null)}
-                onConfirm={async () => {
-                    if (templateToDelete) {
-                        await appToast.promise(
-                            deleteTemplate(templateToDelete),
-                            {
-                                loading: 'Deleting template...',
-                                success: 'Template deleted',
-                                error: 'Failed to delete template'
-                            }
-                        );
-                        setTemplateToDelete(null);
-                    }
-                }}
-                title="Delete Template"
-                description="Are you sure you want to delete this template? This will permanently remove it from your library."
-                isDark={isDark}
-            />
-
-            <DeleteConfirmModal 
-                open={!!snippetToDelete}
-                onClose={() => setSnippetToDelete(null)}
-                onConfirm={async () => {
-                    if (snippetToDelete) {
-                        await deleteSnippet(snippetToDelete);
-                        appToast.success('Snippet deleted');
-                        setSnippetToDelete(null);
-                    }
-                }}
-                title="Delete Snippet"
-                description="Are you sure you want to delete this snippet? This cannot be undone."
-                isDark={isDark}
-            />
         </div>
     );
 }
