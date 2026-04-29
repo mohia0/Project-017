@@ -1351,7 +1351,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                         className="hidden"
                                                     />
                                                     <div className={cn(
-                                                        "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all",
+                                                        "w-3.5 h-3.5 rounded border flex items-center justify-center transition-all shrink-0",
                                                         meta.paymentMethods?.includes(acc.id)
                                                             ? "bg-[var(--brand-primary)] border-[var(--brand-primary)] text-white shadow-sm"
                                                             : isDark ? "border-white/10 bg-white/5 group-hover:border-white/20" : "border-black/10 bg-black/5 group-hover:border-black/20"
@@ -2048,63 +2048,74 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         
                         <div className="flex justify-end">
                             <div className="space-y-1.5" style={{ minWidth: 0 }}>
-                                {/* Subtotal row */}
-                                {rows.length > 1 && (!hideQty || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
-                                    <div className="grid font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                        <span className="text-left">Subtotal</span>
-                                        <span className="text-right whitespace-nowrap"><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
-                                    </div>
-                                )}
-                                {/* Discount row */}
-                                {(!isPreview || (block.discountRate || 0) > 0) && (
-                                    <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                        <div className="flex items-center gap-1.5 justify-start">
-                                            <span>Discount</span>
-                                            {isPreview
-                                                ? <span className="opacity-70">({block.discountRate}%)</span>
-                                                : <>
-                                                    <input
-                                                        type="number"
-                                                        value={block.discountRate || 0}
-                                                        onInput={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
-                                                        className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                                    />
-                                                    <span>%</span>
-                                                </>
-                                            }
-                                        </div>
-                                        <span className="text-right whitespace-nowrap">−<MoneyAmount amount={discAmt} currency={currency} forceOriginal={isPreview} /></span>
-                                    </div>
-                                )}
-                                {/* Tax row */}
-                                {(!isPreview || (block.taxRate || 0) > 0) && (
-                                    <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                        <div className="flex items-center gap-1.5 justify-start">
-                                            <span>Tax</span>
-                                            {isPreview
-                                                ? <span className="opacity-70">({block.taxRate}%)</span>
-                                                : <>
-                                                    <input
-                                                        type="number"
-                                                        value={block.taxRate || 0}
-                                                        onInput={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
-                                                        className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                                    />
-                                                    <span>%</span>
-                                                </>
-                                            }
-                                        </div>
-                                        <span className="text-right whitespace-nowrap"><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
-                                    </div>
-                                )}
-                                {/* Total row */}
-                                <div
-                                    className={cn("grid font-black", ((rows.length > 1 && !hideQty) || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && "border-t pt-2 mt-1")}
-                                    style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}
-                                >
-                                    <span className="text-left">Total</span>
-                                    <span className="text-right whitespace-nowrap"><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
-                                </div>
+                                {(() => {
+                                    const hasSubtotal = rows.length > 1 && (!hideQty || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0);
+                                    const hasDiscount = !isPreview || (block.discountRate || 0) > 0;
+                                    const hasTax      = !isPreview || (block.taxRate || 0) > 0;
+                                    const showDivider = hasSubtotal || hasDiscount || hasTax;
+
+                                    return (
+                                        <>
+                                            {/* Subtotal row */}
+                                            {hasSubtotal && (
+                                                <div className="grid font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                                    <span className="text-left">Subtotal</span>
+                                                    <span className="text-right whitespace-nowrap"><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
+                                                </div>
+                                            )}
+                                            {/* Discount row */}
+                                            {hasDiscount && (
+                                                <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                                    <div className="flex items-center gap-1.5 justify-start">
+                                                        <span>Discount</span>
+                                                        {isPreview
+                                                            ? <span className="opacity-70">({block.discountRate}%)</span>
+                                                            : <>
+                                                                <input
+                                                                    type="number"
+                                                                    value={block.discountRate || 0}
+                                                                    onInput={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
+                                                                    className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                                                />
+                                                                <span>%</span>
+                                                            </>
+                                                        }
+                                                    </div>
+                                                    <span className="text-right whitespace-nowrap">−<MoneyAmount amount={discAmt} currency={currency} forceOriginal={isPreview} /></span>
+                                                </div>
+                                            )}
+                                            {/* Tax row */}
+                                            {hasTax && (
+                                                <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                                    <div className="flex items-center gap-1.5 justify-start">
+                                                        <span>Tax</span>
+                                                        {isPreview
+                                                            ? <span className="opacity-70">({block.taxRate}%)</span>
+                                                            : <>
+                                                                <input
+                                                                    type="number"
+                                                                    value={block.taxRate || 0}
+                                                                    onInput={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
+                                                                    className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                                                />
+                                                                <span>%</span>
+                                                            </>
+                                                        }
+                                                    </div>
+                                                    <span className="text-right whitespace-nowrap"><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
+                                                </div>
+                                            )}
+                                            {/* Total row */}
+                                            <div
+                                                className={cn("grid font-black", showDivider && "border-t pt-2 mt-1")}
+                                                style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', color: 'var(--table-row-text)', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}
+                                            >
+                                                <span className="text-left">Total</span>
+                                                <span className="text-right whitespace-nowrap"><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>

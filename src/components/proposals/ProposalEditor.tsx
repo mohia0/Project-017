@@ -53,6 +53,7 @@ import { appToast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
 import { MoneyAmount, convertAmount, formatAmountOnly, getCurrencySymbol } from '@/components/ui/MoneyAmount';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { RichTextDescription } from '@/components/ui/RichTextDescription';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /* ═══════════════════════════════════════════════════════
@@ -2478,63 +2479,74 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta = 
                 
                 <div className="flex justify-end">
                     <div className="space-y-1.5" style={{ minWidth: 0 }}>
-                        {/* Subtotal row */}
-                        {rows.length > 1 && (!hideQty || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && (
-                            <div className="grid font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                <span className="text-left">Subtotal</span>
-                                <span className="text-right whitespace-nowrap"><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
-                            </div>
-                        )}
-                        {/* Discount row */}
-                        {(!isPreview || (block.discountRate || 0) > 0) && (
-                            <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                <div className="flex items-center gap-1.5 justify-start">
-                                    <span>Discount</span>
-                                    {isPreview
-                                        ? <span className="opacity-70">({block.discountRate}%)</span>
-                                        : <>
-                                            <input
-                                                type="number"
-                                                value={block.discountRate || 0}
-                                                onInput={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
-                                                className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                            />
-                                            <span>%</span>
-                                        </>
-                                    }
-                                </div>
-                                <span className="text-right whitespace-nowrap">−<MoneyAmount amount={discAmt} currency={currency} forceOriginal={isPreview} /></span>
-                            </div>
-                        )}
-                        {/* Tax row */}
-                        {(!isPreview || (block.taxRate || 0) > 0) && (
-                            <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
-                                <div className="flex items-center gap-1.5 justify-start">
-                                    <span>Tax</span>
-                                    {isPreview
-                                        ? <span className="opacity-70">({block.taxRate}%)</span>
-                                        : <>
-                                            <input
-                                                type="number"
-                                                value={block.taxRate || 0}
-                                                onInput={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
-                                                className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
-                                            />
-                                            <span>%</span>
-                                        </>
-                                    }
-                                </div>
-                                <span className="text-right whitespace-nowrap"><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
-                            </div>
-                        )}
-                        {/* Total row */}
-                        <div
-                            className={cn("grid font-black", ((rows.length > 1 && !hideQty) || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0) && "border-t pt-2 mt-1")}
-                            style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}
-                        >
-                            <span className="text-left">Total</span>
-                            <span className="text-right whitespace-nowrap"><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
-                        </div>
+                        {(() => {
+                            const hasSubtotal = rows.length > 1 && (!hideQty || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0);
+                            const hasDiscount = !isPreview || (block.discountRate || 0) > 0;
+                            const hasTax      = !isPreview || (block.taxRate || 0) > 0;
+                            const showDivider = hasSubtotal || hasDiscount || hasTax;
+
+                            return (
+                                <>
+                                    {/* Subtotal row */}
+                                    {hasSubtotal && (
+                                        <div className="grid font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                            <span className="text-left">Subtotal</span>
+                                            <span className="text-right whitespace-nowrap"><MoneyAmount amount={subtotal} currency={currency} forceOriginal={isPreview} /></span>
+                                        </div>
+                                    )}
+                                    {/* Discount row */}
+                                    {hasDiscount && (
+                                        <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                            <div className="flex items-center gap-1.5 justify-start">
+                                                <span>Discount</span>
+                                                {isPreview
+                                                    ? <span className="opacity-70">({block.discountRate}%)</span>
+                                                    : <>
+                                                        <input
+                                                            type="number"
+                                                            value={block.discountRate || 0}
+                                                            onInput={e => updateBlock(block.id, { discountRate: Number(e.target.value) })}
+                                                            className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                                        />
+                                                        <span>%</span>
+                                                    </>
+                                                }
+                                            </div>
+                                            <span className="text-right whitespace-nowrap">−<MoneyAmount amount={discAmt} currency={currency} forceOriginal={isPreview} /></span>
+                                        </div>
+                                    )}
+                                    {/* Tax row */}
+                                    {hasTax && (
+                                        <div className="grid items-center font-medium opacity-60" style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', fontSize: 'calc(var(--table-font-size) - 1px)' }}>
+                                            <div className="flex items-center gap-1.5 justify-start">
+                                                <span>Tax</span>
+                                                {isPreview
+                                                    ? <span className="opacity-70">({block.taxRate}%)</span>
+                                                    : <>
+                                                        <input
+                                                            type="number"
+                                                            value={block.taxRate || 0}
+                                                            onInput={e => updateBlock(block.id, { taxRate: Number(e.target.value) })}
+                                                            className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                                        />
+                                                        <span>%</span>
+                                                    </>
+                                                }
+                                            </div>
+                                            <span className="text-right whitespace-nowrap"><MoneyAmount amount={taxAmt} currency={currency} forceOriginal={isPreview} /></span>
+                                        </div>
+                                    )}
+                                    {/* Total row */}
+                                    <div
+                                        className={cn("grid font-black", showDivider && "border-t pt-2 mt-1")}
+                                        style={{ gridTemplateColumns: 'auto auto', gap: '0 2rem', borderColor: 'var(--table-border-color)', borderTopWidth: 'var(--table-stroke-width)', fontSize: 'calc(var(--table-font-size) + 2px)' }}
+                                    >
+                                        <span className="text-left">Total</span>
+                                        <span className="text-right whitespace-nowrap"><MoneyAmount amount={total} currency={currency} forceOriginal={isPreview} /></span>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>
@@ -2612,8 +2624,8 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             {row.description && (
                                 <div 
                                     dir="auto"
-                                    className="text-[12px] opacity-60 mt-1 leading-relaxed whitespace-pre-wrap break-words"
-                                    dangerouslySetInnerHTML={{ __html: isPreview ? replaceVariables(row.description) : row.description }}
+                                    className="text-[12px] opacity-60 mt-1 leading-relaxed break-words"
+                                    dangerouslySetInnerHTML={{ __html: replaceVariables(row.description) }}
                                 />
                             )}
                         </>
@@ -2626,17 +2638,15 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                                 placeholder="Item Name..."
                                 className={cn("w-full bg-transparent outline-none font-bold text-[14px] p-0 border-none", isDark ? "text-[inherit] placeholder:opacity-20" : "text-[inherit] placeholder:opacity-20")}
                             />
-                            <div
-                                dir="auto"
-                                contentEditable={!isPreview}
-                                suppressContentEditableWarning
-                                onInput={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
-                                dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                            <RichTextDescription
+                                value={row.description || ''}
+                                onChange={v => updateRow(row.id, { description: v })}
+                                placeholder="Description (optional)..."
+                                isDark={isDark}
                                 className={cn(
-                                    "w-full bg-transparent outline-none mt-1 p-0 border-none text-[12px] empty:before:content-[attr(data-placeholder)] empty:before:opacity-30 whitespace-pre-wrap break-words", 
+                                    "mt-1 text-[12px]",
                                     isDark ? "text-[inherit] opacity-60" : "text-[inherit] opacity-60"
                                 )}
-                                data-placeholder="Description (optional)..."
                             />
                         </>
                     )}
@@ -2713,16 +2723,16 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                     </div>
                 )}
             </td>
-            <td className={cn(td, "pr-2")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
+            <td className={cn(td, "pr-2 align-top")} style={{ paddingTop: 'var(--table-cell-padding)', paddingBottom: 'var(--table-cell-padding)' }}>
                 {isPreview ? (
                     <div className="flex flex-col">
                         <div dir="auto" className="font-bold truncate" style={{ fontSize: 'calc(var(--table-font-size) + 2px)' }}>{row.title || 'Item'}</div>
                         {row.description && (
                             <div 
                                 dir="auto"
-                                className={cn("mt-0.5 opacity-60 whitespace-pre-wrap break-words")} 
+                                className={cn("mt-0.5 opacity-60 break-words")} 
                                 style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
-                                dangerouslySetInnerHTML={{ __html: isPreview ? replaceVariables(row.description) : row.description }}
+                                dangerouslySetInnerHTML={{ __html: replaceVariables(row.description) }}
                             />
                         )}
                     </div>
@@ -2736,17 +2746,16 @@ function SortableRow({ row, isDark, isPreview, hideQty, currency, updateRow, rem
                             className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight", isDark ? "text-[inherit] placeholder:opacity-20" : "text-[inherit] placeholder:opacity-20")}
                             style={{ fontSize: 'calc(var(--table-font-size) + 2px)', fontWeight: 700 }}
                         />
-                        <div
+                        <RichTextDescription
                             dir="auto"
-                            contentEditable={!isPreview}
-                            suppressContentEditableWarning
-                            onInput={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
-                            dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                            value={row.description || ''}
+                            onChange={v => updateRow(row.id, { description: v })}
+                            placeholder="Description (optional)..."
+                            isDark={isDark}
                             className={cn(
-                                "w-full bg-transparent outline-none opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-10 whitespace-pre-wrap break-words", 
+                                "opacity-60 mt-0.5 font-inherit leading-tight break-words",
                                 "text-[inherit]"
                             )}
-                            data-placeholder="Description (optional)..."
                             style={{ fontSize: 'calc(var(--table-font-size) - 1px)' }}
                         />
                     </div>
@@ -2851,7 +2860,7 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                         <div className="font-bold">{row.label || 'Item'}</div>
                         {row.description && (
                             <div 
-                                className={cn("text-[11px] opacity-60 mt-0.5")}
+                                className={cn("text-[11px] opacity-60 mt-0.5 break-words")}
                                 dangerouslySetInnerHTML={{ __html: replaceVariables(row.description) }}
                             />
                         )}
@@ -2865,15 +2874,14 @@ function SortableBreakdownRow({ row, idx, isDark, isPreview, totalAbove, currenc
                             className={cn("w-full bg-transparent outline-none font-bold p-0 border-none font-inherit leading-tight placeholder:opacity-30 text-[inherit]")} 
                             style={{ fontWeight: 700 }}
                         />
-                        <div 
-                            contentEditable={!isPreview}
-                            suppressContentEditableWarning
-                            onInput={e => updateRow(row.id, { description: e.currentTarget.innerHTML })}
-                            dangerouslySetInnerHTML={{ __html: row.description || '' }}
+                        <RichTextDescription
+                            value={row.description || ''}
+                            onChange={v => updateRow(row.id, { description: v })}
+                            placeholder="Description..."
+                            isDark={isDark}
                             className={cn(
-                                "w-full bg-transparent outline-none text-[11px] opacity-60 mt-0.5 p-0 border-none font-inherit leading-tight empty:before:content-[attr(data-placeholder)] empty:before:opacity-30 text-[inherit]"
-                            )} 
-                            data-placeholder="Description..."
+                                "text-[11px] opacity-60 mt-0.5 font-inherit leading-tight text-[inherit] break-words"
+                            )}
                         />
                     </div>
                 )}
