@@ -194,7 +194,7 @@ export default function RightToolsMenu() {
     const isTemplatesMode = pathname === '/templates';
 
     // Notifications state
-    const { notifications } = useNotificationStore();
+    const { notifications, markAllAsRead } = useNotificationStore();
     const { branding } = useSettingsStore();
     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -244,6 +244,12 @@ export default function RightToolsMenu() {
                 {/* Notifications */}
                 <button
                     onClick={toggleNotifications}
+                    onContextMenu={(e) => {
+                        e.preventDefault();
+                        if (!notificationsOpen && unreadCount > 0) {
+                            markAllAsRead();
+                        }
+                    }}
                     className={cn(
                         "w-9 h-9 rounded-[12px] flex items-center justify-center transition-all group",
                         isDark

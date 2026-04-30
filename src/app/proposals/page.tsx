@@ -28,6 +28,7 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { MoneyAmount, convertAmount, formatAmount, formatAmountOnly, getCurrencySymbol } from '@/components/ui/MoneyAmount';
 import { ViewToggle } from '@/components/ui/ViewToggle';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { ListViewSkeleton } from '@/components/ui/ListViewSkeleton';
 import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/FilterPanel';
 import { FilterField, FilterRow, SavedFilter, applyFilters } from '@/lib/filterUtils';
 import { useSavedFilters } from '@/hooks/useSavedFilters';
@@ -621,18 +622,7 @@ export default function ProposalsPage() {
             {isMobile ? (
                 <div className={cn("flex-1 overflow-y-auto", isDark ? "bg-[#141414]" : "bg-[#fafafa]")}>
                     {isLoading ? (
-                        <div className="flex flex-col">
-                            {Array.from({ length: 12 }).map((_, i) => (
-                                <div key={i} className={cn("flex items-center gap-3 px-4 py-3.5 border-b", isDark ? "border-[#1f1f1f]" : "border-[#f0f0f0]")}>
-                                    <div className={cn("w-[3px] h-10 rounded-full animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
-                                    <div className="flex-1">
-                                        <div className={cn("h-3.5 w-36 rounded animate-pulse mb-2", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
-                                        <div className={cn("h-2.5 w-24 rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
-                                    </div>
-                                    <div className={cn("h-4 w-14 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
-                                </div>
-                            ))}
-                        </div>
+                        <ListViewSkeleton isMobile={true} isDark={isDark} />
                     ) : filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-3">
                             {showArchived ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p> : <>
@@ -705,24 +695,7 @@ export default function ProposalsPage() {
             ) : (
                 <div className={cn("flex-1 overflow-y-auto p-4", isDark ? "bg-[#0f0f0f]" : "bg-[#f0f0f0]")}>
                     {isLoading ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
-                            {Array.from({ length: 30 }).map((_, i) => (
-                                <div key={i} className={cn("rounded-[8px] border flex flex-col pointer-events-none", isDark ? "border-[#2e2e2e] bg-[#1a1a1a]" : "border-transparent bg-white shadow-sm")}>
-                                    <div className={cn("flex items-center justify-between px-4 py-3 border-b", isDark ? "border-[#2e2e2e]" : "border-[#f0f0f0]")}>
-                                        <div className={cn("h-3 w-12 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
-                                        <div className={cn("w-3.5 h-3.5 rounded-[3px] animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
-                                    </div>
-                                    <div className="px-4 py-2.5 flex flex-col gap-3">
-                                        {Array.from({ length: 4 }).map((_, j) => (
-                                            <div key={j} className="flex items-center gap-3 py-1">
-                                                <div className={cn("w-[90px] h-2.5 rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")}/>
-                                                <div className={cn("flex-1 h-3 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")}/>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <ListViewSkeleton view="cards" isDark={isDark} />
                     ) : filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-3">
                             {showArchived ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p> : <>

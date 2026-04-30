@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '@/store/useUIStore';
 import { useFormStore, Form, FormStatus } from '@/store/useFormStore';
 import { cn } from '@/lib/utils';
+import { fmtDate } from '@/lib/dateUtils';
 import {
     Search, Table2, LayoutGrid, Plus, ChevronDown,
     ClipboardList, Check, Trash2,
@@ -22,8 +23,8 @@ import { appToast } from '@/lib/toast';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { usePersistentState } from '@/hooks/usePersistentState';
+import { ListViewSkeleton } from '@/components/ui/ListViewSkeleton';
 import { useMenuStore } from '@/store/useMenuStore';
-import { fmtDate } from '@/lib/dateUtils';
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
 import { StatusCell } from '@/components/ui/StatusCell';
 import { ToolbarButton as TbBtn } from '@/components/ui/ToolbarButton';
@@ -573,65 +574,7 @@ export default function FormsPage() {
             {/* Content */}
             <div className={cn("flex-1 overflow-auto p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
                 {isLoading && forms.length === 0 ? (
-                    view === 'cards' ? (
-                        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-20">
-                            {Array.from({ length: 12 }).map((_, i) => (
-                                <div key={i} className={cn("rounded-xl border flex flex-col pointer-events-none", isDark ? "border-[#2e2e2e] bg-[#1a1a1a]" : "border-[#f0f0f0] bg-white")}>
-                                    <div className="h-1.5 w-full bg-primary/20" />
-                                    <div className="p-4 flex flex-col gap-4">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="flex items-start gap-1.5 flex-1 -ml-2">
-                                                <div className={cn("w-8 h-8 rounded-lg animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
-                                                <div className="space-y-1.5 pt-1 flex-1">
-                                                    <div className={cn("h-4 w-[60%] rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
-                                                    <div className={cn("h-3 w-[40%] rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
-                                                </div>
-                                            </div>
-                                            <div className={cn("h-5 w-16 rounded-full animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
-                                            <div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
-                                        </div>
-                                    </div>
-                                    <div className={cn("flex justify-end gap-1 px-4 py-2.5 border-t", isDark ? "border-[#252525]" : "border-[#f5f5f5]")}>
-                                        <div className={cn("w-6 h-6 rounded-lg animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
-                                        <div className={cn("w-6 h-6 rounded-lg animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
-                                        <div className={cn("w-6 h-6 rounded-lg animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto no-scrollbar">
-                            <div className={cn("rounded-xl border overflow-hidden min-w-[1000px]", isDark ? "border-[#222]" : "border-[#ebebeb]")}>
-                            <div className={cn("grid border-b h-10 items-center bg-[#1a1a1a] shadow-sm", isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#f5f5f7] border-[#ebebeb]")} style={{ gridTemplateColumns: gridTemplate }}>
-                                <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[5px] animate-pulse", isDark ? "bg-white/[0.1]" : "bg-black/[0.1]")} /></div>
-                                {columnOrder.map(colId => (
-                                    <div key={colId} className="px-4"><div className={cn("h-3 w-16 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} /></div>
-                                ))}
-                                <div />
-                            </div>
-                            {Array.from({ length: 25 }).map((_, i) => (
-                                <div key={i} className={cn("grid border-b items-center h-[52px]", isDark ? "border-[#1f1f1f] bg-[#141414]" : "border-[#f0f0f0] bg-white")} style={{ gridTemplateColumns: gridTemplate }}>
-                                    <div className="flex justify-center"><div className={cn("w-3.5 h-3.5 rounded-[5px] animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} /></div>
-                                    {columnOrder.map(colId => (
-                                        <div key={colId} className="px-4">
-                                            {colId === 'name' ? (
-                                                <div className={cn("h-4 w-32 rounded animate-pulse", isDark ? "bg-white/[0.08]" : "bg-black/[0.08]")} />
-                                            ) : colId === 'status' ? (
-                                                <div className={cn("h-5 w-16 rounded-full animate-pulse", isDark ? "bg-white/[0.06]" : "bg-black/[0.06]")} />
-                                            ) : (
-                                                <div className={cn("h-3 w-20 rounded animate-pulse", isDark ? "bg-white/[0.05]" : "bg-black/[0.05]")} />
-                                            )}
-                                        </div>
-                                    ))}
-                                    <div />
-                                </div>
-                            ))}
-                            </div>
-                        </div>
-                    )
+                    <ListViewSkeleton view={view === 'cards' ? 'cards' : 'table'} isMobile={isMobile} isDark={isDark} />
                 ) : filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-24 gap-4">
                         <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",

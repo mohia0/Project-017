@@ -6,6 +6,7 @@ import { SettingsField, SettingsInput } from '@/components/settings/SettingsFiel
 import { ColorisInput } from '@/components/ui/ColorisInput';
 import { useSettingsStore, WorkspaceBranding } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
+import { applyBrandingVariables } from '@/components/settings/BrandingProvider';
 import { RotateCcw, Upload, Image as ImageIcon, Check, Trash2, HelpCircle, Plus } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
@@ -286,33 +287,11 @@ export default function BrandingSettingsPage() {
 
     // Instant Visual Updates for Accent Color & Sidebar Tint
     useEffect(() => {
-        if (!mounted) return;
+        if (!mounted || !hasSynced) return;
         const root = document.documentElement;
         
-        // Helper to darken/lighten color (simplified version of the one in BrandingProvider)
-        const getTintedColor = (hex: string, step: number) => {
-            const amount = (step - 3) * 0.15;
-            let s = hex.replace('#', '');
-            if (s.length === 3) s = s.split('').map(c => c + c).join('');
-            if (s.length < 6) return hex;
-            let r = parseInt(s.slice(0, 2), 16);
-            let g = parseInt(s.slice(2, 4), 16);
-            let b = parseInt(s.slice(4, 6), 16);
-            r = Math.min(255, Math.max(0, Math.floor(r * (1 - amount))));
-            g = Math.min(255, Math.max(0, Math.floor(g * (1 - amount))));
-            b = Math.min(255, Math.max(0, Math.floor(b * (1 - amount))));
-            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-        };
-
-        root.style.setProperty('--brand-primary', formData.primary_color);
-        
-        if (formData.apply_color_to_sidebar) {
-            const sidebarColor = getTintedColor(formData.primary_color, formData.sidebar_tint);
-            root.style.setProperty('--brand-secondary', sidebarColor);
-        } else {
-            root.style.setProperty('--brand-secondary', branding?.secondary_color || '#1a1a2e');
-        }
-    }, [formData.primary_color, formData.apply_color_to_sidebar, formData.sidebar_tint, mounted, branding?.secondary_color]);
+        applyBrandingVariables(root, formData as any, isDark);
+    }, [formData, mounted, isDark, hasSynced]);
 
     const resetField = (field: keyof BrandingFormData) => {
         const val = DEFAULT_BRANDING[field as keyof typeof DEFAULT_BRANDING];

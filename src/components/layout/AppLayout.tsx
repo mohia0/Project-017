@@ -83,9 +83,6 @@ function WorkspaceDataSync() {
     
     useEffect(() => {
         if (activeWorkspaceId) {
-            // Only fetch the absolute essentials for the root layout to prevent network flooding (Phase 2)
-            // Individual item fetches (Proposals, Invoices, Clients) are handled by their respective 'page.tsx' components.
-            
             // Settings Preload (Global features)
             const settingsStore = useSettingsStore.getState();
             settingsStore.fetchStatuses(activeWorkspaceId);
@@ -94,6 +91,14 @@ function WorkspaceDataSync() {
             // Notifications (Global icon)
             useNotificationStore.getState().fetchNotifications();
             useNotificationStore.getState().subscribe();
+
+            // Aggressive Background Prefetching (Perceived Performance Improvement)
+            // This ensures data is ready in Zustand before the user navigates to the page
+            useInvoiceStore.getState().fetchInvoices();
+            useProposalStore.getState().fetchProposals();
+            useClientStore.getState().fetchClients();
+            useFormStore.getState().fetchForms();
+            useSchedulerStore.getState().fetchSchedulers();
             
             return () => {
                 useNotificationStore.getState().unsubscribe();

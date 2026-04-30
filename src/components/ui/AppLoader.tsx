@@ -143,14 +143,14 @@ export function FullScreenLoader({
     return () => clearTimeout(timer);
   }, []);
 
-  const accentColor = "var(--brand-loader-color, #3b82f6)";
+  const accentColor = "var(--brand-loader-color, var(--brand-primary, #3b82f6))";
   const initialColor = isDark ? "#ffffff" : "#000000";
 
   const content = (
     <div
       className={cn(
-        "fixed top-0 left-0 w-screen h-screen z-[99999] flex flex-col items-center justify-center backdrop-blur-xl transition-colors duration-500",
-        isDark ? "bg-[#000000]/95" : "bg-[#f5f5f5]/95",
+        "fixed top-0 left-0 w-screen h-screen z-[99999] flex flex-col items-center justify-center transition-colors duration-500",
+        isDark ? "bg-black" : "bg-white",
         className
       )}
     >

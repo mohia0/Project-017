@@ -25,6 +25,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { ContextMenuRow } from '@/components/ui/RowContextMenu';
 import { Avatar } from '@/components/ui/Avatar';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { ListViewSkeleton } from '@/components/ui/ListViewSkeleton';
 import { FilterPanel, FilterButton, SavedFilterPills } from '@/components/ui/FilterPanel';
 import { usePersistentState } from '@/hooks/usePersistentState';
 import { useMenuStore } from '@/store/useMenuStore';
@@ -695,8 +696,10 @@ export default function SchedulersPage() {
 
             {/* ── Content ── */}
             <div className={cn("flex-1 overflow-auto p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
-                {view === 'cards' ? (
-                    filtered.length === 0 && !isLoading ? (
+                {isLoading && schedulers.length === 0 ? (
+                    <ListViewSkeleton view={view === 'cards' ? 'cards' : 'table'} isMobile={isMobile} isDark={isDark} />
+                ) : view === 'cards' ? (
+                    filtered.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
                                 isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
@@ -743,6 +746,27 @@ export default function SchedulersPage() {
                             </AnimatePresence>
                         </div>
                     )
+                ) : filtered.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 gap-4">
+                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
+                            isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
+                            <Calendar size={24} className={isDark ? "text-[#444]" : "text-[#ccc]"} />
+                        </div>
+                        <div className="text-center">
+                            <div className={cn("font-semibold text-[14px] mb-1", isDark ? "text-[#444]" : "text-[#bbb]")}>
+                                {searchQuery || statusFilter !== 'All' ? 'No results found' : 'No schedulers yet'}
+                            </div>
+                            <div className={cn("text-[12px]", isDark ? "text-[#333]" : "text-[#ccc]")}>
+                                {searchQuery || statusFilter !== 'All' ? 'Try adjusting your filters' : 'Create your first scheduler to get started'}
+                            </div>
+                        </div>
+                        {!searchQuery && statusFilter === 'All' && (
+                            <button onClick={handleNew}
+                                className="flex items-center gap-1.5 px-4 py-2 text-[12px] font-semibold rounded-[8px] bg-primary hover:bg-primary-hover text-primary-foreground transition-colors">
+                                <Plus size={13} strokeWidth={2.5} /> New Scheduler
+                            </button>
+                        )}
+                    </div>
                 ) : (
                     <div className="flex-1 min-h-0 relative">
                         <DataTable

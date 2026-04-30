@@ -52,6 +52,52 @@ function getBrightness(hex: string) {
     return Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
 }
 
+export function applyBrandingVariables(root: HTMLElement, branding: any, isDarkMode: boolean) {
+    if (branding) {
+        const primary = branding.primary_color || '#f59e0b';
+        const isDarkAccent = getBrightness(primary) < 128;
+        
+        root.style.setProperty('--brand-primary', primary);
+        root.style.setProperty('--brand-primary-rgb', hexToRgb(primary));
+        root.style.setProperty('--brand-primary-hover', darkenColor(primary)); 
+        root.style.setProperty('--brand-primary-foreground', isDarkAccent ? '#ffffff' : '#000000');
+        
+        // Loader color: use custom primary when explicitly set; otherwise use white/black based on theme
+        const loaderColor = branding.primary_color ? primary : (isDarkMode ? '#ffffff' : '#000000');
+        root.style.setProperty('--brand-loader-color', loaderColor);
+        
+        // Sidebar Tint Logic
+        const sidebarTint = branding.sidebar_tint ?? 3;
+        const sidebarColor = branding.apply_color_to_sidebar 
+            ? getTintedColor(primary, sidebarTint)
+            : (branding.secondary_color || '#1a1a2e');
+        
+        root.style.setProperty('--brand-secondary', sidebarColor);
+        root.style.setProperty('--brand-font', branding.font_family || 'Inter, sans-serif');
+        root.style.setProperty('--brand-radius', `${branding.border_radius ?? 12}px`);
+        
+        // Map to legacy accent color variables
+        root.style.setProperty('--primary', primary);
+        root.style.setProperty('--primary-dark', darkenColor(primary, 0.2));
+        root.style.setProperty('--primary-light', darkenColor(primary, -0.2));
+    } else {
+        const defaultPrimary = '#f59e0b';
+        root.style.setProperty('--brand-primary', defaultPrimary);
+        root.style.setProperty('--brand-primary-rgb', hexToRgb(defaultPrimary));
+        root.style.setProperty('--brand-primary-hover', darkenColor(defaultPrimary));
+        root.style.setProperty('--brand-primary-foreground', '#000000');
+        root.style.setProperty('--brand-secondary', '#1a1a2e');
+        root.style.setProperty('--brand-font', 'Inter, sans-serif');
+        root.style.setProperty('--brand-radius', '12px');
+        // No custom accent — use white in dark mode, black in light mode
+        root.style.setProperty('--brand-loader-color', isDarkMode ? '#ffffff' : '#000000');
+
+        root.style.setProperty('--primary', defaultPrimary);
+        root.style.setProperty('--primary-dark', darkenColor(defaultPrimary, 0.2));
+        root.style.setProperty('--primary-light', darkenColor(defaultPrimary, -0.2));
+    }
+}
+
 export function BrandingProvider({ children }: { children: React.ReactNode }) {
     const { activeWorkspaceId, theme } = useUIStore();
     const { branding, fetchBranding, hasFetched } = useSettingsStore();
@@ -68,51 +114,8 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
         // Apply CSS variables whenever branding OR theme changes
         const isDarkMode = theme === 'dark';
-
         const root = document.documentElement;
-        if (branding) {
-            const primary = branding.primary_color || '#f59e0b';
-            const isDarkAccent = getBrightness(primary) < 128;
-            
-            root.style.setProperty('--brand-primary', primary);
-            root.style.setProperty('--brand-primary-rgb', hexToRgb(primary));
-            root.style.setProperty('--brand-primary-hover', darkenColor(primary)); 
-            root.style.setProperty('--brand-primary-foreground', isDarkAccent ? '#ffffff' : '#000000');
-            
-            // Loader color: use custom primary when explicitly set; otherwise use white/black based on theme
-            const loaderColor = branding.primary_color ? primary : (isDarkMode ? '#ffffff' : '#000000');
-            root.style.setProperty('--brand-loader-color', loaderColor);
-            
-            // Sidebar Tint Logic
-            const sidebarTint = branding.sidebar_tint ?? 3;
-            const sidebarColor = branding.apply_color_to_sidebar 
-                ? getTintedColor(primary, sidebarTint)
-                : (branding.secondary_color || '#1a1a2e');
-            
-            root.style.setProperty('--brand-secondary', sidebarColor);
-            root.style.setProperty('--brand-font', branding.font_family || 'Inter, sans-serif');
-            root.style.setProperty('--brand-radius', `${branding.border_radius ?? 12}px`);
-            
-            // Map to legacy accent color variables
-            root.style.setProperty('--primary', primary);
-            root.style.setProperty('--primary-dark', darkenColor(primary, 0.2));
-            root.style.setProperty('--primary-light', darkenColor(primary, -0.2));
-        } else {
-            const defaultPrimary = '#f59e0b';
-            root.style.setProperty('--brand-primary', defaultPrimary);
-            root.style.setProperty('--brand-primary-rgb', hexToRgb(defaultPrimary));
-            root.style.setProperty('--brand-primary-hover', darkenColor(defaultPrimary));
-            root.style.setProperty('--brand-primary-foreground', '#000000');
-            root.style.setProperty('--brand-secondary', '#1a1a2e');
-            root.style.setProperty('--brand-font', 'Inter, sans-serif');
-            root.style.setProperty('--brand-radius', '12px');
-            // No custom accent — use white in dark mode, black in light mode
-            root.style.setProperty('--brand-loader-color', isDarkMode ? '#ffffff' : '#000000');
-
-            root.style.setProperty('--primary', defaultPrimary);
-            root.style.setProperty('--primary-dark', darkenColor(defaultPrimary, 0.2));
-            root.style.setProperty('--primary-light', darkenColor(defaultPrimary, -0.2));
-        }
+        applyBrandingVariables(root, branding, isDarkMode);
     }, [branding, hasFetched.branding, activeWorkspaceId, theme]);
     
     // Update favicon dynamically — only override when a custom favicon_url is set.

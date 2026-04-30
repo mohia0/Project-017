@@ -29,6 +29,7 @@ import { StatusCell } from '@/components/ui/StatusCell';
 
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import DatePicker from '@/components/ui/DatePicker';
+import { ListViewSkeleton } from '@/components/ui/ListViewSkeleton';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -902,9 +903,9 @@ export default function ProjectsPage() {
 
             {/* ── Content ── */}
             <div className="flex-1 overflow-y-auto min-h-0">
-                {isLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                        <AppLoader size="sm" />
+                {isLoading && projects.length === 0 ? (
+                    <div className="p-4">
+                        <ListViewSkeleton view={view === 'cards' ? 'cards' : 'table'} isMobile={isMobile} isDark={isDark} />
                     </div>
                 ) : filtered.length === 0 ? (
                     <EmptyState isDark={isDark} onNew={() => setCreateModalOpen(true, 'Project')} isArchived={showArchived} />
