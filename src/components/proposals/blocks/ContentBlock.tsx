@@ -330,7 +330,7 @@ export function ContentBlock({ id, data, updateData, backgroundColor, readOnly }
                             {/* Snippet custom button moved to left */}
                             {(() => {
                                 const selected = editor.getSelection();
-                                const isOnlyDivider = selected?.blocks.every(b => b.type === 'horizontalRule');
+                                const isOnlyDivider = selected?.blocks.every(b => (b.type as string) === 'horizontalRule');
                                 if (isOnlyDivider) return null;
                                 
                                 return (
