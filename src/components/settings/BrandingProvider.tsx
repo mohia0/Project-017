@@ -53,18 +53,24 @@ function getBrightness(hex: string) {
 }
 
 export function applyBrandingVariables(root: HTMLElement, branding: any, isDarkMode: boolean) {
+    const cssVars: Record<string, string> = {};
+    const setVar = (key: string, val: string) => {
+        root.style.setProperty(key, val);
+        cssVars[key] = val;
+    };
+
     if (branding) {
         const primary = branding.primary_color || '#f59e0b';
         const isDarkAccent = getBrightness(primary) < 128;
         
-        root.style.setProperty('--brand-primary', primary);
-        root.style.setProperty('--brand-primary-rgb', hexToRgb(primary));
-        root.style.setProperty('--brand-primary-hover', darkenColor(primary)); 
-        root.style.setProperty('--brand-primary-foreground', isDarkAccent ? '#ffffff' : '#000000');
+        setVar('--brand-primary', primary);
+        setVar('--brand-primary-rgb', hexToRgb(primary));
+        setVar('--brand-primary-hover', darkenColor(primary)); 
+        setVar('--brand-primary-foreground', isDarkAccent ? '#ffffff' : '#000000');
         
         // Loader color: use custom primary when explicitly set; otherwise use white/black based on theme
         const loaderColor = branding.primary_color ? primary : (isDarkMode ? '#ffffff' : '#000000');
-        root.style.setProperty('--brand-loader-color', loaderColor);
+        setVar('--brand-loader-color', loaderColor);
         
         // Sidebar Tint Logic
         const sidebarTint = branding.sidebar_tint ?? 3;
@@ -72,30 +78,34 @@ export function applyBrandingVariables(root: HTMLElement, branding: any, isDarkM
             ? getTintedColor(primary, sidebarTint)
             : (branding.secondary_color || '#1a1a2e');
         
-        root.style.setProperty('--brand-secondary', sidebarColor);
-        root.style.setProperty('--brand-font', branding.font_family || 'Inter, sans-serif');
-        root.style.setProperty('--brand-radius', `${branding.border_radius ?? 12}px`);
+        setVar('--brand-secondary', sidebarColor);
+        setVar('--brand-font', branding.font_family || 'Inter, sans-serif');
+        setVar('--brand-radius', `${branding.border_radius ?? 12}px`);
         
         // Map to legacy accent color variables
-        root.style.setProperty('--primary', primary);
-        root.style.setProperty('--primary-dark', darkenColor(primary, 0.2));
-        root.style.setProperty('--primary-light', darkenColor(primary, -0.2));
+        setVar('--primary', primary);
+        setVar('--primary-dark', darkenColor(primary, 0.2));
+        setVar('--primary-light', darkenColor(primary, -0.2));
     } else {
         const defaultPrimary = '#f59e0b';
-        root.style.setProperty('--brand-primary', defaultPrimary);
-        root.style.setProperty('--brand-primary-rgb', hexToRgb(defaultPrimary));
-        root.style.setProperty('--brand-primary-hover', darkenColor(defaultPrimary));
-        root.style.setProperty('--brand-primary-foreground', '#000000');
-        root.style.setProperty('--brand-secondary', '#1a1a2e');
-        root.style.setProperty('--brand-font', 'Inter, sans-serif');
-        root.style.setProperty('--brand-radius', '12px');
+        setVar('--brand-primary', defaultPrimary);
+        setVar('--brand-primary-rgb', hexToRgb(defaultPrimary));
+        setVar('--brand-primary-hover', darkenColor(defaultPrimary));
+        setVar('--brand-primary-foreground', '#000000');
+        setVar('--brand-secondary', '#1a1a2e');
+        setVar('--brand-font', 'Inter, sans-serif');
+        setVar('--brand-radius', '12px');
         // No custom accent — use white in dark mode, black in light mode
-        root.style.setProperty('--brand-loader-color', isDarkMode ? '#ffffff' : '#000000');
+        setVar('--brand-loader-color', isDarkMode ? '#ffffff' : '#000000');
 
-        root.style.setProperty('--primary', defaultPrimary);
-        root.style.setProperty('--primary-dark', darkenColor(defaultPrimary, 0.2));
-        root.style.setProperty('--primary-light', darkenColor(defaultPrimary, -0.2));
+        setVar('--primary', defaultPrimary);
+        setVar('--primary-dark', darkenColor(defaultPrimary, 0.2));
+        setVar('--primary-light', darkenColor(defaultPrimary, -0.2));
     }
+
+    try {
+        localStorage.setItem('cached-branding-css', JSON.stringify(cssVars));
+    } catch (e) {}
 }
 
 export function BrandingProvider({ children }: { children: React.ReactNode }) {

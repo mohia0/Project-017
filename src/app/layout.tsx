@@ -167,7 +167,36 @@ export default async function RootLayout({
   const { data: { session } } = await supabase.auth.getSession();
 
   return (
-    <html lang="en" className={mrDafoe.variable}>
+    <html lang="en" className={mrDafoe.variable} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const storage = localStorage.getItem('ui-storage');
+                if (storage) {
+                  const state = JSON.parse(storage).state;
+                  if (state && state.theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.style.setProperty('--loader-bg', '#000000');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.style.setProperty('--loader-bg', '#e2e2e2');
+                  }
+                }
+                
+                const cachedCss = localStorage.getItem('cached-branding-css');
+                if (cachedCss) {
+                  const cssVars = JSON.parse(cachedCss);
+                  for (const key in cssVars) {
+                    document.documentElement.style.setProperty(key, cssVars[key]);
+                  }
+                }
+              } catch(e) {}
+            `,
+          }}
+        />
+      </head>
       <body suppressHydrationWarning>
         <Providers session={session}>
           <BrandingProvider>

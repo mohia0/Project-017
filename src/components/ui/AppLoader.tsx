@@ -62,7 +62,7 @@ export function AppLoader({
 
       <style jsx>{`
         .leap-frog-container {
-          --uib-dot-size: calc(var(--uib-size) * 0.25);
+          --uib-dot-size: calc(var(--uib-size) * 0.4);
           position: relative;
           display: flex;
           align-items: center;
@@ -91,21 +91,21 @@ export function AppLoader({
           width: var(--uib-dot-size);
           color: var(--uib-color);
           transition: color 0.3s ease;
+          transform: scale(0.65);
         }
 
         .dot:nth-child(1) {
-          animation: leapFrog var(--uib-speed) ease infinite;
+          animation: leapFrog var(--uib-speed) cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
 
         .dot:nth-child(2) {
           transform: translateX(calc(var(--uib-size) * 0.3));
-          animation: leapFrog var(--uib-speed) ease calc(var(--uib-speed) / -1.5)
-            infinite;
+          animation: leapFrog var(--uib-speed) cubic-bezier(0.4, 0, 0.2, 1) calc(var(--uib-speed) / -1.5) infinite;
         }
 
         .dot:nth-child(3) {
           transform: translateX(calc(var(--uib-size) * 0.6)) rotate(0deg);
-          animation: leapFrog var(--uib-speed) ease calc(var(--uib-speed) / -3) infinite;
+          animation: leapFrog var(--uib-speed) cubic-bezier(0.4, 0, 0.2, 1) calc(var(--uib-speed) / -3) infinite;
         }
 
         @keyframes leapFrog {
@@ -156,10 +156,10 @@ export function FullScreenLoader({
   const content = (
     <div
       className={cn(
-        "fixed top-0 left-0 w-screen h-screen z-[99999] flex flex-col items-center justify-center",
-        isDark ? "bg-black" : "bg-white",
+        "fixed top-0 left-0 w-screen h-screen z-[99999] flex flex-col items-center justify-center transition-colors duration-0",
         className
       )}
+      style={{ backgroundColor: 'var(--loader-bg)' }}
     >
       <AppLoader
         size="2xl"
