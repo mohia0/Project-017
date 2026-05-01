@@ -318,7 +318,10 @@ export function DataTable<T extends { id: string }>({
         ))}</div>
     );
 
-    if (!isLoading && data.length === 0 && emptyState) {
+    const isSettingsLoading = !!activeWorkspaceId && !hasFetched[`toolSettings_${storageKeyPrefix}`];
+    const showLoading = isLoading || isSettingsLoading;
+
+    if (!showLoading && data.length === 0 && emptyState) {
         return <>{emptyState}</>;
     }
 
@@ -393,7 +396,7 @@ export function DataTable<T extends { id: string }>({
                     </div>
                 </DndContext>
 
-                {isLoading ? renderShimmer() : (
+                {showLoading ? renderShimmer() : (
                     <div className="flex flex-col">
                         <AnimatePresence mode="popLayout">
                             {data.map((item, i) => {
