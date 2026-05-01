@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { ContextMenuRow } from './RowContextMenu';
 import { useUIStore } from '@/store/useUIStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { AppLoader } from './AppLoader';
 
 export function Chk({ checked, indeterminate, isDark }: { checked: boolean; indeterminate?: boolean; isDark: boolean }) {
     return (
@@ -120,6 +121,8 @@ export function DataTable<T extends { id: string }>({
         return initial;
     });
 
+    const [isInitialized, setIsInitialized] = useState(false);
+
     // 1. Initial Fetch
     useEffect(() => {
         if (activeWorkspaceId && !hasFetched[`toolSettings_${storageKeyPrefix}`]) {
@@ -127,11 +130,20 @@ export function DataTable<T extends { id: string }>({
         }
     }, [activeWorkspaceId, storageKeyPrefix, fetchToolSettings, hasFetched]);
 
+    // Reset initialization when workspace or tool changes
+    useEffect(() => {
+        setIsInitialized(false);
+    }, [activeWorkspaceId, storageKeyPrefix]);
+
     // 2. Sync from Settings Store (Remote ground truth)
     useEffect(() => {
-        if (currentSettings.columnOrder) setColumnOrder(currentSettings.columnOrder);
-        if (currentSettings.colWidths) setColWidths(currentSettings.colWidths);
-    }, [currentSettings.columnOrder, currentSettings.colWidths]);
+        const fetchKey = `toolSettings_${storageKeyPrefix}`;
+        if (hasFetched[fetchKey]) {
+            if (currentSettings.columnOrder) setColumnOrder(currentSettings.columnOrder);
+            if (currentSettings.colWidths) setColWidths(currentSettings.colWidths);
+            setIsInitialized(true);
+        }
+    }, [hasFetched, storageKeyPrefix, currentSettings.columnOrder, currentSettings.colWidths]);
 
     // 3. Migration logic (Local -> Remote)
     useEffect(() => {
@@ -318,10 +330,17 @@ export function DataTable<T extends { id: string }>({
         ))}</div>
     );
 
-    const isSettingsLoading = !!activeWorkspaceId && !hasFetched[`toolSettings_${storageKeyPrefix}`];
-    const showLoading = isLoading || isSettingsLoading;
+    const isSettingsLoading = !!activeWorkspaceId && (!hasFetched[`toolSettings_${storageKeyPrefix}`] || !isInitialized);
 
-    if (!showLoading && data.length === 0 && emptyState) {
+    if (isSettingsLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[400px] w-full rounded-xl">
+                <AppLoader size="lg" />
+            </div>
+        );
+    }
+
+    if (!isLoading && data.length === 0 && emptyState) {
         return <>{emptyState}</>;
     }
 
@@ -396,7 +415,7 @@ export function DataTable<T extends { id: string }>({
                     </div>
                 </DndContext>
 
-                {showLoading ? renderShimmer() : (
+                {isLoading ? renderShimmer() : (
                     <div className="flex flex-col">
                         <AnimatePresence mode="popLayout">
                             {data.map((item, i) => {
