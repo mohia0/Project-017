@@ -209,6 +209,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     ]);
 
     const [isLoaded, setIsLoaded] = useState(false);
+    const prevIdRef = useRef(id);
+    
+    if (id !== prevIdRef.current) {
+        prevIdRef.current = id;
+        setIsLoaded(false);
+    }
+
     const debouncedMeta = useDebounce(meta, 300);
     const debouncedBlocks = useDebounce(blocks, 300);
     // Broadcast state for instant preview sync
@@ -382,7 +389,9 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 setBlocks(invoice.blocks);
             }
             lastSyncedStatusRef.current = invoice.status as any;
-            setIsLoaded(true);
+            setTimeout(() => {
+                setIsLoaded(true);
+            }, 400);
         } else {
             // Background Sync: Only update specific fields that might change (Status)
             if (invoice.status !== lastSyncedStatusRef.current) {

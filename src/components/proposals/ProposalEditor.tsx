@@ -357,8 +357,14 @@ export default function ProposalEditor({ id }: { id?: string }) {
     React.useEffect(() => {
         if (activeWorkspaceId) fetchStatuses(activeWorkspaceId);
     }, [activeWorkspaceId, fetchStatuses]);
-    
     const [isLoaded, setIsLoaded] = useState(false);
+    const prevIdRef = useRef(id);
+    
+    if (id !== prevIdRef.current) {
+        prevIdRef.current = id;
+        setIsLoaded(false);
+    }
+
     const debouncedMeta = useDebounce(meta, 300);
     const debouncedBlocks = useDebounce(blocks, 300);
 
@@ -403,7 +409,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 setBlocks(proposal.blocks);
             }
             lastSyncedStatusRef.current = proposal.status as any;
-            setIsLoaded(true);
+            setTimeout(() => {
+                setIsLoaded(true);
+            }, 400);
         } else {
             // Background Sync: Only update specific fields that the client might change (Status, Signatures)
             if (proposal.status !== lastSyncedStatusRef.current) {
