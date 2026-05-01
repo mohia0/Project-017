@@ -20,14 +20,14 @@ import { useProposalStore } from '@/store/useProposalStore';
 import { useRouter, useParams } from 'next/navigation';
 import { appToast } from '@/lib/toast';
 import { Avatar } from '@/components/ui/Avatar';
-import EditProjectModal from '@/components/projects/EditProjectModal';
-import { SaveTemplateModal } from '@/components/modals/SaveTemplateModal';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { DEFAULT_DOCUMENT_DESIGN } from '@/types/design';
 import dynamic from 'next/dynamic';
 
 const KanbanBoard = dynamic(() => import('@/components/projects/KanbanBoard'), { ssr: false });
 const TaskDetailPanel = dynamic(() => import('@/components/projects/TaskDetailPanel'), { ssr: false });
+const EditProjectModal = dynamic(() => import('@/components/projects/EditProjectModal'), { ssr: false });
+const SaveTemplateModal = dynamic(() => import('@/components/modals/SaveTemplateModal').then(m => m.SaveTemplateModal), { ssr: false });
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1143,19 +1143,23 @@ export default function ProjectDetailPage() {
             </AnimatePresence>
 
             {/* Edit Project Modal */}
-            <EditProjectModal
-                open={showEdit}
-                onClose={() => setShowEdit(false)}
-                project={project}
-            />
+            {showEdit && (
+                <EditProjectModal
+                    open={showEdit}
+                    onClose={() => setShowEdit(false)}
+                    project={project}
+                />
+            )}
 
-            <SaveTemplateModal
-                open={saveTemplateOpen}
-                onClose={() => setSaveTemplateOpen(false)}
-                onSave={handleSaveTemplate}
-                defaultName={`${project.name} Template`}
-                entityType="project"
-            />
+            {saveTemplateOpen && (
+                <SaveTemplateModal
+                    open={saveTemplateOpen}
+                    onClose={() => setSaveTemplateOpen(false)}
+                    onSave={handleSaveTemplate}
+                    defaultName={`${project.name} Template`}
+                    entityType="project"
+                />
+            )}
         </div>
     );
 }

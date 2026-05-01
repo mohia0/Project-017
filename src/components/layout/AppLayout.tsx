@@ -22,9 +22,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
 import LeftSystemMenu from './LeftSystemMenu';
-import RightPanel from './RightPanel';
-import RightToolsMenu from './RightToolsMenu';
 import { MobileNavBar, MobileRightPanelDrawer } from './MobileNav';
+
+const RightPanel = dynamic(() => import('./RightPanel'), { ssr: false });
+const RightToolsMenu = dynamic(() => import('./RightToolsMenu'), { ssr: false });
 
 // Lazy-load heavy modals
 const CreateEntryModal = dynamic(() => import('@/components/modals/CreateEntryModal'), { ssr: false });
@@ -165,7 +166,7 @@ function usePageDataLoading(pathname: string): boolean {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-    const { theme, isRightPanelCollapsed, rightPanel, activeWorkspaceId } = useUIStore();
+    const { theme, isRightPanelCollapsed, rightPanel, activeWorkspaceId, isCreateModalOpen, isImportModalOpen } = useUIStore();
     const { user } = useAuthStore();
     const { fetchMenu } = useMenuStore();
     const { fetchWorkspaces, workspaces, isLoading: wsLoading, hasFetched: wsFetched } = useWorkspaceStore();
@@ -264,8 +265,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <MobileNavBar />
 
                 {/* Global Modals */}
-                <CreateEntryModal />
-                <CSVImportModal />
+                {isCreateModalOpen && <CreateEntryModal />}
+                {isImportModalOpen && <CSVImportModal />}
             </div>
         );
     }
@@ -299,8 +300,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Global Modals */}
-            <CreateEntryModal />
-            <CSVImportModal />
+            {isCreateModalOpen && <CreateEntryModal />}
+            {isImportModalOpen && <CSVImportModal />}
             <PrivacyModeEffect />
             <ConversionRatesInitEffect />
         </div>
