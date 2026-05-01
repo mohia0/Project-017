@@ -17,7 +17,12 @@ async function supabaseGet(path: string) {
   }
 }
 
-export async function middleware(request: NextRequest) {
+/** Whether the request is from localhost / dev environment */
+function isLocalhost(host: string): boolean {
+  return host === 'localhost' || host.startsWith('127.0.0.1');
+}
+
+export async function proxy(request: NextRequest) {
   const rawHost = request.headers.get('host') || '';
   const host    = rawHost.replace(/:\d+$/, ''); // strip port for local dev
   const pathname = request.nextUrl.pathname;
@@ -28,57 +33,46 @@ export async function middleware(request: NextRequest) {
   let workspaceName: string | null = null;
   let isCustomDomain = false;
 
-  // ─────────────────────────────────────────────────────────────
-  // 1. Subdomain routing:  slug.aroooxa.com  →  workspace
-  // ─────────────────────────────────────────────────────────────
-  if (host.endsWith(`.${ROOT_DOMAIN}`)) {
-    const slug = host.slice(0, -(`.${ROOT_DOMAIN}`.length));
-    const RESERVED = new Set(['app', 'portal', 'www', 'api', 'mail', 'cdn']);
+  const isDev = isLocalhost(host);
 
-    if (slug && !RESERVED.has(slug)) {
+  // ─────────────────────────────────────────────────────────────
+  // Domain resolution — skip entirely on localhost (no subdomains/custom domains in dev)
+  // ─────────────────────────────────────────────────────────────
+  if (!isDev) {
+    // 1. Subdomain routing:  slug.aroooxa.com  →  workspace
+    if (host.endsWith(`.${ROOT_DOMAIN}`)) {
+      const slug = host.slice(0, -(`.${ROOT_DOMAIN}`.length));
+      const RESERVED = new Set(['app', 'portal', 'www', 'api', 'mail', 'cdn']);
+
+      if (slug && !RESERVED.has(slug)) {
+        const data = await supabaseGet(
+          `workspaces?slug=eq.${encodeURIComponent(slug)}&select=id,name&limit=1`
+        );
+        if (data?.[0]) {
+          workspaceId   = data[0].id;
+          workspaceSlug = slug;
+          workspaceName = data[0].name;
+        }
+      }
+    }
+    // 2. Custom domain routing:  portal.client.com  →  workspace
+    else if (host !== ROOT_DOMAIN && !host.endsWith(`.${ROOT_DOMAIN}`)) {
       const data = await supabaseGet(
-        `workspaces?slug=eq.${encodeURIComponent(slug)}&select=id,name&limit=1`
+        `workspace_domains?domain=eq.${encodeURIComponent(host)}&status=eq.active&select=workspace_id&order=created_at.desc&limit=1`
       );
       if (data?.[0]) {
-        workspaceId   = data[0].id;
-        workspaceSlug = slug;
-        workspaceName = data[0].name;
+        workspaceId    = data[0].workspace_id;
+        isCustomDomain = true;
+
+        if (workspaceId) {
+          const wsData = await supabaseGet(
+            `workspaces?id=eq.${encodeURIComponent(workspaceId)}&select=name&limit=1`
+          );
+          if (wsData?.[0]) workspaceName = wsData[0].name;
+        }
       }
     }
   }
-
-  // ─────────────────────────────────────────────────────────────
-  // 2. Custom domain routing:  portal.client.com  →  workspace
-  //    (apex domains and subdomains both handled)
-  // ─────────────────────────────────────────────────────────────
-  else if (
-    host !== ROOT_DOMAIN &&
-    !host.endsWith(`.${ROOT_DOMAIN}`) &&
-    host !== 'localhost' &&
-    !host.startsWith('localhost:') &&
-    !host.startsWith('127.0.0.1')
-  ) {
-    const data = await supabaseGet(
-      `workspace_domains?domain=eq.${encodeURIComponent(host)}&status=eq.active&select=workspace_id&order=created_at.desc&limit=1`
-    );
-    if (data?.[0]) {
-      workspaceId    = data[0].workspace_id;
-      isCustomDomain = true;
-
-      // Also fetch workspace name for white-label
-      if (workspaceId) {
-        const wsData = await supabaseGet(
-          `workspaces?id=eq.${encodeURIComponent(workspaceId)}&select=name&limit=1`
-        );
-        if (wsData?.[0]) workspaceName = wsData[0].name;
-      }
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // 3. Main domain (aroooxa.com) — no workspace context
-  // ─────────────────────────────────────────────────────────────
-  // No extra resolution needed; user accesses their dashboard normally.
 
   // Inject resolved workspace context headers
   if (workspaceId)   requestHeaders.set('x-workspace-id',   workspaceId);
@@ -101,7 +95,18 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // ─────────────────────────────────────────────────────────────
+  // Auth check — use getUser() in production (secure, verifies with Supabase),
+  // use getSession() in dev (reads cookies locally, no network round-trip = instant)
+  // ─────────────────────────────────────────────────────────────
+  let user: any = null;
+  if (isDev) {
+    const { data: { session } } = await supabase.auth.getSession();
+    user = session?.user ?? null;
+  } else {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  }
 
   const isAuthRoute     = pathname === '/login';
   const isPublicPreview = pathname.startsWith('/p/');
@@ -109,7 +114,7 @@ export async function middleware(request: NextRequest) {
   const isOnboarding    = pathname === '/onboarding';
 
   // ─────────────────────────────────────────────────────────────
-  // 4. Auth & Domain Restrictions
+  // Auth & Domain Restrictions
   // ─────────────────────────────────────────────────────────────
   const ADMIN_EMAIL = 'mo7a.classico@gmail.com';
   const isRootDomain = host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`;
@@ -125,17 +130,11 @@ export async function middleware(request: NextRequest) {
          url.pathname = '/';
          return NextResponse.redirect(url);
        } else {
-         // Fallback if no workspace found - sign out or show error
          const url = new URL('/login', request.url);
          url.searchParams.set('error', 'restricted');
          return NextResponse.redirect(url);
        }
     }
-
-    // Custom domains and subdomain portals: if the user is authenticated and
-    // workspace context was resolved, allow them through. The admin-only gate
-    // above already protects aroooxa.com itself.
-    // (No cross-workspace membership bounce needed for single-tenant setup.)
   }
 
   if (!user && !isAuthRoute && !isPublicPreview && !isApiRoute && !isOnboarding) {
@@ -155,6 +154,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)',
   ],
 };

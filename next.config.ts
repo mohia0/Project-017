@@ -26,9 +26,9 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "lucide-react",
       "framer-motion",
-      "@blocknote/react",
-      "@blocknote/core",
-      "@blocknote/mantine",
+      "date-fns",
+      "@mantine/core",
+      "@mantine/hooks",
     ],
     serverActions: {
       bodySizeLimit: "600mb",
