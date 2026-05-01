@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
 import { Info, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 
 const TOOL = 'proposals';
 
@@ -82,11 +83,25 @@ export default function ProposalsSettingsPage() {
     });
     const [isSavingPref, setIsSavingPref] = useState(false);
 
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+
     useEffect(() => {
         if (activeWorkspaceId && !hasFetched[`toolSettings_${TOOL}`]) {
             fetchToolSettings(activeWorkspaceId, TOOL);
         }
     }, [activeWorkspaceId]);
+
+    const hasFetchedProposals = hasFetched[`toolSettings_${TOOL}`];
+
+    if (!activeWorkspaceId || !mounted || !hasFetchedProposals) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-48 rounded-2xl w-full" />
+            </div>
+        );
+    }
 
     useEffect(() => {
         const current = toolSettings[TOOL] || DEFAULT_SETTINGS;

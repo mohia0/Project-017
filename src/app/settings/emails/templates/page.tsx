@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 import { AlertConfirmModal } from '@/components/modals/AlertConfirmModal';
 
 /* ─────────────── Constants ─────────────── */
@@ -76,6 +77,21 @@ export default function EmailTemplatesPage() {
             fetchEmailConfigs(activeWorkspaceId);
         }
     }, [activeWorkspaceId]);
+
+    const hasFetchedTemplates = useSettingsStore(state => state.hasFetched.emailTemplates);
+    const hasFetchedConfigs = useSettingsStore(state => state.hasFetched.emailConfigs);
+
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+
+    if (!activeWorkspaceId || !mounted || !hasFetchedTemplates || !hasFetchedConfigs) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
+                <SkeletonBox isDark={isDark} className="h-32 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+            </div>
+        );
+    }
 
     const emailConfig = emailConfigs.find(c => c.is_default) || emailConfigs[0];
 

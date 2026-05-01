@@ -47,7 +47,7 @@ interface SchedulerState {
 export const useSchedulerStore = create<SchedulerState>((set) => ({
     schedulers: [],
     bookings: [],
-    isLoading: true,
+    isLoading: false,
     error: null,
 
     fetchSchedulers: async () => {

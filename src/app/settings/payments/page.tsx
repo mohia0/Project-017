@@ -9,6 +9,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { Plus, Trash2, Check, Star, AlertCircle, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 import { v4 as uuidv4 } from 'uuid';
 
 const DEFAULT_PAYMENTS: Omit<WorkspacePayments, 'workspace_id'> = {
@@ -94,8 +95,16 @@ export default function PaymentsSettingsPage() {
         }
     };
 
-    if (!hasFetched.payments) {
-        return <div className="animate-pulse">Loading payments data...</div>;
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+
+    if (!hasFetched.payments || !mounted) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-40 rounded-2xl w-full" />
+            </div>
+        );
     }
 
     if (!activeWorkspaceId) {

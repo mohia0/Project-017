@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface AppLoaderProps {
   className?: string;
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
   color?: string;
 }
 
@@ -24,6 +24,8 @@ export function AppLoader({
     sm: 24,
     md: 40,
     lg: 64,
+    xl: 96,
+    "2xl": 128,
   };
 
   const currentSize = sizeMap[size];
@@ -41,9 +43,21 @@ export function AppLoader({
       }}
     >
       <div className="leap-frog-container">
-        <div className="dot"></div>
-        <div className="dot"></div>
-        <div className="dot"></div>
+        <div className="dot">
+          <svg viewBox="0 0 635 589" className="shape" fill="currentColor">
+            <path d="M317.232 589C134.121 589 0 465.085 0 294.5C0 123.915 134.121 0 317.232 0C500.343 0 634.464 123.915 634.464 294.5C634.464 465.085 500.343 589 317.232 589ZM317.232 435.313C387.103 435.313 443.321 382.206 443.321 294.5C443.321 206.794 387.103 153.687 317.232 153.687C247.36 153.687 191.142 206.794 191.142 294.5C191.142 382.206 247.36 435.313 317.232 435.313Z" />
+          </svg>
+        </div>
+        <div className="dot">
+          <svg viewBox="0 0 635 589" className="shape" fill="currentColor">
+            <path d="M317.232 589C134.121 589 0 465.085 0 294.5C0 123.915 134.121 0 317.232 0C500.343 0 634.464 123.915 634.464 294.5C634.464 465.085 500.343 589 317.232 589ZM317.232 435.313C387.103 435.313 443.321 382.206 443.321 294.5C443.321 206.794 387.103 153.687 317.232 153.687C247.36 153.687 191.142 206.794 191.142 294.5C191.142 382.206 247.36 435.313 317.232 435.313Z" />
+          </svg>
+        </div>
+        <div className="dot">
+          <svg viewBox="0 0 635 589" className="shape" fill="currentColor">
+            <path d="M317.232 589C134.121 589 0 465.085 0 294.5C0 123.915 134.121 0 317.232 0C500.343 0 634.464 123.915 634.464 294.5C634.464 465.085 500.343 589 317.232 589ZM317.232 435.313C387.103 435.313 443.321 382.206 443.321 294.5C443.321 206.794 387.103 153.687 317.232 153.687C247.36 153.687 191.142 206.794 191.142 294.5C191.142 382.206 247.36 435.313 317.232 435.313Z" />
+          </svg>
+        </div>
       </div>
 
       <style jsx>{`
@@ -71,15 +85,12 @@ export function AppLoader({
           transform-style: preserve-3d;
         }
 
-        .dot::before {
-          content: '';
+        .shape {
           display: block;
           height: var(--uib-dot-size);
           width: var(--uib-dot-size);
-          border-radius: 50%;
-          background-color: var(--uib-color);
-          transition: background-color 0.3s ease;
-          box-shadow: 0 0 0 0.5px var(--uib-color); /* Subtle anti-aliasing fix */
+          color: var(--uib-color);
+          transition: color 0.3s ease;
         }
 
         .dot:nth-child(1) {
@@ -87,13 +98,13 @@ export function AppLoader({
         }
 
         .dot:nth-child(2) {
-          transform: translateX(calc(var(--uib-size) * 0.375));
+          transform: translateX(calc(var(--uib-size) * 0.3));
           animation: leapFrog var(--uib-speed) ease calc(var(--uib-speed) / -1.5)
             infinite;
         }
 
         .dot:nth-child(3) {
-          transform: translateX(calc(var(--uib-size) * 0.75)) rotate(0deg);
+          transform: translateX(calc(var(--uib-size) * 0.6)) rotate(0deg);
           animation: leapFrog var(--uib-speed) ease calc(var(--uib-speed) / -3) infinite;
         }
 
@@ -107,11 +118,11 @@ export function AppLoader({
           }
 
           66.666% {
-            transform: translateX(calc(var(--uib-size) * -0.375)) rotate(180deg);
+            transform: translateX(calc(var(--uib-size) * -0.3)) rotate(180deg);
           }
 
           99.999% {
-            transform: translateX(calc(var(--uib-size) * -0.75)) rotate(180deg);
+            transform: translateX(calc(var(--uib-size) * -0.6)) rotate(180deg);
           }
 
           100% {
@@ -134,29 +145,25 @@ export function FullScreenLoader({
   className?: string;
 }) {
   const [mounted, setMounted] = useState(false);
-  const [useAccent, setUseAccent] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Switch to accent color after a short delay for a high-end feel
-    const timer = setTimeout(() => setUseAccent(true), 1000);
-    return () => clearTimeout(timer);
   }, []);
 
-  const accentColor = "var(--brand-loader-color, var(--brand-primary, #3b82f6))";
-  const initialColor = isDark ? "#ffffff" : "#000000";
-
+  // --brand-loader-color is set in globals.css from frame 0 (default: #f59e0b).
+  // BrandingProvider overwrites it once real branding loads — the animation
+  // transitions smoothly via the CSS variable cascade with no JS polling needed.
   const content = (
     <div
       className={cn(
-        "fixed top-0 left-0 w-screen h-screen z-[99999] flex flex-col items-center justify-center transition-colors duration-500",
+        "fixed top-0 left-0 w-screen h-screen z-[99999] flex flex-col items-center justify-center",
         isDark ? "bg-black" : "bg-white",
         className
       )}
     >
-      <AppLoader 
-        size="lg" 
-        color={useAccent ? accentColor : initialColor} 
+      <AppLoader
+        size="2xl"
+        color="var(--brand-loader-color)"
       />
       {label && (
         <p className={cn(

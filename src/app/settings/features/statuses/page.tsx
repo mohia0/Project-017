@@ -7,6 +7,7 @@ import { GripVertical, Plus, Trash2, Check, Info, Pencil, FileText, Receipt, Fol
 import { cn } from '@/lib/utils';
 import { ColorisInput } from '@/components/ui/ColorisInput';
 import { appToast } from '@/lib/toast';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -319,11 +320,24 @@ export default function StatusesSettingsPage() {
 
     const [activeTab, setActiveTab] = useState<Tool>('proposals');
 
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+
     useEffect(() => {
         if (activeWorkspaceId && !hasFetched['statuses']) {
             fetchStatuses(activeWorkspaceId);
         }
     }, [activeWorkspaceId, fetchStatuses, hasFetched]);
+
+    const hasFetchedStatuses = hasFetched['statuses'];
+
+    if (!activeWorkspaceId || !mounted || !hasFetchedStatuses) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">

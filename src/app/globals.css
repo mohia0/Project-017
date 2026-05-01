@@ -63,7 +63,21 @@
     --main-menu-border: #d2d2eb;
     --main-menu-text: #242236;
     --main-menu-active: #f1f1f9;
+
+    /* Brand defaults — overridden at runtime by BrandingProvider once branding loads.
+       Setting them here means the AppLoader animation uses the correct accent from frame 0
+       instead of waiting for the JS fetch to complete. */
+    --brand-primary: #f59e0b;
+    --brand-primary-rgb: 245, 158, 11;
+    --brand-primary-hover: #d97706;
+    --brand-primary-foreground: #000000;
+    --brand-secondary: #1a1a2e;
+    --brand-font: Inter, sans-serif;
+    --brand-radius: 12px;
+    /* Loader uses accent color from the start — no 1-second flash of white/black */
+    --brand-loader-color: #f59e0b;
   }
+
 
   html, body {
     height: 100%;

@@ -8,6 +8,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { supabase } from '@/lib/supabase';
 import { appToast } from '@/lib/toast';
 import { Eye, EyeOff } from 'lucide-react';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 
 export default function AccountSettingsPage() {
     const { user } = useAuthStore();
@@ -58,6 +59,17 @@ export default function AccountSettingsPage() {
         }
         setIsUpdatingPassword(false);
     };
+
+    const [mounted, setMounted] = useState(false);
+    React.useEffect(() => { setMounted(true); }, []);
+
+    if (!mounted || !user) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">

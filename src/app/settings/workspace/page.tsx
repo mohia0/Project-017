@@ -10,6 +10,7 @@ import { ChevronDown, Plus, X, Globe, Phone, Mail, MapPin, ExternalLink, Clock, 
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -259,9 +260,9 @@ export default function WorkspaceSettingsPage() {
 
     if (!hasFetchedWorkspace || !hasFetchedDomains.domains || !mounted) {
         return (
-            <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto py-8 animate-pulse">
-                <div className={cn("h-64 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
-                <div className={cn("h-96 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
+            <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto py-8">
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-96 rounded-2xl w-full" />
             </div>
         );
     }

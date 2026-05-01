@@ -12,6 +12,7 @@ import {
     Plus, MoreVertical, CheckCircle2, Circle, X, FlaskConical
 } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 import Link from 'next/link';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 
@@ -39,9 +40,23 @@ export default function EmailSettingsPage() {
         is_default: false
     });
 
+    const [mounted, setMounted] = useState(false);
+
     useEffect(() => {
+        setMounted(true);
         if (activeWorkspaceId) fetchEmailConfigs(activeWorkspaceId);
     }, [activeWorkspaceId]);
+
+    const hasFetchedEmails = useSettingsStore(state => state.hasFetched.emailConfigs);
+
+    if (!activeWorkspaceId || !mounted || !hasFetchedEmails) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
+                <SkeletonBox isDark={isDark} className="h-24 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-32 rounded-2xl w-full" />
+            </div>
+        );
+    }
 
     const handleSave = async () => {
         if (!activeWorkspaceId) return;

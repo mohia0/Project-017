@@ -9,6 +9,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { applyBrandingVariables } from '@/components/settings/BrandingProvider';
 import { RotateCcw, Upload, Image as ImageIcon, Check, Trash2, HelpCircle, Plus } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -305,7 +306,7 @@ export default function BrandingSettingsPage() {
     if (!hasFetched.branding || !mounted) {
         return (
             <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
-                <div className={cn("h-[400px] w-full rounded-2xl animate-pulse", isDark ? "bg-white/5" : "bg-black/5")} />
+                <SkeletonBox isDark={isDark} className="h-[400px] w-full rounded-2xl" />
             </div>
         );
     }

@@ -59,7 +59,7 @@ interface FormState {
 export const useFormStore = create<FormState>((set) => ({
     forms: [],
     responses: [],
-    isLoading: true,
+    isLoading: false,
     error: null,
 
     fetchForms: async () => {

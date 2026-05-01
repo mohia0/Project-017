@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
 import { AppLoader } from '@/components/ui/AppLoader';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 import { appToast } from '@/lib/toast';
 
 function DomainStatusBadge({ domain }: { domain: WorkspaceDomain }) {
@@ -196,9 +197,9 @@ export default function DomainsSettingsPage() {
 
     if (!activeWorkspaceId || !mounted || !hasFetched.domains) {
         return (
-            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 animate-pulse">
-                <div className={cn("h-24 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
-                <div className={cn("h-40 rounded-2xl", isDark ? "bg-white/5" : "bg-black/5")} />
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
+                <SkeletonBox isDark={isDark} className="h-24 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-40 rounded-2xl w-full" />
             </div>
         );
     }

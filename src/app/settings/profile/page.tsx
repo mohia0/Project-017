@@ -6,6 +6,7 @@ import { SettingsField, SettingsInput, SettingsToggle, SettingsTextarea, Setting
 import { useSettingsStore, UserProfile } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
+import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { appToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
@@ -110,7 +111,12 @@ export default function ProfileSettingsPage() {
     };
 
     if (!hasFetched.profile) {
-        return <div className="animate-pulse">Loading profile...</div>;
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-48 rounded-2xl w-full" />
+            </div>
+        );
     }
 
     return (

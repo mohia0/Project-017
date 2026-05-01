@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useUIStore } from '@/store/useUIStore';
 import { FullScreenLoader } from '@/components/ui/AppLoader';
@@ -77,7 +77,7 @@ function DocumentTitleSetter() {
     return null;
 }
 
-function WorkspaceDataSync() {
+function useWorkspaceDataSync() {
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
     const projects = useProjectStore(s => s.projects);
     
@@ -143,13 +143,29 @@ function WorkspaceDataSync() {
             }
         });
     }, [files, profile?.avatar_url]);
+}
 
-    return null;
+/** Map the current pathname to a store's isLoading flag so we can hold the
+ *  full-screen loader until the current page's data is also ready. */
+function usePageDataLoading(pathname: string): boolean {
+    const invoiceLoading   = useInvoiceStore(s => s.isLoading);
+    const proposalLoading  = useProposalStore(s => s.isLoading);
+    const clientLoading    = useClientStore(s => s.isLoading);
+    const formLoading      = useFormStore(s => s.isLoading);
+    const schedulerLoading = useSchedulerStore(s => s.isLoading);
+    const projectLoading   = useProjectStore(s => s.isLoading);
+
+    if (pathname.startsWith('/invoices'))  return invoiceLoading;
+    if (pathname.startsWith('/proposals')) return proposalLoading;
+    if (pathname.startsWith('/clients'))   return clientLoading;
+    if (pathname.startsWith('/forms'))     return formLoading;
+    if (pathname.startsWith('/schedulers'))return schedulerLoading;
+    if (pathname.startsWith('/projects'))  return projectLoading;
+    return false; // dashboard, settings, etc — no page-level loader needed
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const { theme, isRightPanelCollapsed, rightPanel, activeWorkspaceId } = useUIStore();
-    // Removed isLoading since session is synchronously hydrated and middleware handles redirects
     const { user } = useAuthStore();
     const { fetchMenu } = useMenuStore();
     const { fetchWorkspaces, workspaces, isLoading: wsLoading, hasFetched: wsFetched } = useWorkspaceStore();
@@ -160,6 +176,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const isAuthRoute = pathname === '/login';
     const isOnboarding = pathname === '/onboarding';
     const isMobile = useIsMobile();
+
+    const [minLoadingTimePassed, setMinLoadingTimePassed] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setMinLoadingTimePassed(true);
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Watch if the current page's data store is still loading
+    const isPageDataLoading = usePageDataLoading(pathname || '/');
+
+    // Trigger aggressive background fetches immediately regardless of loader visibility
+    useWorkspaceDataSync();
 
     // Fetch workspaces on mount
     useEffect(() => {
@@ -176,7 +207,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }, [user, activeWorkspaceId, fetchMenu]);
 
     useEffect(() => {
-        // AppLayout only handles application-flow redirects now, NOT auth redirects (done by middleware)
         if (user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview) {
             router.push('/onboarding');
         }
@@ -185,11 +215,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const isRedirectingToOnboarding = user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview;
     const isProtectedRoute = !isAuthRoute && !isPublicPreview && !isOnboarding;
 
-    // Show full screen loader until workspaces are fetched on ALL protected routes
-    // to prevent the UI from flickering (sidebars showing before workspace context is ready).
-    // EVEN IF user is technically null on the very first SSR tick, if we're on a protected
-    // route, we MUST wait for the data sequence (hydrate -> fetch workspaces) to finish.
-    const isInitialLoading = isProtectedRoute && !wsFetched;
+    // Hold the loader until BOTH workspaces AND the current page's data are ready, 
+    // AND at least 2 seconds have passed for the initial boot animation.
+    const isInitialLoading = isProtectedRoute && (!wsFetched || isPageDataLoading || !minLoadingTimePassed);
 
     if (isInitialLoading || isRedirectingToOnboarding) {
         return <FullScreenLoader isDark={isDark} />;
@@ -220,7 +248,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     "flex-1 flex flex-col overflow-hidden",
                     isDark ? "bg-[#141414]" : "bg-white"
                 )}>
-                    <WorkspaceDataSync />
                     <DocumentTitleSetter />
                     <PrivacyModeEffect />
                     <ConversionRatesInitEffect />
@@ -257,7 +284,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 "flex-1 flex flex-col relative overflow-hidden rounded-2xl transition-all duration-300 min-w-0 border shadow-2xl",
                 isDark ? "bg-[#141414] border-white/5 shadow-black/40" : "bg-white border-black/[0.03] shadow-black/[0.04]"
             )}>
-                <WorkspaceDataSync />
                 <DocumentTitleSetter />
                 {children}
             </main>

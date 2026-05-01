@@ -35,7 +35,7 @@ interface ProposalState {
 
 export const useProposalStore = create<ProposalState>((set) => ({
     proposals: [],
-    isLoading: true,
+    isLoading: false,
     error: null,
 
     fetchProposals: async () => {
