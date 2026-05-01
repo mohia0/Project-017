@@ -1,7 +1,15 @@
-import React from 'react';
-import FormEditor from '@/components/forms/FormEditor';
+'use client';
 
-export default async function FormEditorPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
+import React, { use } from 'react';
+import dynamic from 'next/dynamic';
+import { AppLoader } from '@/components/ui/AppLoader';
+
+const FormEditor = dynamic(
+    () => import('@/components/forms/FormEditor'),
+    { ssr: false, loading: () => <AppLoader /> }
+);
+
+export default function FormEditorPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     return <FormEditor id={id} />;
 }

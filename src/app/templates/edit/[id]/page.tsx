@@ -1,7 +1,15 @@
-import React from 'react';
-import TemplateEditor from '@/components/templates/TemplateEditor';
+'use client';
 
-export default async function TemplateEditorPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
+import React, { use } from 'react';
+import dynamic from 'next/dynamic';
+import { AppLoader } from '@/components/ui/AppLoader';
+
+const TemplateEditor = dynamic(
+    () => import('@/components/templates/TemplateEditor'),
+    { ssr: false, loading: () => <AppLoader /> }
+);
+
+export default function TemplateEditorPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     return <TemplateEditor id={id} />;
 }
