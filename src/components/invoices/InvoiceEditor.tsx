@@ -158,6 +158,7 @@ export default function InvoiceEditor({ id }: { id?: string }) {
     
     
     const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+    const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [leftTab, setLeftTab] = useState<LeftPanelTab>('details');
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -967,11 +968,20 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                     </div>
                 )}
 
+                {/* ── LEFT PANEL (Collapsible) ── */}
                 {!isPreview && (
-                    <div className={cn(
-                        "hidden md:flex flex-col overflow-hidden transition-all duration-300 relative w-[240px]",
-                        isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
-                    )}>
+                    <>
+                        <div 
+                            className={cn(
+                                "hidden md:flex flex-col relative transition-all duration-300 ease-in-out z-10 shrink-0",
+                                leftPanelOpen ? "w-[240px]" : "w-[0px]"
+                            )}
+                        >
+                            <div className={cn(
+                                "absolute top-0 right-0 bottom-0 w-[240px] flex flex-col overflow-hidden border-r transition-opacity duration-200",
+                                isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]",
+                                leftPanelOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+                            )}>
                         {/* Tab switcher */}
                         <div className={cn(
                             "flex items-center shrink-0 p-1.5 gap-1 m-3 rounded-xl border relative z-10",
@@ -1451,7 +1461,39 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                 />
                             )}
                         </div>
-                    </div>
+                            </div>
+                            
+                            {/* Toggle handle — right edge of panel */}
+                            <div
+                                onClick={() => setLeftPanelOpen(v => !v)}
+                                className="group/handle absolute top-0 bottom-0 z-30 flex items-center justify-start cursor-pointer"
+                                style={{ right: -16, width: 16 }}
+                                title={leftPanelOpen ? 'Collapse panel' : 'Expand panel'}
+                            >
+                                <div
+                                    className={cn(
+                                        "h-full flex items-center justify-center transition-all duration-200 rounded-none",
+                                        "w-[var(--panel-handle-width)] group-hover/handle:w-[var(--panel-handle-hover-width)]",
+                                        isDark
+                                            ? "bg-[#0d0d0d] group-hover/handle:bg-[#222]"
+                                            : "bg-[#f5f5f5] group-hover/handle:bg-[#e2e2e2]"
+                                    )}
+                                    style={{
+                                        '--panel-handle-width': leftPanelOpen ? '4px' : '12px',
+                                        '--panel-handle-hover-width': leftPanelOpen ? '10px' : '16px',
+                                    } as React.CSSProperties}
+                                >
+                                    <span className={cn(
+                                        "transition-opacity duration-150 flex items-center justify-center",
+                                        !leftPanelOpen ? "opacity-100" : "opacity-0 group-hover/handle:opacity-100",
+                                        isDark ? "text-[#888]" : "text-[#777]"
+                                    )}>
+                                        {leftPanelOpen ? <ChevronLeft size={10} strokeWidth={3} /> : <ChevronRight size={10} strokeWidth={3} />}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </>
                 )}
 
 

@@ -807,6 +807,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
     const [lastIndexForUpload, setLastIndexForUpload] = useState<number | null>(null);
     const [isPreview, setIsPreview] = useState(false);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+    const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [selectedResponseIds, setSelectedResponseIds] = useState<Set<string>>(new Set());
     const [testValues, setTestValues] = useState<Record<string, string>>({});
 
@@ -1682,12 +1683,26 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                 </div>
                             </div>
 
-                            {/* â”€â”€ RIGHT PANEL â”€â”€ */}
+                                               {/* ── LEFT PANEL (collapsible) ── */}
                             {!isPreview && (
-                                <div className={cn(
-                                    "hidden md:flex flex-col overflow-hidden w-[240px] shrink-0",
-                                    isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
-                                )}>
+                                <div
+                                    className="hidden md:flex shrink-0 relative"
+                                    style={{
+                                        width: leftPanelOpen ? 240 : 0,
+                                        transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1)',
+                                        overflow: 'visible',
+                                    }}
+                                >
+                                    {/* Panel content */}
+                                    <div className={cn(
+                                        "flex flex-col absolute inset-0 overflow-hidden",
+                                        isDark ? "bg-[#0d0d0d] border-[#252525]" : "bg-[#f5f5f5] border-[#e4e4e4]"
+                                    )} style={{
+                                        width: 240,
+                                        opacity: leftPanelOpen ? 1 : 0,
+                                        transition: 'opacity 0.18s ease',
+                                        pointerEvents: leftPanelOpen ? 'auto' : 'none',
+                                    }}>
                                     {/* Tab switcher */}
                                     <div className={cn(
                                         "flex items-center shrink-0 p-1.5 gap-1 m-3 rounded-xl border relative z-10",
@@ -1940,8 +1955,39 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                             />
                                         </div>
                                     )}
+                                    </div>
+                                    </div>
+
+                                    {/* Toggle handle — right edge of panel */}
+                                    <div
+                                        onClick={() => setLeftPanelOpen(v => !v)}
+                                        className="group/handle absolute top-0 bottom-0 z-30 flex items-center justify-start cursor-pointer"
+                                        style={{ right: -16, width: 16 }}
+                                        title={leftPanelOpen ? 'Collapse panel' : 'Expand panel'}
+                                    >
+                                        <div
+                                            className={cn(
+                                                "h-full flex items-center justify-center transition-all duration-200 rounded-none",
+                                                "w-[var(--panel-handle-width)] group-hover/handle:w-[var(--panel-handle-hover-width)]",
+                                                isDark
+                                                    ? "bg-[#0d0d0d] group-hover/handle:bg-[#222]"
+                                                    : "bg-[#f5f5f5] group-hover/handle:bg-[#e2e2e2]"
+                                            )}
+                                            style={{
+                                                '--panel-handle-width': leftPanelOpen ? '4px' : '12px',
+                                                '--panel-handle-hover-width': leftPanelOpen ? '10px' : '16px',
+                                            } as React.CSSProperties}
+                                        >
+                                                <span className={cn(
+                                                    "transition-opacity duration-150 flex items-center justify-center",
+                                                    !leftPanelOpen ? "opacity-100" : "opacity-0 group-hover/handle:opacity-100",
+                                                    isDark ? "text-white/50" : "text-black/35"
+                                                )}>
+                                                    {leftPanelOpen ? <ChevronLeft size={10} strokeWidth={3} /> : <ChevronRight size={10} strokeWidth={3} />}
+                                                </span>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
                             )}
                         </div>
                     </div>
