@@ -114,14 +114,26 @@ export function DataTable<T extends { id: string }>({
     const storageKey = activeWorkspaceId ? `${activeWorkspaceId}_${storageKeyPrefix}` : storageKeyPrefix;
 
     const currentSettings = toolSettings[storageKeyPrefix] || {};
-    const [columnOrder, setColumnOrder] = useState<string[]>(columns.map(c => c.id));
+    
+    // Synchronous initialization to prevent skeleton flash on cached navigations
+    const [columnOrder, setColumnOrder] = useState<string[]>(() => {
+        const fetchKey = `toolSettings_${storageKeyPrefix}`;
+        if (hasFetched[fetchKey] && currentSettings.columnOrder) return currentSettings.columnOrder;
+        return columns.map(c => c.id);
+    });
+    
     const [colWidths, setColWidths] = useState<Record<string, number>>(() => {
+        const fetchKey = `toolSettings_${storageKeyPrefix}`;
+        if (hasFetched[fetchKey] && currentSettings.colWidths) return currentSettings.colWidths;
         const initial: Record<string, number> = { select: 44, right_slot: rightHeaderWidth || 80, ghost: 0 };
         columns.forEach(c => initial[c.id] = c.defaultWidth);
         return initial;
     });
 
-    const [isInitialized, setIsInitialized] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(() => {
+        const fetchKey = `toolSettings_${storageKeyPrefix}`;
+        return !!hasFetched[fetchKey];
+    });
 
     // 1. Initial Fetch
     useEffect(() => {
@@ -132,8 +144,9 @@ export function DataTable<T extends { id: string }>({
 
     // Reset initialization when workspace or tool changes
     useEffect(() => {
-        setIsInitialized(false);
-    }, [activeWorkspaceId, storageKeyPrefix]);
+        const fetchKey = `toolSettings_${storageKeyPrefix}`;
+        setIsInitialized(!!hasFetched[fetchKey]);
+    }, [activeWorkspaceId, storageKeyPrefix, hasFetched]);
 
     // 2. Sync from Settings Store (Remote ground truth)
     useEffect(() => {
