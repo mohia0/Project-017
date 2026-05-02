@@ -106,15 +106,6 @@ export default function ProjectsSettingsPage() {
 
     const hasFetchedProjects = hasFetched[`toolSettings_${TOOL}`];
 
-    if (!activeWorkspaceId || !mounted || !hasFetchedProjects) {
-        return (
-            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
-                <SkeletonBox isDark={isDark} className="h-48 rounded-2xl w-full" />
-                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
-            </div>
-        );
-    }
-
     useEffect(() => {
         const current = toolSettings[TOOL] || DEFAULT_SETTINGS;
         setWsForm({
@@ -127,6 +118,15 @@ export default function ProjectsSettingsPage() {
             default_reminder: current.default_reminder ?? DEFAULT_SETTINGS.default_reminder,
         });
     }, [toolSettings]);
+
+    if (!activeWorkspaceId || !mounted || !hasFetchedProjects) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
+                <SkeletonBox isDark={isDark} className="h-48 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+            </div>
+        );
+    }
 
     const wsHasChanges = JSON.stringify(wsForm) !== JSON.stringify({
         ws_task_position: saved.ws_task_position ?? DEFAULT_SETTINGS.ws_task_position,

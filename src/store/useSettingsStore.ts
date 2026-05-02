@@ -187,6 +187,7 @@ interface SettingsState {
   incrementCounter: (workspaceId: string, tool: 'proposals' | 'invoices') => Promise<void>;
 
   hasFetched: Record<string, boolean>;
+  _fetchedForWorkspace: string | null;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -212,6 +213,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   toolSettings: {},
 
   hasFetched: {},
+  _fetchedForWorkspace: null,
 
   fetchProfile: async () => {
     set({ isLoading: true });
@@ -252,6 +254,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   fetchBranding: async (workspaceId) => {
+    if (get()._fetchedForWorkspace !== workspaceId) {
+      set({ _fetchedForWorkspace: workspaceId, hasFetched: { profile: get().hasFetched.profile } });
+    }
     set({ isLoading: true });
     const { data, error } = await supabase
       .from('workspace_branding')
@@ -282,6 +287,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   fetchPayments: async (workspaceId) => {
+    if (get()._fetchedForWorkspace !== workspaceId) {
+      set({ _fetchedForWorkspace: workspaceId, hasFetched: { profile: get().hasFetched.profile } });
+    }
     set({ isLoading: true });
     const { data, error } = await supabase
       .from('workspace_payments')
@@ -313,6 +321,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   fetchDomains: async (workspaceId) => {
+    if (get()._fetchedForWorkspace !== workspaceId) {
+      set({ _fetchedForWorkspace: workspaceId, hasFetched: { profile: get().hasFetched.profile } });
+    }
     set({ isLoading: true });
     const { data, error } = await supabase
       .from('workspace_domains')
@@ -362,6 +373,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   fetchEmailConfigs: async (workspaceId) => {
+    if (get()._fetchedForWorkspace !== workspaceId) {
+      set({ _fetchedForWorkspace: workspaceId, hasFetched: { profile: get().hasFetched.profile } });
+    }
     set({ isLoading: true });
     const { data, error } = await supabase
       .from('workspace_email_config')
@@ -431,6 +445,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   fetchEmailTemplates: async (workspaceId) => {
+    if (get()._fetchedForWorkspace !== workspaceId) {
+      set({ _fetchedForWorkspace: workspaceId, hasFetched: { profile: get().hasFetched.profile } });
+    }
     set({ isLoading: true });
     const { data, error } = await supabase
       .from('email_templates')
@@ -472,6 +489,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   // ── Statuses ────────────────────────────────────────────────────────────────
 
   fetchStatuses: async (workspaceId) => {
+    if (get()._fetchedForWorkspace !== workspaceId) {
+      set({ _fetchedForWorkspace: workspaceId, hasFetched: { profile: get().hasFetched.profile } });
+    }
     const { data, error } = await supabase
       .from('workspace_statuses')
       .select('*')
@@ -579,6 +599,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   // ── Tool Settings ────────────────────────────────────────────────────────────
 
   fetchToolSettings: async (workspaceId, tool) => {
+    if (get()._fetchedForWorkspace !== workspaceId) {
+      set({ _fetchedForWorkspace: workspaceId, hasFetched: { profile: get().hasFetched.profile } });
+    }
     const { data, error } = await supabase
       .from('workspace_tool_settings')
       .select('settings')

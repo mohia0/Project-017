@@ -94,15 +94,6 @@ export default function ProposalsSettingsPage() {
 
     const hasFetchedProposals = hasFetched[`toolSettings_${TOOL}`];
 
-    if (!activeWorkspaceId || !mounted || !hasFetchedProposals) {
-        return (
-            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
-                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
-                <SkeletonBox isDark={isDark} className="h-48 rounded-2xl w-full" />
-            </div>
-        );
-    }
-
     useEffect(() => {
         const current = toolSettings[TOOL] || DEFAULT_SETTINGS;
         setNumberingForm({
@@ -117,6 +108,15 @@ export default function ProposalsSettingsPage() {
             show_logo: current.show_logo ?? DEFAULT_SETTINGS.show_logo,
         });
     }, [toolSettings]);
+
+    if (!activeWorkspaceId || !mounted || !hasFetchedProposals) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-48 rounded-2xl w-full" />
+            </div>
+        );
+    }
 
     const numberingHasChanges = JSON.stringify(numberingForm) !== JSON.stringify({
         prefix: saved.prefix ?? DEFAULT_SETTINGS.prefix,

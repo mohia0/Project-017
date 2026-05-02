@@ -181,7 +181,7 @@ export default async function RootLayout({
                     document.documentElement.style.setProperty('--loader-bg', '#000000');
                   } else {
                     document.documentElement.classList.remove('dark');
-                    document.documentElement.style.setProperty('--loader-bg', '#e2e2e2');
+                    document.documentElement.style.setProperty('--loader-bg', '#ffffff');
                   }
                 }
                 

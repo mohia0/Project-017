@@ -121,15 +121,6 @@ export default function InvoicesSettingsPage() {
 
     const hasFetchedInvoices = hasFetched[`toolSettings_${TOOL}`];
 
-    if (!activeWorkspaceId || !mounted || !hasFetchedInvoices) {
-        return (
-            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
-                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
-                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
-            </div>
-        );
-    }
-
     useEffect(() => {
         const current = toolSettings[TOOL] || DEFAULT_SETTINGS;
         setNumberingForm({
@@ -145,6 +136,15 @@ export default function InvoicesSettingsPage() {
             auto_receipt_on_client_pay: current.auto_receipt_on_client_pay ?? DEFAULT_SETTINGS.auto_receipt_on_client_pay,
         });
     }, [toolSettings]);
+
+    if (!activeWorkspaceId || !mounted || !hasFetchedInvoices) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8 px-4">
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+            </div>
+        );
+    }
 
     const numberingHasChanges = JSON.stringify(numberingForm) !== JSON.stringify({
         prefix: saved.prefix ?? DEFAULT_SETTINGS.prefix,

@@ -76,7 +76,7 @@
     --brand-radius: 12px;
     /* Loader uses accent color from the start — no 1-second flash of white/black */
     --brand-loader-color: #f59e0b;
-    --loader-bg: #e2e2e2;
+    --loader-bg: #ffffff;
   }
 
   html.dark {
