@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, usePresence } from 'framer-motion';
 import {
     X, Calendar, Flag, User, ChevronDown,
     MessageSquare, Paperclip, Activity, Trash2, Check,
@@ -578,6 +578,15 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
     const [comment, setComment]   = useState('');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+    // Fast exit handling for AnimatePresence
+    const [isPresent, safeToRemove] = usePresence();
+    useEffect(() => {
+        if (!isPresent) {
+            const timer = setTimeout(safeToRemove, 180);
+            return () => clearTimeout(timer);
+        }
+    }, [isPresent, safeToRemove]);
+
     // Branding for tags
     const branding = useSettingsStore(s => s.branding);
     const primaryColor = branding?.primary_color || '#3b82f6';
@@ -862,13 +871,14 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                         <div className={cn("w-px h-4 mx-1", isDark ? "bg-[#2a2a2a]" : "bg-[#e8e8e8]")} />
 
 
+                        <button onClick={toggleViewMode} title={viewMode === 'center' ? 'Dock right' : 'Center focus'}
+                            className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
+                                isDark ? "text-[#666] hover:text-white hover:bg-white/8" : "text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]")}>
+                            {viewMode === 'center' ? <PanelRight size={14} /> : <Maximize size={14} />}
+                        </button>
+
                         {!readOnly && (
                             <>
-                                <button onClick={toggleViewMode} title={viewMode === 'center' ? 'Dock right' : 'Center focus'}
-                                    className={cn("w-8 h-8 flex items-center justify-center rounded-lg transition-colors",
-                                        isDark ? "text-[#666] hover:text-white hover:bg-white/8" : "text-[#aaa] hover:text-[#333] hover:bg-[#f5f5f5]")}>
-                                    {viewMode === 'center' ? <PanelRight size={14} /> : <Maximize size={14} />}
-                                </button>
 
                                 {/* Delete with confirm */}
                                 <div className="relative flex items-center justify-center">

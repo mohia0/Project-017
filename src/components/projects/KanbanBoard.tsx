@@ -1183,7 +1183,7 @@ interface KanbanBoardProps {
     onReorderTaskOverride?: (taskId: string, destGroupId: string, newPosition: number) => void;
 }
 
-export default function KanbanBoard({ 
+export default React.memo(function KanbanBoard({ 
     projectId, isDark, searchQuery, showArchived,
     filterPriority = 'all', filterStatus = 'all', orderBy = 'position',
     onTaskClick, isPreview, externalTasks, externalGroups,
@@ -1710,4 +1710,4 @@ export default function KanbanBoard({
             />
         </div>
     );
-}
+});

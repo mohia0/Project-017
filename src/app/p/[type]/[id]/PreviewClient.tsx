@@ -120,8 +120,8 @@ function launchFullScreenConfetti(container: HTMLElement) {
     setTimeout(() => dropped.forEach(el => el.remove()), 4200);
 }
 
-const KanbanBoard = dynamic(() => import('@/components/projects/KanbanBoard'), { ssr: false });
-const TaskDetailPanel = dynamic(() => import('@/components/projects/TaskDetailPanel'), { ssr: false });
+import KanbanBoard from '@/components/projects/KanbanBoard';
+import TaskDetailPanel from '@/components/projects/TaskDetailPanel';
 
 // Anon-key client — safe for public preview pages, used only to subscribe
 // to Realtime events. No sensitive data is written through this client.
@@ -1460,6 +1460,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 <AnimatePresence>
                     {selectedTask && (
                         <TaskDetailPanel
+                            key={selectedTask.id}
                             task={selectedTask as any}
                             projectId={data.id}
                             projectName={liveData.name || liveData.title}
