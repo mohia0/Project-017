@@ -20,6 +20,7 @@ import { useFileStore } from '@/store/useFileStore';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter } from 'next/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useFaviconBadge } from '@/hooks/useFaviconBadge';
 
 import LeftSystemMenu from './LeftSystemMenu';
 import { MobileNavBar, MobileRightPanelDrawer } from './MobileNav';
@@ -232,6 +233,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}>
                 <DocumentTitleSetter />
                 <PrivacyModeEffect />
+                <FaviconBadgeEffect />
                 <ConversionRatesInitEffect />
                 {children}
             </div>
@@ -251,6 +253,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}>
                     <DocumentTitleSetter />
                     <PrivacyModeEffect />
+                    <FaviconBadgeEffect />
                     <ConversionRatesInitEffect />
                     {/* Inner scroll area — padded so content isn't hidden behind floating nav */}
                     <div className="flex-1 overflow-hidden flex flex-col" style={{ paddingBottom: 'max(92px, calc(env(safe-area-inset-bottom) + 80px))' }}>
@@ -286,6 +289,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 isDark ? "bg-[#141414] border-white/5 shadow-black/40" : "bg-white border-black/[0.03] shadow-black/[0.04]"
             )}>
                 <DocumentTitleSetter />
+                <FaviconBadgeEffect />
                 {children}
             </main>
 
@@ -339,5 +343,19 @@ function PrivacyModeEffect() {
         }
     }, [isPrivacyMode, isPublicPreview, isAuthRoute, isOnboarding]);
 
+    return null;
+}
+
+/** Renders an unread-count badge on the browser favicon using the accent color.
+ *  Uses the workspace custom favicon if one is set, otherwise falls back to
+ *  the default aroooxa favicon — preventing the custom favicon from being
+ *  overwritten when the badge clears. */
+function FaviconBadgeEffect() {
+    const notifications = useNotificationStore(s => s.notifications);
+    const branding = useSettingsStore(s => s.branding);
+    const unreadCount = notifications.filter(n => !n.read).length;
+    // Drive faviconSrc from the store so changes to custom favicon are reflected
+    const faviconSrc = branding?.favicon_url || '/favicon.svg';
+    useFaviconBadge(unreadCount, faviconSrc);
     return null;
 }
