@@ -246,7 +246,7 @@ export default function RightToolsMenu() {
                     onClick={toggleNotifications}
                     onContextMenu={(e) => {
                         e.preventDefault();
-                        if (!notificationsOpen && unreadCount > 0) {
+                        if (unreadCount > 0) {
                             markAllAsRead();
                         }
                     }}

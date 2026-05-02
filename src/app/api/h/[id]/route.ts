@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { supabaseService } from '@/lib/supabase-service';
 import { getGeoIntelligence, getDeviceType, getOS } from '@/lib/geo';
 
@@ -44,6 +46,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                         read: false,
                         type: 'hook',
                         metadata: { 
+                            hook_id: hook.id,
                             visitor: visitor ? { ...visitor, deviceType, os } : { deviceType, os }, 
                             color: hook.color 
                         }

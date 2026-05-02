@@ -350,7 +350,7 @@ export function DataTable<T extends { id: string }>({
                 {/* Header */}
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <div className={cn("grid w-full border-b text-[10px] font-semibold uppercase tracking-wider sticky top-0 z-30",
-                        isDark ? "bg-[#1a1a1a] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}
+                        isDark ? "bg-[#141414] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}
                         style={{ gridTemplateColumns: gridTemplate }}>
                         
                         <div data-col-id="select" className={cn("relative px-0 py-2 flex items-center justify-center shrink-0", isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]")}>
@@ -395,7 +395,7 @@ export function DataTable<T extends { id: string }>({
 
                         {(rightHeaderSlot || rightCellSlot) && (
                             <div data-col-id="right_slot" className={cn("relative px-4 py-2 flex items-center justify-end font-semibold sticky right-0 z-40 group/header", 
-                                isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]")}
+                                isDark ? "bg-[#141414]" : "bg-[#fafafa]")}
                                 style={{ width: colWidths.right_slot }}
                             >
                                 {columnOrder.length > 0 && (
@@ -442,7 +442,7 @@ export function DataTable<T extends { id: string }>({
                                             {(rightHeaderSlot || rightCellSlot) && (
                                             <div className={cn(
                                                 "px-3 py-1.5 self-stretch flex items-center justify-end sticky right-0 z-10 transition-colors",
-                                                isDark ? "bg-[#1a1a1a]" : "bg-[#fafafa]"
+                                                isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-[#fafafa] group-hover:bg-[#f5f5f5]"
                                             )}
                                             style={{ width: colWidths.right_slot }} 
                                             onClick={e => e.stopPropagation()}>

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Info, Calendar as CalendarIcon, Palette
+    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Info, Calendar as CalendarIcon, Palette, HelpCircle
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
@@ -33,6 +33,30 @@ const COLORS = [
     '#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9',
     '#06b6d4', '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b', '#f97316',
 ];
+
+function HelpTip({ content, isDark }: { content: React.ReactNode; isDark: boolean }) {
+    const [show, setShow] = useState(false);
+    return (
+        <div className="relative flex items-center justify-center">
+            <button
+                type="button"
+                onMouseEnter={() => setShow(true)}
+                onMouseLeave={() => setShow(false)}
+                className={cn('opacity-30 hover:opacity-70 transition-opacity cursor-help', isDark ? 'text-white' : 'text-black')}
+            >
+                <HelpCircle size={14} />
+            </button>
+            {show && (
+                <div className={cn(
+                    'absolute bottom-full right-0 mb-2 w-56 px-3 py-2 rounded-xl text-xs font-normal shadow-xl z-50 pointer-events-none whitespace-normal text-left tracking-normal',
+                    isDark ? 'bg-[#222] text-white/80 border border-white/10' : 'bg-white text-black/70 border border-black/10'
+                )}>
+                    {content}
+                </div>
+            )}
+        </div>
+    );
+}
 
 /* ─── Shared helpers ─── */
 function getInitials(name: string) {
@@ -211,6 +235,10 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                 } else {
                                                     if (!notif.read) markAsRead(notif.id);
                                                 }
+                                            }}
+                                            onContextMenu={(e) => {
+                                                e.preventDefault();
+                                                if (!notif.read) markAsRead(notif.id);
                                             }}
                                             className={cn(
                                                 "flex items-start gap-1.5 pl-2 pr-1.5 py-2.5 cursor-pointer relative",
@@ -1130,6 +1158,7 @@ function CompanyPanel({ id, isDark }: { id: string; isDark: boolean }) {
 /* ─── Hook Detail Panel ─── */
 function HookPanel({ id, initialEditing = false, isDark }: { id: string; initialEditing?: boolean; isDark: boolean }) {
     const { hooks, updateHook, refreshHookEventCount } = useHookStore();
+    const { notifications, fetchNotifications } = useNotificationStore();
     const hook = hooks.find(h => h.id === id);
     
     const [editing, setEditing] = useState(initialEditing);
@@ -1141,6 +1170,7 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
     // Refresh event count + last_fired_at when the panel opens
     useEffect(() => {
         refreshHookEventCount(id);
+        fetchNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
     const [saving, setSaving] = useState(false);
@@ -1324,7 +1354,29 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
 
                         {/* Embed Code */}
                         <div>
-                            <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>HTML embed code</p>
+                            <div className="flex items-center justify-between mb-2">
+                                <p className={cn('text-[10px] font-bold uppercase tracking-wider', isDark ? 'text-[#444]' : 'text-[#bbb]')}>HTML embed code</p>
+                                <HelpTip 
+                                    isDark={isDark} 
+                                    content={
+                                        <div className="flex flex-col gap-1">
+                                            <p className={cn('text-[11px] font-bold mb-1', isDark ? 'text-[#aaa]' : 'text-[#555]')}>How to use</p>
+                                            {[
+                                                'Copy the HTML embed code.',
+                                                'Paste it inside the <body> of a page.',
+                                                'When the page loads, the hook fires silently.',
+                                            ].map((step, i) => (
+                                                <div key={i} className="flex items-start gap-2">
+                                                    <span className={cn('w-3.5 h-3.5 rounded-full shrink-0 flex items-center justify-center text-[8px] font-bold mt-0.5', isDark ? 'bg-white/8 text-[#666]' : 'bg-[#eaeaef] text-[#999]')}>
+                                                        {i + 1}
+                                                    </span>
+                                                    <p className={cn('text-[10px] leading-relaxed', isDark ? 'text-[#888]' : 'text-[#666]')}>{step}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    } 
+                                />
+                            </div>
                             <div className={cn('rounded-xl border overflow-hidden', isDark ? 'bg-[#1a1a1a] border-[#2e2e2e]' : 'bg-[#f7f7f7] border-[#e8e8e8]')}>
                                 <div className={cn('flex items-center justify-between px-3 py-1.5 border-b', isDark ? 'border-[#252525]' : 'border-[#e8e8e8]')}>
                                     <span className={cn('text-[9px] font-bold uppercase tracking-wider', isDark ? 'text-[#444]' : 'text-[#ccc]')}>HTML</span>
@@ -1339,22 +1391,105 @@ function HookPanel({ id, initialEditing = false, isDark }: { id: string; initial
                             </div>
                         </div>
 
-                        {/* Instructions */}
-                        <div className={cn('rounded-xl border p-4', isDark ? 'bg-[#1a1a1a] border-[#252525]' : 'bg-[#f7f7f9] border-[#e8e8f0]')}>
-                            <p className={cn('text-[11px] font-bold mb-3', isDark ? 'text-[#aaa]' : 'text-[#555]')}>How to use</p>
-                            {[
-                                'Copy the HTML embed code above.',
-                                'Paste it anywhere inside the <body> of a page.',
-                                'When the page loads, the hook fires silently.',
-                            ].map((step, i) => (
-                                <div key={i} className="flex items-start gap-3 mb-2 last:mb-0">
-                                    <span className={cn('w-4 h-4 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold mt-0.5', isDark ? 'bg-white/8 text-[#666]' : 'bg-[#eaeaef] text-[#999]')}>
-                                        {i + 1}
-                                    </span>
-                                    <p className={cn('text-[11px] leading-relaxed', isDark ? 'text-[#666]' : 'text-[#888]')}>{step}</p>
+                        {/* Triggers History */}
+                        {(() => {
+                            const hookTriggers = notifications.filter(n => n.type === 'hook' && (n.metadata?.hook_id === hook.id || n.title === `Someone opened "${hook.name}"`));
+                            if (hookTriggers.length === 0) return null;
+                            return (
+                                <div>
+                                    <p className={cn('text-[10px] font-bold uppercase tracking-wider mb-2', isDark ? 'text-[#444]' : 'text-[#bbb]')}>Recent Triggers</p>
+                                    <div className="flex flex-col gap-1">
+                                        {hookTriggers.slice(0, 10).map((trigger) => (
+                                            <div key={trigger.id} className={cn("flex items-center justify-between px-3 py-2 rounded-xl border", isDark ? "bg-[#1a1a1a] border-[#252525]" : "bg-[#f7f7f9] border-[#e8e8f0]")}>
+                                                <div className="flex items-center gap-2">
+                                                    <Zap size={12} style={{ color: hook.color || 'var(--primary)' }} />
+                                                    <div className="flex flex-col">
+                                                        <span className={cn("text-[11px] font-medium", isDark ? "text-[#eee]" : "text-[#222]")}>
+                                                            {trigger.title}
+                                                        </span>
+                                                        <span className={cn("text-[9px]", isDark ? "text-[#888]" : "text-[#666]")}>
+                                                            {formatDistanceToNow(new Date(trigger.created_at), { addSuffix: true })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                {trigger.metadata?.visitor && (
+                                                    <Tooltip 
+                                                        className="whitespace-normal font-sans"
+                                                        content={
+                                                            <div className="flex flex-col gap-1 w-[160px]">
+                                                                <div className="flex items-center gap-2 border-b border-inherit pb-1.5 mb-0.5">
+                                                                    {!trigger.metadata.visitor.countryCode || trigger.metadata.visitor.countryCode === 'local' || trigger.metadata.visitor.countryCode === 'unknown' ? (
+                                                                        <span className="text-[13px] leading-none">{trigger.metadata.visitor.flag}</span>
+                                                                    ) : (
+                                                                        <img 
+                                                                            src={`https://flagcdn.com/w20/${trigger.metadata.visitor.countryCode.toLowerCase()}.png`} 
+                                                                            alt={trigger.metadata.visitor.country}
+                                                                            className="w-4 h-3 object-cover rounded-[1px] shadow-sm"
+                                                                            onError={(e) => {
+                                                                                e.currentTarget.style.display = 'none';
+                                                                                const span = e.currentTarget.parentElement?.querySelector('.flag-emoji-fallback') as HTMLElement;
+                                                                                if (span) span.style.display = 'inline';
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                    {trigger.metadata.visitor.countryCode && trigger.metadata.visitor.countryCode !== 'local' && trigger.metadata.visitor.countryCode !== 'unknown' && (
+                                                                        <span className="flag-emoji-fallback text-[13px] leading-none" style={{ display: 'none' }}>
+                                                                            {trigger.metadata.visitor.flag}
+                                                                        </span>
+                                                                    )}
+                                                                    <span className="text-[10px] uppercase tracking-wider font-bold truncate leading-none">
+                                                                        {trigger.metadata.visitor.country}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex items-center justify-between text-[9px] leading-tight">
+                                                                    <span className="opacity-50 font-medium">IP</span>
+                                                                    <span className="font-mono">{trigger.metadata.visitor.ip}</span>
+                                                                </div>
+                                                                {trigger.metadata.visitor.isp && (
+                                                                    <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
+                                                                        <span className="opacity-50 font-medium mr-2">ISP</span>
+                                                                        <span className="font-semibold text-right truncate flex-1">{trigger.metadata.visitor.isp}</span>
+                                                                    </div>
+                                                                )}
+                                                                {(trigger.metadata?.visitor?.deviceType || trigger.metadata?.visitor?.os) && (
+                                                                    <div className="flex items-center justify-between text-[9px] leading-tight mt-0.5">
+                                                                        <span className="opacity-50 font-medium mr-2">System</span>
+                                                                        <span className="font-semibold text-right">
+                                                                            {trigger.metadata.visitor.deviceType === 'Bot' ? '🤖' : 
+                                                                             trigger.metadata.visitor.deviceType === 'Mobile' ? '📱' : 
+                                                                             trigger.metadata.visitor.deviceType === 'Tablet' ? '📟' : '🖥️'}
+                                                                            {' '}
+                                                                            {trigger.metadata.visitor.os && trigger.metadata.visitor.os !== 'Unknown OS' 
+                                                                                ? `${trigger.metadata.visitor.os} ${trigger.metadata.visitor.deviceType !== 'Desktop' && trigger.metadata.visitor.deviceType !== 'Bot' ? `(${trigger.metadata.visitor.deviceType})` : ''}`
+                                                                                : trigger.metadata.visitor.deviceType}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex items-end justify-between mt-0.5 pt-1.5 border-t border-inherit text-[8px] opacity-70 font-medium whitespace-nowrap">
+                                                                    <div className="flex flex-col gap-0.5">
+                                                                        {trigger.metadata.visitor.region && <div>{trigger.metadata.visitor.city}, {trigger.metadata.visitor.region}</div>}
+                                                                        {trigger.metadata.visitor.timezone && <div>{trigger.metadata.visitor.timezone}</div>}
+                                                                    </div>
+                                                                    <div className="flex flex-col text-right pl-3 opacity-90 tracking-tight leading-[1.1]">
+                                                                        <div>{format(new Date(trigger.created_at), "h:mm a")}</div>
+                                                                        <div>{format(new Date(trigger.created_at), "MMM d, yyyy")}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        } 
+                                                        side="left"
+                                                    >
+                                                        <div className="flex items-center justify-center w-5 h-5 cursor-help opacity-60 hover:opacity-100 transition-opacity">
+                                                            <AlertCircle size={12} className={cn(isDark ? "text-white" : "text-[#111]")} />
+                                                        </div>
+                                                    </Tooltip>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })()}
                     </div>
                 )}
             </div>
