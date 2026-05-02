@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useUIStore } from '@/store/useUIStore';
 import { useProposalStore, ProposalStatus, Proposal } from '@/store/useProposalStore';
+import { motion } from 'framer-motion';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useClientStore } from '@/store/useClientStore';
 import { cn } from '@/lib/utils';
@@ -621,9 +622,9 @@ export default function ProposalsPage() {
             {/* Content */}
             {isMobile ? (
                 <div className={cn("flex-1 overflow-y-auto", isDark ? "bg-[#141414]" : "bg-[#fafafa]")}>
-                    {isLoading ? (
+                    {isLoading && proposals.length === 0 ? (
                         <ListViewSkeleton isMobile={true} isDark={isDark} />
-                    ) : filtered.length === 0 ? (
+                    ) : filtered.length === 0 && !isLoading ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-3">
                             {showArchived ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p> : <>
                                 <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>
@@ -684,9 +685,9 @@ export default function ProposalsPage() {
                                     { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(p.id), separator: true }
                                 ]}
                                 afterRows={!isLoading && !showArchived ? (
-                                    <button onClick={() => setCreateModalOpen(true, 'Proposal')} className={cn("flex items-center gap-1.5 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors", isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
+                                    <motion.button key="after-rows" layout onClick={() => setCreateModalOpen(true, 'Proposal')} className={cn("flex items-center gap-1.5 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors", isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
                                         <div className={cn("w-4 h-4 shrink-0 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}><Plus size={10} /></div><span className="leading-none">Create proposal</span>
-                                    </button>
+                                    </motion.button>
                                 ) : undefined}
                             />
                         </div>
@@ -694,9 +695,9 @@ export default function ProposalsPage() {
                 </div>
             ) : (
                 <div className={cn("flex-1 overflow-y-auto p-4", isDark ? "bg-[#0f0f0f]" : "bg-[#f0f0f0]")}>
-                    {isLoading ? (
+                    {isLoading && proposals.length === 0 ? (
                         <ListViewSkeleton view="cards" isDark={isDark} />
-                    ) : filtered.length === 0 ? (
+                    ) : filtered.length === 0 && !isLoading ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-3">
                             {showArchived ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived proposals.</p> : <>
                                 <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No proposals found.</p>

@@ -22,6 +22,7 @@ interface ClientState {
     clients: Client[];
     isLoading: boolean;
     error: string | null;
+    _fetchedForWorkspace: string | null;
     fetchClients: () => Promise<void>;
     addClient: (client: Omit<Client, 'id' | 'created_at' | 'workspace_id'>) => Promise<Client | null>;
     updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
@@ -34,6 +35,7 @@ export const useClientStore = create<ClientState>((set) => ({
     clients: [],
     isLoading: false,
     error: null,
+    _fetchedForWorkspace: null,
 
     fetchClients: async () => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
@@ -42,14 +44,11 @@ export const useClientStore = create<ClientState>((set) => ({
             return;
         }
 
+        // ✅ Skip network call if already fetched for this workspace
         const state = useClientStore.getState();
-        const hasData = state.clients.length > 0;
+        if (state._fetchedForWorkspace === workspaceId && state.clients.length > 0) return;
 
-        if (!hasData) {
-            set({ isLoading: true, error: null });
-        } else {
-            set({ error: null });
-        }
+        set({ isLoading: true, error: null });
 
         const { data, error } = await supabase
             .from('clients')
@@ -60,7 +59,7 @@ export const useClientStore = create<ClientState>((set) => ({
         if (error) {
             set({ error: error.message, isLoading: false });
         } else {
-            set({ clients: data || [], isLoading: false });
+            set({ clients: data || [], isLoading: false, _fetchedForWorkspace: workspaceId });
         }
     },
 

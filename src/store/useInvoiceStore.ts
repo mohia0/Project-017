@@ -26,6 +26,7 @@ interface InvoiceState {
     invoices: Invoice[];
     isLoading: boolean;
     error: string | null;
+    _fetchedForWorkspace: string | null;
     fetchInvoices: () => Promise<void>;
     addInvoice: (invoice: Omit<Invoice, 'id' | 'created_at' | 'workspace_id'>) => Promise<Invoice | null>;
     updateInvoice: (id: string, updates: Partial<Invoice>, options?: { forceReceipt?: boolean }) => Promise<void>;
@@ -37,6 +38,7 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
     invoices: [],
     isLoading: false,
     error: null,
+    _fetchedForWorkspace: null,
 
     fetchInvoices: async () => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
@@ -45,14 +47,11 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
             return;
         }
 
+        // ✅ Skip network call if already fetched for this workspace
         const state = useInvoiceStore.getState();
-        const hasData = state.invoices.length > 0;
-        
-        if (!hasData) {
-            set({ isLoading: true, error: null });
-        } else {
-            set({ error: null });
-        }
+        if (state._fetchedForWorkspace === workspaceId && state.invoices.length > 0) return;
+
+        set({ isLoading: true, error: null });
         
         const { data, error } = await supabase
             .from('invoices')
@@ -63,7 +62,7 @@ export const useInvoiceStore = create<InvoiceState>((set) => ({
         if (error) {
             set({ error: error.message, isLoading: false });
         } else {
-            set({ invoices: data || [], isLoading: false });
+            set({ invoices: data || [], isLoading: false, _fetchedForWorkspace: workspaceId });
         }
     },
 

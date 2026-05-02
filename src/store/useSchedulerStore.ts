@@ -35,6 +35,7 @@ interface SchedulerState {
     bookings: SchedulerBooking[];
     isLoading: boolean;
     error: string | null;
+    _fetchedForWorkspace: string | null;
     fetchSchedulers: () => Promise<void>;
     addScheduler: (s: Omit<Scheduler, 'id' | 'created_at' | 'workspace_id'>) => Promise<Scheduler | null>;
     updateScheduler: (id: string, updates: Partial<Scheduler>) => Promise<void>;
@@ -49,13 +50,17 @@ export const useSchedulerStore = create<SchedulerState>((set) => ({
     bookings: [],
     isLoading: false,
     error: null,
+    _fetchedForWorkspace: null,
 
     fetchSchedulers: async () => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) { set({ schedulers: [], isLoading: false }); return; }
 
-        const hasData = useSchedulerStore.getState().schedulers.length > 0;
-        if (!hasData) set({ isLoading: true, error: null });
+        // ✅ Skip network call if already fetched for this workspace
+        const cached = useSchedulerStore.getState();
+        if (cached._fetchedForWorkspace === workspaceId && cached.schedulers.length > 0) return;
+
+        set({ isLoading: true, error: null });
 
         const { data, error } = await supabase
             .from('schedulers')
@@ -69,7 +74,7 @@ export const useSchedulerStore = create<SchedulerState>((set) => ({
                 ...s,
                 bookings_count: s.bookings_count?.[0]?.count || 0
             }));
-            set({ schedulers: schedulersWithCounts, isLoading: false });
+            set({ schedulers: schedulersWithCounts, isLoading: false, _fetchedForWorkspace: workspaceId });
         }
     },
 

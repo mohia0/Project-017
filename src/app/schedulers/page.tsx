@@ -696,10 +696,10 @@ export default function SchedulersPage() {
 
             {/* ── Content ── */}
             <div className={cn("flex-1 overflow-auto p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
-                {isLoading && schedulers.length === 0 ? (
-                    <ListViewSkeleton view={view === 'cards' ? 'cards' : 'table'} isMobile={isMobile} isDark={isDark} />
-                ) : view === 'cards' ? (
-                    filtered.length === 0 ? (
+                {isLoading && schedulers.length === 0 && (view === 'cards' || isMobile) ? (
+                    <ListViewSkeleton view="cards" isMobile={isMobile} isDark={isDark} />
+                ) : view === 'cards' || isMobile ? (
+                    filtered.length === 0 && !isLoading ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-4">
                             <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
                                 isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
@@ -927,14 +927,14 @@ export default function SchedulersPage() {
                                 { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(s.id), separator: true },
                             ]}
                             afterRows={!isLoading && (
-                                <button onClick={handleNew}
+                                <motion.button key="after-rows" layout onClick={handleNew}
                                     className={cn("flex items-center gap-1.5 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors",
                                         isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
                                     <div className={cn("w-4 h-4 shrink-0 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
                                         <Plus size={10} />
                                     </div>
                                     <span className="leading-none">New Scheduler</span>
-                                </button>
+                                </motion.button>
                             )}
                         />
                     </div>

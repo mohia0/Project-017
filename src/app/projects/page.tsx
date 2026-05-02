@@ -903,11 +903,11 @@ export default function ProjectsPage() {
 
             {/* ── Content ── */}
             <div className="flex-1 overflow-y-auto min-h-0">
-                {isLoading && projects.length === 0 ? (
+                {isLoading && projects.length === 0 && (view === 'cards' || isMobile) ? (
                     <div className="p-4">
-                        <ListViewSkeleton view={view === 'cards' ? 'cards' : 'table'} isMobile={isMobile} isDark={isDark} />
+                        <ListViewSkeleton view="cards" isMobile={isMobile} isDark={isDark} />
                     </div>
-                ) : filtered.length === 0 ? (
+                ) : filtered.length === 0 && !isLoading ? (
                     <EmptyState isDark={isDark} onNew={() => setCreateModalOpen(true, 'Project')} isArchived={showArchived} />
                 ) : (view === 'cards' || isMobile) ? (
                     /* ── Cards ── */
@@ -945,6 +945,7 @@ export default function ProjectsPage() {
                             onToggleRow={(id: string) => toggleRow(id)}
                             onRowClick={(p: Project) => router.push(`/projects/${p.id}`)}
                             rowMenuItems={getRowMenu}
+                            isLoading={isLoading}
                             isDark={isDark}
                         />
                     </div>

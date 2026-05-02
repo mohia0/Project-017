@@ -26,6 +26,7 @@ interface ProposalState {
     proposals: Proposal[];
     isLoading: boolean;
     error: string | null;
+    _fetchedForWorkspace: string | null;
     fetchProposals: () => Promise<void>;
     addProposal: (proposal: Omit<Proposal, 'id' | 'created_at' | 'workspace_id'>) => Promise<Proposal | null>;
     updateProposal: (id: string, updates: Partial<Proposal>) => Promise<void>;
@@ -37,6 +38,7 @@ export const useProposalStore = create<ProposalState>((set) => ({
     proposals: [],
     isLoading: false,
     error: null,
+    _fetchedForWorkspace: null,
 
     fetchProposals: async () => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
@@ -45,14 +47,11 @@ export const useProposalStore = create<ProposalState>((set) => ({
             return;
         }
 
+        // ✅ Skip network call if already fetched for this workspace
         const state = useProposalStore.getState();
-        const hasData = state.proposals.length > 0;
+        if (state._fetchedForWorkspace === workspaceId && state.proposals.length > 0) return;
 
-        if (!hasData) {
-            set({ isLoading: true, error: null });
-        } else {
-            set({ error: null });
-        }
+        set({ isLoading: true, error: null });
 
         const { data, error } = await supabase
             .from('proposals')
@@ -63,7 +62,7 @@ export const useProposalStore = create<ProposalState>((set) => ({
         if (error) {
             set({ error: error.message, isLoading: false });
         } else {
-            set({ proposals: data || [], isLoading: false });
+            set({ proposals: data || [], isLoading: false, _fetchedForWorkspace: workspaceId });
         }
     },
 

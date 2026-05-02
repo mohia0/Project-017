@@ -334,8 +334,33 @@ export function DataTable<T extends { id: string }>({
 
     if (isSettingsLoading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] w-full rounded-xl">
-                <AppLoader size="lg" />
+            <div className={cn("overflow-x-auto no-scrollbar rounded-xl border", isDark ? "border-[#222]" : "border-[#ebebeb]")}>
+                <div className="min-w-full w-max flex flex-col">
+                    <div className={cn("grid w-full border-b text-[10px] font-semibold uppercase tracking-wider sticky top-0 z-30",
+                        isDark ? "bg-[#141414] border-[#252525] text-[#555]" : "bg-[#fafafa] border-[#ebebeb] text-[#aaa]")}
+                        style={{ gridTemplateColumns: gridTemplate }}>
+                        
+                        <div className={cn("relative px-0 py-2 flex items-center justify-center shrink-0", isDark ? "border-[#2e2e2e]" : "border-[#e0e0e0]")}>
+                            <Chk checked={false} isDark={isDark} />
+                        </div>
+                        {columnOrder.map(colId => {
+                            const col = columns.find(c => c.id === colId);
+                            if (!col) return null;
+                            return (
+                                <div key={col.id} className="relative px-4 py-2 flex items-center select-none">
+                                    {col.label}
+                                </div>
+                            );
+                        })}
+                        <div className="flex-1 self-stretch" />
+                        {(rightHeaderSlot || rightCellSlot) && (
+                            <div className={cn("relative px-4 py-2 flex items-center justify-end font-semibold sticky right-0 z-40", isDark ? "bg-[#141414]" : "bg-[#fafafa]")} style={{ width: colWidths.right_slot }}>
+                                {rightHeaderSlot || ''}
+                            </div>
+                        )}
+                    </div>
+                    {renderShimmer()}
+                </div>
             </div>
         );
     }

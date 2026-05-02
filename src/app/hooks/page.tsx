@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { InlineDeleteButton } from '@/components/ui/InlineDeleteButton';
 import { DeleteConfirmModal } from '@/components/modals/DeleteConfirmModal';
-import { AppLoader } from '@/components/ui/AppLoader';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { ViewToggle } from '@/components/ui/ViewToggle';
@@ -302,7 +301,7 @@ function HookCard({ h, onOpen, onDelete, isDark, isSelected, onToggle }: {
 export default function HooksPage() {
     const { theme, openRightPanel, closeRightPanel, rightPanel, setCreateModalOpen, pageViews, setPageView } = useUIStore();
     const { navItems } = useMenuStore();
-    const { hooks, fetchHooks, addHook, updateHook, deleteHook, bulkDeleteHooks, isLoading } = useHookStore();
+    const { hooks, addHook, updateHook, deleteHook, bulkDeleteHooks } = useHookStore();
     const isDark = theme === 'dark';
     const isMobile = useIsMobile();
 
@@ -381,7 +380,7 @@ export default function HooksPage() {
         }
     ];
 
-    useEffect(() => { fetchHooks(); }, [fetchHooks]);
+    // Data is pre-fetched by AppLayout's useWorkspaceDataSync — no local fetch needed.
 
     const filtered = useMemo(() => {
         let r = hooks.filter(h => {
@@ -555,11 +554,7 @@ export default function HooksPage() {
 
             {/* Content */}
             <div className={cn("flex-1 overflow-auto p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
-                {isLoading && hooks.length === 0 ? (
-                    <div className="flex items-center justify-center h-40">
-                        <AppLoader size="md" />
-                    </div>
-                ) : filtered.length === 0 ? (
+                {filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 gap-4">
                         <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
                             isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
@@ -609,7 +604,6 @@ export default function HooksPage() {
                         onToggleRow={toggleRow}
                         onRowClick={(h) => openRightPanel({ type: 'hook', id: h.id })}
                         isDark={isDark}
-                        isLoading={isLoading}
                         rightHeaderWidth={80}
                         rightCellSlot={(h) => (
                             <div className="flex items-center justify-end pr-4 h-full">

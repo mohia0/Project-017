@@ -209,7 +209,8 @@ interface ContextMenuRowProps extends React.HTMLAttributes<HTMLDivElement> {
  * Drop-in div wrapper that adds right-click context menu to any table row.
  * The div forwards all other HTML div props (className, style, etc.).
  */
-export function ContextMenuRow({ items, isDark, onRowClick, children, onClick, component: Component = 'div', ...rest }: ContextMenuRowProps) {
+export const ContextMenuRow = React.forwardRef<HTMLDivElement, ContextMenuRowProps>(
+    function ContextMenuRow({ items, isDark, onRowClick, children, onClick, component: Component = 'div', ...rest }, ref) {
     const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
 
     const handleContextMenu = (e: React.MouseEvent) => {
@@ -226,6 +227,7 @@ export function ContextMenuRow({ items, isDark, onRowClick, children, onClick, c
     return (
         <>
             <Component
+                ref={ref}
                 {...rest}
                 onClick={handleClick}
                 onContextMenu={handleContextMenu}
@@ -242,4 +244,4 @@ export function ContextMenuRow({ items, isDark, onRowClick, children, onClick, c
             )}
         </>
     );
-}
+});

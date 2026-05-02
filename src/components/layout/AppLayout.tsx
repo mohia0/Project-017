@@ -7,7 +7,6 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useProposalStore } from '@/store/useProposalStore';
 import { useInvoiceStore } from '@/store/useInvoiceStore';
 import { useClientStore } from '@/store/useClientStore';
-import { useTemplateStore } from '@/store/useTemplateStore';
 import { useMenuStore } from '@/store/useMenuStore';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
@@ -81,7 +80,10 @@ function DocumentTitleSetter() {
 
 function useWorkspaceDataSync() {
     const activeWorkspaceId = useUIStore(s => s.activeWorkspaceId);
-    const projects = useProjectStore(s => s.projects);
+    // ⚠️ Select ONLY the count (scalar) — selecting the full array causes a new
+    // reference on every render, which makes the tasks-preload effect fire
+    // endlessly and OOMs the dev server.
+    const projectCount = useProjectStore(s => s.projects.length);
     
     useEffect(() => {
         if (activeWorkspaceId) {
@@ -101,6 +103,7 @@ function useWorkspaceDataSync() {
             useClientStore.getState().fetchClients();
             useFormStore.getState().fetchForms();
             useSchedulerStore.getState().fetchSchedulers();
+            useHookStore.getState().fetchHooks();
             
             return () => {
                 useNotificationStore.getState().unsubscribe();
@@ -109,61 +112,50 @@ function useWorkspaceDataSync() {
     }, [activeWorkspaceId]);
 
     // ── Background preload: tasks / groups / items per project ──────────────
+    // Read projects via getState() inside the effect — avoids subscribing to
+    // the array reference (which is always a new object and causes infinite loops).
     useEffect(() => {
-        if (!projects.length) return;
+        if (!projectCount) return;
         
         const store = useProjectStore.getState();
-        projects.forEach(p => {
+        store.projects.forEach(p => {
             // Only fetch if we don't already have data cached for this project
             if (!store.tasksByProject[p.id])  store.fetchTasks(p.id);
             if (!store.groupsByProject[p.id]) store.fetchTaskGroups(p.id);
             if (!store.itemsByProject[p.id])  store.fetchProjectItems(p.id);
         });
-    }, [projects]);
+    }, [projectCount]);
 
     // ── Background preload: Actual image files for browser cache ────────────
-    const files = useFileStore(s => s.items);
-    const { profile } = useSettingsStore();
+    const fileCount = useFileStore(s => s.items.length);
+    const avatarUrl = useSettingsStore(s => s.profile?.avatar_url);
 
     useEffect(() => {
         // Preload Account Avatar
-        if (profile?.avatar_url) {
+        if (avatarUrl) {
             const img = new Image();
-            img.src = profile.avatar_url;
+            img.src = avatarUrl;
         }
 
+        const files = useFileStore.getState().items;
         if (!files.length) return;
         
         // Filter for images and preload their URLs
         const images = files.filter(f => f.type === 'image' && (f.url || f.downloadUrl));
         
-        images.forEach(img => {
-            const src = img.url || img.downloadUrl;
+        images.forEach(imgItem => {
+            const src = imgItem.url || imgItem.downloadUrl;
             if (src) {
                 const i = new Image();
                 i.src = src;
             }
         });
-    }, [files, profile?.avatar_url]);
+    }, [fileCount, avatarUrl]);
 }
 
-/** Map the current pathname to a store's isLoading flag so we can hold the
- *  full-screen loader until the current page's data is also ready. */
-function usePageDataLoading(pathname: string): boolean {
-    const invoiceLoading   = useInvoiceStore(s => s.isLoading);
-    const proposalLoading  = useProposalStore(s => s.isLoading);
-    const clientLoading    = useClientStore(s => s.isLoading);
-    const formLoading      = useFormStore(s => s.isLoading);
-    const schedulerLoading = useSchedulerStore(s => s.isLoading);
-    const projectLoading   = useProjectStore(s => s.isLoading);
-
-    if (pathname.startsWith('/invoices'))  return invoiceLoading;
-    if (pathname.startsWith('/proposals')) return proposalLoading;
-    if (pathname.startsWith('/clients'))   return clientLoading;
-    if (pathname.startsWith('/forms'))     return formLoading;
-    if (pathname.startsWith('/schedulers'))return schedulerLoading;
-    if (pathname.startsWith('/projects'))  return projectLoading;
-    return false; // dashboard, settings, etc — no page-level loader needed
+// List pages handle their own inline skeleton states — no page-level loader needed.
+function usePageDataLoading(_pathname: string): boolean {
+    return false;
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

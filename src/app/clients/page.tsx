@@ -682,9 +682,9 @@ export default function ClientsPage() {
                 {/* ── People ── */}
                 {tab === 'people' && (
                     <>
-                        {isClientsLoading ? (
-                            <ListViewSkeleton view={view === 'grid' ? 'cards' : 'table'} isMobile={isMobile} isDark={isDark} />
-                        ) : filteredPeople.length === 0 ? (
+                        {isClientsLoading && clients.length === 0 && (view === 'grid' || isMobile) ? (
+                            <ListViewSkeleton view="cards" isMobile={isMobile} isDark={isDark} />
+                        ) : filteredPeople.length === 0 && !isClientsLoading ? (
                             <div className={cn("flex flex-col items-center justify-center h-full gap-3", muted)}>
                                 <Users size={32} strokeWidth={1.25} />
                                 <p className="text-[12px]">No contacts yet.</p>
@@ -796,9 +796,9 @@ export default function ClientsPage() {
                 {/* ── Companies ── */}
                 {tab === 'companies' && (
                     <>
-                        {isCompaniesLoading ? (
-                            <ListViewSkeleton view={view === 'grid' ? 'cards' : 'table'} isMobile={isMobile} isDark={isDark} />
-                        ) : filteredCompanies.length === 0 ? (
+                        {isCompaniesLoading && companies.length === 0 && (view === 'grid' || isMobile) ? (
+                            <ListViewSkeleton view="cards" isMobile={isMobile} isDark={isDark} />
+                        ) : filteredCompanies.length === 0 && !isCompaniesLoading ? (
                             <div className={cn("flex flex-col items-center justify-center h-full gap-3", muted)}>
                                 <Building2 size={32} strokeWidth={1.25} />
                                 <p className="text-[12px]">No companies yet.</p>

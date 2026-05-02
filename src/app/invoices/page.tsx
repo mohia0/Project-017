@@ -782,14 +782,14 @@ export default function InvoicesPage() {
                 </div>
             )}
 
-            {/* â”€â”€ Content â”€â”€ */}
+            {/* ── Content ── */}
             {/* On mobile: always show the mobile list view regardless of 'view' setting */}
             {isMobile ? (
-                /* â”€â”€ Mobile list view â”€â”€ */
+                /* ── Mobile list view ── */
                 <div className={cn("flex-1 overflow-y-auto", isDark ? "bg-[#141414]" : "bg-[#fafafa]")}>
-                    {isLoading ? (
+                    {isLoading && invoices.length === 0 ? (
                         <ListViewSkeleton isMobile={true} isDark={isDark} />
-                    ) : filtered.length === 0 ? (
+                    ) : filtered.length === 0 && !isLoading ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-3">
                             {showArchived
                                 ? <p className={cn("text-[13px]", isDark ? "text-[#555]" : "text-[#aaa]")}>No archived invoices.</p>
@@ -945,14 +945,14 @@ export default function InvoicesPage() {
                                     { label: 'Delete', icon: <Trash2 size={12} />, danger: true, onClick: () => setDeletingId(inv.id), separator: true }
                                 ]}
                                 afterRows={!isLoading && !showArchived ? (
-                                    <button onClick={() => setCreateModalOpen(true, 'Invoice')}
+                                    <motion.button key="after-rows" layout onClick={() => setCreateModalOpen(true, 'Invoice')}
                                         className={cn("flex items-center gap-1.5 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors",
                                             isDark ? "text-[#555] border-[#1f1f1f] hover:text-[#aaa] hover:bg-white/[0.02]" : "text-[#aaa] border-[#f0f0f0] hover:text-[#555] hover:bg-[#fafafa]")}>
                                         <div className={cn("w-4 h-4 shrink-0 flex items-center justify-center rounded border border-dashed", isDark ? "border-[#444]" : "border-[#ccc]")}>
                                             <Plus size={10} />
                                         </div>
                                         <span className="leading-none">Create invoice</span>
-                                    </button>
+                                    </motion.button>
                                 ) : undefined}
                             />
                         </div>

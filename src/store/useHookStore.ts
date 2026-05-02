@@ -23,6 +23,7 @@ interface HookState {
     hooks: Hook[];
     isLoading: boolean;
     error: string | null;
+    _fetchedForWorkspace: string | null;
     fetchHooks: () => Promise<void>;
     refreshHookEventCount: (hookId: string) => Promise<void>;
     addHook: (hook: Omit<Hook, 'id' | 'created_at' | 'workspace_id' | 'event_count' | 'status' | 'last_fired_at'>) => Promise<Hook | null>;
@@ -37,6 +38,7 @@ export const useHookStore = create<HookState>((set) => ({
     hooks: [],
     isLoading: false,
     error: null,
+    _fetchedForWorkspace: null,
 
     fetchHooks: async () => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
@@ -45,8 +47,11 @@ export const useHookStore = create<HookState>((set) => ({
             return;
         }
 
-        const hasData = useHookStore.getState().hooks.length > 0;
-        if (!hasData) set({ isLoading: true, error: null });
+        // ✅ Skip network call if already fetched for this workspace
+        const state = useHookStore.getState();
+        if (state._fetchedForWorkspace === workspaceId && state.hooks.length > 0) return;
+
+        set({ isLoading: true, error: null });
 
         // Fetch hooks with all events to derive count and timestamps
         const { data, error } = await supabase
@@ -61,7 +66,6 @@ export const useHookStore = create<HookState>((set) => ({
             const enriched: Hook[] = (data || []).map((h: any) => {
                 const events: any[] = h.hook_events || [];
                 const count = events.length;
-                // Find most recent event timestamp
                 const lastFiredAt = events
                     .map((e: any) => e.created_at)
                     .filter(Boolean)
@@ -76,7 +80,7 @@ export const useHookStore = create<HookState>((set) => ({
                     hook_events: undefined,
                 };
             });
-            set({ hooks: enriched, isLoading: false });
+            set({ hooks: enriched, isLoading: false, _fetchedForWorkspace: workspaceId });
         }
     },
 

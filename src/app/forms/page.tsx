@@ -573,9 +573,9 @@ export default function FormsPage() {
 
             {/* Content */}
             <div className={cn("flex-1 overflow-auto p-5", isDark ? "bg-[#141414]" : "bg-[#f7f7f7]")}>
-                {isLoading && forms.length === 0 ? (
-                    <ListViewSkeleton view={view === 'cards' ? 'cards' : 'table'} isMobile={isMobile} isDark={isDark} />
-                ) : filtered.length === 0 ? (
+                {isLoading && forms.length === 0 && (view === 'cards' || isMobile) ? (
+                    <ListViewSkeleton view="cards" isMobile={isMobile} isDark={isDark} />
+                ) : filtered.length === 0 && !isLoading ? (
                     <div className="flex flex-col items-center justify-center py-24 gap-4">
                         <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center",
                             isDark ? "bg-white/5" : "bg-[#f0f0f0]")}>
@@ -762,8 +762,34 @@ export default function FormsPage() {
                                         );
                                     })}
 
+                                    {isLoading && (
+                                        <motion.div
+                                            key="shimmer-container"
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            transition={{ duration: 0.15 }}
+                                            className="flex flex-col"
+                                        >
+                                            {Array.from({ length: 8 }).map((_, i) => (
+                                                <div key={`shimmer-${i}`} className={cn("grid border-b", isDark ? "border-[#1f1f1f] bg-white/[0.01]" : "border-[#f0f0f0] bg-[#fafafa]")} style={{ gridTemplateColumns: gridTemplate }}>
+                                                    <div className="flex items-center justify-center p-3">
+                                                        <div className={cn("w-3 h-3 rounded-[3px]", isDark ? "bg-[#333]" : "bg-[#ebebeb]", "animate-pulse")} />
+                                                    </div>
+                                                    {columnOrder.map(colId => (
+                                                        <div key={colId} className="p-3 flex items-center">
+                                                            <div className={cn("h-4 rounded-md w-3/4 max-w-[150px] animate-pulse bg-primary/20")} />
+                                                        </div>
+                                                    ))}
+                                                    <div />
+                                                </div>
+                                            ))}
+                                        </motion.div>
+                                    )}
+
                                     {!isLoading && (
                                         <motion.button 
+                                            key="new-form-btn"
                                             layout 
                                             onClick={handleNew}
                                             className={cn("flex items-center gap-1.5 px-4 py-3 w-full text-left text-[12px] font-medium transition-colors border-b",

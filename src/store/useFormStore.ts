@@ -47,6 +47,7 @@ interface FormState {
     responses: FormResponse[];
     isLoading: boolean;
     error: string | null;
+    _fetchedForWorkspace: string | null;
     fetchForms: () => Promise<void>;
     addForm: (f: Omit<Form, 'id' | 'created_at' | 'workspace_id'>) => Promise<Form | null>;
     updateForm: (id: string, updates: Partial<Form>) => Promise<void>;
@@ -61,13 +62,17 @@ export const useFormStore = create<FormState>((set) => ({
     responses: [],
     isLoading: false,
     error: null,
+    _fetchedForWorkspace: null,
 
     fetchForms: async () => {
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) { set({ forms: [], isLoading: false }); return; }
 
-        const hasData = useFormStore.getState().forms.length > 0;
-        if (!hasData) set({ isLoading: true, error: null });
+        // ✅ Skip network call if already fetched for this workspace
+        const cached = useFormStore.getState();
+        if (cached._fetchedForWorkspace === workspaceId && cached.forms.length > 0) return;
+
+        set({ isLoading: true, error: null });
 
         try {
             const { data, error } = await supabase
@@ -86,7 +91,7 @@ export const useFormStore = create<FormState>((set) => ({
                     fields: Array.isArray(f.fields) ? f.fields : [],
                     responses_count: f.responses_count?.[0]?.count || 0
                 }));
-                set({ forms: formsWithFields, isLoading: false });
+                set({ forms: formsWithFields, isLoading: false, _fetchedForWorkspace: workspaceId });
             }
         } catch (err: any) {
             if (err.message?.includes('Lock broken') || err.message?.includes('AbortError')) return;
