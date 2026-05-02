@@ -1686,7 +1686,7 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                {/* ── LEFT PANEL (collapsible) ── */}
                             {!isPreview && (
                                 <div
-                                    className="hidden md:flex shrink-0 relative"
+                                    className="hidden md:flex shrink-0 relative z-50"
                                     style={{
                                         width: leftPanelOpen ? 240 : 0,
                                         transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1)',
@@ -1961,23 +1961,27 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                     {/* Toggle handle — right edge of panel */}
                                     <div
                                         onClick={() => setLeftPanelOpen(v => !v)}
-                                        className="group/handle absolute top-0 bottom-0 z-30 flex items-center justify-start cursor-pointer"
+                                        className="group/handle absolute top-0 bottom-0 z-50 flex items-center justify-start cursor-pointer"
                                         style={{ right: -16, width: 16 }}
-                                        title={leftPanelOpen ? 'Collapse panel' : 'Expand panel'}
                                     >
-                                        <div
-                                            className={cn(
-                                                "h-full flex items-center justify-center transition-all duration-200 rounded-none",
-                                                "w-[var(--panel-handle-width)] group-hover/handle:w-[var(--panel-handle-hover-width)]",
-                                                isDark
-                                                    ? "bg-[#0d0d0d] group-hover/handle:bg-[#222]"
-                                                    : "bg-[#f5f5f5] group-hover/handle:bg-[#e2e2e2]"
-                                            )}
-                                            style={{
-                                                '--panel-handle-width': leftPanelOpen ? '4px' : '12px',
-                                                '--panel-handle-hover-width': leftPanelOpen ? '10px' : '16px',
-                                            } as React.CSSProperties}
+                                        <Tooltip 
+                                            content={leftPanelOpen ? 'Collapse panel' : 'Expand panel'} 
+                                            side="right" 
+                                            triggerClassName="h-full"
                                         >
+                                            <div
+                                                className={cn(
+                                                    "h-full flex items-center justify-center transition-all duration-200 rounded-none",
+                                                    "w-[var(--panel-handle-width)] group-hover/handle:w-[var(--panel-handle-hover-width)]",
+                                                    isDark
+                                                        ? "bg-[#0d0d0d] group-hover/handle:bg-[#222]"
+                                                        : "bg-[#f5f5f5] group-hover/handle:bg-[#e2e2e2]"
+                                                )}
+                                                style={{
+                                                    '--panel-handle-width': leftPanelOpen ? '4px' : '12px',
+                                                    '--panel-handle-hover-width': leftPanelOpen ? '10px' : '16px',
+                                                } as React.CSSProperties}
+                                            >
                                                 <span className={cn(
                                                     "transition-opacity duration-150 flex items-center justify-center",
                                                     !leftPanelOpen ? "opacity-100" : "opacity-0 group-hover/handle:opacity-100",
@@ -1985,7 +1989,8 @@ export default function FormEditor({ id, isTemplate }: { id?: string, isTemplate
                                                 )}>
                                                     {leftPanelOpen ? <ChevronLeft size={10} strokeWidth={3} /> : <ChevronRight size={10} strokeWidth={3} />}
                                                 </span>
-                                        </div>
+                                            </div>
+                                        </Tooltip>
                                     </div>
                                 </div>
                             )}
