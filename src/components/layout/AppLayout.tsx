@@ -345,9 +345,10 @@ function PrivacyModeEffect() {
 function FaviconBadgeEffect() {
     const notifications = useNotificationStore(s => s.notifications);
     const branding = useSettingsStore(s => s.branding);
+    const pathname = usePathname();
     const unreadCount = notifications.filter(n => !n.read).length;
     // Drive faviconSrc from the store so changes to custom favicon are reflected
     const faviconSrc = branding?.favicon_url || '/favicon.svg';
-    useFaviconBadge(unreadCount, faviconSrc);
+    useFaviconBadge(unreadCount, faviconSrc, pathname);
     return null;
 }

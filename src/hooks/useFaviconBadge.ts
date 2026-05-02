@@ -8,25 +8,38 @@ import { useEffect } from 'react';
  * @param count      Number of unread notifications. 0 = restore plain favicon.
  * @param faviconSrc Full URL/path to the base favicon. Must be driven from
  *                   the branding store so it reflects custom favicons.
- *                   The hook re-runs whenever this value changes.
+ * @param pathname   Current route pathname to trigger re-evaluation on navigation.
  */
-export function useFaviconBadge(count: number, faviconSrc: string) {
+export function useFaviconBadge(count: number, faviconSrc: string, pathname?: string) {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        // Resolve (or create) the <link rel="icon"> element
-        let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
-        if (!link) {
-            link = document.createElement('link');
-            link.rel = 'icon';
-            document.head.appendChild(link);
-        }
+        const applyFavicon = (url: string) => {
+            let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.head.appendChild(link);
+            }
+            if (link.href !== url) link.href = url;
+
+            // Optional: force Next.js head tags to match to prevent hydration/mutation conflicts
+            document.querySelectorAll<HTMLLinkElement>("link[rel~='icon']").forEach(el => {
+                if (el.href !== url) el.href = url;
+            });
+        };
 
         // If no unread notifications, apply the clean favicon (custom or default)
         // directly — do NOT restore from a stale ref that may predate BrandingProvider.
         if (count <= 0) {
-            link.href = faviconSrc;
-            return;
+            applyFavicon(faviconSrc);
+            
+            // Set up an observer to fight Next.js router resetting the favicon
+            const observer = new MutationObserver(() => {
+                applyFavicon(faviconSrc);
+            });
+            observer.observe(document.head, { childList: true, subtree: true });
+            return () => observer.disconnect();
         }
 
         // Grab the workspace accent color from the CSS variable
@@ -74,7 +87,17 @@ export function useFaviconBadge(count: number, faviconSrc: string) {
             ctx.textBaseline = 'middle';
             ctx.fillText(label, CX, CY + 1);
 
-            link!.href = canvas.toDataURL('image/png');
+            const finalUrl = canvas.toDataURL('image/png');
+            applyFavicon(finalUrl);
+            
+            // Set up an observer to fight Next.js router resetting the favicon
+            const observer = new MutationObserver(() => {
+                applyFavicon(finalUrl);
+            });
+            observer.observe(document.head, { childList: true, subtree: true });
+            
+            // Cleanup observer on unmount/re-render
+            (img as any)._observer = observer;
         };
 
         img.onerror = () => {
@@ -86,5 +109,10 @@ export function useFaviconBadge(count: number, faviconSrc: string) {
             ? faviconSrc                              // already a data URL — use as-is
             : faviconSrc + (faviconSrc.includes('?') ? '&' : '?') + '_badge=' + Date.now();
 
-    }, [count, faviconSrc]);
+        return () => {
+            if ((img as any)._observer) {
+                (img as any)._observer.disconnect();
+            }
+        };
+    }, [count, faviconSrc, pathname]);
 }

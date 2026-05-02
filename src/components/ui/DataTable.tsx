@@ -480,7 +480,9 @@ export function DataTable<T extends { id: string }>({
                                             {(rightHeaderSlot || rightCellSlot) && (
                                             <div className={cn(
                                                 "px-3 py-1.5 self-stretch flex items-center justify-end sticky right-0 z-10 transition-colors",
-                                                isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-[#fafafa] group-hover:bg-[#f5f5f5]"
+                                                isSelected 
+                                                    ? (isDark ? "bg-[#171d2b]" : "bg-[#f0f7ff]")
+                                                    : (isDark ? "bg-[#141414] group-hover:bg-[#1a1a1a]" : "bg-white group-hover:bg-[#fafafa]")
                                             )}
                                             style={{ width: colWidths.right_slot }} 
                                             onClick={e => e.stopPropagation()}>
