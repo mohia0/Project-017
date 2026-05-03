@@ -70,6 +70,18 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                     user_id: signUpData.user.id,
                     invited_email: email.trim(),
                 }, { onConflict: 'workspace_id,user_id' });
+
+                // Fire notification to workspace
+                await fetch('/api/accept-invitation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        workspace_id: workspaceId,
+                        user_id: signUpData.user.id,
+                        invited_email: email.trim(),
+                        display_name: email.trim(),
+                    }),
+                });
             }
 
             setSuccessMsg("Account created! We've sent a verification link to your email. Please check your inbox to activate your account.");
@@ -94,7 +106,19 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                 user_id: user.id,
                 invited_email: email.trim() || user.email,
             }, { onConflict: 'workspace_id,user_id' });
-            
+
+            // Fire notification to workspace owner
+            await fetch('/api/accept-invitation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    workspace_id: workspaceId,
+                    user_id: user.id,
+                    invited_email: email.trim() || user.email,
+                    display_name: user.user_metadata?.full_name || user.email,
+                }),
+            });
+
             // Redirect to dashboard
             router.push('/');
         } catch (err: any) {

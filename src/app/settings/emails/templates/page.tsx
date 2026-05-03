@@ -227,7 +227,8 @@ export default function EmailTemplatesPage() {
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
             appToast.success('Template Saved', 'Your changes have been saved');
-        } catch {
+        } catch (error) {
+            console.error('Failed to save template:', error);
             appToast.error('Save Failed', 'Failed to save template');
         } finally {
             setIsSaving(false);

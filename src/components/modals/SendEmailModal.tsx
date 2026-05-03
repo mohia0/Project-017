@@ -195,6 +195,16 @@ export function SendEmailModal({
             });
             const data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send email');
+
+            // For workspace invitations: create a pending member row so the UI tracks the invite state
+            if (templateKey === 'workspace_invitation' && workspaceId) {
+                await fetch('/api/track-invitation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ workspace_id: workspaceId, invited_email: to.trim() }),
+                }).catch(() => {}); // non-critical
+            }
+
             setSent(true);
             appToast.success('Email Sent', 'Email sent successfully!');
             onSuccess?.();

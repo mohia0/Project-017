@@ -463,13 +463,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   updateEmailTemplate: async (workspaceId, templateKey, updates) => {
+    // Strip frontend-only fields that do not exist in the email_templates table
+    const { is_html, wrapper, fullHtml, ...dbUpdates } = updates as any;
+    
     const { data, error } = await supabase
       .from('email_templates')
       .upsert({ 
         workspace_id: workspaceId, 
         template_key: templateKey, 
-        ...updates,
+        ...dbUpdates,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'workspace_id,template_key'
       })
       .select()
       .single();

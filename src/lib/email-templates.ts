@@ -34,7 +34,7 @@ export function renderTemplate(
             // Only emit a button if we have a real URL
             if (val && String(val).trim()) {
                 const label = key === 'signup_link' ? 'Accept Invitation' : (key === 'scheduler_link' ? 'View Booking' : 'View Document');
-                return linkBtn(label, vars['accent_color'] || '#10b981', resolved);
+                return linkBtn(label, vars['accent_color'] || '#10b981', resolved, key);
             }
             // If no URL (e.g. suppressUnknown resolved to ''), emit nothing
             return '';
@@ -59,8 +59,8 @@ export function getBrightness(hex: string) {
 }
 
 // The primary CTA button — dark-native rounded rect style
-export const linkBtn = (text: string, accentColor = '#10b981', documentLink = '{{document_link}}') => {
-    return `<div data-is-btn="true" style="margin:24px 0 32px 0;"><a href="${documentLink}" style="display:inline-block;background-color:${accentColor};color:#ffffff;padding:13px 24px;text-decoration:none;border-radius:12px;font-weight:700;font-size:14px;letter-spacing:-0.1px;">${text} &rarr;</a><div style="margin-top:12px;font-size:11px;color:#555;line-height:1.6;">Or open: <a href="${documentLink}" style="color:${accentColor};text-decoration:none;word-break:break-all;">${documentLink}</a></div></div>`;
+export const linkBtn = (text: string, accentColor = '#10b981', documentLink = '{{document_link}}', originalVar = 'document_link') => {
+    return `<div data-is-btn="true" data-btn-var="${originalVar}" style="margin:24px 0 32px 0;"><a href="${documentLink}" style="display:inline-block;background-color:${accentColor};color:#ffffff;padding:13px 24px;text-decoration:none;border-radius:12px;font-weight:700;font-size:14px;letter-spacing:-0.1px;">${text} &rarr;</a><div style="margin-top:12px;font-size:11px;color:#555;line-height:1.6;">Or open: <a href="${documentLink}" style="color:${accentColor};text-decoration:none;word-break:break-all;">${documentLink}</a></div></div>`;
 };
 
 export const DEFAULT_WRAPPER = `<!DOCTYPE html><html lang="en" style="margin:0;padding:0;"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></head><body style="margin:0;padding:0;background:#1a1a1a;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"><table width="100%" border="0" cellpadding="0" cellspacing="0" style="min-height:100vh;width:100%;background:#1a1a1a;border-collapse:collapse;"><tr><td align="center" valign="top" style="padding:40px 16px;"><div style="max-width:580px;width:100%;margin:0 auto;"><div style="background:#0f0f0f;border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 60px -12px rgba(0,0,0,0.6);"><table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-bottom:1px solid rgba(255,255,255,0.07);"><tr><td style="padding:20px 32px;vertical-align:middle;">{{logo_img}}</td><td style="padding:20px 32px;vertical-align:middle;text-align:right;"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;border-radius:50px;background:{{accent_bg}};color:{{accent_color}};border:1px solid {{accent_border}};white-space:nowrap;">{{template_type}}</span></td></tr></table><div id="email-body-content" style="padding:32px 32px 24px;font-size:14px;line-height:1.7;color:#888;"><style>#email-body-content p{margin:0 0 14px 0!important}#email-body-content p:last-child{margin-bottom:0!important}#email-body-content h1,#email-body-content h2{color:#fff!important;margin:0 0 8px 0!important;letter-spacing:-0.5px!important}#email-body-content strong{color:#ccc!important}.vp{display:inline;background:transparent;color:inherit;padding:0;border:none;border-radius:0;font-weight:inherit;font-size:inherit;margin:0;cursor:default;user-select:none;vertical-align:baseline}</style>{{email_body}}</div><div style="padding:14px 32px;border-top:1px solid rgba(255,255,255,0.05);"><table width="100%" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tr><td align="left" style="font-size:11px;color:#666;vertical-align:middle;padding:0;margin:0;"><span style="display:inline-block;width:6px;height:6px;background:{{accent_color}};border-radius:50%;margin-right:6px;vertical-align:middle;"></span>Securely sent via <strong style="color:#999;font-weight:600;">{{sender_name}}</strong></td><td align="right" style="font-size:11px;color:#555;vertical-align:middle;padding:0;margin:0;">&copy; {{current_year}}</td></tr></table></div></div></div></td></tr></table></body></html>`.trim();
@@ -133,7 +133,8 @@ export const buildEmailHtml = (body: string, options: {
       
       // Turn buttons back into variables
       clone.querySelectorAll('[data-is-btn="true"]').forEach(b => {
-        b.replaceWith('{{document_link}}');
+        const varName = b.getAttribute('data-btn-var') || 'document_link';
+        b.replaceWith('{{' + varName + '}}');
       });
 
       // Strip out the variable protection spans
@@ -188,6 +189,6 @@ export const DEFAULT_TEMPLATES: Record<string, EmailTemplateDef> = {
     workspace_invitation: {
         subject: "You're invited to join {{workspace_name}}",
         is_html: true,
-        body: `<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:{{accent_color}};margin:0 0 10px 0;">Workspace Invitation</p><h1 style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;line-height:1.25;margin:0 0 10px 0;">You've been invited<br/>to join {{workspace_name}}.</h1><p style="font-size:13px;color:#666;margin:0 0 28px 0;"><strong>{{sender_name}}</strong> has invited you to join their workspace as a <strong style="color:#bbb;">{{role_name}}</strong>. Click below to create your account and get started.</p>{{signup_link}}<p style="font-size:13px;color:#555;margin:0 0 24px 0;">If you weren't expecting this invitation, you can safely ignore this email.</p>`
+        body: `<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:{{accent_color}};margin:0 0 10px 0;">Workspace Invitation</p><h1 style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;line-height:1.25;margin:0 0 10px 0;">You've been invited to join {{workspace_name}}.</h1><p style="font-size:13px;color:#666;margin:0 0 28px 0;"><strong>{{sender_name}}</strong> invited you to join their workspace. Click below to accept the invitation and get started.</p>{{signup_link}}<p style="font-size:13px;color:#555;margin:0 0 24px 0;">If you weren't expecting this invitation, you can safely ignore this email.</p>`
     },
 };

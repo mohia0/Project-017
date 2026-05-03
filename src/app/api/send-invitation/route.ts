@@ -64,7 +64,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: result.error || 'Failed to send invitation' }, { status: sendRes.status });
         }
 
+        // Create a pending workspace_members row to track the invite state in the UI
+        await supabaseService
+            .from('workspace_members')
+            .upsert({
+                workspace_id,
+                invited_email: to,
+                user_id: null,
+            }, { onConflict: 'workspace_id,invited_email', ignoreDuplicates: true });
+
         return NextResponse.json({ success: true, signup_link });
+
     } catch (err: any) {
         console.error('Send Invitation Error:', err);
         return NextResponse.json({ error: err.message }, { status: 500 });

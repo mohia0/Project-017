@@ -652,6 +652,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
     const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details');
     const [form, setForm] = useState({ contact_person: '', company_name: '', email: '', phone: '', address: '', country: '', tax_number: '', notes: '', avatar_url: '' });
     const [inviteModalOpen, setInviteModalOpen] = useState(false);
+    const [invitationPending, setInvitationPending] = useState(false);
 
     const { proposals } = useProposalStore();
     const { invoices } = useInvoiceStore();
@@ -679,23 +680,50 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                 .select('id, role_id, user_id')
                 .eq('workspace_id', activeWorkspaceId)
                 .eq('invited_email', client.email)
-                .single()
+                .maybeSingle()
                 .then(({ data }) => {
                     if (data) {
                         setMemberRole(data.role_id);
                         setMemberId(data.id);
                         setMemberUserId(data.user_id);
+                        // Pending = row exists but user_id not yet set (invite sent, not accepted)
+                        setInvitationPending(!data.user_id);
                     } else {
                         setMemberRole(null);
                         setMemberId(null);
                         setMemberUserId(null);
+                        setInvitationPending(false);
                     }
                 });
         } else {
             setMemberRole(null);
             setMemberId(null);
             setMemberUserId(null);
+            setInvitationPending(false);
         }
+    }, [client?.email, activeWorkspaceId]);
+
+    // Real-time: watch for invite acceptance (user_id being set on the member row)
+    useEffect(() => {
+        if (!client?.email || !activeWorkspaceId) return;
+
+        const channel = supabase
+            .channel(`member_accept:${activeWorkspaceId}:${client.email}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'workspace_members',
+                filter: `workspace_id=eq.${activeWorkspaceId}`,
+            }, (payload) => {
+                const updated = payload.new as any;
+                if (updated.invited_email === client.email && updated.user_id) {
+                    setMemberUserId(updated.user_id);
+                    setInvitationPending(false);
+                }
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, [client?.email, activeWorkspaceId]);
 
     const handleRoleChange = async (roleId: string) => {
@@ -782,8 +810,14 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                                     Active User
                                 </span>
                             )}
+                            {!memberUserId && invitationPending && (
+                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider", isDark ? "bg-amber-500/20 text-amber-400 border border-amber-500/20" : "bg-amber-100 text-amber-600 border border-amber-200")}>
+                                    Pending
+                                </span>
+                            )}
                         </div>
                     )}
+
                     {form.company_name && !editing && (
                         <p className={cn("text-[11px] mt-0.5", isDark ? "text-[#555]" : "text-[#aaa]")}>{form.company_name}</p>
                     )}
@@ -1010,8 +1044,8 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                 )}
             </div>
 
-            {/* Invite Button for non-users */}
-            {!memberUserId && isOwnerOrCoOwner && !editing && (
+            {/* Invite Button: only show if no active user AND no pending invite */}
+            {!memberUserId && !invitationPending && isOwnerOrCoOwner && !editing && (
                 <div className={cn("px-4 py-3 border-t shrink-0", isDark ? "border-[#252525]" : "border-[#e4e4e4]")}>
                     <button
                         onClick={() => setInviteModalOpen(true)}
@@ -1022,6 +1056,18 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                     >
                         <UserPlus size={14} /> Send Invite to Workspace
                     </button>
+                </div>
+            )}
+
+            {/* Pending invite indicator */}
+            {!memberUserId && invitationPending && isOwnerOrCoOwner && !editing && (
+                <div className={cn("px-4 py-3 border-t shrink-0", isDark ? "border-[#252525]" : "border-[#e4e4e4]")}>
+                    <div className={cn(
+                        "w-full flex items-center justify-center gap-2 h-9 rounded-lg text-[12px] font-semibold",
+                        isDark ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-amber-50 text-amber-600 border border-amber-200"
+                    )}>
+                        <Mail size={13} /> Invitation sent — awaiting acceptance
+                    </div>
                 </div>
             )}
 
