@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from '@/store/useUIStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { cn } from '@/lib/utils';
 import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
@@ -19,6 +20,7 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { theme } = useUIStore();
+    const { user } = useAuthStore();
     const isDark = theme === 'dark';
 
     const [branding, setBranding] = useState<WorkspaceBranding | null>(null);
@@ -64,7 +66,6 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
             if (signUpError) throw signUpError;
 
             // Insert into workspace_members — the workspace settings default_role_id is applied server-side
-            // For now we create the membership record; a DB trigger or the server will assign the role.
             if (signUpData.user) {
                 await supabase.from('workspace_members').upsert({
                     workspace_id: workspaceId,
@@ -81,6 +82,25 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                 setError(err.message || 'Something went wrong. Please try again.');
             }
         } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAcceptAsExisting = async () => {
+        if (!user) return;
+        setLoading(true);
+        setError('');
+        try {
+            await supabase.from('workspace_members').upsert({
+                workspace_id: workspaceId,
+                user_id: user.id,
+                invited_email: email.trim() || user.email,
+            }, { onConflict: 'workspace_id,user_id' });
+            
+            // Redirect to dashboard
+            router.push('/');
+        } catch (err: any) {
+            setError(err.message || 'Failed to accept invitation.');
             setLoading(false);
         }
     };
@@ -136,6 +156,62 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                         )}>
                             <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
                             {successMsg}
+                        </div>
+                    ) : user ? (
+                        <div className="flex flex-col gap-4 text-center animate-in fade-in">
+                            <div className={cn(
+                                "p-4 rounded-xl text-[14px] font-medium border text-left flex items-start gap-3",
+                                isDark ? "bg-white/5 border-white/10 text-white/80" : "bg-black/5 border-black/10 text-black/80"
+                            )}>
+                                <CheckCircle2 size={20} className="shrink-0 mt-0.5 text-emerald-500" />
+                                <div>
+                                    <span className="block font-semibold mb-1">Already signed in</span>
+                                    You are currently signed in as <strong className={isDark ? "text-white" : "text-black"}>{user.email}</strong>.
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className={cn(
+                                    "p-3 rounded-xl text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-1 text-left",
+                                    isDark ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-red-50 text-red-600 border border-red-100"
+                                )}>
+                                    <AlertCircle size={14} className="shrink-0" />
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                onClick={handleAcceptAsExisting}
+                                disabled={loading}
+                                style={{ backgroundColor: accentColor }}
+                                className={cn(
+                                    "w-full h-12 mt-2 rounded-xl flex items-center justify-center gap-2 font-bold text-[14px] text-white transition-all hover:-translate-y-[1px] active:translate-y-[1px] disabled:opacity-50 disabled:hover:translate-y-0 shadow-lg"
+                                )}
+                            >
+                                {loading ? (
+                                    <AppLoader size="xs" color="currentColor" />
+                                ) : (
+                                    <>
+                                        Back to your dashboard
+                                        <ArrowRight size={16} />
+                                    </>
+                                )}
+                            </button>
+                            
+                            <div className="mt-4 flex items-center justify-center gap-2 text-[13px] font-medium">
+                                <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
+                                    Not you?
+                                </span>
+                                <button
+                                    onClick={() => useAuthStore.getState().signOut()}
+                                    className={cn(
+                                        "hover:underline underline-offset-4 decoration-2 font-semibold",
+                                        isDark ? "text-white" : "text-black"
+                                    )}
+                                >
+                                    Sign out
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -257,7 +333,7 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                     )}
 
                     {/* Sign in link */}
-                    {!successMsg && (
+                    {(!successMsg && !user) && (
                         <div className="mt-8 flex items-center justify-center gap-2 text-[13px] font-medium">
                             <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
                                 Already have an account?

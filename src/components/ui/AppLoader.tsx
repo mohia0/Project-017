@@ -17,8 +17,9 @@ interface AppLoaderProps {
 export function AppLoader({
   className,
   size = "md",
-  color = "var(--brand-loader-color, currentColor)",
+  color,
 }: AppLoaderProps) {
+  const resolvedColor = color || (size === "xs" || size === "sm" ? "currentColor" : "var(--brand-loader-color, currentColor)");
   const sizeMap = {
     xs: 16,
     sm: 24,
@@ -38,7 +39,7 @@ export function AppLoader({
         height: currentSize,
         // @ts-ignore
         "--uib-size": `${currentSize}px`,
-        "--uib-color": color,
+        "--uib-color": resolvedColor,
         "--uib-speed": "2.5s",
       }}
     >

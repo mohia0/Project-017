@@ -112,6 +112,7 @@ export async function proxy(request: NextRequest) {
   const isPublicPreview = pathname.startsWith('/p/');
   const isApiRoute      = pathname.startsWith('/api/');
   const isOnboarding    = pathname === '/onboarding';
+  const isJoinRoute     = pathname.startsWith('/join/');
 
   // ─────────────────────────────────────────────────────────────
   // Auth & Domain Restrictions
@@ -137,7 +138,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (!user && !isAuthRoute && !isPublicPreview && !isApiRoute && !isOnboarding) {
+  if (!user && !isAuthRoute && !isPublicPreview && !isApiRoute && !isOnboarding && !isJoinRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

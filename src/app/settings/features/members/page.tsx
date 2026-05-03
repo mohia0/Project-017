@@ -143,7 +143,7 @@ export default function MembersSettingsPage() {
                             <span className="text-sm font-medium">Allow new users to join this workspace via signup.</span>
                             <HelpTip
                                 isDark={isDark}
-                                text="When enabled, anyone with the join link can create an account and join. Disable to make this workspace invitation-only."
+                                text="When ON, a 'Sign up' button appears on the sign-in page so anyone can self-register. When OFF, the button is hidden — only users with a personal invitation link can join."
                             />
                         </div>
                         <SettingsToggle

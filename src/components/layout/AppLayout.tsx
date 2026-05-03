@@ -169,6 +169,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const isPublicPreview = pathname?.startsWith('/p/');
     const isAuthRoute = pathname === '/login';
     const isOnboarding = pathname === '/onboarding';
+    const isJoinRoute = pathname?.startsWith('/join/');
     const isMobile = useIsMobile();
 
     const [minLoadingTimePassed, setMinLoadingTimePassed] = useState(false);
@@ -201,13 +202,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }, [user, activeWorkspaceId, fetchMenu]);
 
     useEffect(() => {
-        if (user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview) {
+        if (user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview && !isJoinRoute) {
             router.push('/onboarding');
         }
-    }, [user, wsFetched, workspaces, isPublicPreview, isOnboarding, router]);
+    }, [user, wsFetched, workspaces, isPublicPreview, isOnboarding, isJoinRoute, router]);
 
-    const isRedirectingToOnboarding = user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview;
-    const isProtectedRoute = !isAuthRoute && !isPublicPreview && !isOnboarding;
+    const isRedirectingToOnboarding = user && wsFetched && workspaces.length === 0 && !isOnboarding && !isPublicPreview && !isJoinRoute;
+    const isProtectedRoute = !isAuthRoute && !isPublicPreview && !isOnboarding && !isJoinRoute;
 
     // Hold the loader until BOTH workspaces AND the current page's data are ready, 
     // AND at least 2 seconds have passed for the initial boot animation.
@@ -217,7 +218,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return <FullScreenLoader isDark={isDark} />;
     }
 
-    if (isAuthRoute || isPublicPreview || isOnboarding) {
+    if (isAuthRoute || isPublicPreview || isOnboarding || isJoinRoute) {
         return (
             <div className={cn(
                 "flex h-screen w-full overflow-hidden",
@@ -325,15 +326,16 @@ function PrivacyModeEffect() {
     const isPublicPreview = pathname?.startsWith('/p/');
     const isAuthRoute = pathname === '/login';
     const isOnboarding = pathname === '/onboarding';
+    const isJoinRoute = pathname?.startsWith('/join/');
 
     useEffect(() => {
-        const shouldApply = isPrivacyMode && !isPublicPreview && !isAuthRoute && !isOnboarding;
+        const shouldApply = isPrivacyMode && !isPublicPreview && !isAuthRoute && !isOnboarding && !isJoinRoute;
         if (shouldApply) {
             document.documentElement.classList.add('privacy-mode');
         } else {
             document.documentElement.classList.remove('privacy-mode');
         }
-    }, [isPrivacyMode, isPublicPreview, isAuthRoute, isOnboarding]);
+    }, [isPrivacyMode, isPublicPreview, isAuthRoute, isOnboarding, isJoinRoute]);
 
     return null;
 }
