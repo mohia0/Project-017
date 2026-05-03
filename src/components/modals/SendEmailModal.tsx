@@ -125,7 +125,7 @@ export function SendEmailModal({
     const buildPreview = useCallback((currentBody: string) => {
         const dbTemplate = emailTemplates.find(t => t.template_key === templateKey);
         
-        const previewVars = { sender_name: senderName, document_title: documentTitle || '', ...variables };
+        const previewVars: Record<string, any> = { sender_name: senderName, document_title: documentTitle || '', ...variables };
         if (templateKey === 'workspace_invitation' && !previewVars.signup_link) {
             previewVars.signup_link = `${window.location.origin}/join/${workspaceId}?email=${encodeURIComponent(to)}`;
         }
