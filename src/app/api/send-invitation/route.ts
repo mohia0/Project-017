@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
             .eq('status', 'active')
             .maybeSingle();
 
-        // 3. Construct signup_link
+        // 3. Construct redirectTo for the join page (where the user lands after clicking)
         const encodedEmail = encodeURIComponent(to);
         let joinBase: string;
         if (domainRow?.domain) {
@@ -40,9 +40,28 @@ export async function POST(req: NextRequest) {
         } else {
             joinBase = req.nextUrl.origin;
         }
-        const signup_link = `${joinBase}/join/${workspace_id}?email=${encodedEmail}`;
+        const redirectTo = `${joinBase}/join/${workspace_id}?email=${encodedEmail}`;
 
-        // 4. Forward to /api/send-email with the workspace_invitation template
+        // 4. Generate a real Supabase magic link (works for both new and existing users).
+        //    type='invite' creates the account if it doesn't exist, then returns an action_link.
+        //    Clicking it auto-authenticates the user before landing on the join page.
+        const { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
+            type: 'invite',
+            email: to,
+            options: { redirectTo },
+        });
+
+        if (linkError || !linkData?.properties?.action_link) {
+            console.error('generateLink error:', linkError);
+            return NextResponse.json(
+                { error: linkError?.message || 'Failed to generate invite link' },
+                { status: 500 }
+            );
+        }
+
+        const signup_link = linkData.properties.action_link;
+
+        // 5. Send our custom branded email with the magic link embedded as signup_link
         const sendRes = await fetch(`${req.nextUrl.origin}/api/send-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -64,7 +83,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: result.error || 'Failed to send invitation' }, { status: sendRes.status });
         }
 
-        // Create a pending workspace_members row to track the invite state in the UI
+        // 6. Create a pending workspace_members row to track the invite state in the UI
         await supabaseService
             .from('workspace_members')
             .upsert({

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUIStore } from '@/store/useUIStore';
 import { cn } from '@/lib/utils';
-import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { AroooXaLogo } from '@/components/ui/AroooXaLogo';
 
@@ -16,6 +16,14 @@ interface WorkspaceBranding {
     favicon_url?: string | null;
 }
 
+// Detect the magic link type from the URL hash (set by Supabase after redirect)
+function getMagicLinkType(): string | null {
+    if (typeof window === 'undefined') return null;
+    const hash = window.location.hash.replace('#', '');
+    const params = new URLSearchParams(hash);
+    return params.get('type'); // 'invite' | 'magiclink' | 'recovery' | null
+}
+
 function JoinForm({ workspaceId }: { workspaceId: string }) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -23,15 +31,18 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
     const isDark = theme === 'dark';
 
     const [branding, setBranding] = useState<WorkspaceBranding | null>(null);
-    const [email, setEmail] = useState(searchParams?.get('email') || '');
+    const [email] = useState(searchParams?.get('email') || '');
+
+    // UI state machine: 'loading' | 'set-password' | 'auto-accepting' | 'success' | 'already-member' | 'error'
+    const [stage, setStage] = useState<'loading' | 'set-password' | 'auto-accepting' | 'success' | 'already-member' | 'error'>('loading');
+    const [error, setError] = useState('');
+
+    // Password-setup form fields (only shown for new users via invite link)
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [successMsg, setSuccessMsg] = useState('');
-    const [alreadyMember, setAlreadyMember] = useState(false);
+    const [savingPassword, setSavingPassword] = useState(false);
 
     // Fetch workspace branding
     useEffect(() => {
@@ -42,11 +53,7 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                     setBranding(branding);
                     if (branding.favicon_url) {
                         let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-                        if (!link) {
-                            link = document.createElement('link');
-                            link.rel = 'icon';
-                            document.head.appendChild(link);
-                        }
+                        if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
                         link.href = branding.favicon_url;
                     }
                 }
@@ -54,78 +61,113 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
             .catch(() => {});
     }, []);
 
-    // Check if the invited email is already a confirmed member of THIS workspace.
-    // We only block if they actually belong to this specific workspace — not any other.
-    useEffect(() => {
-        const invitedEmail = email.trim();
-        if (!invitedEmail) return;
-        supabase
-            .from('workspace_members')
-            .select('user_id')
-            .eq('workspace_id', workspaceId)
-            .eq('invited_email', invitedEmail)
-            .not('user_id', 'is', null)
-            .maybeSingle()
-            .then(({ data }) => {
-                if (data?.user_id) setAlreadyMember(true);
-            });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [workspaceId]);
+    // Accept the authenticated user into this workspace
+    const acceptIntoWorkspace = async (userId: string, userEmail: string) => {
+        setStage('auto-accepting');
+        try {
+            // Check if already a confirmed member of THIS workspace
+            const { data: existing } = await supabase
+                .from('workspace_members')
+                .select('user_id')
+                .eq('workspace_id', workspaceId)
+                .eq('invited_email', userEmail)
+                .not('user_id', 'is', null)
+                .maybeSingle();
 
-    const handleSubmit = async (e: React.FormEvent) => {
+            if (existing?.user_id) {
+                setStage('already-member');
+                return;
+            }
+
+            // Upsert the member row to confirm acceptance
+            await supabase.from('workspace_members').upsert({
+                workspace_id: workspaceId,
+                user_id: userId,
+                invited_email: userEmail,
+            }, { onConflict: 'workspace_id,user_id' });
+
+            // Fire notification to workspace owner
+            await fetch('/api/accept-invitation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    workspace_id: workspaceId,
+                    user_id: userId,
+                    invited_email: userEmail,
+                    display_name: userEmail,
+                }),
+            });
+
+            setStage('success');
+            setTimeout(() => router.push('/'), 1800);
+        } catch (err: any) {
+            setError(err.message || 'Failed to accept invitation.');
+            setStage('error');
+        }
+    };
+
+    // Listen for Supabase auth state — fires when magic link auto-authenticates the user
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+                const user = session.user;
+                const linkType = getMagicLinkType();
+
+                if (linkType === 'invite') {
+                    // New user created via invite — they need to set a password before proceeding
+                    setStage('set-password');
+                } else {
+                    // Existing user authenticated via magic link — auto-accept them
+                    await acceptIntoWorkspace(user.id, user.email || email);
+                }
+            }
+        });
+
+        // Also check if already signed in (e.g. page refresh after magic link auth)
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+            if (session?.user && stage === 'loading') {
+                const linkType = getMagicLinkType();
+                if (linkType === 'invite') {
+                    setStage('set-password');
+                } else {
+                    await acceptIntoWorkspace(session.user.id, session.user.email || email);
+                }
+            } else if (!session && stage === 'loading') {
+                // No magic link, no session — shouldn't normally happen with invite flow
+                // but show a fallback error
+                setStage('error');
+                setError('Invalid or expired invitation link. Please ask the workspace owner to resend the invitation.');
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Handle password setup for new users (type=invite)
+    const handleSetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        setSuccessMsg('');
 
         if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
         if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
 
-        setLoading(true);
+        setSavingPassword(true);
         try {
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                email: email.trim(),
-                password,
-                options: {
-                    data: { full_name: '' },
-                },
-            });
+            // Set the password for the newly created account
+            const { error: updateError } = await supabase.auth.updateUser({ password });
+            if (updateError) throw updateError;
 
-            if (signUpError) throw signUpError;
-
-            // Insert into workspace_members — the workspace settings default_role_id is applied server-side
-            if (signUpData.user) {
-                await supabase.from('workspace_members').upsert({
-                    workspace_id: workspaceId,
-                    user_id: signUpData.user.id,
-                    invited_email: email.trim(),
-                }, { onConflict: 'workspace_id,user_id' });
-
-                // Fire notification to workspace
-                await fetch('/api/accept-invitation', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        workspace_id: workspaceId,
-                        user_id: signUpData.user.id,
-                        invited_email: email.trim(),
-                        display_name: email.trim(),
-                    }),
-                });
+            // Now get current session and accept into workspace
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                await acceptIntoWorkspace(session.user.id, session.user.email || email);
             }
-
-            setSuccessMsg("Account created! We've sent a verification link to your email. Please check your inbox to activate your account.");
         } catch (err: any) {
-            if (err.message?.includes('User already registered')) {
-                setError('An account with this email already exists. Try signing in instead.');
-            } else {
-                setError(err.message || 'Something went wrong. Please try again.');
-            }
-        } finally {
-            setLoading(false);
+            setError(err.message || 'Failed to set password.');
+            setSavingPassword(false);
         }
     };
-
-
 
     const accentColor = branding?.primary_color || '#10b981';
 
@@ -143,18 +185,9 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                     {/* Logo */}
                     <div className="mb-10 flex items-center justify-center">
                         {branding?.logo_url ? (
-                            <img
-                                src={branding.logo_url}
-                                alt={branding.name}
-                                className="h-14 w-auto object-contain mx-auto"
-                            />
+                            <img src={branding.logo_url} alt={branding.name} className="h-14 w-auto object-contain mx-auto" />
                         ) : (
-                            <AroooXaLogo
-                                height={40}
-                                color={isDark ? 'white' : '#1a1a1a'}
-                                wave={true}
-                                className="mx-auto"
-                            />
+                            <AroooXaLogo height={40} color={isDark ? 'white' : '#1a1a1a'} wave={true} className="mx-auto" />
                         )}
                     </div>
 
@@ -163,23 +196,44 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                         <h1 className="text-3xl font-bold tracking-tight mb-2.5">
                             Join {branding?.name || 'the workspace'}.
                         </h1>
-                        <p className={cn(
-                            "text-[15px] font-medium transition-colors",
-                            isDark ? "text-white/50" : "text-black/50"
-                        )}>
-                            Create your account to get started.
+                        <p className={cn("text-[15px] font-medium transition-colors", isDark ? "text-white/50" : "text-black/50")}>
+                            {stage === 'set-password' ? 'Set a password to secure your account.' : 'Verifying your invitation…'}
                         </p>
                     </div>
 
-                    {successMsg ? (
+                    {/* ── LOADING ── */}
+                    {stage === 'loading' && (
+                        <div className="flex flex-col items-center gap-4 py-8">
+                            <Loader2 size={28} className="animate-spin opacity-40" />
+                            <p className={cn("text-sm font-medium", isDark ? "text-white/40" : "text-black/40")}>
+                                Verifying your invitation…
+                            </p>
+                        </div>
+                    )}
+
+                    {/* ── AUTO-ACCEPTING ── */}
+                    {stage === 'auto-accepting' && (
+                        <div className="flex flex-col items-center gap-4 py-8">
+                            <Loader2 size={28} className="animate-spin opacity-40" />
+                            <p className={cn("text-sm font-medium", isDark ? "text-white/40" : "text-black/40")}>
+                                Accepting your invitation…
+                            </p>
+                        </div>
+                    )}
+
+                    {/* ── SUCCESS ── */}
+                    {stage === 'success' && (
                         <div className={cn(
                             "p-4 rounded-xl text-[13px] font-semibold flex items-start gap-3 animate-in fade-in",
                             isDark ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border border-emerald-200 text-emerald-700"
                         )}>
                             <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
-                            {successMsg}
+                            You've joined the workspace! Redirecting you now…
                         </div>
-                    ) : alreadyMember ? (
+                    )}
+
+                    {/* ── ALREADY A MEMBER ── */}
+                    {stage === 'already-member' && (
                         <div className={cn(
                             "p-4 rounded-xl text-[14px] font-medium border text-left flex items-start gap-3 animate-in fade-in",
                             isDark ? "bg-white/5 border-white/10 text-white/80" : "bg-black/5 border-black/10 text-black/80"
@@ -187,25 +241,38 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                             <CheckCircle2 size={20} className="shrink-0 mt-0.5 text-emerald-500" />
                             <div>
                                 <span className="block font-semibold mb-1">Already a member</span>
-                                You already have an account in this workspace. <a href="/login" className="underline font-semibold">Sign in</a> to continue.
+                                You already have an account in this workspace.{' '}
+                                <a href="/" className="underline font-semibold">Go to dashboard →</a>
                             </div>
                         </div>
-                    ) : (
-                        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    )}
 
-                            {/* Email — pre-filled, editable */}
+                    {/* ── ERROR ── */}
+                    {stage === 'error' && (
+                        <div className={cn(
+                            "p-4 rounded-xl text-[13px] font-semibold flex items-start gap-3 animate-in fade-in",
+                            isDark ? "bg-red-500/10 border border-red-500/20 text-red-400" : "bg-red-50 border border-red-200 text-red-700"
+                        )}>
+                            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                            {error}
+                        </div>
+                    )}
+
+                    {/* ── SET PASSWORD (new user via invite link) ── */}
+                    {stage === 'set-password' && (
+                        <form onSubmit={handleSetPassword} className="flex flex-col gap-4">
+                            {/* Email — greyed out, read-only */}
                             <input
                                 type="email"
-                                required
+                                readOnly
                                 value={email}
-                                onChange={e => setEmail(e.target.value)}
+                                tabIndex={-1}
                                 className={cn(
-                                    "w-full h-12 px-4 rounded-xl text-[14px] font-medium transition-all focus:outline-none focus:ring-2",
+                                    "w-full h-12 px-4 rounded-xl text-[14px] font-medium cursor-not-allowed select-none",
                                     isDark
-                                        ? "bg-[#141414] border border-white/10 hover:border-white/20 focus:border-white/30 focus:ring-white/10 placeholder:text-white/30"
-                                        : "bg-white border border-black/10 hover:border-black/20 focus:border-black/30 focus:ring-black/5 placeholder:text-black/40 shadow-sm"
+                                        ? "bg-white/[0.03] border border-white/5 text-white/30"
+                                        : "bg-black/[0.03] border border-black/5 text-black/30"
                                 )}
-                                placeholder="name@company.com"
                             />
 
                             {/* Password */}
@@ -213,6 +280,7 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     required
+                                    autoFocus
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
                                     className={cn(
@@ -221,7 +289,7 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                                             ? "bg-[#141414] border border-white/10 hover:border-white/20 focus:border-white/30 focus:ring-white/10 placeholder:text-white/30"
                                             : "bg-white border border-black/10 hover:border-black/20 focus:border-black/30 focus:ring-black/5 placeholder:text-black/40 shadow-sm"
                                     )}
-                                    placeholder="Password"
+                                    placeholder="Create a password"
                                 />
                                 <button
                                     type="button"
@@ -275,41 +343,20 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                             <button
                                 type="submit"
                                 id="join-workspace-btn"
-                                disabled={loading}
+                                disabled={savingPassword}
                                 style={{ backgroundColor: accentColor }}
-                                className={cn(
-                                    "w-full h-12 mt-2 rounded-xl flex items-center justify-center gap-2 font-bold text-[14px] text-white transition-all hover:-translate-y-[1px] active:translate-y-[1px] disabled:opacity-50 disabled:hover:translate-y-0",
-                                    "shadow-lg"
-                                )}
+                                className="w-full h-12 mt-2 rounded-xl flex items-center justify-center gap-2 font-bold text-[14px] text-white transition-all hover:-translate-y-[1px] active:translate-y-[1px] disabled:opacity-50 disabled:hover:translate-y-0 shadow-lg"
                             >
-                                {loading ? (
+                                {savingPassword ? (
                                     <AppLoader size="xs" color="currentColor" />
                                 ) : (
                                     <>
-                                        Create Account
+                                        Set Password & Join
                                         <ArrowRight size={16} />
                                     </>
                                 )}
                             </button>
                         </form>
-                    )}
-
-                    {/* Sign in link */}
-                    {(!successMsg && !alreadyMember) && (
-                        <div className="mt-8 flex items-center justify-center gap-2 text-[13px] font-medium">
-                            <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
-                                Already have an account?
-                            </span>
-                            <a
-                                href="/login"
-                                className={cn(
-                                    "hover:underline underline-offset-4 decoration-2 font-semibold",
-                                    isDark ? "text-white" : "text-black"
-                                )}
-                            >
-                                Sign in
-                            </a>
-                        </div>
                     )}
                 </div>
             </div>
