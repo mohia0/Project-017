@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
-import SettingsSidebar, { ACCOUNT_LINKS, WORKSPACE_LINKS, FEATURES_LINKS } from '@/components/settings/SettingsSidebar';
+import SettingsSidebar, { ACCOUNT_LINKS, WORKSPACE_LINKS, FEATURES_LINKS, TEAM_LINKS } from '@/components/settings/SettingsSidebar';
 import { useUIStore } from '@/store/useUIStore';
 import { cn } from '@/lib/utils';
 
@@ -29,13 +29,16 @@ export default function SettingsLayout({
     if (path.includes('/features/statuses')) return 'Feature Statuses';
     if (path.includes('/features/proposals')) return 'Proposal Settings';
     if (path.includes('/features/invoices')) return 'Invoice Settings';
+    if (path.includes('/roles/')) return 'Role Permissions';
+    if (path.includes('/roles')) return 'User Roles';
     if (path.includes('/features/projects')) return 'Project Settings';
+    if (path.includes('/features/members')) return 'Members & Signup';
 
     return '';
   };
 
   const pageTitle = getPageTitle(pathname);
-  const allLinks = [...ACCOUNT_LINKS, ...WORKSPACE_LINKS, ...FEATURES_LINKS];
+  const allLinks = [...ACCOUNT_LINKS, ...WORKSPACE_LINKS, ...FEATURES_LINKS, ...TEAM_LINKS];
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden">
@@ -73,6 +76,14 @@ export default function SettingsLayout({
             {pathname.includes('/emails/templates') && (
               <button
                 onClick={() => router.push('/settings/emails')}
+                className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors text-current opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
+              >
+                <ChevronLeft size={18} strokeWidth={2.5} />
+              </button>
+            )}
+            {/^\/settings\/roles\/.+/.test(pathname) && (
+              <button
+                onClick={() => router.push('/settings/roles')}
                 className="w-8 h-8 rounded-[10px] flex items-center justify-center transition-colors text-current opacity-60 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 shrink-0"
               >
                 <ChevronLeft size={18} strokeWidth={2.5} />

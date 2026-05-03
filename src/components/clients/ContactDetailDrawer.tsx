@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import {
     X, Mail, Phone, MapPin, Building2, Hash, FileText,
-    Pencil, Save, Trash2, Check, ExternalLink
+    Pencil, Save, Trash2, Check, ExternalLink, ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { useClientStore } from '@/store/useClientStore';
 import { CompanyPicker } from '@/components/companies/CompanyPicker';
+import { useRolesStore } from '@/store/useRolesStore';
+import { supabase } from '@/lib/supabase';
 
 interface Client {
     id: string;
@@ -91,6 +93,57 @@ export default function ContactDetailDrawer({ client, onClose }: Props) {
     const [showDelete, setShowDelete] = useState(false);
     const [saved, setSaved] = useState(false);
     const [form, setForm] = useState({ contact_person: '', company_name: '', email: '', phone: '', address: '', tax_number: '', notes: '' });
+
+    const { activeWorkspaceId } = useUIStore();
+    const { roles, fetchRoles } = useRolesStore();
+    const [memberRole, setMemberRole] = useState<string | null>(null);
+    const [memberId, setMemberId] = useState<string | null>(null);
+    const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+
+    useEffect(() => {
+        if (activeWorkspaceId && roles.length === 0) {
+            fetchRoles(activeWorkspaceId);
+        }
+    }, [activeWorkspaceId, roles.length, fetchRoles]);
+
+    useEffect(() => {
+        if (client?.email && activeWorkspaceId) {
+            supabase.from('workspace_members')
+                .select('*')
+                .eq('workspace_id', activeWorkspaceId)
+                .eq('invited_email', client.email)
+                .maybeSingle()
+                .then(({ data }) => {
+                    if (data) {
+                        setMemberRole(data.role_id);
+                        setMemberId(data.id);
+                    } else {
+                        setMemberRole(null);
+                        setMemberId(null);
+                    }
+                });
+        } else {
+            setMemberRole(null);
+            setMemberId(null);
+        }
+    }, [client?.email, activeWorkspaceId]);
+
+    const handleRoleChange = async (roleId: string) => {
+        if (!activeWorkspaceId || !client?.email) return;
+        setMemberRole(roleId);
+        setRoleDropdownOpen(false);
+
+        if (memberId) {
+            await supabase.from('workspace_members').update({ role_id: roleId }).eq('id', memberId);
+        } else {
+            const { data } = await supabase.from('workspace_members').insert({
+                workspace_id: activeWorkspaceId,
+                invited_email: client.email,
+                role_id: roleId
+            }).select().single();
+            if (data) setMemberId(data.id);
+        }
+    };
 
     const resetForm = (c: Client) => setForm({
         contact_person: c.contact_person || '', company_name: c.company_name || '',
@@ -203,6 +256,64 @@ export default function ContactDetailDrawer({ client, onClose }: Props) {
 
                 {/* Fields */}
                 <div className="flex-1 overflow-y-auto py-2 px-2">
+                    {/* Role Assignment */}
+                    <div className="px-2 pt-2 pb-3 relative">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck size={12} className={cn("shrink-0", isDark ? "text-[#555]" : "text-[#bbb]")} />
+                                <span className={cn("text-[10px] font-semibold uppercase tracking-wider", isDark ? "text-[#555]" : "text-[#bbb]")}>Workspace Role</span>
+                            </div>
+                            {form.email ? (
+                                <button 
+                                    onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider transition-colors",
+                                        memberRole 
+                                            ? (isDark ? "bg-red-500/20 text-red-400 hover:bg-red-500/30" : "bg-red-100 text-red-600 hover:bg-red-200")
+                                            : (isDark ? "bg-white/10 text-white/40 hover:bg-white/20" : "bg-black/5 text-black/40 hover:bg-black/10")
+                                    )}
+                                >
+                                    {memberRole ? roles.find(r => r.id === memberRole)?.name || 'Role' : 'Set Role'}
+                                    <span className="opacity-50">|</span>
+                                    <span className="tracking-tighter">...</span>
+                                </button>
+                            ) : (
+                                <span className={cn("text-[10px] italic", isDark ? "text-white/30" : "text-black/30")}>
+                                    Email required
+                                </span>
+                            )}
+                        </div>
+                        
+                        {roleDropdownOpen && form.email && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setRoleDropdownOpen(false)} />
+                                <div className={cn(
+                                    "absolute top-full right-2 mt-1 w-48 rounded-xl border shadow-xl z-50 overflow-hidden py-1",
+                                    isDark ? "bg-[#1c1c1c] border-[#333]" : "bg-white border-[#ebebeb]"
+                                )}>
+                                    <div className={cn("px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider mb-1", isDark ? "text-white/40" : "text-black/40")}>
+                                        Assign Role
+                                    </div>
+                                    {roles.filter(r => r.name !== 'Owner').map(role => (
+                                        <button
+                                            key={role.id}
+                                            onClick={() => handleRoleChange(role.id)}
+                                            className={cn(
+                                                "w-full text-left px-3 py-2 text-[12px] font-medium transition-colors flex items-center justify-between",
+                                                memberRole === role.id 
+                                                    ? (isDark ? "bg-primary/10 text-primary" : "bg-primary/10 text-primary")
+                                                    : (isDark ? "hover:bg-white/5 text-white/70" : "hover:bg-black/5 text-black/70")
+                                            )}
+                                        >
+                                            {role.name}
+                                            {memberRole === role.id && <Check size={12} />}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
+
                     {editing && (
                         <Field label="Email" icon={<Mail size={12} />} value={form.email} editing onChange={u('email')} type="email" placeholder="email@example.com" isDark={isDark} />
                     )}

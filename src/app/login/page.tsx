@@ -18,16 +18,23 @@ interface PortalBranding {
 
 function usePortalBranding() {
     const [branding, setBranding] = useState<PortalBranding | null>(null);
+    const [isPortalDomain, setIsPortalDomain] = useState(false);
     useEffect(() => {
         fetch('/api/workspace/branding')
             .then(r => r.json())
             .then(({ branding, isCustomDomain }) => {
                 // Only apply tenant branding on genuine custom domains
-                if (isCustomDomain && branding) setBranding(branding);
+                if (isCustomDomain && branding) {
+                    setBranding(branding);
+                    setIsPortalDomain(true);
+                } else if (isCustomDomain) {
+                    // It's a portal subdomain (workspace slug) but no extra branding data
+                    setIsPortalDomain(true);
+                }
             })
             .catch(() => {});
     }, []);
-    return branding;
+    return { branding, isPortalDomain };
 }
 
 export default function LoginPage() {
@@ -36,7 +43,7 @@ export default function LoginPage() {
     const { user, isLoading } = useAuthStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const portalBranding = usePortalBranding();
+    const { branding: portalBranding, isPortalDomain } = usePortalBranding();
 
     const [mode, setMode] = useState<'signin' | 'signup' | 'forgot_password'>('signin');
     const [email, setEmail] = useState('');
@@ -459,7 +466,7 @@ export default function LoginPage() {
                     </form>
 
                     <div className="mt-8 flex flex-col gap-2.5">
-                        {(mode === 'signin' || mode === 'forgot_password') && (
+                        {(mode === 'signin' || mode === 'forgot_password') && !isPortalDomain && (
                             <div className="flex items-center justify-center gap-2 text-[13px] font-medium">
                                 <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
                                     Don't have an account?

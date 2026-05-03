@@ -7,7 +7,7 @@ import {
     Globe, Briefcase, Trash2, Archive, ArchiveRestore,
     Copy, Check, SquareCheck, X, MoreHorizontal,
     FileSpreadsheet, Upload, Download, ChevronDown, ArrowUpDown, ArrowRightLeft,
-    SlidersHorizontal
+    SlidersHorizontal, UserPlus
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { appToast } from '@/lib/toast';
@@ -38,6 +38,8 @@ import { Checkbox as Chk } from '@/components/ui/Checkbox';
 
 
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
+import { SendEmailModal } from '@/components/modals/SendEmailModal';
+import { usePermissions } from '@/hooks/usePermissions';
 
 type Tab = 'people' | 'companies';
 
@@ -70,7 +72,9 @@ export default function ClientsPage() {
     const { navItems } = useMenuStore();
     const { clients, addClient, fetchClients, isLoading: isClientsLoading } = useClientStore();
     const { companies, fetchCompanies, isLoading: isCompaniesLoading } = useCompanyStore();
-    const { theme, openRightPanel, rightPanel, setImportModalOpen, setCreateModalOpen, pageViews, setPageView } = useUIStore();
+    const { theme, openRightPanel, rightPanel, setImportModalOpen, setCreateModalOpen, pageViews, setPageView, activeWorkspaceId } = useUIStore();
+    const { isOwner, role } = usePermissions();
+    const isOwnerOrCoOwner = isOwner || role?.name === 'Co-Owner';
     const isMobile = useIsMobile();
     const isDark = theme === 'dark';
     const [tab, setTab] = usePersistentState<Tab>('clients_filter_tab', 'people');
@@ -82,6 +86,7 @@ export default function ClientsPage() {
 
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [inviteModalContact, setInviteModalContact] = useState<any>(null);
 
     const [orderBy, setOrderBy] = usePersistentState<'name' | 'name-desc' | 'recent' | 'oldest'>('clients_filter_order', 'recent');
     const [orderOpen, setOrderOpen] = useState(false);
@@ -379,15 +384,24 @@ export default function ClientsPage() {
         }}
     ], [isDark, textPrimary, textSecondary, muted, clients]);
 
-    const getPeopleMenu = (client: any) => [
-        { label: 'View Profile', icon: <Users size={14} />, onClick: () => openRightPanel({ type: 'contact', id: client.id }) },
-        { label: 'Duplicate', icon: <Copy size={14} />, onClick: () => handleDuplicateClient(client.id) },
-        { label: 'Delete', icon: <Trash2 size={14} />, danger: true, onClick: async () => {
+    const getPeopleMenu = (client: any) => {
+        const menu: any[] = [
+            { label: 'View Profile', icon: <Users size={14} />, onClick: () => openRightPanel({ type: 'contact', id: client.id }) },
+            { label: 'Duplicate', icon: <Copy size={14} />, onClick: () => handleDuplicateClient(client.id) },
+        ];
+        
+        if (isOwnerOrCoOwner && client.email) {
+            menu.push({ label: 'Invite to Workspace', icon: <UserPlus size={14} />, onClick: () => setInviteModalContact(client) });
+        }
+        
+        menu.push({ label: 'Delete', icon: <Trash2 size={14} />, danger: true, onClick: async () => {
             const { deleteClient } = useClientStore.getState();
             await deleteClient(client.id);
             appToast.error("Deleted", 'Contact deleted');
-        }, separator: true },
-    ];
+        }, separator: true });
+        
+        return menu;
+    };
 
     const getCompanyMenu = (company: any) => [
         { label: 'View Profile', icon: <Building2 size={14} />, onClick: () => openRightPanel({ type: 'company', id: company.id }) },
@@ -789,6 +803,17 @@ export default function ClientsPage() {
                                     isDark={isDark}
                                 />
                             </div>
+                        )}
+                        {inviteModalContact && (
+                            <SendEmailModal
+                                isOpen={!!inviteModalContact}
+                                onClose={() => setInviteModalContact(null)}
+                                templateKey="workspace_invitation"
+                                to={inviteModalContact.email}
+                                variables={{}}
+                                workspaceId={activeWorkspaceId || ''}
+                                documentTitle="Workspace Invitation"
+                            />
                         )}
                     </>
                 )}

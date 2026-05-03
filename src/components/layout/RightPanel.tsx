@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
     FileText, Pencil, Save, Trash2, Check, ExternalLink,
-    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Info, Calendar as CalendarIcon, Palette, HelpCircle
+    Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Info, Calendar as CalendarIcon, Palette, HelpCircle, ShieldCheck, UserPlus
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,10 @@ import { Copy } from 'lucide-react';
 import { appToast } from '@/lib/toast';
 import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { useRolesStore } from '@/store/useRolesStore';
+import { supabase } from '@/lib/supabase';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const COLORS = [
     '#f43f5e', '#ec4899', '#d946ef', '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9',
@@ -647,9 +651,67 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
     const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'details' | 'documents'>('details');
     const [form, setForm] = useState({ contact_person: '', company_name: '', email: '', phone: '', address: '', country: '', tax_number: '', notes: '', avatar_url: '' });
+    const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
     const { proposals } = useProposalStore();
     const { invoices } = useInvoiceStore();
+
+    // -- Role Assignment State --
+    const { activeWorkspaceId } = useUIStore();
+    const { can, role: currentUserRole, isOwner } = usePermissions();
+    const isOwnerOrCoOwner = isOwner || currentUserRole?.name === 'Co-Owner';
+
+    const { roles, fetchRoles } = useRolesStore();
+    const [memberRole, setMemberRole] = useState<string | null>(null);
+    const [memberId, setMemberId] = useState<string | null>(null);
+    const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+
+    useEffect(() => {
+        if (activeWorkspaceId && roles.length === 0) {
+            fetchRoles(activeWorkspaceId);
+        }
+    }, [activeWorkspaceId, roles.length, fetchRoles]);
+
+    useEffect(() => {
+        if (client?.email && activeWorkspaceId) {
+            supabase.from('workspace_members')
+                .select('id, role_id')
+                .eq('workspace_id', activeWorkspaceId)
+                .eq('invited_email', client.email)
+                .single()
+                .then(({ data }) => {
+                    if (data) {
+                        setMemberRole(data.role_id);
+                        setMemberId(data.id);
+                    } else {
+                        setMemberRole(null);
+                        setMemberId(null);
+                    }
+                });
+        } else {
+            setMemberRole(null);
+            setMemberId(null);
+        }
+    }, [client?.email, activeWorkspaceId]);
+
+    const handleRoleChange = async (roleId: string) => {
+        if (!activeWorkspaceId || !client?.email) return;
+        setMemberRole(roleId);
+        setRoleDropdownOpen(false);
+
+        if (memberId) {
+            await supabase.from('workspace_members').update({ role_id: roleId }).eq('id', memberId);
+        } else {
+            const { data } = await supabase.from('workspace_members').insert({
+                workspace_id: activeWorkspaceId,
+                invited_email: client.email,
+                role_id: roleId,
+                status: 'active'
+            }).select().single();
+            
+            if (data) setMemberId(data.id);
+        }
+    };
 
     useEffect(() => {
         if (client) setForm({ contact_person: client.contact_person || '', company_name: client.company_name || '', email: client.email || '', phone: client.phone || '', address: client.address || '', country: client.country || '', tax_number: client.tax_number || '', notes: client.notes || '', avatar_url: client.avatar_url || '' });
@@ -781,16 +843,88 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
             <div className="flex-1 overflow-y-auto py-1">
                 {activeTab === 'details' || editing ? (
                     <>
-                        {/* Quick email */}
+                        {/* Role Assignment */}
+                        {isOwnerOrCoOwner && (
+                            <Field 
+                                label="Workspace Role" 
+                                icon={<ShieldCheck size={11} />} 
+                                value={memberRole ? roles.find(r => r.id === memberRole)?.name || 'Unknown' : 'No Role'}
+                                editing={editing}
+                                onChange={() => {}}
+                                isDark={isDark}
+                            >
+                            <div className="relative">
+                                {form.email ? (
+                                    <button 
+                                        onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                                        className={cn(
+                                            "flex items-center justify-between w-full text-[12px] pb-0.5 border-b transition-colors outline-none",
+                                            isDark 
+                                                ? "border-[#333] hover:border-[#555] text-white" 
+                                                : "border-[#e0e0e0] hover:border-[#ccc] text-[#111]"
+                                        )}
+                                    >
+                                        <span>
+                                            {memberRole 
+                                                ? roles.find(r => r.id === memberRole)?.name 
+                                                : <span className={isDark ? "text-[#444]" : "text-[#ccc]"}>Select role...</span>}
+                                        </span>
+                                        <ChevronRight size={12} className={cn("transition-transform opacity-50", roleDropdownOpen && "rotate-90")} />
+                                    </button>
+                                ) : (
+                                    <div className={cn("text-[12px] border-b pb-0.5", isDark ? "text-[#444] border-[#333]" : "text-[#ccc] border-[#e0e0e0]")}>
+                                        Email required to assign role
+                                    </div>
+                                )}
+                                
+                                {roleDropdownOpen && form.email && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setRoleDropdownOpen(false)} />
+                                        <div className={cn(
+                                            "absolute top-full left-0 right-0 mt-1 rounded-xl border shadow-xl z-50 overflow-hidden py-1",
+                                            isDark ? "bg-[#1c1c1c] border-[#2e2e2e]" : "bg-white border-[#e0e0e0]"
+                                        )}>
+                                            {roles.filter(r => r.name !== 'Owner').map(role => (
+                                                <button
+                                                    key={role.id}
+                                                    onClick={() => handleRoleChange(role.id)}
+                                                    className={cn(
+                                                        "w-full text-left px-3 py-2 text-[12px] font-medium transition-colors flex items-center justify-between",
+                                                        memberRole === role.id 
+                                                            ? (isDark ? "bg-primary/10 text-primary" : "bg-primary/10 text-primary")
+                                                            : (isDark ? "hover:bg-white/5 text-white/70" : "hover:bg-black/5 text-black/70")
+                                                    )}
+                                                >
+                                                    {role.name}
+                                                    {memberRole === role.id && <Check size={12} />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </Field>
+                        )}
+
+                        {/* Actions */}
                         {form.email && !editing && (
-                            <div className="px-3 pt-3 mb-2">
+                            <div className="px-3 pt-1 mb-2 flex flex-col gap-1.5">
                                 <a href={`mailto:${form.email}`}
                                     className={cn("flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-[11px] font-medium transition-colors group",
-                                        isDark ? "bg-[#1a1a1a] border border-[#252525] text-primary hover:bg-[#1e1e1e]"
-                                            : "bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15")}>
+                                        isDark ? "bg-[#1a1a1a] border border-[#252525] text-[#ccc] hover:bg-[#1e1e1e]"
+                                            : "bg-[#f5f5f5] border border-[#e0e0e0] text-[#333] hover:bg-[#f0f0f0]")}>
                                     <div className="flex items-center gap-1.5 min-w-0"><Mail size={11} /><span className="truncate">{form.email}</span></div>
                                     <ExternalLink size={9} className="shrink-0 opacity-40 group-hover:opacity-100" />
                                 </a>
+                                {isOwnerOrCoOwner && (
+                                    <button 
+                                        onClick={() => setInviteModalOpen(true)}
+                                        className={cn("flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-[11px] font-medium transition-colors group",
+                                            isDark ? "bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15"
+                                                : "bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15")}>
+                                        <div className="flex items-center gap-1.5 min-w-0"><UserPlus size={11} /><span>Invite to Workspace</span></div>
+                                    </button>
+                                )}
                             </div>
                         )}
                         {editing && <Field label="Email" icon={<Mail size={11} />} value={form.email} editing onChange={u('email')} type="email" placeholder="email@example.com" isDark={isDark} />}
@@ -921,6 +1055,17 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                 }}
                 title="Contact Photo"
             />
+            {inviteModalOpen && (
+                <SendEmailModal
+                    isOpen={inviteModalOpen}
+                    onClose={() => setInviteModalOpen(false)}
+                    templateKey="workspace_invitation"
+                    to={form.email}
+                    variables={{}}
+                    workspaceId={activeWorkspaceId || ''}
+                    documentTitle="Workspace Invitation"
+                />
+            )}
         </>
     );
 }

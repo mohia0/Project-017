@@ -9,7 +9,8 @@ const TYPE_MAP: Record<string, string> = {
     receipt: 'Receipt',
     overdue_remind: 'Overdue Reminder',
     booking_confirmed: 'Booking Confirmed',
-    scheduler: 'Scheduler'
+    scheduler: 'Scheduler',
+    workspace_invitation: 'Invitation',
 };
 
 export async function POST(req: NextRequest) {

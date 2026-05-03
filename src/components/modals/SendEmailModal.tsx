@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import {
     X, Send, Mail, Check, AlertCircle, Settings2,
     FileText, Receipt, FileCheck, Calendar, Clock,
-    ChevronDown, Monitor, Smartphone
+    ChevronDown, Monitor, Smartphone, UserPlus
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,7 @@ import { Dropdown, DItem } from '@/components/ui/Dropdown';
 interface SendEmailModalProps {
     isOpen: boolean;
     onClose: () => void;
-    templateKey: 'proposal' | 'invoice' | 'receipt' | 'overdue_remind' | 'booking_confirmed' | 'scheduler';
+    templateKey: 'proposal' | 'invoice' | 'receipt' | 'overdue_remind' | 'booking_confirmed' | 'scheduler' | 'workspace_invitation';
     to: string;
     variables: Record<string, string>;
     workspaceId: string;
@@ -32,12 +32,13 @@ interface SendEmailModalProps {
 }
 
 const TEMPLATE_INFO = {
-    proposal:          { label: 'Proposal',          color: '#6366f1', icon: FileText   },
-    invoice:           { label: 'Invoice',            color: '#f59e0b', icon: Receipt    },
-    receipt:           { label: 'Receipt',            color: '#10b981', icon: FileCheck  },
-    overdue_remind:    { label: 'Overdue Reminder',   color: '#ef4444', icon: AlertCircle },
-    booking_confirmed: { label: 'Booking Confirmed',  color: '#8b5cf6', icon: Calendar   },
-    scheduler:         { label: 'Scheduler',          color: '#10b981', icon: Clock      },
+    proposal:             { label: 'Proposal',          color: '#6366f1', icon: FileText   },
+    invoice:              { label: 'Invoice',            color: '#f59e0b', icon: Receipt    },
+    receipt:              { label: 'Receipt',            color: '#10b981', icon: FileCheck  },
+    overdue_remind:       { label: 'Overdue Reminder',   color: '#ef4444', icon: AlertCircle },
+    booking_confirmed:    { label: 'Booking Confirmed',  color: '#8b5cf6', icon: Calendar   },
+    scheduler:            { label: 'Scheduler',          color: '#10b981', icon: Clock      },
+    workspace_invitation: { label: 'Invitation',         color: '#6366f1', icon: UserPlus   },
 };
 
 export function SendEmailModal({

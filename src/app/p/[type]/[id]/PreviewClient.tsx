@@ -1437,7 +1437,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-h-0 bg-[#f7f7f7]">
+                <div className="flex-1 min-h-0 bg-[#f7f7f7] flex flex-col overflow-hidden">
                     {isProjectLoading ? (
                         <div className="flex h-full items-center justify-center">
                             <AppLoader size="md" color={projectColor} />

@@ -14,7 +14,7 @@ import {
 import {
     Send, Receipt, FileText, AlertTriangle, CalendarCheck,
     Code2, Eye, RotateCcw, CheckCircle2, Check, Sparkles,
-    Monitor, Smartphone, Copy, ChevronLeft
+    Monitor, Smartphone, Copy, ChevronLeft, UserPlus
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppLoader } from '@/components/ui/AppLoader';
@@ -42,6 +42,10 @@ const TEMPLATE_DEFS = [
     {
         key: 'booking_confirmed', label: 'Booking', icon: CalendarCheck, color: '#8b5cf6',
         sample: { client_name: 'John Smith', scheduler_title: 'Strategy Session', booked_date: 'May 20, 2026', booked_time: '10:00 AM', timezone: '(UTC-05:00) Eastern Time' }
+    },
+    {
+        key: 'workspace_invitation', label: 'Invitation', icon: UserPlus, color: '#6366f1',
+        sample: { invitee_email: 'jane@example.com', workspace_name: 'Acme Studio', role_name: 'Member', signup_link: 'https://app.example.com/join/ws-xxx?email=jane%40example.com' }
     },
 ];
 
@@ -84,14 +88,6 @@ export default function EmailTemplatesPage() {
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); }, []);
 
-    if (!activeWorkspaceId || !mounted || !hasFetchedTemplates || !hasFetchedConfigs) {
-        return (
-            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
-                <SkeletonBox isDark={isDark} className="h-32 rounded-2xl w-full" />
-                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
-            </div>
-        );
-    }
 
     const emailConfig = emailConfigs.find(c => c.is_default) || emailConfigs[0];
 
@@ -234,6 +230,14 @@ export default function EmailTemplatesPage() {
             setIsSaving(false);
         }
     };
+    if (!activeWorkspaceId || !mounted || !hasFetchedTemplates || !hasFetchedConfigs) {
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto py-8">
+                <SkeletonBox isDark={isDark} className="h-32 rounded-2xl w-full" />
+                <SkeletonBox isDark={isDark} className="h-64 rounded-2xl w-full" />
+            </div>
+        );
+    }
 
     return (
         /* Full height, no outer padding — matches layout's flex-1 h-full container */

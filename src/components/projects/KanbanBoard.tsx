@@ -458,7 +458,7 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
                 }
             }}
             className={cn(
-                'relative select-none group/card overflow-hidden min-h-[48px]',
+                'relative select-none group/card overflow-hidden min-h-[62px]',
                 !isDragging && 'transition-all duration-150',
                 !isPreview && 'cursor-pointer',
                 isDragging
@@ -497,7 +497,7 @@ function TaskCard({ task, isDark, onCtx, onAction, isFirst, isLast, isPreview, i
                 />
             )}
 
-            <div className={cn("pl-4 pr-3 py-[15px] flex flex-col gap-2", isDragging && "invisible")}>
+            <div className={cn("pl-4 pr-3 py-[20px] flex flex-col gap-2", isDragging && "invisible")}>
 
                 {/* ── Top row: checkbox + title + action ── */}
                 <div className="relative flex items-start gap-2.5">
@@ -998,7 +998,7 @@ function TaskGroupCol({ group, tasks, isDark, projectId, onCtx, onAction, forceE
             </div>
 
             {/* ══ TASK LIST ══ */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pb-8 min-h-[100px]">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pb-8 min-h-[100px]">
                 <AnimatePresence>
                     {adding && (
                         <motion.div
@@ -1208,6 +1208,15 @@ export default React.memo(function KanbanBoard({
     const [ctxMenu,    setCtxMenu]    = useState<CtxMenuState>(null);
     const [renamingId, setRenamingId] = useState<string | null>(null);
     const [pendingDelete, setPendingDelete] = useState<{ id: string, type: 'task' | 'group' } | null>(null);
+    const filteredAllTasks = useMemo(() => {
+        return tasks.filter(t => 
+            (showArchived ? t.is_archived : !t.is_archived) &&
+            (!searchQuery || t.title.toLowerCase().includes(searchQuery.toLowerCase())) &&
+            (filterPriority === 'all' || t.priority === filterPriority) &&
+            (filterStatus === 'all' || t.status === filterStatus)
+        );
+    }, [tasks, showArchived, searchQuery, filterPriority, filterStatus]);
+    const handleSelectAll = () => setSelectedIds(new Set(filteredAllTasks.map(t => t.id)));
 
     // Bulk selection state
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -1481,7 +1490,7 @@ export default React.memo(function KanbanBoard({
     const activeGroup = activeType === 'group' ? groups.find(g => g.id === activeId)  : null;
 
     return (
-        <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden" style={{ zoom: 0.9 }}>
+        <div className="relative flex-1 min-h-0 flex flex-col overflow-x-hidden overflow-y-hidden" style={{ zoom: 0.9 }}>
             <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -1490,7 +1499,7 @@ export default React.memo(function KanbanBoard({
                 onDragEnd={handleDragEnd}
             >
                 <div
-                    className="flex-1 overflow-x-auto overflow-y-hidden px-5 py-5 flex items-start gap-4 no-scrollbar h-full"
+                    className="flex-1 overflow-x-auto overflow-y-hidden px-5 pt-5 pb-10 flex items-stretch gap-4 custom-scrollbar h-full"
                     onContextMenu={e => { e.preventDefault(); setCtxMenu(null); }}
                 >
                     <SortableContext items={groups.map(g => g.id)} strategy={horizontalListSortingStrategy}>
@@ -1660,7 +1669,20 @@ export default React.memo(function KanbanBoard({
                                 "absolute bottom-10 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 px-4 py-3 rounded-2xl text-[12px] font-medium border shadow-2xl backdrop-blur-md",
                                 isDark ? "bg-[#1c1c1c]/90 border-[#2e2e2e] text-[#aaa] shadow-black/60" : "bg-white/90 border-[#e8e8e8] text-[#666] shadow-black/10"
                             )}>
-                            <span className="opacity-80 font-bold tracking-tight">{selectedIds.size} task{selectedIds.size > 1 ? 's' : ''} selected</span>
+                            <div className="flex items-center gap-2.5">
+                                <span className="opacity-90 font-bold tracking-tight">{selectedIds.size} task{selectedIds.size > 1 ? 's' : ''} selected</span>
+                                {selectedIds.size < filteredAllTasks.length && (
+                                    <button 
+                                        onClick={handleSelectAll}
+                                        className={cn(
+                                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
+                                            isDark ? "bg-white/10 hover:bg-white/20 text-white" : "bg-black/5 hover:bg-black/10 text-black"
+                                        )}
+                                    >
+                                        Select All
+                                    </button>
+                                )}
+                            </div>
                             <div className={cn("w-[2px] h-4 rounded-full", isDark ? "bg-[#333]" : "bg-[#eee]")} />
                             <div className="flex items-center gap-4">
                                 <button onClick={handleBulkDuplicate} className={cn("flex items-center gap-1.5 transition-all outline-none font-semibold", isDark ? "hover:text-white" : "hover:text-black")}>

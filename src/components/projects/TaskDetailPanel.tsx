@@ -830,7 +830,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                             save({ status: newStatus });
                         }}
                         className={cn(
-                            "w-[22px] h-[22px] rounded-[6px] border-2 flex items-center justify-center shrink-0 transition-all duration-200",
+                            "w-[15px] h-[15px] rounded-[4px] border flex items-center justify-center shrink-0 transition-all duration-200 mt-[2px]",
                             readOnly && "cursor-default opacity-80",
                             status === 'done'
                                 ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/20"
@@ -845,7 +845,7 @@ export default function TaskDetailPanel({ task, projectId, projectName, isDark, 
                                     exit={{ scale: 0, opacity: 0 }}
                                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                                 >
-                                    <Check size={12} strokeWidth={4} />
+                                    <Check size={9} strokeWidth={3.5} />
                                 </motion.div>
                             )}
                         </AnimatePresence>
