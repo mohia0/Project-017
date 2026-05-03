@@ -95,7 +95,7 @@ export default function ContactDetailDrawer({ client, onClose }: Props) {
     const [form, setForm] = useState({ contact_person: '', company_name: '', email: '', phone: '', address: '', tax_number: '', notes: '' });
 
     const { activeWorkspaceId } = useUIStore();
-    const { roles, fetchRoles } = useRolesStore();
+    const { roles, fetchRoles, removeMember } = useRolesStore();
     const [memberRole, setMemberRole] = useState<string | null>(null);
     const [memberId, setMemberId] = useState<string | null>(null);
     const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
@@ -143,6 +143,14 @@ export default function ContactDetailDrawer({ client, onClose }: Props) {
             }).select().single();
             if (data) setMemberId(data.id);
         }
+    };
+
+    const handleRemoveAccess = async () => {
+        if (!memberId) return;
+        // Optionally show confirm, but we'll do direct remove for now
+        await removeMember(memberId);
+        setMemberId(null);
+        setMemberRole(null);
     };
 
     const resetForm = (c: Client) => setForm({
@@ -335,7 +343,7 @@ export default function ContactDetailDrawer({ client, onClose }: Props) {
                 {/* Footer */}
                 <div className={cn("px-4 py-3 border-t shrink-0", border)}>
                     {showDelete ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full">
                             <span className={cn("text-[11px] flex-1", isDark ? "text-[#666]" : "text-[#999]")}>Delete this contact?</span>
                             <button onClick={() => setShowDelete(false)}
                                 className={cn("px-3 py-1.5 text-[11px] rounded-lg transition-colors",
@@ -348,11 +356,21 @@ export default function ContactDetailDrawer({ client, onClose }: Props) {
                             </button>
                         </div>
                     ) : (
-                        <button onClick={() => setShowDelete(true)}
-                            className={cn("flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors",
-                                isDark ? "text-[#444] hover:text-red-400 hover:bg-red-400/10" : "text-[#ccc] hover:text-red-500 hover:bg-red-50")}>
-                            <Trash2 size={11} /> Delete contact
-                        </button>
+                        <div className="flex items-center justify-between w-full">
+                            <button onClick={() => setShowDelete(true)}
+                                className={cn("flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors",
+                                    isDark ? "text-[#444] hover:text-red-400 hover:bg-red-400/10" : "text-[#ccc] hover:text-red-500 hover:bg-red-50")}>
+                                <Trash2 size={11} /> Delete contact
+                            </button>
+                            
+                            {memberId && (
+                                <button onClick={handleRemoveAccess}
+                                    className={cn("flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors",
+                                        isDark ? "text-[#444] hover:text-orange-400 hover:bg-orange-400/10" : "text-[#ccc] hover:text-orange-500 hover:bg-orange-50")}>
+                                    <X size={11} /> Remove access
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>

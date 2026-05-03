@@ -40,6 +40,7 @@ import { Checkbox as Chk } from '@/components/ui/Checkbox';
 import { DataTable, DataTableColumn } from '@/components/ui/DataTable';
 import { SendEmailModal } from '@/components/modals/SendEmailModal';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useRolesStore } from '@/store/useRolesStore';
 
 type Tab = 'people' | 'companies';
 
@@ -75,6 +76,7 @@ export default function ClientsPage() {
     const { theme, openRightPanel, rightPanel, setImportModalOpen, setCreateModalOpen, pageViews, setPageView, activeWorkspaceId } = useUIStore();
     const { isOwner, role } = usePermissions();
     const isOwnerOrCoOwner = isOwner || role?.name === 'Co-Owner';
+    const { members, fetchMembers, removeMember } = useRolesStore();
     const isMobile = useIsMobile();
     const isDark = theme === 'dark';
     const [tab, setTab] = usePersistentState<Tab>('clients_filter_tab', 'people');
@@ -131,7 +133,13 @@ export default function ClientsPage() {
 
     const filterFields = tab === 'people' ? CLIENT_FILTER_FIELDS : COMPANY_FILTER_FIELDS;
 
-    useEffect(() => { fetchClients(); fetchCompanies(); }, [fetchClients, fetchCompanies]);
+    useEffect(() => { 
+        fetchClients(); 
+        fetchCompanies(); 
+        if (activeWorkspaceId) {
+            fetchMembers(activeWorkspaceId);
+        }
+    }, [fetchClients, fetchCompanies, activeWorkspaceId, fetchMembers]);
 
     const handleExportJSON = () => {
         const data = tab === 'people' ? clients : companies;
@@ -390,8 +398,21 @@ export default function ClientsPage() {
             { label: 'Duplicate', icon: <Copy size={14} />, onClick: () => handleDuplicateClient(client.id) },
         ];
         
+        const member = client.email ? members.find(m => m.invited_email === client.email) : null;
+        
         if (isOwnerOrCoOwner && client.email) {
-            menu.push({ label: 'Invite to Workspace', icon: <UserPlus size={14} />, onClick: () => setInviteModalContact(client) });
+            if (member) {
+                menu.push({ 
+                    label: 'Remove Access', 
+                    icon: <X size={14} />, 
+                    danger: true, 
+                    onClick: async () => {
+                        await removeMember(member.id);
+                    }
+                });
+            } else {
+                menu.push({ label: 'Invite to Workspace', icon: <UserPlus size={14} />, onClick: () => setInviteModalContact(client) });
+            }
         }
         
         menu.push({ label: 'Delete', icon: <Trash2 size={14} />, danger: true, onClick: async () => {

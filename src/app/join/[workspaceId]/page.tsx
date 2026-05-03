@@ -24,6 +24,16 @@ function getMagicLinkType(): string | null {
     return params.get('type'); // 'invite' | 'magiclink' | 'recovery' | null
 }
 
+// Check if user has a usable password (i.e. not a brand-new invite-only account)
+// New invited users have no identities with 'email' provider — they only have a temp account
+function isNewInvitedUser(session: any): boolean {
+    const identities = session?.user?.identities || [];
+    // If there are no identities yet, or the only identity has no last_sign_in_at,
+    // the account was just created via invite and has never signed in with a password.
+    return identities.length === 0 || 
+        !identities.some((id: any) => id.provider === 'email' && id.identity_data?.email_verified);
+}
+
 function JoinForm({ workspaceId }: { workspaceId: string }) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -116,9 +126,38 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                 if (linkType === 'invite') {
                     // New user created via invite — they need to set a password before proceeding
                     setStage('set-password');
+                } else if (linkType === 'magiclink') {
+                    // Existing user authenticated via magic link — check if they already have
+                    // a workspace. If yes, auto-accept. If not (new invited user with magiclink
+                    // fallback), show password setup.
+                    const { data: wsData } = await supabase
+                        .from('workspaces')
+                        .select('id')
+                        .eq('owner_id', user.id)
+                        .maybeSingle();
+
+                    if (wsData?.id) {
+                        // Established user — auto-accept into workspace
+                        await acceptIntoWorkspace(user.id, user.email || email);
+                    } else {
+                        // No workspace yet = likely a new invited user, show password setup
+                        setStage('set-password');
+                    }
                 } else {
-                    // Existing user authenticated via magic link — auto-accept them
-                    await acceptIntoWorkspace(user.id, user.email || email);
+                    // No type in hash (e.g., Supabase redirected to wrong place first) —
+                    // Try to detect from user data. If they own a workspace, auto-accept.
+                    const { data: wsData } = await supabase
+                        .from('workspaces')
+                        .select('id')
+                        .eq('owner_id', user.id)
+                        .maybeSingle();
+
+                    if (wsData?.id) {
+                        await acceptIntoWorkspace(user.id, user.email || email);
+                    } else {
+                        // No workspace → treat as new user needing password setup
+                        setStage('set-password');
+                    }
                 }
             }
         });
@@ -130,13 +169,20 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                 if (linkType === 'invite') {
                     setStage('set-password');
                 } else {
+                    // For existing sessions, just auto-accept (user already has account + password)
                     await acceptIntoWorkspace(session.user.id, session.user.email || email);
                 }
             } else if (!session && stage === 'loading') {
-                // No magic link, no session — shouldn't normally happen with invite flow
-                // but show a fallback error
-                setStage('error');
-                setError('Invalid or expired invitation link. Please ask the workspace owner to resend the invitation.');
+                // No session yet — the magic link may still be processing via onAuthStateChange
+                // Wait a bit before showing an error (the SIGNED_IN event will fire shortly)
+                setTimeout(() => {
+                    supabase.auth.getSession().then(({ data: { session: s2 } }) => {
+                        if (!s2) {
+                            setStage('error');
+                            setError('Invalid or expired invitation link. Please ask the workspace owner to resend the invitation.');
+                        }
+                    });
+                }, 3000);
             }
         });
 

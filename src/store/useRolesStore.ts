@@ -18,6 +18,7 @@ interface RolesState {
 
   fetchMembers: (workspaceId: string) => Promise<void>;
   updateMemberRole: (memberId: string, roleId: string | null) => Promise<void>;
+  removeMember: (memberId: string) => Promise<void>;
 }
 
 // Module-level in-flight guard — prevents concurrent fetchRoles() from racing
@@ -174,6 +175,25 @@ export const useRolesStore = create<RolesState>((set, get) => ({
 
     if (error) {
       appToast.error('Failed to update member role');
+    }
+  },
+
+  removeMember: async (memberId) => {
+    // Optimistic
+    set(state => ({
+      members: state.members.filter(m => m.id !== memberId)
+    }));
+
+    const { error } = await supabase
+      .from('workspace_members')
+      .delete()
+      .eq('id', memberId);
+
+    if (error) {
+      appToast.error('Failed to remove member access');
+      // Refetch members to revert state if needed, though usually optimistic delete rollback is manual. We can just refetch all if needed.
+    } else {
+      appToast.success('Member access removed');
     }
   },
 }));

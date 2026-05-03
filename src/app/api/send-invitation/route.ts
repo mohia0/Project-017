@@ -30,26 +30,42 @@ export async function POST(req: NextRequest) {
             .eq('status', 'active')
             .maybeSingle();
 
-        // 3. Construct redirectTo for the join page (where the user lands after clicking)
+        // 3. Construct the join URL (where the user lands after clicking)
+        //    IMPORTANT: redirect_to MUST use a URL that is in Supabase's "Allowed Redirect URLs" list.
+        //    We have https://*.aroooxa.com/** whitelisted, so we always use the slug subdomain here.
+        //    Custom domains are NOT used as redirect_to (they're not in Supabase's whitelist).
+        //    The user will still land on the correct workspace join page via the subdomain URL.
         const encodedEmail = encodeURIComponent(to);
+        const isLocalDev = req.nextUrl.hostname.includes('localhost') || req.nextUrl.hostname.includes('127.0.0.1');
         let joinBase: string;
-        if (domainRow?.domain) {
-            joinBase = `https://${domainRow.domain}`;
-        } else if (wsSlug) {
+        if (wsSlug && !isLocalDev) {
+            // Always use the whitelisted *.aroooxa.com subdomain — never the custom domain for redirects
             joinBase = `https://${wsSlug}.${ROOT_DOMAIN}`;
         } else {
+            // Dev fallback — use the same origin so the link works on localhost
             joinBase = req.nextUrl.origin;
         }
-        const redirectTo = `${joinBase}/join/${workspace_id}?email=${encodedEmail}`;
+        const joinUrl = `${joinBase}/join/${workspace_id}?email=${encodedEmail}`;
 
-        // 4. Generate a real Supabase magic link (works for both new and existing users).
-        //    type='invite' creates the account if it doesn't exist, then returns an action_link.
-        //    Clicking it auto-authenticates the user before landing on the join page.
-        const { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
+        // 4. Generate a real Supabase magic link.
+        //    type='invite' creates the account if it doesn't exist.
+        //    type='magiclink' is the fallback for existing users.
+        let { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
             type: 'invite',
             email: to,
-            options: { redirectTo },
+            options: { redirectTo: joinUrl },
         });
+
+        // Fallback to magiclink if user already exists
+        if (linkError && linkError.message.includes('already been registered')) {
+            const result = await supabaseService.auth.admin.generateLink({
+                type: 'magiclink',
+                email: to,
+                options: { redirectTo: joinUrl },
+            });
+            linkData = result.data;
+            linkError = result.error;
+        }
 
         if (linkError || !linkData?.properties?.action_link) {
             console.error('generateLink error:', linkError);
@@ -59,9 +75,21 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const signup_link = linkData.properties.action_link;
+        // 5. CRITICAL: Rewrite the redirect_to inside the action_link.
+        //    Supabase only honours redirect_to if the URL is in "Allowed Redirect URLs".
+        //    Since we can't add every workspace portal domain there, we overwrite the param
+        //    directly in the generated URL so it always lands on the correct join page.
+        //    action_link format: https://[project].supabase.co/auth/v1/verify?token=...&redirect_to=[url]
+        let signup_link = linkData.properties.action_link;
+        try {
+            const linkUrl = new URL(signup_link);
+            linkUrl.searchParams.set('redirect_to', joinUrl);
+            signup_link = linkUrl.toString();
+        } catch {
+            // If URL parsing fails, use the original link
+        }
 
-        // 5. Send our custom branded email with the magic link embedded as signup_link
+        // 6. Send our custom branded email with the magic link embedded as signup_link
         const sendRes = await fetch(`${req.nextUrl.origin}/api/send-email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -83,7 +111,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: result.error || 'Failed to send invitation' }, { status: sendRes.status });
         }
 
-        // 6. Create a pending workspace_members row to track the invite state in the UI
+        // 7. Create a pending workspace_members row to track the invite state in the UI
         await supabaseService
             .from('workspace_members')
             .upsert({
