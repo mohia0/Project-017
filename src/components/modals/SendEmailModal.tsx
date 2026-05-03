@@ -53,7 +53,7 @@ export function SendEmailModal({
 }: SendEmailModalProps) {
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { emailTemplates, emailConfigs, branding, fetchEmailConfigs } = useSettingsStore();
+    const { emailTemplates, emailConfigs, branding, fetchEmailConfigs, fetchEmailTemplates } = useSettingsStore();
 
     const [selectedConfigId, setSelectedConfigId] = useState<string>('');
     const [to, setTo]               = useState(initialTo);
@@ -86,13 +86,20 @@ export function SendEmailModal({
     const senderName   = activeConfig?.from_name || '';
     const info         = TEMPLATE_INFO[templateKey];
 
-    /* ── Load template on open ── */
+    /* ── Fetch data on open ── */
+    useEffect(() => {
+        if (isOpen) {
+            fetchEmailConfigs(workspaceId);
+            fetchEmailTemplates(workspaceId);
+        }
+    }, [isOpen, workspaceId, fetchEmailConfigs, fetchEmailTemplates]);
+
+    /* ── Load template on open or when templates are fetched ── */
     useEffect(() => {
         if (!isOpen) return;
         setSent(false);
         setError(null);
         setTo(initialTo);
-        fetchEmailConfigs(workspaceId);
         
         lastPushedBodyRef.current = ''; // Reset so it definitely pushes to the iframe
 
@@ -111,7 +118,8 @@ export function SendEmailModal({
         };
         setSubject(rawSubject.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k) => allVars[k] ?? m));
         setBody(rawBody);
-    }, [isOpen, templateKey, initialTo, emailTemplates, workspaceId, fetchEmailConfigs]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, templateKey, initialTo, emailTemplates]);
 
     // Update selected config when configs load
     useEffect(() => {

@@ -99,18 +99,6 @@ export default function RoleDetailPage() {
       <SettingsCard
         title={role.name}
         description={`${memberCount} member${memberCount !== 1 ? 's' : ''} assigned to this role`}
-        extra={
-          <button
-            onClick={() => router.push('/contacts')}
-            className={cn(
-              "h-8 px-3 rounded-lg flex items-center gap-1.5 text-xs font-semibold transition-all",
-              isDark ? "bg-white/8 hover:bg-white/15 text-white/80" : "bg-black/5 hover:bg-black/10 text-black/70"
-            )}
-          >
-            <LucideIcons.UserPlus size={14} />
-            Add members
-          </button>
-        }
       >
         <div className="flex flex-col gap-4">
           {/* Name field */}
