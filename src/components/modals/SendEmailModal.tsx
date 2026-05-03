@@ -184,33 +184,42 @@ export function SendEmailModal({
         setIsSending(true);
         setError(null);
         try {
-            const res = await fetch('/api/send-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    workspace_id: workspaceId,
-                    template_key: templateKey,
-                    to: to.trim(),
-                    variables: { 
-                        sender_name: senderName, 
-                        document_title: documentTitle || '', 
-                        ...variables 
-                    },
-                    subject_override: subject,
-                    body_override:    body,
-                    config_id:        selectedConfigId
-                }),
-            });
-            const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send email');
-
-            // For workspace invitations: create a pending member row so the UI tracks the invite state
-            if (templateKey === 'workspace_invitation' && workspaceId) {
-                await fetch('/api/track-invitation', {
+            // For workspace invitations, use the dedicated route which correctly
+            // builds the signup_link from the workspace slug/custom domain and
+            // atomically tracks the invite row.
+            if (templateKey === 'workspace_invitation') {
+                const res = await fetch('/api/send-invitation', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ workspace_id: workspaceId, invited_email: to.trim() }),
-                }).catch(() => {}); // non-critical
+                    body: JSON.stringify({
+                        workspace_id: workspaceId,
+                        to: to.trim(),
+                        role_name: variables.role_name || 'Member',
+                        workspace_name: variables.workspace_name || '',
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send invitation');
+            } else {
+                const res = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        workspace_id: workspaceId,
+                        template_key: templateKey,
+                        to: to.trim(),
+                        variables: { 
+                            sender_name: senderName, 
+                            document_title: documentTitle || '', 
+                            ...variables 
+                        },
+                        subject_override: subject,
+                        body_override:    body,
+                        config_id:        selectedConfigId
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.error || 'Failed to send email');
             }
 
             setSent(true);

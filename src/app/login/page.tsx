@@ -91,14 +91,9 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (user) {
-            const returnTo = searchParams?.get('returnTo');
-            if (returnTo && returnTo.startsWith('/')) {
-                router.push(returnTo);
-            } else {
-                router.push('/');
-            }
+            router.push('/');
         }
-    }, [user, router, searchParams]);
+    }, [user, router]);
 
     useEffect(() => {
         const errorParam = searchParams?.get('error');
