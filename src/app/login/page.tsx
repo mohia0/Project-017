@@ -14,6 +14,7 @@ interface PortalBranding {
     name: string;
     logo_url: string | null;
     primary_color: string | null;
+    favicon_url?: string | null;
 }
 
 function usePortalBranding() {
@@ -34,6 +35,18 @@ function usePortalBranding() {
                 } else if (isCustomDomain) {
                     setIsPortalDomain(true);
                 }
+                
+                // If we have a workspace context, we can also apply the branding's favicon dynamically
+                if (branding?.favicon_url) {
+                    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'icon';
+                        document.head.appendChild(link);
+                    }
+                    link.href = branding.favicon_url;
+                }
+
                 // If a workspaceId is returned (e.g. subdomain on prod, or dev with header),
                 // treat this as a workspace-scoped context and respect allow_signup.
                 if (workspaceId) {
@@ -78,9 +91,14 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (user) {
-            router.push('/');
+            const returnTo = searchParams?.get('returnTo');
+            if (returnTo && returnTo.startsWith('/')) {
+                router.push(returnTo);
+            } else {
+                router.push('/');
+            }
         }
-    }, [user, router]);
+    }, [user, router, searchParams]);
 
     useEffect(() => {
         const errorParam = searchParams?.get('error');

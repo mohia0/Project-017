@@ -703,22 +703,35 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
         }
     }, [client?.email, activeWorkspaceId]);
 
-    // Real-time: watch for invite acceptance (user_id being set on the member row)
+    // Real-time: watch for invite acceptance or changes
     useEffect(() => {
         if (!client?.email || !activeWorkspaceId) return;
 
         const channel = supabase
             .channel(`member_accept:${activeWorkspaceId}:${client.email}`)
             .on('postgres_changes', {
-                event: 'UPDATE',
+                event: '*',
                 schema: 'public',
                 table: 'workspace_members',
                 filter: `workspace_id=eq.${activeWorkspaceId}`,
             }, (payload) => {
-                const updated = payload.new as any;
-                if (updated.invited_email === client.email && updated.user_id) {
-                    setMemberUserId(updated.user_id);
-                    setInvitationPending(false);
+                const row = (payload.new || payload.old) as any;
+                if (row && row.invited_email && row.invited_email.toLowerCase() === client.email.toLowerCase()) {
+                    if (payload.eventType === 'DELETE') {
+                        setMemberRole(null);
+                        setMemberId(null);
+                        setMemberUserId(null);
+                        setInvitationPending(false);
+                    } else {
+                        setMemberRole(row.role_id);
+                        setMemberId(row.id);
+                        if (row.user_id) {
+                            setMemberUserId(row.user_id);
+                            setInvitationPending(false);
+                        } else {
+                            setInvitationPending(true);
+                        }
+                    }
                 }
             })
             .subscribe();
@@ -1126,6 +1139,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                     variables={{}}
                     workspaceId={activeWorkspaceId || ''}
                     documentTitle="Workspace Invitation"
+                    onSuccess={() => setInvitationPending(true)}
                 />
             )}
         </>

@@ -14,6 +14,7 @@ interface WorkspaceBranding {
     name: string;
     logo_url: string | null;
     primary_color: string | null;
+    favicon_url?: string | null;
 }
 
 function JoinForm({ workspaceId }: { workspaceId: string }) {
@@ -38,7 +39,18 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
         fetch('/api/workspace/branding')
             .then(r => r.json())
             .then(({ branding }) => {
-                if (branding) setBranding(branding);
+                if (branding) {
+                    setBranding(branding);
+                    if (branding.favicon_url) {
+                        let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+                        if (!link) {
+                            link = document.createElement('link');
+                            link.rel = 'icon';
+                            document.head.appendChild(link);
+                        }
+                        link.href = branding.favicon_url;
+                    }
+                }
             })
             .catch(() => {});
     }, []);
@@ -63,6 +75,11 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
 
             if (signUpError) throw signUpError;
 
+            // Supabase returns a user with empty identities if the user already exists and identity enumeration protection is on.
+            if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
+                throw new Error('User already registered');
+            }
+
             // Insert into workspace_members — the workspace settings default_role_id is applied server-side
             if (signUpData.user) {
                 await supabase.from('workspace_members').upsert({
@@ -86,8 +103,8 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
 
             setSuccessMsg("Account created! We've sent a verification link to your email. Please check your inbox to activate your account.");
         } catch (err: any) {
-            if (err.message?.includes('User already registered')) {
-                setError('An account with this email already exists. Try signing in instead.');
+            if (err.message?.includes('User already registered') || err.message?.includes('already exists')) {
+                setError('An account with this email already exists. Please sign in below to accept the invitation.');
             } else {
                 setError(err.message || 'Something went wrong. Please try again.');
             }
@@ -214,7 +231,7 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                                     <AppLoader size="xs" color="currentColor" />
                                 ) : (
                                     <>
-                                        Back to your dashboard
+                                        Accept Invitation
                                         <ArrowRight size={16} />
                                     </>
                                 )}
@@ -346,7 +363,7 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                                 Already have an account?
                             </span>
                             <a
-                                href="/login"
+                                href={`/login?returnTo=${encodeURIComponent(`/join/${workspaceId}?email=${encodeURIComponent(email)}`)}`}
                                 className={cn(
                                     "hover:underline underline-offset-4 decoration-2 font-semibold",
                                     isDark ? "text-white" : "text-black"
