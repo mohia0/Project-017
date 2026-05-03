@@ -21,25 +21,31 @@ function usePortalBranding() {
     const [isPortalDomain, setIsPortalDomain] = useState(false);
     const [allowSignup, setAllowSignup] = useState(false);
     const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+    const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
         fetch('/api/workspace/branding')
             .then(r => r.json())
             .then(({ branding, isCustomDomain, allowSignup, workspaceId }) => {
-                // Only apply tenant branding on genuine custom domains
+                // Apply branding on genuine custom domains
                 if (isCustomDomain && branding) {
                     setBranding(branding);
                     setIsPortalDomain(true);
                 } else if (isCustomDomain) {
-                    // It's a portal subdomain (workspace slug) but no extra branding data
+                    setIsPortalDomain(true);
+                }
+                // If a workspaceId is returned (e.g. subdomain on prod, or dev with header),
+                // treat this as a workspace-scoped context and respect allow_signup.
+                if (workspaceId) {
                     setIsPortalDomain(true);
                 }
                 setAllowSignup(allowSignup || false);
                 setWorkspaceId(workspaceId || null);
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => setLoaded(true));
     }, []);
-    return { branding, isPortalDomain, allowSignup, workspaceId };
+    return { branding, isPortalDomain, allowSignup, workspaceId, loaded };
 }
 
 export default function LoginPage() {
@@ -48,7 +54,7 @@ export default function LoginPage() {
     const { user, isLoading } = useAuthStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { branding: portalBranding, isPortalDomain, allowSignup, workspaceId } = usePortalBranding();
+    const { branding: portalBranding, isPortalDomain, allowSignup, workspaceId, loaded } = usePortalBranding();
 
     const [mode, setMode] = useState<'signin' | 'signup' | 'forgot_password'>('signin');
     const [email, setEmail] = useState('');

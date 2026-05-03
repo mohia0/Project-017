@@ -135,7 +135,7 @@ export default function OnboardingPage() {
     const domainSuffix = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'aroooxa.com';
 
     return (
-        <div className="flex-1 flex relative w-full h-screen overflow-hidden">
+        <div className="flex-1 flex relative w-full min-h-screen">
             
             {/* Background design accents mirroring Login page */}
             <div className={cn(
@@ -143,20 +143,20 @@ export default function OnboardingPage() {
                 isDark ? "bg-gradient-to-l from-white/[0.02] to-transparent" : "bg-gradient-to-l from-black/[0.02] to-transparent"
             )} />
             
-            <div className="flex-1 flex flex-col items-center justify-center p-6 z-10">
+            <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto py-10 px-6 z-10">
                 <div className="w-full max-w-[400px] flex flex-col animate-in fade-in slide-in-from-bottom-8 duration-1000">
                     
                     {/* Logo */}
-                    <div className="mb-10 flex items-center justify-center">
+                    <div className="mb-7 flex items-center justify-center">
                         {portalBranding?.logo_url ? (
                             <img
                                 src={portalBranding.logo_url}
                                 alt={portalBranding.name}
-                                className="h-16 w-auto object-contain mx-auto"
+                                className="h-14 w-auto object-contain mx-auto"
                             />
                         ) : (
                             <AroooXaLogo
-                                height={42}
+                                height={38}
                                 color={isDark ? 'white' : '#1a1a1a'}
                                 wave={true}
                                 className="mx-auto"
@@ -164,31 +164,31 @@ export default function OnboardingPage() {
                         )}
                     </div>
 
-                    <div className="w-full flex flex-col items-center text-center mb-12">
+                    <div className="w-full flex flex-col items-center text-center mb-8">
                         <div className={cn(
-                            "mb-5 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-2",
+                            "mb-4 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] flex items-center gap-2",
                             isDark ? "bg-white/5 text-white/40" : "bg-black/5 text-black/40"
                         )}>
                             <Sparkles size={12} className="text-[#4dbf39]" />
                             Welcome, {firstName}
                         </div>
-                        <h1 className="text-4xl font-bold tracking-tight mb-4 leading-tight">
+                        <h1 className="text-3xl font-bold tracking-tight mb-3 leading-tight">
                             Build your<br />headquarters.
                         </h1>
                         <p className={cn(
-                            "text-[16px] font-medium max-w-[340px] leading-relaxed transition-colors",
+                            "text-[14px] font-medium max-w-[320px] leading-relaxed transition-colors",
                             isDark ? "text-white/30" : "text-black/30"
                         )}>
                             Every great operation needs a home. Give your workspace a name and claim your portal URL.
                         </p>
                     </div>
 
-                    <form onSubmit={handleCreate} className="flex flex-col gap-6">
+                    <form onSubmit={handleCreate} className="flex flex-col gap-4">
                         {/* Workspace Logo Upload */}
                         <div 
                             onClick={() => setIsModalOpen(true)}
                             className={cn(
-                                "mx-auto w-24 h-24 rounded-[1.5rem] border-2 border-dashed flex items-center justify-center cursor-pointer transition-all overflow-hidden relative group",
+                                "mx-auto w-20 h-20 rounded-[1.25rem] border-2 border-dashed flex items-center justify-center cursor-pointer transition-all overflow-hidden relative group",
                                 logoUrl && !imgError && isDark ? "border-transparent bg-white/5" :
                                 logoUrl && !imgError && !isDark ? "border-transparent bg-black/5" :
                                 isDark 
@@ -215,7 +215,7 @@ export default function OnboardingPage() {
                             )}
                         </div>
 
-                        <div className="flex flex-col gap-5">
+                        <div className="flex flex-col gap-4">
                             {/* Workspace Name */}
                             <div className="flex flex-col relative group">
                                 <div className={cn(
@@ -251,7 +251,7 @@ export default function OnboardingPage() {
                         {/* Domain Setup */}
                         <div className="flex flex-col relative group">
                             <div className={cn(
-                                "absolute left-4 top-1/2 -translate-y-1/2 transition-colors z-10",
+                                "absolute left-4 top-[27px] -translate-y-1/2 transition-colors z-10",
                                 isDark ? "text-white/20" : "text-black/20"
                             )}>
                                 <Globe size={18} />
@@ -278,13 +278,12 @@ export default function OnboardingPage() {
                                 )}>
                                     .{domainSuffix}
                                 </div>
-                            </div>
-                            
-                            {/* Slug status indicator */}
-                            <div className="absolute right-[-32px] top-1/2 -translate-y-1/2 flex items-center justify-center">
-                                {isCheckingSlug && <Loader2 size={16} className="animate-spin text-[var(--brand-loader-color, #000000)]" />}
-                                {!isCheckingSlug && slugAvailable === true && <CheckCircle2 size={16} className="text-green-500" />}
-                                {!isCheckingSlug && (slugAvailable === false || slugError) && slug.length > 0 && <XCircle size={16} className="text-red-500" />}
+                                {/* Slug status indicator — inside so it doesn't overflow the card */}
+                                <div className="absolute right-[-28px] top-1/2 -translate-y-1/2 flex items-center justify-center">
+                                    {isCheckingSlug && <Loader2 size={14} className="animate-spin text-[var(--brand-loader-color, #000000)]" />}
+                                    {!isCheckingSlug && slugAvailable === true && <CheckCircle2 size={14} className="text-green-500" />}
+                                    {!isCheckingSlug && (slugAvailable === false || slugError) && slug.length > 0 && <XCircle size={14} className="text-red-500" />}
+                                </div>
                             </div>
 
                             {/* Error text below */}
@@ -300,7 +299,7 @@ export default function OnboardingPage() {
                             type="submit"
                             disabled={isCreating || !workspaceName.trim() || !slug.trim() || !slugAvailable || isCheckingSlug}
                             className={cn(
-                                "w-full h-14 mt-2 rounded-2xl flex items-center justify-center gap-3 font-bold text-[15px] transition-all hover:-translate-y-[1px] active:translate-y-[1px] disabled:opacity-50 disabled:hover:translate-y-0 disabled:grayscale",
+                                "w-full h-12 mt-1 rounded-2xl flex items-center justify-center gap-3 font-bold text-[14px] transition-all hover:-translate-y-[1px] active:translate-y-[1px] disabled:opacity-50 disabled:hover:translate-y-0 disabled:grayscale",
                                 isDark 
                                     ? "bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]" 
                                     : "bg-black text-white shadow-xl shadow-black/15 hover:shadow-black/25"
@@ -354,7 +353,7 @@ export default function OnboardingPage() {
                         title="Workspace Logo"
                     />
 
-                    <div className="mt-12 flex flex-col items-center gap-6 opacity-40">
+                    <div className="mt-8 flex flex-col items-center gap-4 opacity-40">
                          <div className={cn("w-full h-px", isDark ? "bg-white/10" : "bg-black/10")} />
                          <p className={cn("text-[11px] font-medium", isDark ? "text-white" : "text-black")}>
                              You can change your name and portal URL anytime in settings.

@@ -24,7 +24,6 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
     const isDark = theme === 'dark';
 
     const [branding, setBranding] = useState<WorkspaceBranding | null>(null);
-    const [name, setName] = useState('');
     const [email, setEmail] = useState(searchParams?.get('email') || '');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -49,7 +48,6 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
         setError('');
         setSuccessMsg('');
 
-        if (!name.trim()) { setError('Please enter your full name.'); return; }
         if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
         if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
 
@@ -59,7 +57,7 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                 email: email.trim(),
                 password,
                 options: {
-                    data: { full_name: name.trim() },
+                    data: { full_name: '' },
                 },
             });
 
@@ -215,21 +213,6 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-
-                            {/* Full Name */}
-                            <input
-                                type="text"
-                                required
-                                value={name}
-                                onChange={e => setName(e.target.value)}
-                                className={cn(
-                                    "w-full h-12 px-4 rounded-xl text-[14px] font-medium transition-all focus:outline-none focus:ring-2",
-                                    isDark
-                                        ? "bg-[#141414] border border-white/10 hover:border-white/20 focus:border-white/30 focus:ring-white/10 placeholder:text-white/30"
-                                        : "bg-white border border-black/10 hover:border-black/20 focus:border-black/30 focus:ring-black/5 placeholder:text-black/40 shadow-sm"
-                                )}
-                                placeholder="Full Name"
-                            />
 
                             {/* Email — pre-filled, editable */}
                             <input

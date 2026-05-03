@@ -74,6 +74,34 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // Dev fallback: on localhost, look up the authenticated user's workspace
+  // so the branding API can return the correct allow_signup setting.
+  // This only runs on the login or root page where no workspace is known.
+  // ─────────────────────────────────────────────────────────────
+  if (isDev && !workspaceId) {
+    // We need the user before the main auth block below — do a quick session read
+    try {
+      const tempSupabase = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
+        cookies: {
+          getAll() { return request.cookies.getAll(); },
+          setAll() {},
+        },
+      });
+      const { data: { session: devSession } } = await tempSupabase.auth.getSession();
+      if (devSession?.user) {
+        const devWs = await supabaseGet(
+          `workspaces?owner_id=eq.${devSession.user.id}&select=id,slug,name&limit=1`
+        );
+        if (devWs?.[0]) {
+          workspaceId   = devWs[0].id;
+          workspaceSlug = devWs[0].slug;
+          workspaceName = devWs[0].name;
+        }
+      }
+    } catch {}
+  }
+
   // Inject resolved workspace context headers
   if (workspaceId)   requestHeaders.set('x-workspace-id',   workspaceId);
   if (workspaceSlug) requestHeaders.set('x-workspace-slug', workspaceSlug);
