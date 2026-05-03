@@ -664,6 +664,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
     const { roles, fetchRoles } = useRolesStore();
     const [memberRole, setMemberRole] = useState<string | null>(null);
     const [memberId, setMemberId] = useState<string | null>(null);
+    const [memberUserId, setMemberUserId] = useState<string | null>(null);
     const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
 
     useEffect(() => {
@@ -675,7 +676,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
     useEffect(() => {
         if (client?.email && activeWorkspaceId) {
             supabase.from('workspace_members')
-                .select('id, role_id')
+                .select('id, role_id, user_id')
                 .eq('workspace_id', activeWorkspaceId)
                 .eq('invited_email', client.email)
                 .single()
@@ -683,14 +684,17 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                     if (data) {
                         setMemberRole(data.role_id);
                         setMemberId(data.id);
+                        setMemberUserId(data.user_id);
                     } else {
                         setMemberRole(null);
                         setMemberId(null);
+                        setMemberUserId(null);
                     }
                 });
         } else {
             setMemberRole(null);
             setMemberId(null);
+            setMemberUserId(null);
         }
     }, [client?.email, activeWorkspaceId]);
 
@@ -705,8 +709,7 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
             const { data } = await supabase.from('workspace_members').insert({
                 workspace_id: activeWorkspaceId,
                 invited_email: client.email,
-                role_id: roleId,
-                status: 'active'
+                role_id: roleId
             }).select().single();
             
             if (data) setMemberId(data.id);
@@ -772,7 +775,14 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                             className={cn("text-[14px] font-bold bg-transparent outline-none w-full border-b pb-0.5",
                                 isDark ? "text-white border-[#333] placeholder:text-[#444]" : "text-[#111] border-[#e0e0e0] placeholder:text-[#ccc]")} />
                     ) : (
-                        <h2 className={cn("text-[14px] font-bold truncate", isDark ? "text-white" : "text-[#111]")}>{form.contact_person || '—'}</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className={cn("text-[14px] font-bold truncate", isDark ? "text-white" : "text-[#111]")}>{form.contact_person || '—'}</h2>
+                            {memberUserId && (
+                                <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider", isDark ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20" : "bg-emerald-100 text-emerald-600 border border-emerald-200")}>
+                                    Active User
+                                </span>
+                            )}
+                        </div>
                     )}
                     {form.company_name && !editing && (
                         <p className={cn("text-[11px] mt-0.5", isDark ? "text-[#555]" : "text-[#aaa]")}>{form.company_name}</p>
@@ -916,15 +926,6 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                                     <div className="flex items-center gap-1.5 min-w-0"><Mail size={11} /><span className="truncate">{form.email}</span></div>
                                     <ExternalLink size={9} className="shrink-0 opacity-40 group-hover:opacity-100" />
                                 </a>
-                                {isOwnerOrCoOwner && (
-                                    <button 
-                                        onClick={() => setInviteModalOpen(true)}
-                                        className={cn("flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-[11px] font-medium transition-colors group",
-                                            isDark ? "bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15"
-                                                : "bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15")}>
-                                        <div className="flex items-center gap-1.5 min-w-0"><UserPlus size={11} /><span>Invite to Workspace</span></div>
-                                    </button>
-                                )}
                             </div>
                         )}
                         {editing && <Field label="Email" icon={<Mail size={11} />} value={form.email} editing onChange={u('email')} type="email" placeholder="email@example.com" isDark={isDark} />}
@@ -1008,6 +1009,21 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                     </div>
                 )}
             </div>
+
+            {/* Invite Button for non-users */}
+            {!memberUserId && isOwnerOrCoOwner && !editing && (
+                <div className={cn("px-4 py-3 border-t shrink-0", isDark ? "border-[#252525]" : "border-[#e4e4e4]")}>
+                    <button
+                        onClick={() => setInviteModalOpen(true)}
+                        className={cn(
+                            "w-full flex items-center justify-center gap-2 h-9 rounded-lg text-[12px] font-bold transition-all",
+                            isDark ? "bg-primary/10 text-primary hover:bg-primary/20" : "bg-primary/10 text-primary hover:bg-primary/20"
+                        )}
+                    >
+                        <UserPlus size={14} /> Send Invite to Workspace
+                    </button>
+                </div>
+            )}
 
             {/* Footer delete */}
             <div className={cn("px-4 py-3 border-t shrink-0", isDark ? "border-[#252525]" : "border-[#e4e4e4]")}>
