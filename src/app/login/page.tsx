@@ -19,10 +19,13 @@ interface PortalBranding {
 function usePortalBranding() {
     const [branding, setBranding] = useState<PortalBranding | null>(null);
     const [isPortalDomain, setIsPortalDomain] = useState(false);
+    const [allowSignup, setAllowSignup] = useState(false);
+    const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+
     useEffect(() => {
         fetch('/api/workspace/branding')
             .then(r => r.json())
-            .then(({ branding, isCustomDomain }) => {
+            .then(({ branding, isCustomDomain, allowSignup, workspaceId }) => {
                 // Only apply tenant branding on genuine custom domains
                 if (isCustomDomain && branding) {
                     setBranding(branding);
@@ -31,10 +34,12 @@ function usePortalBranding() {
                     // It's a portal subdomain (workspace slug) but no extra branding data
                     setIsPortalDomain(true);
                 }
+                setAllowSignup(allowSignup || false);
+                setWorkspaceId(workspaceId || null);
             })
             .catch(() => {});
     }, []);
-    return { branding, isPortalDomain };
+    return { branding, isPortalDomain, allowSignup, workspaceId };
 }
 
 export default function LoginPage() {
@@ -43,7 +48,7 @@ export default function LoginPage() {
     const { user, isLoading } = useAuthStore();
     const { theme } = useUIStore();
     const isDark = theme === 'dark';
-    const { branding: portalBranding, isPortalDomain } = usePortalBranding();
+    const { branding: portalBranding, isPortalDomain, allowSignup, workspaceId } = usePortalBranding();
 
     const [mode, setMode] = useState<'signin' | 'signup' | 'forgot_password'>('signin');
     const [email, setEmail] = useState('');
@@ -466,7 +471,7 @@ export default function LoginPage() {
                     </form>
 
                     <div className="mt-8 flex flex-col gap-2.5">
-                        {(mode === 'signin' || mode === 'forgot_password') && !isPortalDomain && (
+                        {(mode === 'signin' || mode === 'forgot_password') && (!isPortalDomain || allowSignup) && (
                             <div className="flex items-center justify-center gap-2 text-[13px] font-medium">
                                 <span className={cn("opacity-50", isDark ? "text-white" : "text-black")}>
                                     Don't have an account?
@@ -474,13 +479,17 @@ export default function LoginPage() {
                                 <button 
                                     type="button"
                                     onClick={() => {
-                                        setMode('signup');
-                                        setWizardStep(1);
-                                        setError('');
-                                        setSuccessMsg('');
+                                        if (isPortalDomain && workspaceId) {
+                                            router.push(`/join/${workspaceId}`);
+                                        } else {
+                                            setMode('signup');
+                                            setWizardStep(1);
+                                            setError('');
+                                            setSuccessMsg('');
+                                        }
                                     }}
                                     className={cn(
-                                        "hover:underline underline-offset-4 decoration-2",
+                                        "hover:underline underline-offset-4 decoration-2 font-semibold",
                                         isDark ? "text-white" : "text-black"
                                     )}
                                 >
