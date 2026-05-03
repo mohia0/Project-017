@@ -79,7 +79,10 @@ export function SendEmailModal({
 
     /* ── Branding / config ── */
     const accentColor  = branding?.primary_color || '#10b981';
-    const logoUrl      = branding?.logo_light_url || branding?.logo_dark_url || undefined;
+    const rawLogoUrl   = branding?.logo_light_url || branding?.logo_dark_url || '/logo.svg';
+    const logoUrl      = typeof window !== 'undefined' && rawLogoUrl.startsWith('/') 
+                           ? `${window.location.origin}${rawLogoUrl}` 
+                           : rawLogoUrl;
     const senderName   = activeConfig?.from_name || '';
     const info         = TEMPLATE_INFO[templateKey];
 
@@ -122,19 +125,24 @@ export function SendEmailModal({
     const buildPreview = useCallback((currentBody: string) => {
         const dbTemplate = emailTemplates.find(t => t.template_key === templateKey);
         
+        const previewVars = { sender_name: senderName, document_title: documentTitle || '', ...variables };
+        if (templateKey === 'workspace_invitation' && !previewVars.signup_link) {
+            previewVars.signup_link = `${window.location.origin}/join/${workspaceId}?email=${encodeURIComponent(to)}`;
+        }
+
         const html = buildEmailHtml(currentBody, {
             senderName,
             accentColor,
             logoUrl,
             isHtml:       true,
             wrapperHtml:  dbTemplate?.wrapper || undefined,
-            vars:         { sender_name: senderName, document_title: documentTitle || '', ...variables },
+            vars:         previewVars,
             isPreview:    true,
             templateType: info.label,
         });
 
         return html;
-    }, [templateKey, emailTemplates, senderName, accentColor, logoUrl, variables, documentTitle, info.label]);
+    }, [templateKey, emailTemplates, senderName, accentColor, logoUrl, variables, documentTitle, info.label, to, workspaceId]);
 
     /* ── Push HTML to iframe ── */
     const pushToIframe = useCallback((html: string) => {

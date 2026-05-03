@@ -30,10 +30,11 @@ export function renderTemplate(
 
         if (isInsideTag) return resolved;
 
-        if (key === 'document_link') {
+        if (key === 'document_link' || key === 'signup_link' || key === 'scheduler_link') {
             // Only emit a button if we have a real URL
             if (val && String(val).trim()) {
-                return linkBtn('View Document', vars['accent_color'] || '#10b981', resolved);
+                const label = key === 'signup_link' ? 'Accept Invitation' : (key === 'scheduler_link' ? 'View Booking' : 'View Document');
+                return linkBtn(label, vars['accent_color'] || '#10b981', resolved);
             }
             // If no URL (e.g. suppressUnknown resolved to ''), emit nothing
             return '';
@@ -187,6 +188,6 @@ export const DEFAULT_TEMPLATES: Record<string, EmailTemplateDef> = {
     workspace_invitation: {
         subject: "You're invited to join {{workspace_name}}",
         is_html: true,
-        body: `<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:{{accent_color}};margin:0 0 10px 0;">Workspace Invitation</p><h1 style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;line-height:1.25;margin:0 0 10px 0;">You've been invited<br/>to join {{workspace_name}}.</h1><p style="font-size:13px;color:#666;margin:0 0 28px 0;"><strong>{{sender_name}}</strong> has invited you to join their workspace as a <strong style="color:#bbb;">{{role_name}}</strong>. Click below to create your account and get started.</p><div style="background:{{accent_color}}14;border:1px solid {{accent_color}}30;border-radius:16px;padding:20px 24px;margin-bottom:24px;"><p style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.6px;margin:0 0 4px 0;">Invited As</p><p style="font-size:15px;font-weight:700;color:#e0e0e0;margin:0;">{{invitee_email}}</p></div><div style="margin:24px 0 32px 0;"><a href="{{signup_link}}" style="display:inline-block;background-color:{{accent_color}};color:#ffffff;padding:13px 24px;text-decoration:none;border-radius:12px;font-weight:700;font-size:14px;letter-spacing:-0.1px;">Accept Invitation &rarr;</a><div style="margin-top:12px;font-size:11px;color:#555;line-height:1.6;">Or open: <a href="{{signup_link}}" style="color:{{accent_color}};text-decoration:none;word-break:break-all;">{{signup_link}}</a></div></div><p style="font-size:13px;color:#555;margin:0 0 24px 0;">If you weren't expecting this invitation, you can safely ignore this email.</p>`
+        body: `<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:{{accent_color}};margin:0 0 10px 0;">Workspace Invitation</p><h1 style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;line-height:1.25;margin:0 0 10px 0;">You've been invited<br/>to join {{workspace_name}}.</h1><p style="font-size:13px;color:#666;margin:0 0 28px 0;"><strong>{{sender_name}}</strong> has invited you to join their workspace as a <strong style="color:#bbb;">{{role_name}}</strong>. Click below to create your account and get started.</p><div style="background:{{accent_color}}14;border:1px solid {{accent_color}}30;border-radius:16px;padding:20px 24px;margin-bottom:24px;"><p style="font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.6px;margin:0 0 4px 0;">Invited As</p><p style="font-size:15px;font-weight:700;color:#e0e0e0;margin:0;">{{invitee_email}}</p></div>{{signup_link}}<p style="font-size:13px;color:#555;margin:0 0 24px 0;">If you weren't expecting this invitation, you can safely ignore this email.</p>`
     },
 };

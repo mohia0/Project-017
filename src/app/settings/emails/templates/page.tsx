@@ -114,7 +114,10 @@ export default function EmailTemplatesPage() {
 
     const accentColor  = branding?.primary_color || '#10b981';
     const isAccentDark = getBrightness(accentColor) < 128;
-    const logoUrl      = branding?.logo_light_url || branding?.logo_dark_url || undefined;
+    const rawLogoUrl   = branding?.logo_light_url || branding?.logo_dark_url || '/logo.svg';
+    const logoUrl      = typeof window !== 'undefined' && rawLogoUrl.startsWith('/') 
+                           ? `${window.location.origin}${rawLogoUrl}` 
+                           : rawLogoUrl;
     const senderName   = emailConfig?.from_name || 'Acme Studio';
     const sampleVars   = { ...def.sample, sender_name: senderName, accent_color: accentColor };
 

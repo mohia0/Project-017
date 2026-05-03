@@ -34,6 +34,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing required fields (workspace_id, to)' }, { status: 400 });
         }
 
+        // Auto-populate some variables if missing
+        if (template_key === 'workspace_invitation' && !variables.signup_link) {
+            variables.signup_link = `${req.nextUrl.origin}/join/${workspace_id}?email=${encodeURIComponent(to)}`;
+        }
+
+        // Ensure all link variables are absolute (emails need full URLs)
+        Object.keys(variables).forEach(key => {
+            if (key.endsWith('_link') && typeof variables[key] === 'string' && variables[key].startsWith('/')) {
+                variables[key] = `${req.nextUrl.origin}${variables[key]}`;
+            }
+        });
+
         // Fetch SMTP config or use override
         let config = config_override;
         let configError = null;
@@ -100,11 +112,14 @@ export async function POST(req: NextRequest) {
         };
         finalSubject = renderTemplate(finalSubject, subjectVars, false, true);
 
+        const rawLogo = branding?.logo_light_url || branding?.logo_dark_url || '/logo.svg';
+        const absoluteLogoUrl = rawLogo.startsWith('/') ? `${req.nextUrl.origin}${rawLogo}` : rawLogo;
+
         // 1:1 Parity Build using shared logic
         const html = buildEmailHtml(finalBody, {
             senderName:   config.from_name || 'Sender',
             accentColor,
-            logoUrl:      branding?.logo_light_url || branding?.logo_dark_url || undefined,
+            logoUrl:      absoluteLogoUrl,
             isHtml:       is_html !== false,
             wrapperHtml:  dbTemplate?.wrapper || undefined,
             vars:         variables,
