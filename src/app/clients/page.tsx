@@ -402,14 +402,17 @@ export default function ClientsPage() {
         
         if (isOwnerOrCoOwner && client.email) {
             if (member) {
-                menu.push({ 
-                    label: 'Remove Access', 
-                    icon: <X size={14} />, 
-                    danger: true, 
-                    onClick: async () => {
-                        await removeMember(member.id);
-                    }
-                });
+                if (member.user_id) {
+                    menu.push({ 
+                        label: 'Remove Access', 
+                        icon: <X size={14} />, 
+                        danger: true, 
+                        onClick: async () => {
+                            await removeMember(member.id);
+                            appToast.success('Workspace access removed');
+                        }
+                    });
+                }
             } else {
                 menu.push({ label: 'Invite to Workspace', icon: <UserPlus size={14} />, onClick: () => setInviteModalContact(client) });
             }

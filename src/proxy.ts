@@ -145,24 +145,20 @@ export async function proxy(request: NextRequest) {
   // ─────────────────────────────────────────────────────────────
   // Auth & Domain Restrictions
   // ─────────────────────────────────────────────────────────────
-  const ADMIN_EMAIL = 'mo7a.classico@gmail.com';
   const isRootDomain = host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}`;
 
   if (user) {
-    // If logged in at root domain, only allow admin
-    if (isRootDomain && user.email !== ADMIN_EMAIL) {
-       // Find user's workspace to redirect them
+    // If logged in at root domain, redirect to their workspace if they have one
+    if (isRootDomain) {
        const data = await supabaseGet(`workspaces?owner_id=eq.${user.id}&select=slug&limit=1`);
        if (data?.[0]?.slug) {
          const url = new URL(request.url);
          url.host = `${data[0].slug}.${ROOT_DOMAIN}`;
          url.pathname = '/';
          return NextResponse.redirect(url);
-       } else {
-         const url = new URL('/login', request.url);
-         url.searchParams.set('error', 'restricted');
-         return NextResponse.redirect(url);
        }
+       // If they don't have a workspace, we let them proceed.
+       // AppLayout will detect workspaces.length === 0 and push them to /onboarding.
     }
   }
 

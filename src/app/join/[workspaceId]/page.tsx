@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { AroooXaLogo } from '@/components/ui/AroooXaLogo';
+import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 
 interface WorkspaceBranding {
     name: string;
@@ -108,6 +109,9 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                 }),
             });
 
+            // Refresh workspaces before navigating so AppLayout knows we have one now!
+            await useWorkspaceStore.getState().fetchWorkspaces();
+
             setStage('success');
             setTimeout(() => router.push('/'), 1800);
         } catch (err: any) {
@@ -126,36 +130,14 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                 if (linkType === 'invite') {
                     // New user created via invite — they need to set a password before proceeding
                     setStage('set-password');
-                } else if (linkType === 'magiclink') {
-                    // Existing user authenticated via magic link — check if they already have
-                    // a workspace. If yes, auto-accept. If not (new invited user with magiclink
-                    // fallback), show password setup.
-                    const { data: wsData } = await supabase
-                        .from('workspaces')
-                        .select('id')
-                        .eq('owner_id', user.id)
-                        .maybeSingle();
-
-                    if (wsData?.id) {
+                } else {
+                    // magiclink or unknown type — check if the user is already an established user
+                    // (has a verified email identity with a password)
+                    if (!isNewInvitedUser(session)) {
                         // Established user — auto-accept into workspace
                         await acceptIntoWorkspace(user.id, user.email || email);
                     } else {
-                        // No workspace yet = likely a new invited user, show password setup
-                        setStage('set-password');
-                    }
-                } else {
-                    // No type in hash (e.g., Supabase redirected to wrong place first) —
-                    // Try to detect from user data. If they own a workspace, auto-accept.
-                    const { data: wsData } = await supabase
-                        .from('workspaces')
-                        .select('id')
-                        .eq('owner_id', user.id)
-                        .maybeSingle();
-
-                    if (wsData?.id) {
-                        await acceptIntoWorkspace(user.id, user.email || email);
-                    } else {
-                        // No workspace → treat as new user needing password setup
+                        // No password yet = new invited user, show password setup
                         setStage('set-password');
                     }
                 }

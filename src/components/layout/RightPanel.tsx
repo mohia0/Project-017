@@ -1115,10 +1115,27 @@ function ContactPanel({ id, isDark }: { id: string; isDark: boolean }) {
                         </button>
                     </div>
                 ) : (
-                    <button onClick={() => setShowDelete(true)} className={cn("flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg transition-colors",
-                        isDark ? "text-[#444] hover:text-red-400 hover:bg-red-400/10" : "text-[#ccc] hover:text-red-500 hover:bg-red-50")}>
-                        <Trash2 size={11} />Delete contact
-                    </button>
+                    <div className="flex items-center justify-between w-full">
+                        <button onClick={() => setShowDelete(true)} className={cn("flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg transition-colors",
+                            isDark ? "text-[#444] hover:text-red-400 hover:bg-red-400/10" : "text-[#ccc] hover:text-red-500 hover:bg-red-50")}>
+                            <Trash2 size={11} />Delete contact
+                        </button>
+                        {memberUserId && isOwnerOrCoOwner && (
+                            <button 
+                                onClick={async () => {
+                                    if (memberId) {
+                                        const { removeMember } = useRolesStore.getState();
+                                        await removeMember(memberId);
+                                        appToast.success('Workspace access removed');
+                                    }
+                                }} 
+                                className={cn("flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg transition-colors",
+                                    isDark ? "text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10" : "text-amber-600/70 hover:text-amber-600 hover:bg-amber-50")}
+                            >
+                                <X size={11} />Remove Access
+                            </button>
+                        )}
+                    </div>
                 )}
             </div>
             <ImageUploadModal

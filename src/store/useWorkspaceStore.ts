@@ -65,7 +65,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             const { data, error } = await supabase
                 .from('workspaces')
                 .select('*')
-                .eq('owner_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) {
