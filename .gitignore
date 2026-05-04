@@ -42,3 +42,6 @@ next-env.d.ts
 
 # scratch dir
 scratch/
+
+# internal docs (not for public/repo)
+ARCHITECTURE.md
