@@ -37,15 +37,21 @@ export async function POST(req: NextRequest) {
         //    The user will still land on the correct workspace join page via the subdomain URL.
         const encodedEmail = encodeURIComponent(to);
         const isLocalDev = req.nextUrl.hostname.includes('localhost') || req.nextUrl.hostname.includes('127.0.0.1');
-        let joinBase: string;
-        if (wsSlug && !isLocalDev) {
-            // Always use the whitelisted *.aroooxa.com subdomain — never the custom domain for redirects
-            joinBase = `https://${wsSlug}.${ROOT_DOMAIN}`;
+        
+        // redirectBase is always the whitelisted subdomain for Supabase auth
+        const redirectBase = (wsSlug && !isLocalDev) ? `https://${wsSlug}.${ROOT_DOMAIN}` : req.nextUrl.origin;
+        const redirectUrl = `${redirectBase}/join/${workspace_id}?email=${encodedEmail}`;
+
+        // linkBase is the domain presented in the email (Custom Domain > Subdomain > Origin)
+        let linkBase: string;
+        if (domainRow?.domain) {
+            linkBase = `https://${domainRow.domain}`;
+        } else if (wsSlug && !isLocalDev) {
+            linkBase = `https://${wsSlug}.${ROOT_DOMAIN}`;
         } else {
-            // Dev fallback — use the same origin so the link works on localhost
-            joinBase = req.nextUrl.origin;
+            linkBase = req.nextUrl.origin;
         }
-        const joinUrl = `${joinBase}/join/${workspace_id}?email=${encodedEmail}`;
+        const displayJoinUrl = `${linkBase}/join/${workspace_id}?email=${encodedEmail}`;
 
         // 4. Generate a real Supabase magic link.
         //    type='invite' creates the account if it doesn't exist.
@@ -53,7 +59,7 @@ export async function POST(req: NextRequest) {
         let { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
             type: 'invite',
             email: to,
-            options: { redirectTo: joinUrl },
+            options: { redirectTo: redirectUrl },
         });
 
         // Fallback to magiclink if user already exists
@@ -61,7 +67,7 @@ export async function POST(req: NextRequest) {
             const result = await supabaseService.auth.admin.generateLink({
                 type: 'magiclink',
                 email: to,
-                options: { redirectTo: joinUrl },
+                options: { redirectTo: redirectUrl },
             });
             linkData = result.data;
             linkError = result.error;
@@ -76,14 +82,16 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. CRITICAL: Rewrite the redirect_to inside the action_link.
-        //    Supabase only honours redirect_to if the URL is in "Allowed Redirect URLs".
-        //    Since we can't add every workspace portal domain there, we overwrite the param
-        //    directly in the generated URL so it always lands on the correct join page.
-        //    action_link format: https://[project].supabase.co/auth/v1/verify?token=...&redirect_to=[url]
+        //    The Supabase action_link is https://[project].supabase.co/auth/v1/verify?token=...&redirect_to=[url]
+        //    We set redirect_to to the displayJoinUrl (custom domain or portal slug) so the user lands
+        //    on the right domain after clicking. Supabase still verifies the token on its own host.
+        //    NOTE: Supabase only whitelists *.aroooxa.com — so the user may be redirected to the
+        //    slug domain first if the custom domain is not whitelisted. The join page handles both.
         let signup_link = linkData.properties.action_link;
         try {
             const linkUrl = new URL(signup_link);
-            linkUrl.searchParams.set('redirect_to', joinUrl);
+            // Use displayJoinUrl (custom domain preferred) as the redirect destination in the email link
+            linkUrl.searchParams.set('redirect_to', displayJoinUrl);
             signup_link = linkUrl.toString();
         } catch {
             // If URL parsing fails, use the original link
