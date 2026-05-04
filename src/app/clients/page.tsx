@@ -359,8 +359,26 @@ export default function ClientsPage() {
         )},
         { id: 'company', label: 'Company', defaultWidth: 160, cell: (c: any) => (
             <div className={cn("flex items-center px-4 py-1.5 h-full truncate", muted)}><span className="text-[12px] font-medium">{c.company_name || '—'}</span></div>
-        )}
-    ], [isDark, textPrimary, textSecondary, muted]);
+        )},
+        { id: 'access', label: 'Access', defaultWidth: 100, cell: (c: any) => {
+            const member = c.email ? members.find(m => m.invited_email === c.email) : null;
+            if (!member) return <div className={cn("flex items-center px-4 py-1.5 h-full", textSecondary)}><span className="text-[12px] opacity-60">—</span></div>;
+            
+            if (member.user_id) {
+                return (
+                    <div className="flex items-center px-4 py-1.5 h-full">
+                        <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border", isDark ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-200")}>Active</span>
+                    </div>
+                );
+            }
+            
+            return (
+                <div className="flex items-center px-4 py-1.5 h-full">
+                    <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border", isDark ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-amber-50 text-amber-600 border-amber-200")}>Pending</span>
+                </div>
+            );
+        }}
+    ], [isDark, textPrimary, textSecondary, muted, members]);
 
     const companyColumns: DataTableColumn<any>[] = useMemo(() => [
         { id: 'name', label: 'Name', flexible: true, defaultWidth: 200, cell: (c: any) => (
@@ -412,11 +430,14 @@ export default function ClientsPage() {
                             appToast.success('Workspace access removed');
                         }
                     });
+                } else {
+                    menu.push({ label: 'Resend Invitation', icon: <UserPlus size={14} />, onClick: () => setInviteModalContact(client) });
                 }
             } else {
                 menu.push({ label: 'Invite to Workspace', icon: <UserPlus size={14} />, onClick: () => setInviteModalContact(client) });
             }
         }
+
         
         menu.push({ label: 'Delete', icon: <Trash2 size={14} />, danger: true, onClick: async () => {
             const { deleteClient } = useClientStore.getState();

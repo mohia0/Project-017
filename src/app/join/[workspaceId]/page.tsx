@@ -20,19 +20,30 @@ interface WorkspaceBranding {
 // Detect the magic link type from the URL hash (set by Supabase after redirect)
 function getMagicLinkType(): string | null {
     if (typeof window === 'undefined') return null;
+    
     const hash = window.location.hash.replace('#', '');
     const params = new URLSearchParams(hash);
-    return params.get('type'); // 'invite' | 'magiclink' | 'recovery' | null
+    const type = params.get('type'); // 'invite' | 'magiclink' | 'recovery' | null
+    
+    // Store it in sessionStorage so we remember they came from an invite even if Supabase clears the hash
+    if (type) {
+        sessionStorage.setItem('join_link_type', type);
+        return type;
+    }
+    
+    return sessionStorage.getItem('join_link_type');
 }
 
-// Check if user has a usable password (i.e. not a brand-new invite-only account)
-// New invited users have no identities with 'email' provider — they only have a temp account
+// Check if user has a usable password
 function isNewInvitedUser(session: any): boolean {
+    // If the link type in storage is 'invite', they are a new user who needs a password
+    if (typeof window !== 'undefined' && sessionStorage.getItem('join_link_type') === 'invite') {
+        return true;
+    }
+    
     const identities = session?.user?.identities || [];
-    // If there are no identities yet, or the only identity has no last_sign_in_at,
-    // the account was just created via invite and has never signed in with a password.
-    return identities.length === 0 || 
-        !identities.some((id: any) => id.provider === 'email' && id.identity_data?.email_verified);
+    // Fallback: If no identities exist
+    return identities.length === 0;
 }
 
 function JoinForm({ workspaceId }: { workspaceId: string }) {
@@ -122,8 +133,11 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
 
     // Listen for Supabase auth state — fires when magic link auto-authenticates the user
     useEffect(() => {
+        let handled = false;
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session?.user) {
+            if (event === 'SIGNED_IN' && session?.user && !handled) {
+                handled = true;
                 const user = session.user;
                 const linkType = getMagicLinkType();
 
@@ -132,7 +146,6 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                     setStage('set-password');
                 } else {
                     // magiclink or unknown type — check if the user is already an established user
-                    // (has a verified email identity with a password)
                     if (!isNewInvitedUser(session)) {
                         // Established user — auto-accept into workspace
                         await acceptIntoWorkspace(user.id, user.email || email);
@@ -146,26 +159,28 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
 
         // Also check if already signed in (e.g. page refresh after magic link auth)
         supabase.auth.getSession().then(async ({ data: { session } }) => {
-            if (session?.user && stage === 'loading') {
+            if (handled) return; // SIGNED_IN already fired above, ignore
+
+            if (session?.user) {
+                handled = true;
                 const linkType = getMagicLinkType();
                 if (linkType === 'invite') {
                     setStage('set-password');
                 } else {
-                    // For existing sessions, just auto-accept (user already has account + password)
                     await acceptIntoWorkspace(session.user.id, session.user.email || email);
                 }
-            } else if (!session && stage === 'loading') {
-                // No session yet — the magic link may still be processing via onAuthStateChange
-                // Wait a bit before showing an error (the SIGNED_IN event will fire shortly)
-                setTimeout(() => {
-                    supabase.auth.getSession().then(({ data: { session: s2 } }) => {
-                        if (!s2) {
-                            setStage('error');
-                            setError('Invalid or expired invitation link. Please ask the workspace owner to resend the invitation.');
-                        }
-                    });
-                }, 3000);
+                return;
             }
+
+            // No session. Check if there is a hash token in the URL.
+            // If yes, Supabase is still processing it — SIGNED_IN will fire soon. Stay in 'loading'.
+            // If no hash at all, nothing will ever fire — show error immediately.
+            const hasToken = typeof window !== 'undefined' && window.location.hash.includes('access_token');
+            if (!hasToken) {
+                setStage('error');
+                setError('Invalid or expired invitation link. Please ask the workspace owner to resend the invitation.');
+            }
+            // else: stay loading, wait for onAuthStateChange
         });
 
         return () => subscription.unsubscribe();
@@ -185,6 +200,8 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
             // Set the password for the newly created account
             const { error: updateError } = await supabase.auth.updateUser({ password });
             if (updateError) throw updateError;
+
+            sessionStorage.removeItem('join_link_type');
 
             // Now get current session and accept into workspace
             const { data: { session } } = await supabase.auth.getSession();
@@ -392,10 +409,11 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
     );
 }
 
-export default function JoinWorkspacePage({ params }: { params: { workspaceId: string } }) {
+export default function JoinWorkspacePage({ params }: { params: Promise<{ workspaceId: string }> }) {
+    const { workspaceId } = React.use(params);
     return (
         <Suspense fallback={<div className="flex-1 flex items-center justify-center" />}>
-            <JoinForm workspaceId={params.workspaceId} />
+            <JoinForm workspaceId={workspaceId} />
         </Suspense>
     );
 }

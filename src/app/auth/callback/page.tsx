@@ -34,12 +34,11 @@ function CallbackRelay() {
             return;
         }
 
-        if (rawHash && rawHash.includes('access_token')) {
-            // Forward the tokens to the destination domain.
-            // The join page's Supabase client will process the hash and sign the user in.
+        if (rawHash) {
+            // Forward the tokens or errors to the destination domain.
             window.location.replace(dest + rawHash);
         } else {
-            // No tokens in hash — maybe already signed in, just go to dest
+            // No hash — maybe already signed in, just go to dest
             window.location.replace(dest);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
