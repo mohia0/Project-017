@@ -38,13 +38,12 @@ function usePortalBranding() {
                 
                 // If we have a workspace context, we can also apply the branding's favicon dynamically
                 if (branding?.favicon_url) {
-                    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-                    if (!link) {
-                        link = document.createElement('link');
-                        link.rel = 'icon';
-                        document.head.appendChild(link);
-                    }
+                    const links = document.querySelectorAll("link[rel~='icon']");
+                    links.forEach(l => l.remove());
+                    const link = document.createElement('link');
+                    link.rel = 'icon';
                     link.href = branding.favicon_url;
+                    document.head.appendChild(link);
                 }
 
                 // If a workspaceId is returned (e.g. subdomain on prod, or dev with header),

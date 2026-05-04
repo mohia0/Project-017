@@ -74,9 +74,12 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
                 if (branding) {
                     setBranding(branding);
                     if (branding.favicon_url) {
-                        let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-                        if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+                        const links = document.querySelectorAll("link[rel~='icon']");
+                        links.forEach(l => l.remove());
+                        const link = document.createElement('link');
+                        link.rel = 'icon';
                         link.href = branding.favicon_url;
+                        document.head.appendChild(link);
                     }
                 }
             })
