@@ -197,15 +197,25 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
 
         setSavingPassword(true);
         try {
-            // Set the password for the newly created account
-            const { error: updateError } = await supabase.auth.updateUser({ password });
-            if (updateError) throw updateError;
+            // Get the current access token to authenticate the API call
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) throw new Error('No active session. Please try the invitation link again.');
+
+            // Use server-side admin API to set password — bypasses Supabase's
+            // client-side "reauthentication required" restriction for invite sessions
+            const res = await fetch('/api/set-invite-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ access_token: session.access_token, password }),
+            });
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to set password.');
 
             sessionStorage.removeItem('join_link_type');
 
-            // Now get current session and accept into workspace
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
+            // Accept the user into the workspace now that they have a proper password
+            if (session.user) {
                 await acceptIntoWorkspace(session.user.id, session.user.email || email);
             }
         } catch (err: any) {
