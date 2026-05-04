@@ -141,6 +141,7 @@ export async function proxy(request: NextRequest) {
   const isApiRoute      = pathname.startsWith('/api/');
   const isOnboarding    = pathname === '/onboarding';
   const isJoinRoute     = pathname.startsWith('/join/');
+  const isAuthCallback  = pathname === '/auth/callback'; // token relay for custom domains
 
   // ─────────────────────────────────────────────────────────────
   // Auth & Domain Restrictions
@@ -162,7 +163,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  if (!user && !isAuthRoute && !isPublicPreview && !isApiRoute && !isOnboarding && !isJoinRoute) {
+  if (!user && !isAuthRoute && !isPublicPreview && !isApiRoute && !isOnboarding && !isJoinRoute && !isAuthCallback) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

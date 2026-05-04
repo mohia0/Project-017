@@ -37,21 +37,37 @@ export async function POST(req: NextRequest) {
         //    The user will still land on the correct workspace join page via the subdomain URL.
         const encodedEmail = encodeURIComponent(to);
         const isLocalDev = req.nextUrl.hostname.includes('localhost') || req.nextUrl.hostname.includes('127.0.0.1');
-        
-        // redirectBase is always the whitelisted subdomain for Supabase auth
-        const redirectBase = (wsSlug && !isLocalDev) ? `https://${wsSlug}.${ROOT_DOMAIN}` : req.nextUrl.origin;
-        const redirectUrl = `${redirectBase}/join/${workspace_id}?email=${encodedEmail}`;
 
-        // linkBase is the domain presented in the email (Custom Domain > Subdomain > Origin)
+        // The whitelisted base for Supabase redirect_to (*.aroooxa.com or localhost)
+        const redirectBase = (wsSlug && !isLocalDev) ? `https://${wsSlug}.${ROOT_DOMAIN}` : req.nextUrl.origin;
+
+        // The domain the email link will present to the user (custom domain > portal slug > origin)
         let linkBase: string;
-        if (domainRow?.domain) {
+        if (domainRow?.domain && !isLocalDev) {
             linkBase = `https://${domainRow.domain}`;
         } else if (wsSlug && !isLocalDev) {
             linkBase = `https://${wsSlug}.${ROOT_DOMAIN}`;
         } else {
             linkBase = req.nextUrl.origin;
         }
+
+        // The actual join URL that should open in the user's browser (on the correct domain)
         const displayJoinUrl = `${linkBase}/join/${workspace_id}?email=${encodedEmail}`;
+
+        // Build the redirect_to URL:
+        // - If a custom domain exists: use the /auth/callback relay on the whitelisted slug domain.
+        //   The relay forwards the Supabase hash tokens to the custom domain automatically.
+        //   This means we NEVER need to add custom domains to Supabase's Redirect URLs list.
+        // - Otherwise: go directly to the join page on the portal/localhost.
+        let redirectUrl: string;
+        if (domainRow?.domain && wsSlug && !isLocalDev) {
+            // Relay pattern: whitelisted callback page → forwards tokens to custom domain
+            const dest = encodeURIComponent(displayJoinUrl);
+            redirectUrl = `${redirectBase}/auth/callback?dest=${dest}`;
+        } else {
+            // Direct: portal subdomain or localhost already match the display URL
+            redirectUrl = displayJoinUrl;
+        }
 
         // 4. Generate a real Supabase magic link.
         //    type='invite' creates the account if it doesn't exist.
@@ -82,16 +98,15 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. CRITICAL: Rewrite the redirect_to inside the action_link.
-        //    The Supabase action_link is https://[project].supabase.co/auth/v1/verify?token=...&redirect_to=[url]
-        //    We set redirect_to to the displayJoinUrl (custom domain or portal slug) so the user lands
-        //    on the right domain after clicking. Supabase still verifies the token on its own host.
-        //    NOTE: Supabase only whitelists *.aroooxa.com — so the user may be redirected to the
-        //    slug domain first if the custom domain is not whitelisted. The join page handles both.
+        //    The Supabase action_link is: https://[project].supabase.co/auth/v1/verify?token=...&redirect_to=[url]
+        //    redirect_to MUST be a URL that is in Supabase's "Allowed Redirect URLs" list.
+        //    We whitelist https://*.aroooxa.com/**, so we ALWAYS use redirectUrl (slug-based) here.
+        //    Custom domains are NOT whitelisted — using them causes Supabase to ignore the param
+        //    and fall back to the configured Site URL instead.
         let signup_link = linkData.properties.action_link;
         try {
             const linkUrl = new URL(signup_link);
-            // Use displayJoinUrl (custom domain preferred) as the redirect destination in the email link
-            linkUrl.searchParams.set('redirect_to', displayJoinUrl);
+            linkUrl.searchParams.set('redirect_to', redirectUrl); // always slug/localhost — whitelisted
             signup_link = linkUrl.toString();
         } catch {
             // If URL parsing fails, use the original link
