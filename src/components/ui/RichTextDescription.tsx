@@ -17,17 +17,12 @@ function escapeText(text: string): string {
 
 function sanitizeHTML(html: string): string {
     if (!html) return '';
-    // Plain text (no tags) — just escape special chars and convert newlines
-    if (!html.includes('<')) {
-        return escapeText(html).replace(/\n/g, '<br>');
-    }
-
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
     function clean(node: Node): string {
         if (node.nodeType === Node.TEXT_NODE) {
-            return escapeText(node.textContent || '');
+            return escapeText(node.textContent || '').replace(/\n/g, '<br>');
         }
         if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
