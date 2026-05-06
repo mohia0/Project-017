@@ -320,11 +320,19 @@ export default function CreateEntryModal() {
         setLoading(true);
         try {
             if (tab === 'Contact') {
-                if (!cName.trim()) return;
+                if (!cName.trim()) {
+                    setLoading(false);
+                    appToast.error('Validation Error', 'Full name is required');
+                    return;
+                }
                 const client = await addClient({ contact_person: cName, email: cEmail, company_name: selectedCompany || companyQuery, company_id: selectedCompanyId, address: cAddress, tax_number: cTax, phone: cPhone, country: cCountry, notes: cNotes, avatar_url: cAvatarUrl });
                 if (client) { setCreateModalOpen(false); appToast.success('Contact created'); }
             } else if (tab === 'Company') {
-                if (!cmpName.trim()) return;
+                if (!cmpName.trim()) {
+                    setLoading(false);
+                    appToast.error('Validation Error', 'Company name is required');
+                    return;
+                }
                 const company = await addCompany({ name: cmpName.trim(), industry: cmpIndustry, website: cmpWebsite, email: cmpEmail, phone: cmpPhone, address: cmpAddress, tax_number: cmpTax, notes: cmpNotes, avatar_url: cmpAvatarUrl });
                 if (company) { setCreateModalOpen(false); appToast.success('Company created'); }
             } else if (tab === 'Proposal') {
@@ -717,7 +725,7 @@ export default function CreateEntryModal() {
                                             <input value={cName} onChange={e => setCName(e.target.value)} placeholder="John Doe" autoFocus className="bg-transparent outline-none text-[13px] w-full mt-0.5" />
                                         </div>
                                         <div className={fieldStyle}>
-                                            <span className={labelStyle}>Email address *</span>
+                                            <span className={labelStyle}>Email address</span>
                                             <input value={cEmail} onChange={e => setCEmail(e.target.value)} placeholder="john@example.com" type="email" className="bg-transparent outline-none text-[13px] w-full mt-0.5" />
                                         </div>
                                         {renderCompanyPicker()}

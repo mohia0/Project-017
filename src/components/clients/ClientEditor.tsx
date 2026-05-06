@@ -110,8 +110,7 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
     const validate = () => {
         const e: typeof errors = {};
         if (!form.contact_person.trim()) e.contact_person = 'Required';
-        if (!form.email.trim()) e.email = 'Required';
-        else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Invalid email';
+        if (form.email.trim() && !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Invalid email';
         return e;
     };
 
@@ -204,7 +203,7 @@ export default function ClientEditor({ initialData, onClose, onSave }: ClientEdi
 
                     <FormField
                         isDark={isDark}
-                        label="Email *"
+                        label="Email"
                         icon={<Mail size={11} />}
                         type="email"
                         value={form.email}
