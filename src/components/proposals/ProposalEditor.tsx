@@ -379,6 +379,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
     }, [id, fetchProposals]);
 
     const lastSyncedStatusRef = useRef<ProposalMeta['status'] | null>(null);
+    const lastSyncedNumberRef = useRef<string | null>(null);
 
     // Enhanced sync effect: allows status and signatures to update even after load
     React.useEffect(() => {
@@ -402,10 +403,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
                     issueDate: proposal.issue_date ? proposal.issue_date.split('T')[0] : (parsedMeta.issueDate || prev.issueDate),
                     expirationDate: proposal.due_date ? proposal.due_date.split('T')[0] : (parsedMeta.expirationDate || prev.expirationDate),
                     status: proposal.status as any,
-                    proposalNumber: proposal.proposal_number || parsedMeta.proposalNumber || proposal.id.slice(0, 8).toUpperCase(),
+                proposalNumber: proposal.proposal_number || parsedMeta.proposalNumber || proposal.id.slice(0, 8).toUpperCase(),
                     assignedClients: assignedClients || []
                 };
             });
+            lastSyncedNumberRef.current = proposal.proposal_number || null;
             if (proposal.blocks && Array.isArray(proposal.blocks) && proposal.blocks.length > 0) {
                 setBlocks(proposal.blocks);
             }
@@ -419,6 +421,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 lastSyncedStatusRef.current = proposal.status as any;
                 setMeta(prev => ({ ...prev, status: proposal.status as any }));
             }
+            
+            // proposal_number is user-editable; auto-save writes it back to DB.
+            // Never override the user's local value from background polls.
             
             // Sync blocks (specifically signatures)
             if (proposal.blocks && Array.isArray(proposal.blocks)) {
@@ -467,6 +472,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
             issue_date: debouncedMeta.issueDate,
             due_date: debouncedMeta.expirationDate,
             amount: totalAmount,
+            proposal_number: debouncedMeta.proposalNumber || undefined,
             blocks: debouncedBlocks,
             meta: debouncedMeta
         }).then(() => {
