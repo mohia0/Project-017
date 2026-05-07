@@ -8,7 +8,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { cn } from '@/lib/utils';
 import {
-    TrendingUp, TrendingDown, FileText, Receipt,
+    TrendingUp, TrendingDown, FileText, Receipt, FileSignature,
     ChevronLeft, ChevronRight, Minus,
     AlertCircle, CheckCircle2, Clock, Ban,
     BarChart2
@@ -637,7 +637,7 @@ export default function DashboardPage() {
                             value={String(proposalStats.signedLast30Count)}
                             subValue={proposalStats.signedLast30Amount > 0 ? <MoneyAmount amount={proposalStats.signedLast30Amount} /> : `${proposalStats.accepted.count} total accepted`}
                             change={signedProposalsChange}
-                            icon={<FileText size={13} className="text-white" />}
+                            icon={<FileSignature size={13} className="text-white" />}
                             iconBg="#f59e0b"
                             isDark={isDark}
                         />
@@ -727,7 +727,7 @@ export default function DashboardPage() {
                                         <StatusRow label="Declined" count={proposalStats.declined.count} amount={proposalStats.declined.amount}
                                             icon={<AlertCircle size={12} />} iconColor="#ef4444" barColor="#ef4444" isDark={isDark} />
                                         <StatusRow label="Draft" count={proposalStats.draft.count} amount={proposalStats.draft.amount}
-                                            icon={<FileText size={12} />} iconColor="#6366f1" barColor="#6366f1" isDark={isDark} />
+                                            icon={<FileSignature size={12} />} iconColor="#6366f1" barColor="#6366f1" isDark={isDark} />
                                         <StatusRow label="Cancelled" count={proposalStats.cancelled.count} amount={proposalStats.cancelled.amount}
                                             icon={<Ban size={12} />} iconColor="#94a3b8" barColor="#94a3b8" isDark={isDark} />
                                     </div>

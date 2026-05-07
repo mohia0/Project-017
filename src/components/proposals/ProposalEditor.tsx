@@ -2552,9 +2552,9 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta = 
                 <div className="flex justify-end">
                     <div className="space-y-1.5" style={{ minWidth: 0 }}>
                         {(() => {
-                            const hasSubtotal = rows.length > 1 && (!hideQty || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0);
-                            const hasDiscount = !isPreview || (block.discountRate || 0) > 0;
-                            const hasTax      = !isPreview || (block.taxRate || 0) > 0;
+                            const hasSubtotal = rows.length > 1 || discAmt > 0 || taxAmt > 0;
+                            const hasDiscount = !isPreview || discAmt > 0 || String(block.discountRate || '').trim() !== '';
+                            const hasTax      = !isPreview || taxAmt > 0 || String(block.taxRate || '').trim() !== '';
                             const showDivider = hasSubtotal || hasDiscount || hasTax;
 
                             return (
@@ -3018,8 +3018,8 @@ function BreakdownBlock({ block, blocks, isDark, isPreview, updateBlock, currenc
     pricingAbove.forEach((pb: any) => {
         const pRows = pb.rows || [];
         const sub = pRows.reduce((s: number, r: any) => s + (pb.hideQty ? 1 : r.qty) * r.rate, 0);
-        const disc = sub * ((pb.discountRate || 0) / 100);
-        const tax = (sub - disc) * ((pb.taxRate || 0) / 100);
+        const disc = calculatePercentageOrFixed(sub, pb.discountRate);
+        const tax  = calculatePercentageOrFixed(sub - disc, pb.taxRate);
         totalAbove += (sub - disc + tax);
     });
 

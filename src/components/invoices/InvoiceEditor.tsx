@@ -2113,9 +2113,9 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                         <div className="flex justify-end">
                             <div className="space-y-1.5" style={{ minWidth: 0 }}>
                                 {(() => {
-                                    const hasSubtotal = rows.length > 1 && (!hideQty || (block.discountRate || 0) > 0 || (block.taxRate || 0) > 0);
-                                    const hasDiscount = !isPreview || (block.discountRate || 0) > 0;
-                                    const hasTax      = !isPreview || (block.taxRate || 0) > 0;
+                                    const hasSubtotal = rows.length > 1 || discAmt > 0 || taxAmt > 0;
+                                    const hasDiscount = !isPreview || discAmt > 0 || String(block.discountRate || '').trim() !== '';
+                                    const hasTax      = !isPreview || taxAmt > 0 || String(block.taxRate || '').trim() !== '';
                                     const showDivider = hasSubtotal || hasDiscount || hasTax;
 
                                     return (
