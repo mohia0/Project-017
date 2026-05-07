@@ -57,7 +57,13 @@ export const useMenuStore = create<MenuState>((set) => ({
             if (data && data.value) {
                 // Merge default items into saved items to ensure new tools appear
                 const savedItems: NavItem[] = data.value;
-                const merged = [...savedItems];
+                const merged = savedItems.map(item => {
+                    // Upgrade legacy proposal icon
+                    if (item.id === 'proposals' && item.icon === 'FileText') {
+                        return { ...item, icon: 'FileSignature' };
+                    }
+                    return item;
+                });
                 
                 DEFAULT_NAV.forEach(def => {
                     const exists = merged.some(item => item.id === def.id || item.href === def.href);
