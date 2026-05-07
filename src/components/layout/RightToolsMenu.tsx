@@ -5,7 +5,8 @@ import { createPortal } from 'react-dom';
 import { useUIStore } from '@/store/useUIStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { Plus, Moon, Sun, Bell, LayoutTemplate, Settings, Eye, EyeOff, RefreshCw, X, Check, ArrowLeftRight } from 'lucide-react';
+import { Plus, Bell, LayoutTemplate, Settings, Eye, EyeOff, RefreshCw, X, Check, ArrowLeftRight } from 'lucide-react';
+import { AnimatedThemeToggler } from '@/components/ui/AnimatedThemeToggler';
 import { cn, detectCreateModalTab } from '@/lib/utils';
 import { useRouter, usePathname } from 'next/navigation';
 import { AppLoader } from '@/components/ui/AppLoader';
@@ -178,7 +179,6 @@ export default function RightToolsMenu() {
     const pathname = usePathname();
     const {
         theme,
-        toggleTheme,
         setCreateModalOpen,
         toggleNotifications,
         rightPanel,
@@ -365,20 +365,7 @@ export default function RightToolsMenu() {
                     <LayoutTemplate size={14} strokeWidth={2} className="transition-transform duration-300 group-hover:scale-110" />
                 </button>
 
-                <button
-                    onClick={toggleTheme}
-                    className={cn(
-                        "w-9 h-9 rounded-[12px] flex items-center justify-center transition-all group",
-                        isDark
-                            ? "bg-white/5 text-[#6b6b6b] hover:bg-white/10"
-                            : "bg-[#f0f0f0] text-[#fa6e34] hover:bg-[#e8e8e8]"
-                    )}
-                >
-                    {isDark
-                        ? <Moon size={14} strokeWidth={1.75} className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-12 group-hover:text-[#efca00]" />
-                        : <Sun size={14} strokeWidth={1.75} className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-45 group-hover:text-[#ff804b]" />
-                    }
-                </button>
+                <AnimatedThemeToggler variant="circle" duration={500} />
 
                 <button
                     onClick={() => router.push('/settings')}

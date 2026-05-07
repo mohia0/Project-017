@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, UserSquare2, Building2, Palette, Globe, CreditCard, Mail, Tag, FileText, Receipt, FolderKanban, Zap, Key, ShieldCheck, Users } from 'lucide-react';
+import { User, UserSquare2, Building2, Palette, Globe, CreditCard, Mail, Tag, FileSignature, Receipt, FolderKanban, Zap, Key, ShieldCheck, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/useUIStore';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -23,7 +23,7 @@ export const WORKSPACE_LINKS = [
 
 export const FEATURES_LINKS = [
     { name: 'Statuses', href: '/settings/features/statuses', icon: Tag },
-    { name: 'Proposals', href: '/settings/features/proposals', icon: FileText },
+    { name: 'Proposals', href: '/settings/features/proposals', icon: FileSignature },
     { name: 'Invoices', href: '/settings/features/invoices', icon: Receipt },
     { name: 'Projects', href: '/settings/features/projects', icon: FolderKanban },
 ];

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
     X, Send, Mail, Check, AlertCircle, Settings2,
-    FileText, Receipt, FileCheck, Calendar, Clock,
+    FileSignature, Receipt, FileCheck, Calendar, Clock,
     ChevronDown, Monitor, Smartphone, UserPlus
 } from 'lucide-react';
 import Link from 'next/link';
@@ -32,7 +32,7 @@ interface SendEmailModalProps {
 }
 
 const TEMPLATE_INFO = {
-    proposal:             { label: 'Proposal',          color: '#6366f1', icon: FileText   },
+    proposal:             { label: 'Proposal',          color: '#6366f1', icon: FileSignature   },
     invoice:              { label: 'Invoice',            color: '#f59e0b', icon: Receipt    },
     receipt:              { label: 'Receipt',            color: '#10b981', icon: FileCheck  },
     overdue_remind:       { label: 'Overdue Reminder',   color: '#ef4444', icon: AlertCircle },

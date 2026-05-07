@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LayoutTemplate, Plus, Trash2, Calendar, FileText as ProposalIcon, Receipt as InvoiceIcon, RotateCcw, BookmarkCheck, ClipboardList, Clock, Briefcase, LayoutPanelTop, Zap, Search, PanelTop, Table, PenLine, FileText, Tag, Eye, Check, Copy } from 'lucide-react';
+import { LayoutTemplate, Plus, Trash2, Calendar, FileSignature as ProposalIcon, Receipt as InvoiceIcon, RotateCcw, BookmarkCheck, ClipboardList, Clock, Briefcase, LayoutPanelTop, Zap, Search, PanelTop, Table, PenLine, FileText, Tag, Eye, Check, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { usePersistentState } from '@/hooks/usePersistentState';

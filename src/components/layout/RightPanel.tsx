@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     X, Bell, Mail, Phone, MapPin, Building2, Hash,
-    FileText, Pencil, Save, Trash2, Check, ExternalLink,
+    FileText, Pencil, Save, Trash2, Check, ExternalLink, FileSignature,
     Globe, Briefcase, Users, ChevronRight, Eye, Search, Receipt, Image as ImageIcon, Zap, ClipboardList, AlertCircle, Info, Calendar as CalendarIcon, Palette, HelpCircle, ShieldCheck, UserPlus
 } from 'lucide-react';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
@@ -312,13 +312,13 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
                                                     if (isLimitReached) return <AlertCircle size={12} className="text-amber-500" />;
                                                     if (isReceiptPending) return <Receipt size={12} className="text-emerald-500" />;
                                                     if (isSuccess) {
-                                                        if (isProposal) return <FileText size={12} className="text-emerald-500" />;
+                                                    if (isProposal) return <FileSignature size={12} className="text-emerald-500" />;
                                                         if (isInvoice) return <Receipt size={12} className="text-emerald-500" />;
                                                         return <Check size={12} className="text-emerald-500" />;
                                                     }
                                                     if (isFormResponse) return <ClipboardList size={12} className={iconClass} />;
                                                     if (isScheduler) return <CalendarIcon size={12} className={iconClass} />;
-                                                    if (isProposal) return <FileText size={12} className={iconClass} />;
+                                                    if (isProposal) return <FileSignature size={12} className={iconClass} />;
                                                     if (isInvoice) return <Receipt size={12} className={iconClass} />;
                                                     return <Eye size={12} className={iconClass} />;
                                                 })()}

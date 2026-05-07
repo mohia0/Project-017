@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSettingsStore, WorkspaceStatus } from '@/store/useSettingsStore';
 import { useUIStore } from '@/store/useUIStore';
-import { GripVertical, Plus, Trash2, Check, Info, Pencil, FileText, Receipt, FolderKanban } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Check, Info, Pencil, FileSignature, Receipt, FolderKanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ColorisInput } from '@/components/ui/ColorisInput';
 import { appToast } from '@/lib/toast';
@@ -14,7 +14,7 @@ import { SkeletonBox } from '@/components/ui/ListViewSkeleton';
 type Tool = WorkspaceStatus['tool'];
 
 const TABS: { key: Tool; label: string; icon: React.ReactNode }[] = [
-    { key: 'proposals', label: 'Proposals', icon: <FileText size={14} /> },
+    { key: 'proposals', label: 'Proposals', icon: <FileSignature size={14} /> },
     { key: 'invoices',  label: 'Invoices',  icon: <Receipt size={14} /> },
     { key: 'projects',  label: 'Projects',  icon: <FolderKanban size={14} /> },
 ];

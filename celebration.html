@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celebration Effect Test</title>
+    <!-- Include Tailwind CSS for rapid styling matching the React component -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #f7f7f7; /* Light background typical of the app */
+            color: #111;
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .trigger-btn {
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #111;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+
+        .trigger-btn:hover {
+            transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+
+        .trigger-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Celebration Overlay Hidden State */
+        #celebrationOverlay {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.7s ease;
+        }
+
+        /* Celebration Overlay Visible State */
+        #celebrationOverlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Modal Animation */
+        .modal-content {
+            transform: scale(0.95);
+            opacity: 0;
+            transition: all 1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s; /* 150ms delay */
+        }
+
+        #celebrationOverlay.show .modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Page Content (Mockup) -->
+    <button class="trigger-btn" onclick="triggerCelebration()">Simulate Proposal Accepted</button>
+
+    <!-- Celebration Overlay (Matches PreviewClient.tsx) -->
+    <div id="celebrationOverlay" class="fixed inset-0 overflow-hidden flex items-center justify-center bg-white/20 backdrop-blur-3xl" style="z-index: 99998;" aria-hidden="true">
+        
+        <!-- Confetti Container -->
+        <div id="confettiContainer" class="absolute inset-0 pointer-events-none"></div>
+        
+        <!-- Modal Content -->
+        <div class="modal-content relative z-10 flex flex-col items-center justify-center px-6 text-center w-full max-w-lg mx-auto">
+            
+            <!-- Checkmark Icon -->
+            <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/40 flex items-center justify-center mb-6 md:mb-8 ring-2 ring-white/50 backdrop-blur-xl shadow-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="text-[#D4AF37] w-8 h-8 md:w-10 md:h-10">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+
+            <!-- Title -->
+            <h2 class="text-3xl md:text-5xl lg:text-5xl text-black font-bold tracking-[0.08em] uppercase mb-4 leading-tight text-center" style="font-family: var(--font-inter), system-ui, sans-serif; text-shadow: none !important;">
+                Proposal Signed
+            </h2>
+
+            <!-- Subtitle -->
+            <h3 class="text-lg md:text-2xl text-[#D4AF37] tracking-[0.2em] font-medium uppercase mb-12" style="font-family: var(--font-inter), system-ui, sans-serif; text-shadow: none !important;">
+                Thank you!
+            </h3>
+            
+            <!-- Continue Button -->
+            <button onclick="hideCelebration()" class="group relative px-12 py-3.5 md:py-4 bg-black/80 backdrop-blur-md border border-white/20 text-white text-xs md:text-sm tracking-[0.15em] uppercase font-bold rounded-full overflow-hidden transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 active:scale-95 shadow-lg">
+                Continue
+            </button>
+        </div>
+    </div>
+
+    <!-- Canvas Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script>
+        const CONFETTI_COLORS = [
+            '#d4af37', '#bf953f', '#fcf6ba', '#b38728', 
+            '#fbf5b7', '#ffffff', '#e5e4e2', '#c0c0c0', '#222222'
+        ];
+
+        let animationFrameId;
+
+        function triggerCelebration() {
+            // Show the overlay
+            document.getElementById('celebrationOverlay').classList.add('show');
+
+            // Side Cannons Confetti logic
+            const end = Date.now() + 3 * 1000; // 3 seconds
+
+            const frame = () => {
+                if (Date.now() > end) return;
+
+                confetti({
+                    particleCount: 2,
+                    angle: 60,
+                    spread: 55,
+                    startVelocity: 60,
+                    origin: { x: 0, y: 0.5 },
+                    colors: CONFETTI_COLORS,
+                    zIndex: 99999
+                });
+                confetti({
+                    particleCount: 2,
+                    angle: 120,
+                    spread: 55,
+                    startVelocity: 60,
+                    origin: { x: 1, y: 0.5 },
+                    colors: CONFETTI_COLORS,
+                    zIndex: 99999
+                });
+
+                animationFrameId = requestAnimationFrame(frame);
+            };
+
+            frame();
+        }
+
+        function hideCelebration() {
+            // Hide the overlay
+            document.getElementById('celebrationOverlay').classList.remove('show');
+            // Clear confetti if it's still running
+            cancelAnimationFrame(animationFrameId);
+        }
+    </script>
+</body>
+</html>

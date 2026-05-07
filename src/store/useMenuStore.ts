@@ -29,7 +29,7 @@ export const DEFAULT_NAV = [
     { id: 'dashboard',   href: '/dashboard',   icon: 'LayoutGrid',   label: 'Dashboard' },
     { id: 'projects',    href: '/projects',    icon: 'Briefcase',    label: 'Projects' },
     { id: 'clients',     href: '/clients',     icon: 'Users',        label: 'Contacts' },
-    { id: 'proposals',   href: '/proposals',   icon: 'FileText',     label: 'Proposals' },
+    { id: 'proposals',   href: '/proposals',   icon: 'FileSignature',label: 'Proposals' },
     { id: 'invoices',    href: '/invoices',    icon: 'Receipt',      label: 'Invoices' },
     { id: 'schedulers',  href: '/schedulers',  icon: 'CalendarDays', label: 'Schedulers' },
     { id: 'forms',       href: '/forms',       icon: 'ClipboardList',label: 'Forms' },

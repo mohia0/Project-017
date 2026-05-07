@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { MantineProvider, createTheme } from '@mantine/core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -12,6 +13,8 @@ const theme = createTheme({});
 export function Providers({ children, session }: { children: React.ReactNode, session: any }) {
     const { theme: appTheme } = useUIStore();
     const isHydrated = useRef(false);
+    const pathname = usePathname();
+    const isPublicPreview = pathname?.startsWith('/p/');
 
     // Synchronous hydration to prevent initial flicker 
     if (!isHydrated.current) {
@@ -26,7 +29,7 @@ export function Providers({ children, session }: { children: React.ReactNode, se
     return (
         <MantineProvider theme={theme}>
             {children}
-            <GooeyToaster position="top-center" theme={appTheme === 'dark' ? 'dark' : 'light'} />
+            {!isPublicPreview && <GooeyToaster position="top-center" theme={appTheme === 'dark' ? 'dark' : 'light'} />}
         </MantineProvider>
     );
 }

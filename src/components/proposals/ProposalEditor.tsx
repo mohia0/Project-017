@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useRouter } from 'next/navigation';
-import { cn, getBackgroundImageWithOpacity, isDarkColor, replaceVariables } from '@/lib/utils';
+import { cn, getBackgroundImageWithOpacity, isDarkColor, replaceVariables, calculatePercentageOrFixed } from '@/lib/utils';
 import { CURRENCIES, getCurrency } from '@/lib/currencies';
 import { Dropdown, DItem } from '@/components/ui/Dropdown';
 import { getStatusColors, STATUS_COLORS } from '@/lib/statusConfig';
@@ -79,8 +79,8 @@ interface BlockData {
     url?: string;
     // pricing / breakdown
     rows?: any[];
-    taxRate?: number;
-    discountRate?: number;
+    taxRate?: number | string;
+    discountRate?: number | string;
     showTax?: boolean;
     showDiscount?: boolean;
     note?: string;
@@ -449,9 +449,9 @@ export default function ProposalEditor({ id }: { id?: string }) {
         const totalAmount = debouncedBlocks.reduce((acc, block) => {
             if (block.type === 'pricing' && block.rows) {
                 const sub = block.rows.reduce((sum: number, r: any) => sum + (r.qty * r.rate), 0);
-                const discount = block.discountRate ? (sub * block.discountRate / 100) : 0;
+                const discount = calculatePercentageOrFixed(sub, block.discountRate);
                 const afterDiscount = sub - discount;
-                const tax = block.taxRate ? (afterDiscount * block.taxRate / 100) : 0;
+                const tax = calculatePercentageOrFixed(afterDiscount, block.taxRate);
                 return acc + afterDiscount + tax;
             }
             return acc;
@@ -620,22 +620,26 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const totals = React.useMemo(() => {
         const pricingBlocks = blocks.filter(b => b.type === 'pricing');
         let subtotal = 0;
-        pricingBlocks.forEach(b => {
-            (b.rows || []).forEach(r => { subtotal += r.qty * r.rate; });
-        });
-        const discount = pricingBlocks.reduce((acc, b) => acc + (b.discountRate || 0), 0) / Math.max(1, pricingBlocks.length);
-        const tax      = pricingBlocks.reduce((acc, b) => acc + (b.taxRate || 0), 0)      / Math.max(1, pricingBlocks.length);
-
         let discAmt = 0;
         let taxAmt = 0;
 
-        if (meta.discountCalc === 'after_tax') {
-            taxAmt = subtotal * (tax / 100);
-            discAmt = (subtotal + taxAmt) * (discount / 100);
-        } else {
-            discAmt = subtotal * (discount / 100);
-            taxAmt = (subtotal - discAmt) * (tax / 100);
-        }
+        pricingBlocks.forEach(b => {
+            const blockSub = (b.rows || []).reduce((sum: number, r: any) => sum + ((b.hideQty ? 1 : r.qty) * r.rate), 0);
+            let bDisc = 0;
+            let bTax = 0;
+
+            if (meta.discountCalc === 'after_tax') {
+                bTax = calculatePercentageOrFixed(blockSub, b.taxRate);
+                bDisc = calculatePercentageOrFixed(blockSub + bTax, b.discountRate);
+            } else {
+                bDisc = calculatePercentageOrFixed(blockSub, b.discountRate);
+                bTax = calculatePercentageOrFixed(blockSub - bDisc, b.taxRate);
+            }
+
+            subtotal += blockSub;
+            discAmt += bDisc;
+            taxAmt += bTax;
+        });
 
         return { subtotal, discAmt, taxAmt, total: subtotal - discAmt + taxAmt };
     }, [blocks, meta.discountCalc]);
@@ -2338,10 +2342,17 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta = 
     );
 
     const subtotal = rows.reduce((s: number, r: PricingRow) => s + (hideQty ? 1 : r.qty) * r.rate, 0);
-    const discAmt  = subtotal * ((block.discountRate || 0) / 100);
-    const taxBase  = subtotal - discAmt;
-    const taxAmt   = taxBase * ((block.taxRate || 0) / 100);
-    const total    = taxBase + taxAmt;
+    let discAmt = 0;
+    let taxAmt = 0;
+    
+    if (meta.discountCalc === 'after_tax') {
+        taxAmt = calculatePercentageOrFixed(subtotal, block.taxRate);
+        discAmt = calculatePercentageOrFixed(subtotal + taxAmt, block.discountRate);
+    } else {
+        discAmt = calculatePercentageOrFixed(subtotal, block.discountRate);
+        taxAmt = calculatePercentageOrFixed(subtotal - discAmt, block.taxRate);
+    }
+    const total = subtotal - discAmt + taxAmt;
 
     const updateRow = (rowId: string, patch: Partial<PricingRow>) => {
         updateBlock(block.id, {
@@ -2561,15 +2572,15 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta = 
                                             <div className="flex items-center gap-1.5 justify-start">
                                                 <span>Discount</span>
                                                 {isPreview
-                                                    ? <span className="opacity-70">({block.discountRate}%)</span>
+                                                    ? <span className="opacity-70">({block.discountRate})</span>
                                                     : <>
                                                         <input
-                                                            type="number"
-                                                            value={block.discountRate || 0}
-                                                            onInput={e => updateBlock(block.id, { discountRate: Number(e.currentTarget.value) })}
-                                                            className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                                            type="text"
+                                                            value={block.discountRate || ''}
+                                                            placeholder="0"
+                                                            onInput={e => updateBlock(block.id, { discountRate: e.currentTarget.value })}
+                                                            className={cn("w-12 bg-transparent outline-none border-b text-center", isDark ? "border-white/10" : "border-black/10")}
                                                         />
-                                                        <span>%</span>
                                                     </>
                                                 }
                                             </div>
@@ -2582,15 +2593,15 @@ function PricingBlock({ block, isDark, isPreview, updateBlock, currency, meta = 
                                             <div className="flex items-center gap-1.5 justify-start">
                                                 <span>Tax</span>
                                                 {isPreview
-                                                    ? <span className="opacity-70">({block.taxRate}%)</span>
+                                                    ? <span className="opacity-70">({block.taxRate})</span>
                                                     : <>
                                                         <input
-                                                            type="number"
-                                                            value={block.taxRate || 0}
-                                                            onInput={e => updateBlock(block.id, { taxRate: Number(e.currentTarget.value) })}
-                                                            className={cn("w-8 bg-transparent outline-none border-b text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none", isDark ? "border-white/10" : "border-black/10")}
+                                                            type="text"
+                                                            value={block.taxRate || ''}
+                                                            placeholder="0"
+                                                            onInput={e => updateBlock(block.id, { taxRate: e.currentTarget.value })}
+                                                            className={cn("w-12 bg-transparent outline-none border-b text-center", isDark ? "border-white/10" : "border-black/10")}
                                                         />
-                                                        <span>%</span>
                                                     </>
                                                 }
                                             </div>

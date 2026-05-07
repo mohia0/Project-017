@@ -13,7 +13,7 @@ import {
   Users, User, UserCircle, UserCheck, UserPlus,
   Contact, Briefcase, Building, Building2, Handshake,
   UserCog, UserMinus, UserX, Users2, BriefcaseMedical,
-  FileText, File, FilePlus, FileCheck, FileEdit,
+  FileSignature, FileText, File, FilePlus, FileCheck, FileEdit,
   FileSpreadsheet, FileBarChart, Files, BookOpen, Book,
   Receipt, CreditCard, Wallet, DollarSign, Banknote,
   TrendingUp, TrendingDown, BarChart, BarChart2, PieChart,
@@ -72,7 +72,7 @@ export const ICON_CATEGORIES: Record<string, string[]> = {
     "UserCog", "UserMinus", "UserX", "Users2", "BriefcaseMedical"
   ],
   "Documents": [
-    "FileText", "File", "FilePlus", "FileCheck", "FileEdit",
+    "FileSignature", "FileText", "File", "FilePlus", "FileCheck", "FileEdit",
     "FileSpreadsheet", "FileBarChart", "Files", "BookOpen", "Book",
   ],
   "Finance": [
@@ -153,7 +153,7 @@ export const FULL_ICON_MAP: Record<string, LucideIcon> = {
   Users, User, UserCircle, UserCheck, UserPlus,
   Contact, Briefcase, Building, Building2, Handshake,
   UserCog, UserMinus, UserX, Users2, BriefcaseMedical,
-  FileText, File, FilePlus, FileCheck, FileEdit,
+  FileSignature, FileText, File, FilePlus, FileCheck, FileEdit,
   FileSpreadsheet, FileBarChart, Files, BookOpen, Book,
   Receipt, CreditCard, Wallet, DollarSign, Banknote,
   TrendingUp, TrendingDown, BarChart, BarChart2, PieChart,

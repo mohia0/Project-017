@@ -73,7 +73,7 @@ export const useUIStore = create<UIState>()(
                 set((state) => ({ isToolsMenuExpanded: !state.isToolsMenuExpanded })),
 
             tools: [
-                { id: 'proposals', label: 'Proposals', icon: 'FileText', path: '/proposals' },
+                { id: 'proposals', label: 'Proposals', icon: 'FileSignature', path: '/proposals' },
                 { id: 'clients', label: 'Clients', icon: 'Users', path: '/clients' },
             ],
             reorderTools: (newTools) => set({ tools: newTools }),

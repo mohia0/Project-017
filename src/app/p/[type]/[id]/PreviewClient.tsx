@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
+import confetti from 'canvas-confetti';
 import { createClient } from '@supabase/supabase-js';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { ProposalDocument } from '@/components/proposals/ProposalEditor';
@@ -42,82 +43,42 @@ function loadGoogleFont(family: string) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Full-screen paper-drop confetti celebration
+// Confetti Side Cannons Effect
 // ─────────────────────────────────────────────────────────────────────────────
 const CONFETTI_COLORS = [
-    '#d4af37', // Gold
-    '#bf953f', // Dark Gold
-    '#fcf6ba', // Light Gold
-    '#b38728', // Medium Gold
-    '#fbf5b7', // Pale Gold
-    '#ffffff', // White
-    '#e5e4e2', // Platinum
-    '#c0c0c0', // Silver
-    '#222222', // Charcoal/Dark Iron
+    '#d4af37', '#bf953f', '#fcf6ba', '#b38728', 
+    '#fbf5b7', '#ffffff', '#e5e4e2', '#c0c0c0', '#222222'
 ];
 
-function launchFullScreenConfetti(container: HTMLElement) {
-    const count = 220;
-    const dropped: HTMLElement[] = [];
+function launchFullScreenConfetti() {
+    const end = Date.now() + 3 * 1000; // 3 seconds
 
-    // Inject keyframes once
-    const kfId = 'confetti-kf-fullscreen';
-    if (!document.getElementById(kfId)) {
-        const s = document.createElement('style');
-        s.id = kfId;
-        s.textContent = `
-            @keyframes cffall {
-                0%   { transform: translateY(-20px) translateX(0) rotate(0deg) scale(1); opacity:1; }
-                85%  { opacity:1; }
-                100% { transform: translateY(105vh) translateX(var(--cf-drift)) rotate(var(--cf-rot)) scale(var(--cf-scale)); opacity:0; }
-            }
-            @keyframes cfsway {
-                0%,100% { margin-left: 0; }
-                50%     { margin-left: var(--cf-sway); }
-            }
-        `;
-        document.head.appendChild(s);
-    }
+    const frame = () => {
+        if (Date.now() > end) return;
 
-    for (let i = 0; i < count; i++) {
-        const el = document.createElement('div');
-        const color = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
-        const size = 5 + Math.random() * 9;
-        const left = Math.random() * 100;
-        const delay = Math.random() * 1200;
-        const duration = 2200 + Math.random() * 1800;
-        const drift = (Math.random() - 0.5) * 280;
-        const rot   = Math.random() * 900 - 450;
-        const sway  = (Math.random() - 0.5) * 60;
-        const scale = 0.4 + Math.random() * 0.8;
-        const isCircle = Math.random() > 0.45;
-        const isLong   = !isCircle && Math.random() > 0.5;
+        confetti({
+            particleCount: 2,
+            angle: 60,
+            spread: 55,
+            startVelocity: 60,
+            origin: { x: 0, y: 0.5 },
+            colors: CONFETTI_COLORS,
+            zIndex: 99999
+        });
+        confetti({
+            particleCount: 2,
+            angle: 120,
+            spread: 55,
+            startVelocity: 60,
+            origin: { x: 1, y: 0.5 },
+            colors: CONFETTI_COLORS,
+            zIndex: 99999
+        });
 
-        el.style.cssText = `
-            position:fixed;
-            top:-20px;
-            left:${left}%;
-            width:${size}px;
-            height:${isLong ? size * 2.5 : size}px;
-            background:${color};
-            border-radius:${isCircle ? '50%' : '2px'};
-            animation:
-                cffall ${duration}ms ${delay}ms cubic-bezier(.25,.46,.45,.94) forwards,
-                cfsway ${duration * 0.6}ms ${delay}ms ease-in-out infinite alternate;
-            --cf-drift:${drift}px;
-            --cf-rot:${rot}deg;
-            --cf-scale:${scale};
-            --cf-sway:${sway}px;
-            pointer-events:none;
-            z-index:99999;
-            will-change:transform,opacity;
-        `;
-        container.appendChild(el);
-        dropped.push(el);
-    }
+        requestAnimationFrame(frame);
+    };
 
-    // Auto-clean when all animations done
-    setTimeout(() => dropped.forEach(el => el.remove()), 4200);
+    frame();
 }
 
 import KanbanBoard from '@/components/projects/KanbanBoard';
@@ -880,6 +841,8 @@ function SchedulerPreview({ liveData, data }: { liveData: any; data: any }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PreviewClient({ type, data }: { type: 'proposal' | 'invoice' | 'project' | 'form' | 'scheduler' | 'forms' | 'schedulers', data: any }) {
     const [liveData, setLiveData] = useState(data);
+    const branding = useSettingsStore(s => s.branding);
+    const accentColor = branding?.primary_color || liveData.meta?.design?.primaryColor || '#D4AF37';
     const searchParams = useSearchParams();
     const isPrinting = searchParams.get('print') === '1';
 
@@ -900,8 +863,14 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
         const handleResize = () => setIsMobileViewport(window.innerWidth < 768);
         handleResize();
         window.addEventListener('resize', handleResize);
+        
+        // Fetch branding immediately for white-labeling
+        if (data.workspace_id) {
+            useSettingsStore.getState().fetchBranding(data.workspace_id);
+        }
+
         return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    }, [data.workspace_id]);
 
     // Load the document's chosen Google Font so public pages match the editor.
     // Always load Inter as the default fallback — it's not a system font on
@@ -1109,7 +1078,7 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
             setCelebrationName(signatureData?.name ? signatureData.name.split(' ')[0] : 'there');
             setShowCelebration(true);
             setTimeout(() => {
-                if (celebrationRef.current) launchFullScreenConfetti(celebrationRef.current);
+                launchFullScreenConfetti();
             }, 50);
         }
 
@@ -1267,36 +1236,38 @@ export default function PreviewClient({ type, data }: { type: 'proposal' | 'invo
                 {/* 🎉 Full-screen celebration overlay */}
                 {showCelebration && (
                     <div
-                        className="fixed inset-0 overflow-hidden flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-700"
+                        className="fixed inset-0 overflow-hidden flex items-center justify-center bg-white/20 backdrop-blur-md animate-in fade-in duration-700"
                         style={{ zIndex: 99998 }}
                         aria-hidden="true"
                     >
                         <div ref={celebrationRef} className="absolute inset-0 pointer-events-none" />
                         
                         <div className="relative z-10 flex flex-col items-center justify-center animate-in zoom-in-[0.98] fade-in duration-1000 delay-150 px-6 text-center w-full max-w-lg mx-auto">
-                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#D4AF37]/10 flex items-center justify-center mb-6 md:mb-8 shadow-[0_0_30px_rgba(212,175,55,0.15)] ring-1 ring-[#D4AF37]/30 backdrop-blur-sm">
-                                <Check className="text-[#D4AF37] w-8 h-8 md:w-10 md:h-10" strokeWidth={1.5} />
+                            <div 
+                                className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white flex items-center justify-center mb-6 md:mb-8 border-4 shadow-2xl backdrop-blur-xl"
+                                style={{ borderColor: accentColor }}
+                            >
+                                <Check className="w-8 h-8 md:w-10 md:h-10" strokeWidth={4} style={{ color: accentColor }} />
                             </div>
 
                             <h2 
-                                className="text-3xl md:text-5xl lg:text-5xl text-white font-bold tracking-[0.08em] uppercase mb-4 leading-tight text-center"
+                                className="text-3xl md:text-5xl lg:text-5xl text-black font-bold tracking-[0.08em] uppercase mb-4 leading-tight text-center"
                                 style={{
-                                    textShadow: '0 4px 20px rgba(0,0,0,0.5)',
                                     fontFamily: 'var(--font-inter), system-ui, sans-serif'
                                 }}
                             >
                                 Proposal Signed
                             </h2>
                             <h3 
-                                className="text-lg md:text-2xl text-[#D4AF37] tracking-[0.2em] font-medium uppercase mb-12"
-                                style={{ textShadow: '0 2px 10px rgba(0,0,0,0.4)', fontFamily: 'var(--font-inter), system-ui, sans-serif' }}
+                                className="text-lg md:text-2xl tracking-[0.2em] font-medium uppercase mb-12"
+                                style={{ color: accentColor, fontFamily: 'var(--font-inter), system-ui, sans-serif' }}
                             >
-                                Thank You, {celebrationName}
+                                Thank you!
                             </h3>
                             
                             <button
                                 onClick={() => setShowCelebration(false)}
-                                className="group relative px-12 py-3.5 md:py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs md:text-sm tracking-[0.15em] uppercase font-bold rounded-full overflow-hidden transition-all duration-300 hover:bg-white hover:text-black hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(0,0,0,0.2)]"
+                                className="group relative px-12 py-3.5 md:py-4 bg-black/80 backdrop-blur-md border border-white/20 text-white text-xs md:text-sm tracking-[0.15em] uppercase font-bold rounded-full overflow-hidden transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 active:scale-95 shadow-lg"
                             >
                                 Continue
                             </button>

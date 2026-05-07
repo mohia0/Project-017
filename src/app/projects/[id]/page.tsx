@@ -6,7 +6,7 @@ import {
     ChevronLeft, ChevronRight, ChevronDown, Check, X,
     Briefcase, Calendar, Users, Archive, Trash2, Plus,
     LayoutGrid, Filter, ArrowUpDown, Search,
-    MoreHorizontal, RefreshCw, Edit3, Link2, FileText, Receipt,
+    MoreHorizontal, RefreshCw, Edit3, Link2, FileSignature, Receipt,
     ArchiveRestore, Upload, Download, Copy, Zap,
     Target, TrendingUp, Clock, CheckCircle2, AlertCircle, Layers,
     ArrowLeft, Eye, PenLine, ExternalLink, Monitor, Smartphone, Send, Settings, LayoutTemplate
@@ -316,7 +316,7 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
                                                     : isDark ? "text-[#555] hover:text-[#aaa]" : "text-[#aaa] hover:text-[#555]"
                                             )}
                                         >
-                                            {t === 'invoice' ? <Receipt size={12} /> : <FileText size={12} />}
+                                            {t === 'invoice' ? <Receipt size={12} /> : <FileSignature size={12} />}
                                             {t === 'invoice' ? 'Invoices' : 'Proposals'}
                                         </button>
                                     ))}
@@ -350,7 +350,7 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
                                 {available.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-10 gap-2">
                                         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", isDark ? "bg-white/5" : "bg-[#f5f5f5]")}>
-                                            {linkType === 'invoice' ? <Receipt size={16} className={isDark ? "text-[#333]" : "text-[#ccc]"} /> : <FileText size={16} className={isDark ? "text-[#333]" : "text-[#ccc]"} />}
+                                            {linkType === 'invoice' ? <Receipt size={16} className={isDark ? "text-[#333]" : "text-[#ccc]"} /> : <FileSignature size={16} className={isDark ? "text-[#333]" : "text-[#ccc]"} />}
                                         </div>
                                         <p className={cn("text-[12px] font-medium", isDark ? "text-[#444]" : "text-[#999]")}>
                                             {search ? 'No results found' : `All ${linkType === 'invoice' ? 'invoices' : 'proposals'} already linked`}
@@ -370,7 +370,7 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
                                         >
                                             <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                                                 style={{ background: isInv ? 'rgba(16,185,129,0.1)' : 'rgba(99,102,241,0.1)' }}>
-                                                {isInv ? <Receipt size={13} className="text-emerald-500" /> : <FileText size={13} className="text-indigo-500" />}
+                                                {isInv ? <Receipt size={13} className="text-emerald-500" /> : <FileSignature size={13} className="text-indigo-500" />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className={cn("text-[12.5px] font-semibold truncate", isDark ? "text-[#ccc]" : "text-[#222]")}>
@@ -453,7 +453,7 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
                                         )}
                                     >
                                         {opt.id === 'invoice' && <Receipt size={10} />}
-                                        {opt.id === 'proposal' && <FileText size={10} />}
+                                        {opt.id === 'proposal' && <FileSignature size={10} />}
                                         {opt.label}
                                         <span className={cn('text-[9px] font-bold tabular-nums', tableFilter === opt.id ? (isDark ? 'text-white/40' : 'text-black/30') : (isDark ? 'text-[#333]' : 'text-[#ccc]'))}>
                                             {opt.count}
@@ -498,7 +498,7 @@ function LinkedItemsTab({ projectId, isDark }: { projectId: string; isDark: bool
                                         style={{ gridTemplateColumns: cols }}>
                                         <div className="flex items-center justify-center py-3.5">
                                             <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: isInv ? 'rgba(16,185,129,0.12)' : 'rgba(99,102,241,0.12)' }}>
-                                                {isInv ? <Receipt size={11} className="text-emerald-500" /> : <FileText size={11} className="text-indigo-500" />}
+                                                {isInv ? <Receipt size={11} className="text-emerald-500" /> : <FileSignature size={11} className="text-indigo-500" />}
                                             </div>
                                         </div>
                                         <div className="min-w-0 px-3 py-3.5">

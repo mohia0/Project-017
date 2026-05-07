@@ -12,8 +12,13 @@ export async function GET(req: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-    const workspaceId    = req.headers.get('x-workspace-id');
+    let workspaceId    = req.headers.get('x-workspace-id');
     const isCustomDomain = req.headers.get('x-custom-domain') === '1';
+
+    if (!workspaceId) {
+        const { searchParams } = new URL(req.url);
+        workspaceId = searchParams.get('workspaceId');
+    }
 
     if (!workspaceId) {
         return NextResponse.json({ branding: null, isCustomDomain: false }, { status: 200 });

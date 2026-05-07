@@ -68,7 +68,7 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
 
     // Fetch workspace branding
     useEffect(() => {
-        fetch('/api/workspace/branding')
+        fetch(`/api/workspace/branding?workspaceId=${workspaceId}`)
             .then(r => r.json())
             .then(({ branding }) => {
                 if (branding) {

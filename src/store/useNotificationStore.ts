@@ -76,7 +76,13 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             .single();
 
         if (!error && data) {
-            set(state => ({ notifications: [data as AppNotification, ...state.notifications] }));
+            const newNotif = data as AppNotification;
+            set(state => {
+                if (state.notifications.some(n => n.id === newNotif.id)) {
+                    return state;
+                }
+                return { notifications: [newNotif, ...state.notifications] };
+            });
         }
     },
 
@@ -148,9 +154,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             }, (payload) => {
                 const newNotification = payload.new as AppNotification;
 
-                set(state => ({
-                    notifications: [newNotification, ...state.notifications]
-                }));
+                set(state => {
+                    // Prevent duplicates if already added locally
+                    if (state.notifications.some(n => n.id === newNotification.id)) {
+                        return state;
+                    }
+                    return {
+                        notifications: [newNotification, ...state.notifications]
+                    };
+                });
 
                 appToast.success(newNotification.title, newNotification.message);
             })

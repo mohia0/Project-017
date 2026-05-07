@@ -483,6 +483,21 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
+/* ─── View Transitions API — theme toggle ──────────────────────── */
+/* Suppress the default cross-fade so only our clip-path reveal plays */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+/* Keep the outgoing snapshot visible underneath the incoming one */
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
 /* Remove number input spinners */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {

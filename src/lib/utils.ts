@@ -96,3 +96,15 @@ export function replaceVariables(text: string): string {
     const currentYear = new Date().getFullYear().toString();
     return text.replace(/{{year}}/g, currentYear);
 }
+
+export function calculatePercentageOrFixed(amount: number, value: string | number | undefined): number {
+    if (!value) return 0;
+    const strVal = String(value).trim();
+    if (strVal.endsWith('%')) {
+        const pct = parseFloat(strVal.replace('%', ''));
+        return isNaN(pct) ? 0 : amount * (pct / 100);
+    } else {
+        const val = parseFloat(strVal);
+        return isNaN(val) ? 0 : val;
+    }
+}
