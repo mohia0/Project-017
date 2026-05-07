@@ -376,13 +376,13 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                 }
                 return {
                     ...prev,
-                    clientName: invoice.client_name || '',
-                    projectName: invoice.title || '',
-                    issueDate: invoice.issue_date ? invoice.issue_date.split('T')[0] : prev.issueDate,
-                    dueDate: invoice.due_date ? invoice.due_date.split('T')[0] : prev.dueDate,
-                    status: invoice.status as any,
-                    invoiceNumber: invoice.invoice_number || invoice.id.slice(0, 8).toUpperCase(),
                     ...parsedMeta,
+                    clientName: invoice.client_name || parsedMeta.clientName || '',
+                    projectName: invoice.title || parsedMeta.projectName || '',
+                    issueDate: invoice.issue_date ? invoice.issue_date.split('T')[0] : (parsedMeta.issueDate || prev.issueDate),
+                    dueDate: invoice.due_date ? invoice.due_date.split('T')[0] : (parsedMeta.dueDate || prev.dueDate),
+                    status: invoice.status as any,
+                    invoiceNumber: invoice.invoice_number || parsedMeta.invoiceNumber || invoice.id.slice(0, 8).toUpperCase(),
                     assignedClients: assignedClients || []
                 };
             });
@@ -1062,10 +1062,8 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                                     const next = meta.assignedClients!.filter((_: any, i: number) => i !== idx);
                                                                     if (next.length === 0) {
                                                                         updateMeta({ assignedClients: next, clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' });
-                                                                    } else if (idx === 0) {
-                                                                        updateMeta({ assignedClients: next, clientName: next[0].name });
                                                                     } else {
-                                                                        updateMeta({ assignedClients: next });
+                                                                        updateMeta({ assignedClients: next, clientName: next.map((a: any) => a.name).join(', ') });
                                                                     }
                                                                 }}
                                                                 className={cn("p-0.5 rounded-full hover:bg-black/10 shrink-0", isDark ? "hover:bg-white/10" : "")}

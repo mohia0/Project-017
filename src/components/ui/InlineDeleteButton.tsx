@@ -23,6 +23,14 @@ export function InlineDeleteButton({
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        // Force the parent container to remain visible when confirming
+        const parent = containerRef.current?.parentElement;
+        if (isConfirming) {
+            if (parent) parent.style.setProperty('opacity', '1', 'important');
+        } else {
+            if (parent) parent.style.removeProperty('opacity');
+        }
+
         if (!isConfirming || isLoading) return;
         
         const handleClickOutside = (e: MouseEvent) => {
@@ -65,7 +73,7 @@ export function InlineDeleteButton({
                 onClick={handleClick}
                 disabled={isLoading}
                 initial={false}
-                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 28 }}
                 className={cn(
                     "relative flex items-center justify-center transition-all overflow-hidden",
                     !isConfirming 
@@ -77,7 +85,7 @@ export function InlineDeleteButton({
             >
                 <motion.div 
                     layout 
-                    className="flex items-center gap-1.5"
+                    className="flex items-center"
                 >
                     {isLoading ? (
                         <motion.div 
@@ -87,17 +95,19 @@ export function InlineDeleteButton({
                             className="w-2.5 h-2.5 border-2 border-white/30 border-t-white rounded-full shrink-0"
                         />
                     ) : (
-                        <Trash2 size={isConfirming ? 10 : 11} className="shrink-0" />
+                        <motion.div layout className="flex items-center justify-center">
+                            <Trash2 size={isConfirming ? 10 : 11} className="shrink-0" />
+                        </motion.div>
                     )}
                     
-                    <AnimatePresence>
+                    <AnimatePresence initial={false}>
                         {isConfirming && (
                             <motion.span
-                                initial={{ opacity: 0, scale: 0.8, x: -5 }}
-                                animate={{ opacity: 1, scale: 1, x: 0 }}
-                                exit={{ opacity: 0, scale: 0.8, x: -5 }}
-                                transition={{ duration: 0.15 }}
-                                className="text-[10px] leading-none pt-[1px] whitespace-nowrap"
+                                initial={{ opacity: 0, width: 0, paddingLeft: 0 }}
+                                animate={{ opacity: 1, width: "auto", paddingLeft: 6 }}
+                                exit={{ opacity: 0, width: 0, paddingLeft: 0 }}
+                                transition={{ duration: 0.2, ease: "easeInOut" }}
+                                className="text-[10px] leading-none pt-[1px] whitespace-nowrap overflow-hidden block"
                             >
                                 {isLoading ? 'Deleting…' : confirmText}
                             </motion.span>

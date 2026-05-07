@@ -47,10 +47,6 @@ export const useProposalStore = create<ProposalState>((set) => ({
             return;
         }
 
-        // ✅ Skip network call if already fetched for this workspace
-        const state = useProposalStore.getState();
-        if (state._fetchedForWorkspace === workspaceId && state.proposals.length > 0) return;
-
         set({ isLoading: true, error: null });
 
         const { data, error } = await supabase

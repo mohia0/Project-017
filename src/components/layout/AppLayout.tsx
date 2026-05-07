@@ -348,9 +348,20 @@ function FaviconBadgeEffect() {
     const notifications = useNotificationStore(s => s.notifications);
     const branding = useSettingsStore(s => s.branding);
     const pathname = usePathname();
-    const unreadCount = notifications.filter(n => !n.read).length;
-    // Drive faviconSrc from the store so changes to custom favicon are reflected
-    const faviconSrc = branding?.favicon_url || '/favicon.svg';
+    
+    const isPublicPreview = pathname?.startsWith('/p/');
+    const isAuthRoute = pathname === '/login';
+    const isOnboarding = pathname === '/onboarding';
+    const isJoinRoute = pathname?.startsWith('/join/');
+    
+    const unreadCount = notifications.filter(n => !n.is_read).length;
+    const faviconSrc = branding?.favicon_url || '/favicon.svg?v=aroooxa';
+
+    if (isPublicPreview || isAuthRoute || isOnboarding || isJoinRoute) {
+        return null;
+    }
+
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useFaviconBadge(unreadCount, faviconSrc, pathname);
     return null;
 }

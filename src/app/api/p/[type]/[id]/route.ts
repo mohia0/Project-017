@@ -255,7 +255,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ type: s
             // Don't fail the main request
         }
 
-        return NextResponse.json({ success: true, updateData });
+        return NextResponse.json({ success: true, updateData: { ...updateData, updated_at: new Date().toISOString() } });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }

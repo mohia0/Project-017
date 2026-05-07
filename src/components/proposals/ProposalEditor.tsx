@@ -396,13 +396,13 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 }
                 return {
                     ...prev,
-                    clientName: proposal.client_name || '',
-                    projectName: proposal.title || '',
-                    issueDate: proposal.issue_date ? proposal.issue_date.split('T')[0] : prev.issueDate,
-                    expirationDate: proposal.due_date ? proposal.due_date.split('T')[0] : prev.expirationDate,
-                    status: proposal.status as any,
-                    proposalNumber: proposal.proposal_number || proposal.id.slice(0, 8).toUpperCase(),
                     ...parsedMeta,
+                    clientName: proposal.client_name || parsedMeta.clientName || '',
+                    projectName: proposal.title || parsedMeta.projectName || '',
+                    issueDate: proposal.issue_date ? proposal.issue_date.split('T')[0] : (parsedMeta.issueDate || prev.issueDate),
+                    expirationDate: proposal.due_date ? proposal.due_date.split('T')[0] : (parsedMeta.expirationDate || prev.expirationDate),
+                    status: proposal.status as any,
+                    proposalNumber: proposal.proposal_number || parsedMeta.proposalNumber || proposal.id.slice(0, 8).toUpperCase(),
                     assignedClients: assignedClients || []
                 };
             });
@@ -564,8 +564,10 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const updateMeta = (patch: Partial<ProposalMeta>) => setMeta(m => ({ ...m, ...patch }));
 
     const handleStatusChange = (newStatus: ProposalMeta['status']) => {
-        // If we have an accepted/declined status (likely with signature), ask for confirmation
-        if (meta.status === 'Accepted' || meta.status === 'Declined') {
+        // Guard: if the proposal is in a finalized state (any terminal status), ask for confirmation
+        // because changing status will invalidate signatures.
+        const TERMINAL_STATUSES: ProposalMeta['status'][] = ['Accepted', 'Declined', 'Overdue', 'Cancelled'];
+        if (TERMINAL_STATUSES.includes(meta.status)) {
             setPendingStatusChange(newStatus);
             return;
         }
@@ -575,14 +577,14 @@ export default function ProposalEditor({ id }: { id?: string }) {
     const confirmStatusChange = () => {
         if (!pendingStatusChange) return;
         
-        // Remove signatures if we are invalidating them
+        // User confirmed — fully wipe the signature
         const nb = blocks.map((b: any) => 
             b.type === 'signature' ? { 
                 ...b, 
                 signed: false, 
                 signatureImage: null, 
                 signedAt: null,
-                signerName: '' 
+                signerName: '',
             } : b
         );
         setBlocks(nb);
@@ -912,6 +914,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         inline={true}
                                         design={meta.design}
                                         onAccept={() => setIsSignModalOpen(true)}
+                                        onDecline={() => handleStatusChange('Declined')}
                                         onDownloadPDF={handleDownloadPDF}
                                     />
                                 </div>
@@ -968,7 +971,7 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                     inline={true}
                                                     design={meta.design}
                                                     onAccept={() => setIsSignModalOpen(true)}
-                                                    onDecline={() => updateMeta({ status: 'Declined' as any })}
+                                                    onDecline={() => handleStatusChange('Declined')}
                                                     onDownloadPDF={handleDownloadPDF}
                                                     className="!py-3"
                                                 />
@@ -1131,7 +1134,11 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                             <button 
                                                                 onClick={() => {
                                                                     const next = meta.assignedClients!.filter((_, i) => i !== idx);
-                                                                    updateMeta({ assignedClients: next, clientName: next.map(a => a.name).join(', ') });
+                                                                    if (next.length === 0) {
+                                                                        updateMeta({ assignedClients: next, clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' });
+                                                                    } else {
+                                                                        updateMeta({ assignedClients: next, clientName: next.map(a => a.name).join(', ') });
+                                                                    }
                                                                 }}
                                                                 className={cn("p-0.5 rounded-full hover:bg-black/10 shrink-0", isDark ? "hover:bg-white/10" : "")}
                                                             >
@@ -1742,7 +1749,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                 onClose={() => setPendingStatusChange(null)}
                 onConfirm={confirmStatusChange}
                 title="Invalidate Signature?"
-                description={`Changing the status to "${pendingStatusChange}" will invalidate and remove the client's existing signature. Are you sure you want to proceed?`}
+                description={`Changing the status will permanently delete the existing signature. Are you sure you want to move this proposal to ${pendingStatusChange}?`}
+                actionLabel="Change Status"
                 isDark={isDark}
             />
 
