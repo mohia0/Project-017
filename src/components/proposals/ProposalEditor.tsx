@@ -2046,7 +2046,7 @@ function BlockRenderer({
 }) {
     switch (block.type) {
         case 'header':
-            return <HeaderBlock meta={meta} isDark={isDark} isPreview={isPreview} updateMeta={updateMeta} />;
+            return <HeaderBlock meta={meta} isDark={isDark} isPreview={isPreview} updateMeta={updateMeta} isMobile={isMobile} />;
         case 'heading':
             return <HeadingBlock block={block} isDark={isDark} isPreview={isPreview} updateBlock={updateBlock} />;
         case 'text':
@@ -2137,7 +2137,7 @@ function BlockRenderer({
 }
 
 /* ─── Header Block ─── */
-function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
+function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta, isMobile }: any) {
     const { branding } = useSettingsStore();
     const logoToUse = meta.logoUrl || (isDark ? branding?.logo_light_url : branding?.logo_dark_url);
 
@@ -2170,7 +2170,8 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); document.execCommand('insertLineBreak'); } }}
                         onInput={e => updateMeta({ documentTitle: e.currentTarget.innerText || '' })}
                         className={cn(
-                            "text-3xl font-black tracking-tighter leading-[0.9] whitespace-pre-line outline-none",
+                            isMobile ? "text-2xl" : "text-3xl",
+                            "font-black tracking-tighter leading-[0.9] whitespace-pre-line outline-none",
                             isDark ? "text-[#ccc]" : "text-[#2a2a2a]",
                             !isPreview && "hover:bg-black/5 dark:hover:bg-white/5 rounded px-1 -mx-1"
                         )}
@@ -2239,17 +2240,17 @@ function HeaderBlock({ meta = {}, isDark, isPreview, updateMeta }: any) {
                         )}
                     </div>
                 </div>
-                <div className="text-right text-[11px] space-y-1">
+                <div className="text-right text-[10px] space-y-0.5">
                     <div className="flex items-center justify-end gap-1">
-                        <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Proposal Number:</span> 
+                        <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Proposal #:</span> 
                         <span className={cn(isDark ? "text-[#aaa]" : "text-[#000]")}>{meta.proposalNumber || '---'}</span>
                     </div>
                     <div className="flex items-center justify-end gap-1">
-                        <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Issue Date:</span> 
+                        <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Issued:</span> 
                         <span className={cn(isDark ? "text-[#aaa]" : "text-[#000]")}>{meta.issueDate || '---'}</span>
                     </div>
                     <div className="flex items-center justify-end gap-1">
-                        <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Due Date:</span> 
+                        <span className={cn("font-bold", isDark ? "text-white" : "text-[#111]")}>Due:</span> 
                         <span className={cn(isDark ? "text-[#aaa]" : "text-[#000]")}>{meta.expirationDate || '---'}</span>
                     </div>
                 </div>

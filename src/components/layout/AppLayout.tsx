@@ -354,7 +354,7 @@ function FaviconBadgeEffect() {
     const isOnboarding = pathname === '/onboarding';
     const isJoinRoute = pathname?.startsWith('/join/');
     
-    const unreadCount = notifications.filter(n => !n.is_read).length;
+    const unreadCount = notifications.filter(n => !n.read).length;
     const faviconSrc = branding?.favicon_url || '/favicon.svg?v=aroooxa';
 
     if (isPublicPreview || isAuthRoute || isOnboarding || isJoinRoute) {

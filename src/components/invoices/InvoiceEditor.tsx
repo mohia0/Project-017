@@ -1845,7 +1845,8 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 suppressContentEditableWarning
                                 onInput={e => updateMeta({ documentTitle: e.currentTarget.textContent || '' })}
                                 className={cn(
-                                    "text-3xl font-black tracking-tighter leading-[0.9] outline-none",
+                                    isMobile ? "text-2xl" : "text-3xl",
+                                    "font-black tracking-tighter leading-[0.9] outline-none",
                                     isDark ? "text-[#ccc]" : "text-[#2a2a2a]",
                                     !isPreview && "hover:bg-black/5 dark:hover:bg-white/5 rounded px-1 -mx-1"
                                 )}
@@ -1887,15 +1888,15 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 )}
                             </div>
                         </div>
-                        <div className="text-right text-[11px] space-y-1">
+                        <div className="text-right text-[10px] space-y-0.5">
                             <div className="flex items-center justify-end gap-1">
-                                <span className="font-bold">ID #:</span> 
+                                <span className="font-bold">Invoice #:</span> 
                                 <span className={cn(isDark ? "text-[#aaa]" : "text-[#000]")}>
                                     {meta.invoiceNumber}
                                 </span>
                             </div>
                             <div className="flex items-center justify-end gap-1">
-                                <span className="font-bold">Date:</span> 
+                                <span className="font-bold">Issued:</span> 
                                 <span 
                                     contentEditable={!isPreview}
                                     suppressContentEditableWarning
@@ -1906,7 +1907,7 @@ function BlockRenderer({ block, isDark, isPreview, updateBlock, currency, meta, 
                                 </span>
                             </div>
                             <div className="flex items-center justify-end gap-1">
-                                <span className="font-bold">Due Date:</span> 
+                                <span className="font-bold">Due:</span> 
                                 <span 
                                     contentEditable={!isPreview}
                                     suppressContentEditableWarning
