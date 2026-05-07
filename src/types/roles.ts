@@ -76,7 +76,7 @@ export const PERMISSION_SECTIONS = [
   {
     key: 'proposals',
     label: 'Proposals',
-    icon: 'FileText',
+    icon: 'FileSignature',
     keys: ['proposals_view', 'proposals_create', 'proposals_edit', 'proposals_delete'] as PermissionKey[],
   },
   {

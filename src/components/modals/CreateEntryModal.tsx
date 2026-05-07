@@ -7,7 +7,8 @@ import {
     X, ChevronRight, User, PenTool, FileText,
     Building2, Calendar, Plus, Search, Zap,
     Briefcase, Clock, MapPin, ClipboardList, Tag, Palette,
-    Image as ImageIcon, Globe, Check, Briefcase as BriefcaseIcon
+    Image as ImageIcon, Globe, Check, Briefcase as BriefcaseIcon,
+    FileSignature
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { appToast } from '@/lib/toast';
@@ -43,7 +44,7 @@ const TABS: { id: EntityType; icon: React.ReactNode; label: string }[] = [
     { id: 'Contact',  icon: <User size={14} />,     label: 'Contact'  },
     { id: 'Company',  icon: <Building2 size={14} />, label: 'Company'  },
     { id: 'Project',  icon: <Briefcase size={14} />, label: 'Project'  },
-    { id: 'Proposal', icon: <PenTool size={14} />,  label: 'Proposal' },
+    { id: 'Proposal', icon: <FileSignature size={14} />,  label: 'Proposal' },
     { id: 'Invoice',  icon: <FileText size={14} />, label: 'Invoice'  },
     { id: 'Scheduler',icon: <Calendar size={14} />, label: 'Scheduler'  },
     { id: 'Form',     icon: <ClipboardList size={14} />, label: 'Form'  },

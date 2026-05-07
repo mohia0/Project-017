@@ -650,6 +650,17 @@ export default function ProposalEditor({ id }: { id?: string }) {
         return { subtotal, discAmt, taxAmt, total: subtotal - discAmt + taxAmt };
     }, [blocks, meta.discountCalc]);
 
+    /* ── Signature info (for ClientActionBar accepted state) ── */
+    const signatureBlock = React.useMemo(() => blocks.find((b: any) => b.type === 'signature' && b.signed), [blocks]);
+    const signedBy: string | undefined = signatureBlock ? (signatureBlock.signerName || 'Client') : undefined;
+    const signedAt: string | undefined = React.useMemo(() => {
+        if (!signatureBlock) return undefined;
+        // Try the block's own signedAt timestamp first
+        const raw = (signatureBlock as any).signedAt || proposals.find(p => p.id === id)?.accepted_at;
+        if (!raw) return undefined;
+        return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' }).format(new Date(raw));
+    }, [signatureBlock, proposals, id]);
+
     const sc = getStatusColors(meta.status, customStatuses);
 
     /* ═══ RENDER ═══ */
@@ -923,6 +934,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                         status={meta.status as any}
                                         inline={true}
                                         design={meta.design}
+                                        signedBy={signedBy}
+                                        signedAt={signedAt}
                                         onAccept={() => setIsSignModalOpen(true)}
                                         onDecline={() => handleStatusChange('Declined')}
                                         onDownloadPDF={handleDownloadPDF}
@@ -980,6 +993,8 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                     isMobile={true}
                                                     inline={true}
                                                     design={meta.design}
+                                                    signedBy={signedBy}
+                                                    signedAt={signedAt}
                                                     onAccept={() => setIsSignModalOpen(true)}
                                                     onDecline={() => handleStatusChange('Declined')}
                                                     onDownloadPDF={handleDownloadPDF}
@@ -1147,7 +1162,12 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                                     if (next.length === 0) {
                                                                         updateMeta({ assignedClients: next, clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' });
                                                                     } else {
-                                                                        updateMeta({ assignedClients: next, clientName: next.map(a => a.name).join(', ') });
+                                                                        const topClient = clients.find((c: any) => c.id === next[0].id);
+                                                                        if (topClient) {
+                                                                            updateMeta({ assignedClients: next, clientName: next[0].name, clientEmail: topClient.email || '', clientPhone: topClient.phone || '', clientAddress: topClient.address || '' });
+                                                                        } else {
+                                                                            updateMeta({ assignedClients: next, clientName: next[0].name });
+                                                                        }
                                                                     }
                                                                 }}
                                                                 className={cn("p-0.5 rounded-full hover:bg-black/10 shrink-0", isDark ? "hover:bg-white/10" : "")}
@@ -1556,10 +1576,13 @@ export default function ProposalEditor({ id }: { id?: string }) {
                                                                             const next = meta.assignedClients!.filter((_, i) => i !== idx);
                                                                             if (next.length === 0) {
                                                                                 updateMeta({ assignedClients: next, clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' });
-                                                                            } else if (idx === 0) {
-                                                                                updateMeta({ assignedClients: next, clientName: next[0].name });
                                                                             } else {
-                                                                                updateMeta({ assignedClients: next });
+                                                                                const topClient = clients.find((c: any) => c.id === next[0].id);
+                                                                                if (topClient) {
+                                                                                    updateMeta({ assignedClients: next, clientName: next[0].name, clientEmail: topClient.email || '', clientPhone: topClient.phone || '', clientAddress: topClient.address || '' });
+                                                                                } else {
+                                                                                    updateMeta({ assignedClients: next, clientName: next[0].name });
+                                                                                }
                                                                             }
                                                                         }}
                                                                         className={cn("p-0.5 rounded-full hover:bg-black/10 shrink-0", isDark ? "hover:bg-white/10" : "")}

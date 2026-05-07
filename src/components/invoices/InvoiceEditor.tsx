@@ -1063,7 +1063,12 @@ export default function InvoiceEditor({ id }: { id?: string }) {
                                                                     if (next.length === 0) {
                                                                         updateMeta({ assignedClients: next, clientName: '', clientEmail: '', clientPhone: '', clientAddress: '' });
                                                                     } else {
-                                                                        updateMeta({ assignedClients: next, clientName: next.map((a: any) => a.name).join(', ') });
+                                                                        const topClient = clients.find((c: any) => c.id === next[0].id);
+                                                                        if (topClient) {
+                                                                            updateMeta({ assignedClients: next, clientName: next[0].name, clientEmail: topClient.email || '', clientPhone: topClient.phone || '', clientAddress: topClient.address || '' });
+                                                                        } else {
+                                                                            updateMeta({ assignedClients: next, clientName: next[0].name });
+                                                                        }
                                                                     }
                                                                 }}
                                                                 className={cn("p-0.5 rounded-full hover:bg-black/10 shrink-0", isDark ? "hover:bg-white/10" : "")}
