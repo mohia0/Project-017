@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ProposalIcon } from '@/components/ui/icons/ProposalIcon';
 import {
   Search, X, Check as CheckIcon,
   LayoutGrid, LayoutDashboard, Home, Layers, Grid3X3,
@@ -13,7 +14,7 @@ import {
   Users, User, UserCircle, UserCheck, UserPlus,
   Contact, Briefcase, Building, Building2, Handshake,
   UserCog, UserMinus, UserX, Users2, BriefcaseMedical,
-  FileSignature, FileText, File, FilePlus, FileCheck, FileEdit,
+  FileText, File, FilePlus, FileCheck, FileEdit,
   FileSpreadsheet, FileBarChart, Files, BookOpen, Book,
   Receipt, CreditCard, Wallet, DollarSign, Banknote,
   TrendingUp, TrendingDown, BarChart, BarChart2, PieChart,
@@ -153,7 +154,7 @@ export const FULL_ICON_MAP: Record<string, LucideIcon> = {
   Users, User, UserCircle, UserCheck, UserPlus,
   Contact, Briefcase, Building, Building2, Handshake,
   UserCog, UserMinus, UserX, Users2, BriefcaseMedical,
-  FileSignature, FileText, File, FilePlus, FileCheck, FileEdit,
+  FileSignature: ProposalIcon, FileText, File, FilePlus, FileCheck, FileEdit,
   FileSpreadsheet, FileBarChart, Files, BookOpen, Book,
   Receipt, CreditCard, Wallet, DollarSign, Banknote,
   TrendingUp, TrendingDown, BarChart, BarChart2, PieChart,

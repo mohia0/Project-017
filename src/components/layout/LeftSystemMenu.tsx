@@ -280,7 +280,7 @@ function SortableNavItem({ item, isExpanded, isActive, isEditing, onUpdate, onTo
                     ? (isLightBg ? "text-black" : "text-white")
                     : isBranded 
                         ? (isLightBg ? "text-black" : "text-white")
-                        : (isLightBg ? "text-black/30 hover:text-black" : "text-white/30 hover:text-white"),
+                        : (isLightBg ? "text-black opacity-40 hover:opacity-100" : "text-white opacity-40 hover:opacity-100"),
                 item.isHidden && "hidden"
             )}
         >
