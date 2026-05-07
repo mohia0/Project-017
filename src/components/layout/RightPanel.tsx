@@ -157,7 +157,21 @@ function NotificationsPanel({ isDark }: { isDark: boolean }) {
 
     useEffect(() => {
         fetchNotifications();
-    }, [fetchNotifications]);
+        subscribe();
+
+        // Re-fetch & heal subscription when user returns to the tab
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchNotifications();
+                subscribe();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [fetchNotifications, subscribe]);
 
     const displayNotifications = filterUnread ? notifications.filter(n => !n.read) : notifications;
     

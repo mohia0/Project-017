@@ -141,11 +141,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         const workspaceId = useUIStore.getState().activeWorkspaceId;
         if (!workspaceId) return;
 
+        // Always tear down any existing channel before creating a new one.
+        // This handles workspace switches and stale connections correctly.
         if (subscription) {
             supabase.removeChannel(subscription);
+            subscription = null;
         }
 
-        subscription = supabase.channel(`notifications:${workspaceId}`)
+        subscription = supabase.channel(`notifications:${workspaceId}:${Date.now()}`)
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
@@ -168,7 +171,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             })
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log('Successfully subscribed to notifications for workspace:', workspaceId);
+                    console.log('[Notifications] Realtime subscribed for workspace:', workspaceId);
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                    console.warn('[Notifications] Channel issue, will retry on next subscribe call:', status);
+                    subscription = null;
                 }
             });
     },
