@@ -10,6 +10,7 @@ import { ArrowRight, Building, Sparkles, AlertCircle, Globe, CheckCircle2, XCirc
 import { FullScreenLoader, AppLoader } from '@/components/ui/AppLoader';
 import ImageUploadModal from '@/components/modals/ImageUploadModal';
 import { AroooXaLogo } from '@/components/ui/AroooXaLogo';
+import { AuthDotPanel } from '@/components/ui/DotPattern';
 
 interface PortalBranding {
     name: string;
@@ -137,6 +138,11 @@ export default function OnboardingPage() {
     return (
         <div className="flex-1 flex relative w-full min-h-screen">
             
+            {/* Left decorative panel — dot pattern + glow */}
+            <div className="absolute top-0 left-0 w-[45%] h-full pointer-events-none">
+                <AuthDotPanel isDark={isDark} />
+            </div>
+
             {/* Background design accents mirroring Login page */}
             <div className={cn(
                 "absolute top-0 right-0 w-[50vw] h-full transition-colors duration-700 pointer-events-none",

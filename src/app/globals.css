@@ -334,6 +334,17 @@ button {
     animation: bell-pulse 2s ease-in-out infinite;
   }
 
+  /* ── Auth page dot-pattern glow ── */
+  @keyframes auth-glow {
+    0%   { opacity: 0; transform: scale(0.92); }
+    50%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0.6; transform: scale(1.05); }
+  }
+
+  .animate-auth-glow {
+    animation: auth-glow 6s ease-in-out infinite alternate both;
+  }
+
   /* Privacy Mode Blurring */
   /* Triggered by adding 'privacy-mode' class to <html> */
   html.privacy-mode [data-financial],

@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { AroooXaLogo } from '@/components/ui/AroooXaLogo';
+import { AuthDotPanel } from '@/components/ui/DotPattern';
 import { useWorkspaceStore } from '@/store/useWorkspaceStore';
 
 interface WorkspaceBranding {
@@ -231,6 +232,11 @@ function JoinForm({ workspaceId }: { workspaceId: string }) {
 
     return (
         <div className="flex-1 flex relative w-full min-h-screen overflow-hidden">
+            {/* Left decorative panel — dot pattern + glow */}
+            <div className="absolute top-0 left-0 w-[45%] h-full pointer-events-none">
+                <AuthDotPanel isDark={isDark} />
+            </div>
+
             {/* Background accent */}
             <div className={cn(
                 "absolute top-0 right-0 w-[50vw] h-full pointer-events-none transition-colors duration-700",

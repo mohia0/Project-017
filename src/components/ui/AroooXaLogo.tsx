@@ -46,6 +46,21 @@ const LETTERS: { vb: string; d: string }[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Kerning — right-margin after each letter, as a fraction of `height`.
+// Positive = more space, negative = tighter. Last letter has no margin.
+// Tune these to taste; values chosen to match a tight wordmark aesthetic.
+// ─────────────────────────────────────────────────────────────────────────────
+const KERNING = [
+  -0.04,  // A → R  (tighten: the A's leg sits close to R's stem)
+  -0.02,  // R → O  (slightly tight)
+  -0.01,  // O → O  (even)
+  -0.01,  // O → O  (even)
+  -0.03,  // O → X  (tighten: O's curve into X's leg)
+  -0.04,  // X → A  (tighten: X's right leg into A's left)
+  0,      // trailing A — no margin needed
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Wave config
 // ─────────────────────────────────────────────────────────────────────────────
 const LIFT_PX    = -16;   // max upward shift (px)
@@ -160,7 +175,11 @@ export function AroooXaLogo({
         <div
           key={i}
           ref={(el) => { letterRefs.current[i] = el; }}
-          style={{ display: 'inline-flex', alignItems: 'center' }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            marginRight: `${(KERNING[i] ?? 0) * height}px`,
+          }}
         >
           <svg
             viewBox={ld.vb}

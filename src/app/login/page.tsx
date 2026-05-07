@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { ArrowRight, AlertCircle, CheckCircle2, Eye, EyeOff, Building, Globe, Upload, Loader2, XCircle } from 'lucide-react';
 import { AppLoader } from '@/components/ui/AppLoader';
 import { AroooXaLogo } from '@/components/ui/AroooXaLogo';
+import { AuthDotPanel } from '@/components/ui/DotPattern';
 
 interface PortalBranding {
     name: string;
@@ -216,6 +217,11 @@ export default function LoginPage() {
     return (
         <div className="flex-1 flex relative w-full h-screen overflow-hidden">
             
+            {/* Left decorative panel — dot pattern + glow */}
+            <div className="absolute top-0 left-0 w-[45%] h-full pointer-events-none">
+                <AuthDotPanel isDark={isDark} />
+            </div>
+
             {/* Background design accents */}
             <div className={cn(
                 "absolute top-0 right-0 w-[50vw] h-full transition-colors duration-700 pointer-events-none",
